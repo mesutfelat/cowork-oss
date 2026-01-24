@@ -5,7 +5,7 @@
 [![macOS](https://img.shields.io/badge/platform-macOS-blue.svg)](https://www.apple.com/macos/)
 [![Electron](https://img.shields.io/badge/electron-40.0.0-47848F.svg)](https://www.electronjs.org/)
 
-**Open source agentic task automation for macOS**
+**Local-first agent workbench for folder-scoped tasks (BYOK)**
 
 ```
   ██████╗ ██████╗ ██╗    ██╗ ██████╗ ██████╗ ██╗  ██╗       ██████╗ ███████╗███████╗
@@ -16,7 +16,38 @@
   ╚═════╝ ╚═════╝  ╚══╝╚══╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝       ╚═════╝ ╚══════╝╚══════╝
 ```
 
-A desktop application inspired by Claude Cowork that provides agentic task automation with high agency over local folders.
+CoWork-OSS is an open-source, local-first agent workbench for running multi-step tasks in a folder-scoped workspace, with explicit approvals for destructive actions and built-in skills for generating documents, spreadsheets, and presentations.
+
+**You bring your own model credentials (Anthropic API / AWS Bedrock); usage is billed by your provider.**
+
+> **Independent project.** CoWork-OSS is not affiliated with, endorsed by, or sponsored by Anthropic.
+> This project implements a local, folder-scoped agent workflow pattern in open source.
+
+---
+
+## Why CoWork-OSS?
+
+- **Local-first**: All tasks, artifacts, and data stored locally in SQLite — your data stays on your machine
+- **Folder-scoped security**: Operations are sandboxed to your selected workspace with path traversal protection
+- **Permissioned execution**: Explicit user approval required for destructive operations (delete, bulk rename)
+- **Extensible skills/tools**: Clear developer path to add custom tools and skills
+- **Transparent runtime**: Real-time timeline showing every step, tool call, and decision
+- **BYOK (Bring Your Own Key)**: Use your own API credentials — no proxy, no reselling
+
+---
+
+## Providers & Costs (BYOK)
+
+CoWork-OSS is **free and open source**. To run tasks, you must configure your own model credentials.
+
+| Provider | Configuration |
+|----------|---------------|
+| Anthropic API | Set `ANTHROPIC_API_KEY` in `.env` |
+| AWS Bedrock | Configure AWS credentials in Settings |
+
+**Your usage is billed directly by your provider.** CoWork-OSS does not proxy or resell model access.
+
+---
 
 ## Features
 
@@ -24,7 +55,7 @@ A desktop application inspired by Claude Cowork that provides agentic task autom
 
 - **Task-Based Workflow**: Multi-step task execution with plan-execute-observe loops
 - **Workspace Management**: Sandboxed file operations within selected folders
-- **Permission System**: Explicit approval for destructive operations (delete, bulk rename)
+- **Permission System**: Explicit approval for destructive operations
 - **Skill System**: Built-in skills for creating professional outputs:
   - Spreadsheet creation (Excel format)
   - Document creation (Word/PDF)
@@ -32,6 +63,7 @@ A desktop application inspired by Claude Cowork that provides agentic task autom
   - Folder organization
 - **Real-Time Timeline**: Live activity feed showing agent actions and tool calls
 - **Artifact Tracking**: All created/modified files are tracked and viewable
+- **Model Selection**: Choose between Opus, Sonnet, or Haiku models
 
 ### Architecture
 
@@ -56,7 +88,7 @@ A desktop application inspired by Claude Cowork that provides agentic task autom
 │                  Execution Layer                 │
 │  - File Operations                               │
 │  - Skills (Document Creation)                    │
-│  - Sandbox Runner (VM - TODO)                    │
+│  - Provider Abstraction (Anthropic/Bedrock)      │
 └─────────────────────────────────────────────────┘
                       ↕
 ┌─────────────────────────────────────────────────┐
@@ -65,35 +97,33 @@ A desktop application inspired by Claude Cowork that provides agentic task autom
 └─────────────────────────────────────────────────┘
 ```
 
+---
+
 ## Setup
 
 ### Prerequisites
 
 - Node.js 18+ and npm
 - macOS (for Electron native features)
-- Anthropic API key
+- API credentials (Anthropic API key or AWS Bedrock access)
 
 ### Installation
 
-1. Install dependencies:
 ```bash
+# Clone the repository
+git clone https://github.com/CoWork-OS/cowork-oss.git
+cd cowork-oss
+
+# Install dependencies
 npm install
-```
 
-2. Set up environment variables:
-```bash
-# Create .env file in project root
-echo "ANTHROPIC_API_KEY=your_api_key_here" > .env
-```
+# Configure your API credentials
+cp .env.example .env
+# Edit .env and add your ANTHROPIC_API_KEY
 
-3. Run in development mode:
-```bash
+# Run in development mode
 npm run dev
 ```
-
-This will start:
-- Vite dev server for React UI (port 5173)
-- Electron app with hot reload
 
 ### Building for Production
 
@@ -103,6 +133,8 @@ npm run package
 ```
 
 The packaged app will be in the `release/` directory.
+
+---
 
 ## Usage
 
@@ -133,85 +165,18 @@ Watch the task timeline as the agent:
 
 ### 4. Approve Requests
 
-When the agent needs to perform destructive actions:
-- Delete files
-- Bulk rename operations
-- External network access
+When the agent needs to perform destructive actions, you'll see an approval dialog. Review the details and approve or deny.
 
-You'll see an approval dialog. Review the details and approve or deny.
+---
 
-## Project Structure
+## Security & Safety
 
-```
-cowork/
-├── src/
-│   ├── electron/               # Main process (Node.js)
-│   │   ├── main.ts            # Electron entry point
-│   │   ├── preload.ts         # IPC bridge
-│   │   ├── database/          # SQLite schema & repositories
-│   │   ├── agent/             # Agent orchestration
-│   │   │   ├── daemon.ts      # Task coordinator
-│   │   │   ├── executor.ts    # Agent execution loop
-│   │   │   ├── tools/         # Tool implementations
-│   │   │   ├── skills/        # Document creation skills
-│   │   │   └── sandbox/       # VM sandbox (TODO)
-│   │   └── ipc/               # IPC handlers
-│   ├── renderer/              # React UI
-│   │   ├── App.tsx            # Main app component
-│   │   ├── components/        # UI components
-│   │   └── styles/            # CSS styles
-│   └── shared/                # Shared types
-│       └── types.ts           # TypeScript definitions
-├── package.json
-├── tsconfig.json
-├── vite.config.ts
-└── README.md
-```
+### Important Warnings
 
-## Technology Stack
-
-- **Frontend**: React 18 + TypeScript + Vite
-- **Backend**: Electron 28 + Node.js
-- **Database**: better-sqlite3 (embedded SQLite)
-- **AI**: Anthropic Claude API (Sonnet 4)
-- **Build**: electron-builder
-
-## Implementation Status
-
-### ✅ Completed (MVP 1 & 2)
-
-- [x] Project setup and build configuration
-- [x] Electron app shell with React UI
-- [x] SQLite database with repositories
-- [x] IPC communication layer
-- [x] Agent daemon and task orchestration
-- [x] Task executor with plan-execute-observe loop
-- [x] File operation tools (read, write, list, rename, delete)
-- [x] Basic skills (spreadsheet, document, presentation, organizer)
-- [x] Task-based UI (not chat UI)
-- [x] Task timeline with real-time events
-- [x] Workspace selector
-- [x] Approval system with UI dialogs
-- [x] Permission boundaries
-
-### 🚧 In Progress
-
-- [ ] VM sandbox using macOS Virtualization.framework
-- [ ] MCP connector host and registry
-- [ ] Sub-agent coordination for parallel tasks
-- [ ] Enhanced document creation (proper Excel/Word/PowerPoint libraries)
-
-### 📋 Planned (Future MVPs)
-
-- [ ] Network egress controls with proxy
-- [ ] Browser automation (Playwright or Chrome extension)
-- [ ] Skill marketplace/loader
-- [ ] Multi-workspace support
-- [ ] Task templates
-- [ ] Export/import tasks
-- [ ] Cloud sync (optional)
-
-## Security & Permissions
+- **Don't point this at sensitive folders** — select only folders you're comfortable giving the agent access to
+- **Use version control / backups** — always have backups of important files before running tasks
+- **Review approvals carefully** — read what the agent wants to do before approving
+- **Treat web content as untrusted input** — be cautious with tasks involving external data
 
 ### Workspace Boundaries
 
@@ -225,7 +190,6 @@ interface WorkspacePermissions {
   write: boolean;     // Create/modify files
   delete: boolean;    // Delete files (requires approval)
   network: boolean;   // Network access (future)
-  allowedDomains?: string[];  // Network allowlist (future)
 }
 ```
 
@@ -237,18 +201,78 @@ The following operations always require user approval:
 - Network access beyond allowlist
 - External service calls
 
-## Configuration
+---
 
-### Environment Variables
+## Compliance
 
-- `ANTHROPIC_API_KEY` - Your Anthropic API key (required)
-- `NODE_ENV` - Set to 'development' for dev mode
+This project requires users to comply with their model provider's terms and policies:
 
-### User Data Location
+- [Anthropic Commercial Terms of Service](https://www.anthropic.com/legal/commercial-terms)
+- [Anthropic Usage Policy](https://www.anthropic.com/legal/aup)
+- [AWS Bedrock Third-Party Model Terms](https://aws.amazon.com/legal/bedrock/third-party-models/)
 
-- macOS: `~/Library/Application Support/cowork-app/`
-  - `cowork.db` - SQLite database
-  - Logs and preferences
+**Note:** Anthropic's Usage Policy requires that consumer-facing applications using AI disclose this to users. CoWork-OSS displays model information in the UI.
+
+---
+
+## Roadmap
+
+### Completed
+- [x] Folder-scoped workspace + path traversal protection
+- [x] Approval gates for destructive operations
+- [x] Task timeline + artifact outputs
+- [x] Multi-provider support (Anthropic API / AWS Bedrock)
+- [x] Model selection (Opus, Sonnet, Haiku)
+- [x] Built-in skills (documents, spreadsheets, presentations)
+- [x] SQLite local persistence
+
+### Planned
+- [ ] VM sandbox using macOS Virtualization.framework
+- [ ] MCP connector host and registry
+- [ ] Sub-agent coordination for parallel tasks
+- [ ] Network egress controls with proxy
+- [ ] Browser automation
+- [ ] Additional model provider support
+- [ ] Skill marketplace/loader
+
+---
+
+## Technology Stack
+
+- **Frontend**: React 19 + TypeScript + Vite
+- **Backend**: Electron 40 + Node.js
+- **Database**: better-sqlite3 (embedded SQLite)
+- **Build**: electron-builder
+
+---
+
+## Project Structure
+
+```
+cowork-oss/
+├── src/
+│   ├── electron/               # Main process (Node.js)
+│   │   ├── main.ts            # Electron entry point
+│   │   ├── preload.ts         # IPC bridge
+│   │   ├── database/          # SQLite schema & repositories
+│   │   ├── agent/             # Agent orchestration
+│   │   │   ├── daemon.ts      # Task coordinator
+│   │   │   ├── executor.ts    # Agent execution loop
+│   │   │   ├── llm/           # Provider abstraction
+│   │   │   ├── tools/         # Tool implementations
+│   │   │   └── skills/        # Document creation skills
+│   │   └── ipc/               # IPC handlers
+│   ├── renderer/              # React UI
+│   │   ├── App.tsx            # Main app component
+│   │   ├── components/        # UI components
+│   │   └── styles/            # CSS styles
+│   └── shared/                # Shared types
+├── package.json
+├── tsconfig.json
+└── vite.config.ts
+```
+
+---
 
 ## Development
 
@@ -258,47 +282,26 @@ Development mode provides hot reload for both:
 - React UI (Vite HMR)
 - Electron main process (auto-restart on changes)
 
-### Debugging
-
-- Open DevTools: Automatic in development mode
-- View logs: Check console in DevTools
-- Database: Use SQLite viewer on `cowork.db`
-
 ### Adding New Tools
 
-1. Define tool schema in [tools/registry.ts](src/electron/agent/tools/registry.ts)
-2. Implement tool logic in [tools/file-tools.ts](src/electron/agent/tools/file-tools.ts) or create new file
+1. Define tool schema in `tools/registry.ts`
+2. Implement tool logic in `tools/file-tools.ts` or create new file
 3. Register tool in `getTools()` method
 4. Add execution handler in `executeTool()`
 
 ### Adding New Skills
 
-1. Create skill implementation in [skills/](src/electron/agent/skills/) directory
-2. Add skill tool definition in [tools/skill-tools.ts](src/electron/agent/tools/skill-tools.ts)
+1. Create skill implementation in `skills/` directory
+2. Add skill tool definition in `tools/skill-tools.ts`
 3. Implement the skill method in SkillTools class
 
-## Comparison to Claude Cowork
-
-This implementation aims for "close parity" with Claude Cowork's core features:
-
-| Feature | Claude Cowork | This Implementation |
-|---------|---------------|---------------------|
-| Task-based workflow | ✅ | ✅ |
-| Multi-step execution | ✅ | ✅ |
-| File operations | ✅ | ✅ |
-| Document creation | ✅ | ✅ (basic) |
-| Approval system | ✅ | ✅ |
-| VM sandbox | ✅ | ⏳ (planned) |
-| MCP connectors | ✅ | ⏳ (planned) |
-| Sub-agents | ✅ | ⏳ (planned) |
-| Browser automation | ✅ | ⏳ (planned) |
-| Network controls | ✅ | ⏳ (planned) |
+---
 
 ## Troubleshooting
 
 ### "ANTHROPIC_API_KEY not found"
 
-Set the environment variable before running:
+Set the environment variable in your `.env` file or export it:
 ```bash
 export ANTHROPIC_API_KEY=your_key_here
 npm run dev
@@ -317,30 +320,36 @@ npm run dev
 
 Close all instances of the app and delete the lock file:
 ```bash
-rm ~/Library/Application\ Support/cowork-app/cowork.db-journal
+rm ~/Library/Application\ Support/cowork-oss/cowork-oss.db-journal
 ```
+
+---
 
 ## Contributing
 
-This is an educational implementation inspired by Claude Cowork. Contributions are welcome!
+Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md) first.
 
-Areas where help is needed:
+Areas where help is especially needed:
 - VM sandbox implementation using Virtualization.framework
-- MCP protocol integration
+- Additional model provider integrations
 - Enhanced document creation libraries
 - Network security controls
-- Sub-agent coordination
+- Test coverage
+
+---
 
 ## License
 
-MIT
+[MIT](LICENSE)
 
-## Acknowledgments
-
-- Inspired by [Claude Cowork](https://claude.com/blog/cowork-research-preview) by Anthropic
-- Built on [Anthropic Claude API](https://www.anthropic.com/api)
-- Architecture references from [Claude Code](https://docs.anthropic.com/claude/docs/claude-code)
+---
 
 ## Disclaimer
 
-This is an independent implementation inspired by Claude Cowork. It is not affiliated with, endorsed by, or officially connected to Anthropic PBC.
+CoWork-OSS is an independent open-source project. It is not affiliated with, endorsed by, or officially connected to Anthropic PBC or any other AI provider.
+
+Users are responsible for:
+- Complying with their model provider's terms of service
+- Ensuring appropriate use of AI-generated outputs
+- Reviewing and approving agent actions before execution
+- Maintaining backups of important data
