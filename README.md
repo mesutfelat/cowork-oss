@@ -341,15 +341,3 @@ Areas where help is especially needed:
 ## License
 
 [MIT](LICENSE)
-
----
-
-## Disclaimer
-
-CoWork-OSS is an independent open-source project. It is not affiliated with, endorsed by, or officially connected to Anthropic PBC or any other AI provider.
-
-Users are responsible for:
-- Complying with their model provider's terms of service
-- Ensuring appropriate use of AI-generated outputs
-- Reviewing and approving agent actions before execution
-- Maintaining backups of important data
