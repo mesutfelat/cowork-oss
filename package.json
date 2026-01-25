@@ -1,6 +1,6 @@
 {
   "name": "cowork-oss",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "CoWork-OSS - Open source agentic task automation for macOS",
   "main": "dist/electron/electron/main.js",
   "author": "CoWork-OSS Contributors",
@@ -47,6 +47,7 @@
     "grammy": "^1.39.3",
     "mime-types": "^3.0.2",
     "pdfkit": "^0.17.2",
+    "playwright": "^1.58.0",
     "pptxgenjs": "^4.0.1",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",

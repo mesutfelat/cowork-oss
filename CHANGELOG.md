@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.5] - 2025-01-25
+
+### Added
+- **Browser Automation** - Full browser control using Playwright
+  - `browser_navigate` - Navigate to any URL
+  - `browser_screenshot` - Capture page or full-page screenshots
+  - `browser_get_content` - Extract text, links, and forms from pages
+  - `browser_click` - Click on elements using CSS selectors
+  - `browser_fill` - Fill form fields
+  - `browser_type` - Type text character by character (for autocomplete)
+  - `browser_press` - Press keyboard keys (Enter, Tab, etc.)
+  - `browser_wait` - Wait for elements to appear
+  - `browser_scroll` - Scroll pages up/down/top/bottom
+  - `browser_select` - Select dropdown options
+  - `browser_get_text` - Get element text content
+  - `browser_evaluate` - Execute JavaScript in browser context
+  - `browser_back/forward` - Navigate browser history
+  - `browser_reload` - Reload current page
+  - `browser_save_pdf` - Save pages as PDF
+  - `browser_close` - Close the browser
+- Automatic browser cleanup when tasks complete or fail
+- Headless Chrome browser (Chromium) via Playwright
+
+### Changed
+- Tool registry now includes 17 browser automation tools
+- Executor now handles resource cleanup in finally block
+
 ## [0.1.4] - 2025-01-25
 
 ### Added
@@ -100,12 +127,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| 0.1.5 | 2025-01-25 | Browser automation with Playwright |
 | 0.1.4 | 2025-01-25 | Real Office format support (Excel, Word, PDF, PowerPoint) |
 | 0.1.3 | 2025-01-25 | Telegram bot, web search, Ollama support |
 | 0.1.0 | 2025-01-24 | First public release with core features |
 | 0.0.1 | 2025-01-20 | Initial development setup |
 
-[Unreleased]: https://github.com/mesutfelat/cowork-oss/compare/v0.1.4...HEAD
+[Unreleased]: https://github.com/mesutfelat/cowork-oss/compare/v0.1.5...HEAD
+[0.1.5]: https://github.com/mesutfelat/cowork-oss/releases/tag/v0.1.5
 [0.1.4]: https://github.com/mesutfelat/cowork-oss/releases/tag/v0.1.4
 [0.1.3]: https://github.com/mesutfelat/cowork-oss/releases/tag/v0.1.3
 [0.1.0]: https://github.com/mesutfelat/cowork-oss/releases/tag/v0.1.0
