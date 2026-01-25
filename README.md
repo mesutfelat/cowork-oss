@@ -78,6 +78,11 @@ CoWork-OSS is **free and open source**. To run tasks, you must configure your ow
 - **Model Selection**: Choose between Opus, Sonnet, or Haiku models
 - **Telegram Bot**: Run tasks remotely via Telegram with workspace selection and streaming responses
 - **Web Search**: Multi-provider web search (Tavily, Brave, SerpAPI, Google) with fallback support
+- **Browser Automation**: Full web browser control with Playwright:
+  - Navigate to URLs, take screenshots, save pages as PDF
+  - Click, fill forms, type text, press keys
+  - Extract page content, links, and form data
+  - Scroll pages, wait for elements, execute JavaScript
 
 ## Data handling (local-first, BYOK)
 - Stored locally: task metadata, timeline events, artifact index, workspace config (SQLite).
@@ -275,13 +280,13 @@ If requested by the rights holder, we will update naming/branding to avoid confu
 - [x] Telegram bot integration for remote task execution
 - [x] Web search integration (Tavily, Brave, SerpAPI, Google)
 - [x] Local LLM support via Ollama (free, runs on your machine)
+- [x] **Browser automation** with Playwright (navigate, click, fill, screenshot, PDF)
 
 ### Planned
 - [ ] VM sandbox using macOS Virtualization.framework
 - [ ] MCP connector host and registry
 - [ ] Sub-agent coordination for parallel tasks
 - [ ] Network egress controls with proxy
-- [ ] Browser automation
 - [ ] Skill marketplace/loader
 
 ---

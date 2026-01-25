@@ -160,6 +160,11 @@ You are continuing a previous conversation. The context from the previous conver
         message: error.message,
         stack: error.stack,
       });
+    } finally {
+      // Cleanup resources (e.g., close browser)
+      await this.toolRegistry.cleanup().catch(e => {
+        console.error('Cleanup error:', e);
+      });
     }
   }
 
