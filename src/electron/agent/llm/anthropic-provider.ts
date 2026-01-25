@@ -19,7 +19,7 @@ export class AnthropicProvider implements LLMProvider {
   constructor(config: LLMProviderConfig) {
     const apiKey = config.anthropicApiKey || process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
-      throw new Error('Anthropic API key is required');
+      throw new Error('Anthropic API key is required. Get one from https://console.anthropic.com/');
     }
 
     this.client = new Anthropic({ apiKey });

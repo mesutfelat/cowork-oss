@@ -52,36 +52,8 @@ CoWork-OSS is **free and open source**. To run tasks, you must configure your ow
 
 | Provider | Configuration | Billing |
 |----------|---------------|---------|
-| Claude Subscription | Use `claude setup-token` (see below) | Uses your Pro/Max quota |
 | Anthropic API | Set `ANTHROPIC_API_KEY` in `.env` | Pay-per-token |
 | AWS Bedrock | Configure AWS credentials in Settings | Pay-per-token via AWS |
-
-### Using Claude Pro/Max Subscription (Recommended for subscribers)
-
-If you have a Claude Pro or Max subscription, you can use your subscription quota instead of paying per-token:
-
-1. **Install Claude Code CLI** (if not already installed):
-   ```bash
-   brew install --cask claude-code
-   ```
-
-2. **Generate a setup token**:
-   ```bash
-   claude setup-token
-   ```
-   This opens a browser for OAuth authorization. After authorizing, you'll receive a token (valid for 1 year).
-
-3. **Set the environment variable**:
-   ```bash
-   export CLAUDE_CODE_OAUTH_TOKEN=sk-ant-...your-token...
-   ```
-
-   Or add to your `.env` file:
-   ```
-   CLAUDE_CODE_OAUTH_TOKEN=sk-ant-...your-token...
-   ```
-
-4. **Launch CoWork-OSS** — it will automatically detect and use your subscription.
 
 **Your usage is billed directly by your provider.** CoWork-OSS does not proxy or resell model access.
 
@@ -102,6 +74,7 @@ If you have a Claude Pro or Max subscription, you can use your subscription quot
 - **Real-Time Timeline**: Live activity feed showing agent actions and tool calls
 - **Artifact Tracking**: All created/modified files are tracked and viewable
 - **Model Selection**: Choose between Opus, Sonnet, or Haiku models
+- **Telegram Bot**: Run tasks remotely via Telegram with workspace selection and streaming responses
 
 ## Data handling (local-first, BYOK)
 - Stored locally: task metadata, timeline events, artifact index, workspace config (SQLite).
@@ -294,6 +267,7 @@ If requested by the rights holder, we will update naming/branding to avoid confu
 - [x] Model selection (Opus, Sonnet, Haiku)
 - [x] Built-in skills (documents, spreadsheets, presentations)
 - [x] SQLite local persistence
+- [x] Telegram bot integration for remote task execution
 
 ### Planned
 - [ ] VM sandbox using macOS Virtualization.framework
@@ -303,6 +277,82 @@ If requested by the rights holder, we will update naming/branding to avoid confu
 - [ ] Browser automation
 - [ ] Additional model provider support
 - [ ] Skill marketplace/loader
+
+---
+
+## Telegram Bot Integration
+
+CoWork-OSS supports running tasks remotely via a Telegram bot. This allows you to interact with your agent from anywhere using Telegram.
+
+### Setting Up the Telegram Bot
+
+#### 1. Create a Bot with BotFather
+
+1. Open Telegram and search for [@BotFather](https://t.me/BotFather)
+2. Send `/newbot` and follow the prompts to create your bot
+3. Copy the bot token (looks like `123456789:ABCdefGHIjklMNOpqrsTUVwxyz`)
+
+#### 2. Configure in CoWork-OSS
+
+1. Open CoWork-OSS and go to **Settings** (gear icon)
+2. Navigate to the **Channels** tab
+3. Enter your bot token and click **Add Telegram Channel**
+4. Test the connection, then enable the channel
+
+### Security Modes
+
+Choose the appropriate security mode for your use case:
+
+| Mode | Description | Best For |
+|------|-------------|----------|
+| **Pairing** (default) | Users must enter a pairing code generated in the app | Personal use, shared devices |
+| **Allowlist** | Only pre-approved Telegram user IDs can interact | Team use with known users |
+| **Open** | Anyone can use the bot | ⚠️ Not recommended |
+
+### Pairing Your Telegram Account
+
+1. In CoWork-OSS Settings → Channels, click **Generate Pairing Code**
+2. Open your Telegram bot and send the pairing code
+3. Once paired, you can start using the bot
+
+### Bot Commands
+
+| Command | Description |
+|---------|-------------|
+| `/workspaces` | List all available workspaces |
+| `/workspace <number>` | Select a workspace by number |
+| `/status` | Show current session status |
+| `/cancel` | Cancel the running task |
+
+### Using the Bot
+
+1. **Select a workspace**: Send `/workspaces` to see available folders, then `/workspace 1` to select one
+2. **Create a task**: Simply type your request (e.g., "organize my downloads by file type")
+3. **Monitor progress**: The bot will stream updates as the task executes
+4. **View results**: Final results are sent when the task completes
+
+### Example Conversation
+
+```
+You: /workspaces
+Bot: 📂 Available workspaces:
+     1. ~/Documents/project-a
+     2. ~/Downloads
+
+You: /workspace 1
+Bot: ✓ Workspace selected: ~/Documents/project-a
+
+You: List all TypeScript files and count the lines of code
+Bot: 🔄 Task created... [streaming updates]
+Bot: ✓ Found 23 TypeScript files with 4,521 total lines of code.
+```
+
+### Markdown Support
+
+The bot converts responses to Telegram-compatible formatting:
+- Tables are displayed as code blocks for readability
+- Bold text and code formatting are preserved
+- If formatting fails, plain text is sent as fallback
 
 ---
 
