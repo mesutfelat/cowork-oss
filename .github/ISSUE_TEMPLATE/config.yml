@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Discussions
+    url: https://github.com/mesutfelat/cowork-oss/discussions
+    about: Ask questions and discuss ideas
+  - name: Security Vulnerabilities
+    url: https://github.com/mesutfelat/cowork-oss/security/advisories/new
+    about: Report security issues privately
