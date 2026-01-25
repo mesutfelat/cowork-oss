@@ -429,6 +429,10 @@ export class MessageRouter {
         await this.handleModelCommand(adapter, message, args);
         break;
 
+      case '/provider':
+        await this.handleProviderCommand(adapter, message, args);
+        break;
+
       default:
         await adapter.sendMessage({
           chatId: message.chatId,
@@ -741,8 +745,7 @@ export class MessageRouter {
   }
 
   /**
-   * Handle /model command - show or change current model
-   * Supports: /model, /model <provider>, /model <model>, /model <provider> <model>
+   * Handle /model command - show or change current model within current provider
    */
   private async handleModelCommand(
     adapter: ChannelAdapter,
@@ -752,129 +755,60 @@ export class MessageRouter {
     const status = LLMProviderFactory.getConfigStatus();
     const settings = LLMProviderFactory.loadSettings();
     const isOllama = status.currentProvider === 'ollama';
+    const currentProvider = status.providers.find(p => p.type === status.currentProvider);
 
-    // If no args, show current model
+    // If no args, show current model and available models
     if (args.length === 0) {
-      const currentProvider = status.providers.find(p => p.type === status.currentProvider);
+      let text = '🤖 *Current Model*\n\n';
 
       if (isOllama) {
         const ollamaModel = settings.ollama?.model || 'gpt-oss:20b';
-        await adapter.sendMessage({
-          chatId: message.chatId,
-          text: `🤖 *Current Model*\n\n• Provider: ${currentProvider?.name || 'Ollama'}\n• Model: ${ollamaModel}\n\nUse \`/model <provider> <model>\` to change.\nUse \`/models\` to see all options.`,
-          parseMode: 'markdown',
-        });
+        text += `• Provider: ${currentProvider?.name || 'Ollama'}\n`;
+        text += `• Model: ${ollamaModel}\n\n`;
+
+        // Show available Ollama models
+        text += '*Available Models:*\n';
+        try {
+          const ollamaModels = await LLMProviderFactory.getOllamaModels();
+          if (ollamaModels.length === 0) {
+            text += '⚠️ No models found.\n';
+          } else {
+            ollamaModels.slice(0, 8).forEach((model, index) => {
+              const isActive = model.name === ollamaModel ? ' ✓' : '';
+              const sizeGB = (model.size / 1e9).toFixed(1);
+              text += `${index + 1}. ${model.name} (${sizeGB}GB)${isActive}\n`;
+            });
+            if (ollamaModels.length > 8) {
+              text += `   ... and ${ollamaModels.length - 8} more\n`;
+            }
+          }
+        } catch {
+          text += '⚠️ Could not fetch models.\n';
+        }
+        text += '\n💡 Use `/model <name>` or `/model <number>` to switch';
       } else {
         const currentModel = status.models.find(m => m.key === status.currentModel);
-        await adapter.sendMessage({
-          chatId: message.chatId,
-          text: `🤖 *Current Model*\n\n• Provider: ${currentProvider?.name || status.currentProvider}\n• Model: ${currentModel?.displayName || status.currentModel}\n\nUse \`/model <provider> <model>\` to change.\nUse \`/models\` to see all options.`,
-          parseMode: 'markdown',
+        text += `• Provider: ${currentProvider?.name || status.currentProvider}\n`;
+        text += `• Model: ${currentModel?.displayName || status.currentModel}\n\n`;
+
+        // Show available Claude models
+        text += '*Available Models:*\n';
+        status.models.forEach((model, index) => {
+          const isActive = model.key === status.currentModel ? ' ✓' : '';
+          text += `${index + 1}. ${model.displayName}${isActive}\n`;
         });
+        text += '\n💡 Use `/model <name>` or `/model <number>` to switch';
       }
+
+      await adapter.sendMessage({
+        chatId: message.chatId,
+        text,
+        parseMode: 'markdown',
+      });
       return;
     }
 
-    // Check if first arg is a provider name
-    const firstArg = args[0].toLowerCase();
-    const providerMatch = status.providers.find(
-      p => p.type === firstArg || p.name.toLowerCase().includes(firstArg)
-    );
-
-    // If provider specified, handle provider change (possibly with model)
-    if (providerMatch) {
-      const remainingArgs = args.slice(1);
-
-      // If just provider, switch provider only
-      if (remainingArgs.length === 0) {
-        const newSettings: LLMSettings = {
-          ...settings,
-          providerType: providerMatch.type,
-        };
-
-        LLMProviderFactory.saveSettings(newSettings);
-        LLMProviderFactory.clearCache();
-
-        // Show appropriate model info based on new provider
-        let modelInfo: string;
-        if (providerMatch.type === 'ollama') {
-          modelInfo = settings.ollama?.model || 'gpt-oss:20b';
-        } else {
-          const model = status.models.find(m => m.key === settings.modelKey);
-          modelInfo = model?.displayName || settings.modelKey;
-        }
-
-        await adapter.sendMessage({
-          chatId: message.chatId,
-          text: `✅ Provider changed to: *${providerMatch.name}*\n\nModel: ${modelInfo}`,
-          parseMode: 'markdown',
-        });
-        return;
-      }
-
-      // Provider + model specified - switch both
-      const modelSelector = remainingArgs.join(' ').toLowerCase();
-
-      if (providerMatch.type === 'ollama') {
-        // Switch to Ollama with specific model
-        const result = await this.selectOllamaModel(modelSelector, remainingArgs);
-        if (!result.success) {
-          await adapter.sendMessage({
-            chatId: message.chatId,
-            text: result.error!,
-            parseMode: 'markdown',
-          });
-          return;
-        }
-
-        const newSettings: LLMSettings = {
-          ...settings,
-          providerType: 'ollama',
-          ollama: {
-            ...settings.ollama,
-            model: result.model!,
-          },
-        };
-
-        LLMProviderFactory.saveSettings(newSettings);
-        LLMProviderFactory.clearCache();
-
-        await adapter.sendMessage({
-          chatId: message.chatId,
-          text: `✅ Switched to: *Ollama* with model *${result.model}*`,
-          parseMode: 'markdown',
-        });
-        return;
-      } else {
-        // Switch to Anthropic/Bedrock with specific model
-        const result = this.selectClaudeModel(modelSelector, status.models);
-        if (!result.success) {
-          await adapter.sendMessage({
-            chatId: message.chatId,
-            text: result.error!,
-          });
-          return;
-        }
-
-        const newSettings: LLMSettings = {
-          ...settings,
-          providerType: providerMatch.type,
-          modelKey: result.model!.key as ModelKey,
-        };
-
-        LLMProviderFactory.saveSettings(newSettings);
-        LLMProviderFactory.clearCache();
-
-        await adapter.sendMessage({
-          chatId: message.chatId,
-          text: `✅ Switched to: *${providerMatch.name}* with model *${result.model!.displayName}*`,
-          parseMode: 'markdown',
-        });
-        return;
-      }
-    }
-
-    // No provider specified - change model within current provider
+    // Change model within current provider
     const selector = args.join(' ').toLowerCase();
 
     if (isOllama) {
@@ -901,7 +835,7 @@ export class MessageRouter {
 
       await adapter.sendMessage({
         chatId: message.chatId,
-        text: `✅ Ollama model changed to: *${result.model}*`,
+        text: `✅ Model changed to: *${result.model}*`,
         parseMode: 'markdown',
       });
       return;
@@ -925,11 +859,103 @@ export class MessageRouter {
     LLMProviderFactory.saveSettings(newSettings);
     LLMProviderFactory.clearCache();
 
-    const providerName = status.providers.find(p => p.type === settings.providerType)?.name || settings.providerType;
+    await adapter.sendMessage({
+      chatId: message.chatId,
+      text: `✅ Model changed to: *${result.model!.displayName}*`,
+      parseMode: 'markdown',
+    });
+  }
+
+  /**
+   * Handle /provider command - show or change current provider
+   */
+  private async handleProviderCommand(
+    adapter: ChannelAdapter,
+    message: IncomingMessage,
+    args: string[]
+  ): Promise<void> {
+    const status = LLMProviderFactory.getConfigStatus();
+    const settings = LLMProviderFactory.loadSettings();
+
+    // If no args, show current provider and available options
+    if (args.length === 0) {
+      const currentProvider = status.providers.find(p => p.type === status.currentProvider);
+
+      let text = '🔌 *Current Provider*\n\n';
+      text += `• Provider: ${currentProvider?.name || status.currentProvider}\n`;
+
+      // Show current model for context
+      if (status.currentProvider === 'ollama') {
+        text += `• Model: ${settings.ollama?.model || 'gpt-oss:20b'}\n\n`;
+      } else {
+        const currentModel = status.models.find(m => m.key === status.currentModel);
+        text += `• Model: ${currentModel?.displayName || status.currentModel}\n\n`;
+      }
+
+      text += '*Available Providers:*\n';
+      text += '1. anthropic - Anthropic API (direct)\n';
+      text += '2. bedrock - AWS Bedrock\n';
+      text += '3. ollama - Ollama (local)\n\n';
+
+      text += '💡 Use `/provider <name>` to switch\n';
+      text += 'Example: `/provider bedrock` or `/provider 2`';
+
+      await adapter.sendMessage({
+        chatId: message.chatId,
+        text,
+        parseMode: 'markdown',
+      });
+      return;
+    }
+
+    const selector = args[0].toLowerCase();
+
+    // Map of provider shortcuts
+    const providerMap: Record<string, LLMProviderType> = {
+      '1': 'anthropic',
+      'anthropic': 'anthropic',
+      'api': 'anthropic',
+      '2': 'bedrock',
+      'bedrock': 'bedrock',
+      'aws': 'bedrock',
+      '3': 'ollama',
+      'ollama': 'ollama',
+      'local': 'ollama',
+    };
+
+    const targetProvider = providerMap[selector];
+    if (!targetProvider) {
+      await adapter.sendMessage({
+        chatId: message.chatId,
+        text: `❌ Unknown provider: "${args[0]}"\n\n*Available providers:*\n1. anthropic\n2. bedrock\n3. ollama\n\nUse \`/provider <name>\` or \`/provider <number>\``,
+        parseMode: 'markdown',
+      });
+      return;
+    }
+
+    // Update provider
+    const newSettings: LLMSettings = {
+      ...settings,
+      providerType: targetProvider,
+    };
+
+    LLMProviderFactory.saveSettings(newSettings);
+    LLMProviderFactory.clearCache();
+
+    // Get provider display info
+    const providerInfo = status.providers.find(p => p.type === targetProvider);
+    let modelInfo: string;
+
+    if (targetProvider === 'ollama') {
+      modelInfo = settings.ollama?.model || 'gpt-oss:20b';
+    } else {
+      const model = status.models.find(m => m.key === settings.modelKey);
+      modelInfo = model?.displayName || settings.modelKey;
+    }
 
     await adapter.sendMessage({
       chatId: message.chatId,
-      text: `✅ Model changed to: *${result.model!.displayName}*\n\nProvider: ${providerName}`,
+      text: `✅ Provider changed to: *${providerInfo?.name || targetProvider}*\n\nCurrent model: ${modelInfo}\n\nUse \`/model\` to see available models for this provider.`,
       parseMode: 'markdown',
     });
   }
@@ -1383,8 +1409,8 @@ export class MessageRouter {
 /workspace <name> - Select a workspace
 /addworkspace <path> - Add a new workspace
 /newtask - Start a fresh task/conversation
-/models - List available AI models
-/model <name> - Change or show current model
+/provider - Show or change AI provider
+/model - Show or change model
 /cancel - Cancel current task
 
 💬 *How to use*
