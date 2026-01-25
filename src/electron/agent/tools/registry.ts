@@ -3,6 +3,7 @@ import { AgentDaemon } from '../daemon';
 import { FileTools } from './file-tools';
 import { SkillTools } from './skill-tools';
 import { SearchTools } from './search-tools';
+import { BrowserTools } from './browser-tools';
 import { LLMTool } from '../llm/types';
 import { SearchProviderFactory } from '../search';
 
@@ -13,6 +14,7 @@ export class ToolRegistry {
   private fileTools: FileTools;
   private skillTools: SkillTools;
   private searchTools: SearchTools;
+  private browserTools: BrowserTools;
 
   constructor(
     private workspace: Workspace,
@@ -22,6 +24,7 @@ export class ToolRegistry {
     this.fileTools = new FileTools(workspace, daemon, taskId);
     this.skillTools = new SkillTools(workspace, daemon, taskId);
     this.searchTools = new SearchTools(workspace, daemon, taskId);
+    this.browserTools = new BrowserTools(workspace, daemon, taskId);
   }
 
   /**
@@ -31,6 +34,7 @@ export class ToolRegistry {
     const tools = [
       ...this.getFileToolDefinitions(),
       ...this.getSkillToolDefinitions(),
+      ...BrowserTools.getToolDefinitions(),
     ];
 
     // Only add search tool if a provider is configured
@@ -59,7 +63,25 @@ Skills:
 - create_spreadsheet: Create Excel spreadsheets with data and formulas
 - create_document: Create Word documents or PDFs
 - create_presentation: Create PowerPoint presentations
-- organize_folder: Organize and structure files in folders`;
+- organize_folder: Organize and structure files in folders
+
+Browser Automation:
+- browser_navigate: Navigate to a URL
+- browser_screenshot: Take a screenshot of the page
+- browser_get_content: Get page text, links, and forms
+- browser_click: Click on an element
+- browser_fill: Fill a form field
+- browser_type: Type text character by character
+- browser_press: Press a keyboard key
+- browser_wait: Wait for an element to appear
+- browser_scroll: Scroll the page
+- browser_select: Select dropdown option
+- browser_get_text: Get element text content
+- browser_evaluate: Execute JavaScript
+- browser_back/forward: Navigate history
+- browser_reload: Reload the page
+- browser_save_pdf: Save page as PDF
+- browser_close: Close the browser`;
 
     // Add search if configured
     if (SearchProviderFactory.isAnyProviderConfigured()) {
@@ -91,10 +113,22 @@ Web Search:
     if (name === 'create_presentation') return await this.skillTools.createPresentation(input);
     if (name === 'organize_folder') return await this.skillTools.organizeFolder(input);
 
+    // Browser tools
+    if (BrowserTools.isBrowserTool(name)) {
+      return await this.browserTools.executeTool(name, input);
+    }
+
     // Search tools
     if (name === 'web_search') return await this.searchTools.webSearch(input);
 
     throw new Error(`Unknown tool: ${name}`);
+  }
+
+  /**
+   * Cleanup resources (call when task is done)
+   */
+  async cleanup(): Promise<void> {
+    await this.browserTools.cleanup();
   }
 
   /**
