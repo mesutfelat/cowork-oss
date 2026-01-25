@@ -68,7 +68,7 @@ export class SecurityManager {
         // Everyone is allowed
         return { allowed: true, user };
 
-      case 'allowlist':
+      case 'allowlist': {
         // Check if user is in allowlist
         if (user.allowed) {
           return { allowed: true, user };
@@ -81,6 +81,7 @@ export class SecurityManager {
           return { allowed: true, user: { ...user, allowed: true } };
         }
         return { allowed: false, user, reason: 'User not in allowlist' };
+      }
 
       case 'pairing':
         // Check if user has been paired
