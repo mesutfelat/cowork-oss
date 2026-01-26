@@ -294,18 +294,19 @@ export class AgentDaemon extends EventEmitter {
     let cached = this.activeTasks.get(taskId);
     let executor: TaskExecutor;
 
+    // Always get fresh task and workspace from DB to pick up permission changes
+    const task = this.taskRepo.findById(taskId);
+    if (!task) {
+      throw new Error(`Task ${taskId} not found`);
+    }
+
+    const workspace = this.workspaceRepo.findById(task.workspaceId);
+    if (!workspace) {
+      throw new Error(`Workspace ${task.workspaceId} not found`);
+    }
+
     if (!cached) {
       // Task executor not in memory - need to recreate it
-      const task = this.taskRepo.findById(taskId);
-      if (!task) {
-        throw new Error(`Task ${taskId} not found`);
-      }
-
-      const workspace = this.workspaceRepo.findById(task.workspaceId);
-      if (!workspace) {
-        throw new Error(`Workspace ${task.workspaceId} not found`);
-      }
-
       // Create new executor
       executor = new TaskExecutor(task, workspace, this);
 
@@ -322,6 +323,8 @@ export class AgentDaemon extends EventEmitter {
       });
     } else {
       executor = cached.executor;
+      // Update workspace to pick up permission changes (e.g., shell enabled)
+      executor.updateWorkspace(workspace);
       cached.lastAccessed = Date.now();
       cached.status = 'active';
     }
