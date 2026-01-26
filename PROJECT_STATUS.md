@@ -1,12 +1,12 @@
 # Project Status
 
-## ✅ Completed MVP Implementation
+## Production-Ready Implementation
 
-This Cowork implementation has reached **MVP 1 & 2** status with core functionality complete.
+CoWork-OSS has reached **production status** with comprehensive features for agentic task automation.
 
 ## What's Built and Working
 
-### 1. Core Architecture ✅
+### 1. Core Architecture
 
 #### Database Layer
 - [x] SQLite schema with 6 tables (workspaces, tasks, events, artifacts, approvals, skills)
@@ -19,101 +19,149 @@ This Cowork implementation has reached **MVP 1 & 2** status with core functional
 - [x] TaskExecutor - Plan-execute-observe loop
 - [x] Tool Registry - Manages all available tools
 - [x] Permission system with approval flow
+- [x] Context Manager - Conversation context handling
 - [x] Located: `src/electron/agent/`
 
-#### Tools & Skills
-- [x] File operations: read, write, list, rename, delete, search
-- [x] Document creation: spreadsheets, documents, presentations
-- [x] Folder organization by type/date
-- [x] Located: `src/electron/agent/tools/` and `src/electron/agent/skills/`
+#### Multi-Provider LLM Support
+- [x] Anthropic (Claude models)
+- [x] Google Gemini
+- [x] OpenRouter (multi-model access)
+- [x] AWS Bedrock
+- [x] Ollama (local/free)
+- [x] Provider Factory with dynamic selection
+- [x] Located: `src/electron/agent/llm/`
 
-### 2. User Interface ✅
+#### Web Search Integration
+- [x] Tavily (AI-optimized)
+- [x] Brave Search
+- [x] SerpAPI (Google results)
+- [x] Google Custom Search
+- [x] Primary + fallback provider support
+- [x] Located: `src/electron/agent/search/`
+
+#### Browser Automation
+- [x] Playwright integration
+- [x] Navigation, screenshots, PDF export
+- [x] Click, fill, type, press keys
+- [x] Content extraction (text, links, forms)
+- [x] Scroll, wait for elements
+- [x] Located: `src/electron/agent/browser/`
+
+#### Channel Integrations
+- [x] Telegram bot with commands
+- [x] Discord bot with slash commands
+- [x] Session management
+- [x] Security modes (pairing, allowlist, open)
+- [x] Located: `src/electron/gateway/`
+
+### 2. Tools & Skills
+
+#### File Operations (7 tools)
+- [x] read_file - Read file contents
+- [x] write_file - Create or overwrite files
+- [x] list_directory - List folder contents
+- [x] rename_file - Rename or move files
+- [x] delete_file - Delete with approval
+- [x] create_directory - Create folders
+- [x] search_files - Search by name/content
+
+#### Document Skills (4 skills)
+- [x] Spreadsheet - Excel .xlsx (exceljs)
+- [x] Document - Word .docx and PDF (docx, pdfkit)
+- [x] Presentation - PowerPoint .pptx (pptxgenjs)
+- [x] Folder Organizer - By type/date
+
+#### Browser Tools (12 tools)
+- [x] browser_navigate
+- [x] browser_screenshot
+- [x] browser_save_pdf
+- [x] browser_click
+- [x] browser_fill
+- [x] browser_type
+- [x] browser_press
+- [x] browser_get_content
+- [x] browser_get_links
+- [x] browser_get_forms
+- [x] browser_scroll
+- [x] browser_wait
+
+#### Search Tools
+- [x] web_search - Multi-provider web search
+
+#### Shell Tools
+- [x] execute_command - Shell command execution (requires approval)
+
+### 3. User Interface
 
 #### Main Components
 - [x] Workspace selector with folder picker
 - [x] Task list with status indicators
 - [x] Task detail view with timeline
-- [x] New task modal
 - [x] Approval dialog system
 - [x] Real-time event streaming
-- [x] Located: `src/renderer/components/`
 
-#### Design System
-- [x] macOS-inspired styling
-- [x] Clean, minimal interface
-- [x] Task-based UI (not chat)
-- [x] Responsive layout
-- [x] Located: `src/renderer/styles/`
+#### Settings UI
+- [x] LLM provider configuration
+- [x] Model selection
+- [x] Search provider configuration
+- [x] Telegram bot settings
+- [x] Discord bot settings
+- [x] Update settings
 
-### 3. IPC Communication ✅
+### 4. Infrastructure
 
-- [x] Secure context bridge
-- [x] Type-safe IPC channels
-- [x] Event streaming for real-time updates
-- [x] Located: `src/electron/preload.ts`, `src/electron/ipc/`
+#### Security
+- [x] Secure credential storage (safeStorage)
+- [x] Path traversal protection
+- [x] Content Security Policy
+- [x] Input validation
+- [x] Approval flow for destructive operations
 
-### 4. Build System ✅
+#### Auto-Update System
+- [x] Update checking
+- [x] Download progress
+- [x] One-click install
+- [x] GitHub releases integration
 
+#### Build System
 - [x] Electron + React + TypeScript
-- [x] Vite for fast development
-- [x] Hot reload for both processes
-- [x] electron-builder configuration
+- [x] Vite for development
+- [x] electron-builder for packaging
 - [x] macOS entitlements
-- [x] Located: `vite.config.ts`, `tsconfig.*.json`, `build/`
 
 ## File Structure
 
 ```
-cowork/
+cowork-oss/
 ├── src/
-│   ├── electron/                    ✅ Complete
-│   │   ├── main.ts                 # Electron entry
-│   │   ├── preload.ts              # IPC bridge
+│   ├── electron/
+│   │   ├── main.ts
+│   │   ├── preload.ts
 │   │   ├── database/
-│   │   │   ├── schema.ts           # DB initialization
-│   │   │   └── repositories.ts     # Data access
+│   │   │   ├── schema.ts
+│   │   │   └── repositories.ts
 │   │   ├── agent/
-│   │   │   ├── daemon.ts           # Task coordinator
-│   │   │   ├── executor.ts         # Agent loop
-│   │   │   ├── tools/
-│   │   │   │   ├── registry.ts     # Tool definitions
-│   │   │   │   ├── file-tools.ts   # File operations
-│   │   │   │   └── skill-tools.ts  # Skill executor
-│   │   │   ├── skills/
-│   │   │   │   ├── spreadsheet.ts  # Excel creation
-│   │   │   │   ├── document.ts     # Word/PDF creation
-│   │   │   │   ├── presentation.ts # PowerPoint creation
-│   │   │   │   └── organizer.ts    # Folder organization
-│   │   │   └── sandbox/
-│   │   │       └── runner.ts       # VM sandbox (stub)
-│   │   └── ipc/
-│   │       └── handlers.ts         # IPC handlers
-│   ├── renderer/                    ✅ Complete
-│   │   ├── main.tsx                # React entry
-│   │   ├── App.tsx                 # Root component
-│   │   ├── index.html              # HTML template
-│   │   ├── components/
-│   │   │   ├── Sidebar.tsx         # Task list
-│   │   │   ├── TaskView.tsx        # Task detail
-│   │   │   ├── TaskTimeline.tsx    # Event timeline
-│   │   │   ├── WorkspaceSelector.tsx
-│   │   │   ├── NewTaskModal.tsx
-│   │   │   └── ApprovalDialog.tsx
+│   │   │   ├── daemon.ts
+│   │   │   ├── executor.ts
+│   │   │   ├── context-manager.ts
+│   │   │   ├── llm/           # 5 providers
+│   │   │   ├── search/        # 4 providers
+│   │   │   ├── browser/       # Playwright service
+│   │   │   ├── tools/         # All tool implementations
+│   │   │   └── skills/        # Document skills
+│   │   ├── gateway/           # Telegram & Discord
+│   │   ├── updater/           # Auto-update
+│   │   ├── ipc/
+│   │   └── utils/
+│   ├── renderer/
+│   │   ├── App.tsx
+│   │   ├── components/        # 12 components
 │   │   └── styles/
-│   │       └── index.css           # Global styles
 │   └── shared/
-│       └── types.ts                # Shared TypeScript types
+│       └── types.ts
 ├── build/
-│   └── entitlements.mac.plist      ✅ macOS entitlements
-├── package.json                     ✅ Dependencies
-├── tsconfig.json                    ✅ TS config
-├── tsconfig.electron.json           ✅ TS config (Electron)
-├── tsconfig.node.json               ✅ TS config (Node)
-├── vite.config.ts                   ✅ Vite config
-├── .gitignore                       ✅ Git ignore
-├── .env.example                     ✅ Environment template
-├── README.md                        ✅ Full documentation
-└── GETTING_STARTED.md               ✅ Quick start guide
+│   └── entitlements.mac.plist
+└── package.json
 ```
 
 ## How It Works
@@ -122,26 +170,26 @@ cowork/
 
 ```
 1. User selects workspace folder
-   ↓
+   |
 2. User creates task with description
-   ↓
+   |
 3. AgentDaemon starts TaskExecutor
-   ↓
-4. TaskExecutor calls Claude API to create plan
-   ↓
+   |
+4. TaskExecutor calls LLM (any configured provider) to create plan
+   |
 5. For each plan step:
-   - Claude decides which tools to use
+   - LLM decides which tools to use
    - TaskExecutor calls tools via ToolRegistry
    - Tools perform operations (with permission checks)
-   - Results sent back to Claude
+   - Results sent back to LLM
    - Events logged and streamed to UI
-   ↓
+   |
 6. If approval needed:
    - TaskExecutor pauses
    - ApprovalDialog shown to user
    - User approves/denies
    - Execution continues or fails
-   ↓
+   |
 7. Task completes
    - Status updated to "completed"
    - All events logged in database
@@ -152,22 +200,23 @@ cowork/
 
 ```
 Workspace Permissions:
-├── Read: ✅ Enabled by default
-├── Write: ✅ Enabled by default
-├── Delete: ✅ Enabled, requires approval
-└── Network: ❌ Disabled (future)
+├── Read: Enabled by default
+├── Write: Enabled by default
+├── Delete: Enabled, requires approval
+├── Network: Enabled (for web search)
+└── Shell: Requires approval
 
 Operations Requiring Approval:
 ├── Delete file
 ├── Delete multiple files
 ├── Bulk rename (>10 files)
-├── Network access
+├── Shell command execution
 └── External service calls
 ```
 
-## What's NOT Implemented (Marked for Future)
+## What's NOT Implemented (Planned)
 
-### 🚧 Sandbox VM (MVP 3)
+### VM Sandbox
 - **Status**: Stub implementation
 - **File**: `src/electron/agent/sandbox/runner.ts`
 - **What's needed**:
@@ -176,7 +225,7 @@ Operations Requiring Approval:
   - Workspace mount
   - Network egress controls
 
-### 🚧 MCP Connectors (MVP 4)
+### MCP Connectors
 - **Status**: Not started
 - **What's needed**:
   - MCP protocol client
@@ -184,7 +233,7 @@ Operations Requiring Approval:
   - Connection management
   - Per-tool permissions
 
-### 🚧 Sub-Agents (MVP 3)
+### Sub-Agents
 - **Status**: Not started
 - **What's needed**:
   - Agent pool management
@@ -192,57 +241,47 @@ Operations Requiring Approval:
   - Result merging
   - Resource allocation
 
-### 🚧 Enhanced Document Creation
-- **Status**: Basic implementation (MVP format)
-- **Current**: Creates CSV/Markdown placeholders
-- **What's needed**:
-  - Add `exceljs` for real .xlsx
-  - Add `docx` for real .docx
-  - Add `pdfkit` for real .pdf
-  - Add `pptxgenjs` for real .pptx
-
-### 🚧 Browser Automation (MVP 5)
-- **Status**: Not started
-- **What's needed**:
-  - Playwright integration or Chrome extension
-  - Screenshot capture
-  - DOM interaction tools
-
 ## Ready to Use
 
 ### You Can:
-1. ✅ Select workspaces and create tasks
-2. ✅ Execute multi-step file operations
-3. ✅ Organize folders automatically
-4. ✅ Create basic documents (CSV, Markdown)
-5. ✅ Track all agent activity in real-time
-6. ✅ Approve/deny destructive operations
-7. ✅ View created artifacts
-8. ✅ Run multiple tasks sequentially
+1. Select workspaces and create tasks
+2. Use any of 5 LLM providers (including free local Ollama)
+3. Execute multi-step file operations
+4. Create real Office documents (.xlsx, .docx, .pdf, .pptx)
+5. Search the web with multiple providers
+6. Automate browser interactions
+7. Run tasks remotely via Telegram or Discord
+8. Track all agent activity in real-time
+9. Approve/deny destructive operations
+10. Receive automatic updates
 
 ### You Cannot (Yet):
-1. ❌ Execute arbitrary code in VM
-2. ❌ Connect to external services (Notion, Jira, etc.)
-3. ❌ Run tasks in parallel
-4. ❌ Create fully formatted Excel/Word/PowerPoint files
-5. ❌ Automate browser interactions
+1. Execute arbitrary code in VM
+2. Connect to external services via MCP (Notion, Jira, etc.)
+3. Run tasks in parallel with sub-agents
+4. Apply network egress controls
 
-## Dependencies Installed
+## Dependencies
 
 ### Production
 - `react` & `react-dom` - UI framework
 - `better-sqlite3` - Local database
-- `@anthropic-ai/sdk` - Claude API
-- `uuid` - ID generation
-- `zod` - Schema validation
-- `chokidar` - File watching
-- `mime-types` - MIME type detection
+- `@anthropic-ai/sdk` - Anthropic API
+- `@google/generative-ai` - Gemini API
+- `@aws-sdk/client-bedrock-runtime` - AWS Bedrock
+- `playwright` - Browser automation
+- `discord.js` - Discord bot
+- `grammy` - Telegram bot
+- `exceljs` - Excel creation
+- `docx` - Word document creation
+- `pdfkit` - PDF creation
+- `pptxgenjs` - PowerPoint creation
+- `electron-updater` - Auto-updates
 
 ### Development
 - `electron` - Desktop framework
 - `vite` - Build tool
 - `typescript` - Type safety
-- `@vitejs/plugin-react` - React support
 - `electron-builder` - App packaging
 
 ## Quick Test Checklist
@@ -251,8 +290,6 @@ Before first run, verify:
 
 - [ ] Node.js 18+ installed
 - [ ] `npm install` completed successfully
-- [ ] `.env` file created with `ANTHROPIC_API_KEY`
-- [ ] API key is valid (starts with `sk-ant-api03-`)
 - [ ] On macOS (required for Electron native features)
 
 Then run:
@@ -265,11 +302,11 @@ Expected behavior:
 2. Electron window opens
 3. DevTools open automatically
 4. Workspace selector appears
-5. No errors in console
+5. Configure API credentials in Settings (gear icon)
 
-## Performance Expectations
+## Performance Characteristics
 
-### Token Usage
+### Token Usage (varies by provider)
 - **Plan creation**: ~500-1000 tokens
 - **Step execution**: ~1000-3000 tokens per step
 - **Average task**: 5000-10000 tokens total
@@ -278,72 +315,30 @@ Expected behavior:
 - **Plan creation**: 2-5 seconds
 - **Simple file operation**: 3-6 seconds per step
 - **Document creation**: 5-10 seconds
-- **Folder organization**: Varies by file count
+- **Browser automation**: 2-10 seconds per action
+- **Web search**: 1-3 seconds
 
 ### Resource Usage
-- **Memory**: ~200-300MB (Electron + React)
-- **Database**: <1MB per task (depends on events)
+- **Memory**: ~200-400MB (Electron + Playwright when active)
+- **Database**: <1MB per task
 - **CPU**: Minimal (except during API calls)
-
-## Known Limitations
-
-1. **Documents**: Currently creates Markdown/CSV instead of real Office files
-2. **Sandbox**: No VM isolation yet (runs in main process)
-3. **Network**: No egress controls
-4. **Parallel**: Tasks run sequentially
-5. **Browser**: No web automation capability
-6. **MCP**: No connector support yet
-
-## Upgrade Path
-
-To reach full Cowork parity:
-
-### Phase 1: Enhanced Output (2-3 weeks)
-- Replace stub document creators with real libraries
-- Add proper Excel/Word/PowerPoint generation
-- Test with real-world documents
-
-### Phase 2: VM Sandbox (3-4 weeks)
-- Implement Virtualization.framework integration
-- Create/download Linux VM image
-- Mount workspace folder
-- Network proxy and egress controls
-
-### Phase 3: MCP Integration (2-3 weeks)
-- Implement MCP client protocol
-- Build connector registry
-- Add auth flows
-- Per-connector permissions
-
-### Phase 4: Parallel Execution (2-3 weeks)
-- Agent pool management
-- Task graph analysis
-- Sub-agent coordination
-- Result merging
-
-### Phase 5: Browser Automation (3-4 weeks)
-- Playwright integration
-- Screenshot/DOM tools
-- User interaction simulation
-- Security boundaries
 
 ## Summary
 
-**This is a production-ready MVP** for basic agentic task automation:
+**This is a production-ready application** for agentic task automation:
 - All core systems implemented
 - UI is fully functional
-- Database schema complete
-- Permission system working
-- File operations safe and tested
-- Documentation comprehensive
+- Multi-provider LLM support
+- Real Office document creation
+- Web search and browser automation
+- Remote access via Telegram/Discord
+- Comprehensive security model
 
-**It's 70% toward full Cowork parity**, with the main gaps being:
-- Real Office file generation (easy to add)
-- VM sandbox (moderate complexity)
-- MCP connectors (moderate complexity)
-- Parallel sub-agents (complex)
-- Browser automation (complex)
+**~85% feature parity** with the original Cowork concept, with main gaps being:
+- VM sandbox (planned)
+- MCP connectors (planned)
+- Parallel sub-agents (planned)
 
-The architecture is sound and extensible. All future features can be added without refactoring core systems.
+The architecture is extensible. All future features can be added without refactoring core systems.
 
 Ready to run with: `npm install && npm run dev`
