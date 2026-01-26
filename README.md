@@ -240,6 +240,8 @@ When the agent needs to perform destructive actions, you'll see an approval dial
 ## Security & Safety
 
 > **See also:** [⚠️ Safety & Data Loss Warning](#%EF%B8%8F-safety--data-loss-warning) at the top of this document for critical safety guidelines.
+>
+> **For a comprehensive security guide**, see [SECURITY_GUIDE.md](SECURITY_GUIDE.md) which covers the app's permissions model, data storage, network connections, and best practices.
 
 ### Important Warnings
 

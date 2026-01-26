@@ -1,9 +1,12 @@
 # Security Policy
 
+> **For end users**: See [SECURITY_GUIDE.md](SECURITY_GUIDE.md) for a comprehensive guide on the app's security model, permissions, and best practices.
+
 ## Supported Versions
 
 | Version | Supported          |
 | ------- | ------------------ |
+| 0.2.x   | :white_check_mark: |
 | 0.1.x   | :white_check_mark: |
 
 ## Reporting a Vulnerability
@@ -17,7 +20,7 @@ We take security seriously at CoWork-OSS. If you discover a security vulnerabili
 Instead, please report them via one of the following methods:
 
 1. **GitHub Security Advisories**: Use the "Report a vulnerability" button in the Security tab of the repository
-2. **Email**: Send details to [INSERT SECURITY EMAIL]
+2. **Email**: Send details to coworkoss@icloud.com
 
 ### What to Include
 
