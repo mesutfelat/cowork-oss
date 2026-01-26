@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { LLMSettingsData, ThemeMode, AccentColor } from '../../shared/types';
+import { LLMSettingsData, ThemeMode, AccentColor, VisualStyle } from '../../shared/types';
 import { TelegramSettings } from './TelegramSettings';
 import { DiscordSettings } from './DiscordSettings';
 import { SearchSettings } from './SearchSettings';
@@ -12,8 +12,10 @@ interface SettingsProps {
   onSettingsChanged?: () => void;
   themeMode: ThemeMode;
   accentColor: AccentColor;
+  visualStyle: VisualStyle;
   onThemeChange: (theme: ThemeMode) => void;
   onAccentChange: (accent: AccentColor) => void;
+  onStyleChange: (style: VisualStyle) => void;
 }
 
 interface ModelOption {
@@ -200,7 +202,7 @@ function SearchableSelect({ options, value, onChange, placeholder = 'Select...',
   );
 }
 
-export function Settings({ onBack, onSettingsChanged, themeMode, accentColor, onThemeChange, onAccentChange }: SettingsProps) {
+export function Settings({ onBack, onSettingsChanged, themeMode, accentColor, visualStyle, onThemeChange, onAccentChange, onStyleChange }: SettingsProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>('appearance');
   const [settings, setSettings] = useState<LLMSettingsData>({
     providerType: 'anthropic',
@@ -614,8 +616,10 @@ export function Settings({ onBack, onSettingsChanged, themeMode, accentColor, on
             <AppearanceSettings
               themeMode={themeMode}
               accentColor={accentColor}
+              visualStyle={visualStyle}
               onThemeChange={onThemeChange}
               onAccentChange={onAccentChange}
+              onStyleChange={onStyleChange}
             />
           ) : activeTab === 'telegram' ? (
             <TelegramSettings />

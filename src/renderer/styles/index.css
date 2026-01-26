@@ -169,6 +169,269 @@
 .theme-light.accent-green { --shadow-glow: 0 0 20px rgba(52, 211, 153, 0.25); }
 .theme-light.accent-teal { --shadow-glow: 0 0 20px rgba(45, 212, 191, 0.25); }
 
+/* ============================================
+   Visual Styles
+   ============================================ */
+
+/* macOS Style - Clean Apple-like interface */
+.style-macos {
+  /* Larger, softer radiuses */
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+
+  /* Softer shadows */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.06);
+
+  /* More subtle glass effect */
+  --glass-blur: 40px;
+  --glass-saturate: 200%;
+}
+
+/* macOS Dark Mode Adjustments */
+.style-macos:not(.theme-light) {
+  --color-bg-primary: rgba(40, 40, 42, 0.82);
+  --color-bg-sidebar: rgba(32, 32, 34, 0.88);
+  --color-bg-elevated: rgba(55, 55, 58, 0.92);
+  --color-bg-secondary: rgba(70, 70, 74, 0.7);
+  --color-bg-hover: rgba(255, 255, 255, 0.06);
+  --color-border: rgba(255, 255, 255, 0.1);
+  --color-border-subtle: rgba(255, 255, 255, 0.05);
+}
+
+/* macOS Light Mode Adjustments */
+.style-macos.theme-light {
+  --color-bg-primary: rgba(255, 255, 255, 0.92);
+  --color-bg-sidebar: rgba(246, 246, 248, 0.95);
+  --color-bg-elevated: rgba(255, 255, 255, 0.98);
+  --color-bg-secondary: rgba(245, 245, 247, 0.9);
+  --color-bg-hover: rgba(0, 0, 0, 0.03);
+  --color-border: rgba(0, 0, 0, 0.08);
+  --color-border-subtle: rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.08);
+}
+
+/* CLI/Terminal Style - Compact hacker aesthetic (default) */
+.style-cli {
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+}
+
+/* ============================================
+   macOS Style Component Overrides
+   ============================================ */
+
+/* macOS Sidebar */
+.style-macos .sidebar {
+  padding-top: 52px;
+}
+
+.style-macos .sidebar-header {
+  padding: 16px 20px;
+}
+
+.style-macos .sidebar-header h2 {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.style-macos .task-item {
+  margin: 2px 10px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+}
+
+.style-macos .task-item:hover {
+  background: var(--color-bg-hover);
+}
+
+.style-macos .task-item.active {
+  background: var(--color-accent-subtle);
+}
+
+/* macOS Buttons */
+.style-macos .button-primary,
+.style-macos .new-task-btn {
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.style-macos .button-secondary {
+  padding: 8px 16px;
+  font-size: 13px;
+  border-radius: var(--radius-md);
+}
+
+/* macOS Inputs */
+.style-macos input[type="text"],
+.style-macos input[type="password"],
+.style-macos input[type="number"],
+.style-macos textarea,
+.style-macos select,
+.style-macos .settings-input,
+.style-macos .settings-select {
+  padding: 10px 14px;
+  font-size: 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-input);
+  transition: all 0.2s ease;
+}
+
+.style-macos input:focus,
+.style-macos textarea:focus,
+.style-macos select:focus,
+.style-macos .settings-input:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-subtle);
+  outline: none;
+}
+
+/* macOS Cards and Panels */
+.style-macos .right-panel {
+  border-left: none;
+  box-shadow: -1px 0 0 var(--color-border-subtle);
+}
+
+.style-macos .main-content {
+  padding: 24px;
+}
+
+.style-macos .welcome-container {
+  padding: 48px;
+}
+
+/* macOS Settings */
+.style-macos .settings-page {
+  padding: 24px;
+}
+
+.style-macos .settings-section {
+  padding: 20px 24px;
+  margin-bottom: 16px;
+  background: var(--color-bg-elevated);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border-subtle);
+}
+
+.style-macos .settings-nav-item {
+  padding: 10px 16px;
+  border-radius: var(--radius-md);
+  margin: 2px 0;
+}
+
+.style-macos .provider-option {
+  padding: 16px 20px;
+  border-radius: var(--radius-lg);
+}
+
+/* macOS Modal */
+.style-macos .modal-content {
+  border-radius: var(--radius-xl);
+  padding: 28px;
+  box-shadow: var(--shadow-lg);
+}
+
+/* macOS Message Bubbles */
+.style-macos .message-bubble {
+  border-radius: var(--radius-lg);
+  padding: 14px 18px;
+}
+
+/* macOS Task Events */
+.style-macos .event-card {
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+}
+
+/* macOS Workspace Selector */
+.style-macos .workspace-card {
+  padding: 20px 24px;
+  border-radius: var(--radius-lg);
+}
+
+.style-macos .workspace-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+/* macOS Toggle Switch */
+.style-macos .settings-toggle {
+  width: 48px;
+  height: 28px;
+}
+
+.style-macos .toggle-slider {
+  border-radius: 28px;
+}
+
+.style-macos .toggle-slider::before {
+  height: 22px;
+  width: 22px;
+  left: 2px;
+  bottom: 2px;
+}
+
+.style-macos .settings-toggle input:checked + .toggle-slider::before {
+  transform: translateX(20px);
+}
+
+/* macOS Scrollbars */
+.style-macos ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.style-macos ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.style-macos ::-webkit-scrollbar-thumb {
+  background: rgba(128, 128, 128, 0.3);
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.style-macos ::-webkit-scrollbar-thumb:hover {
+  background: rgba(128, 128, 128, 0.5);
+  background-clip: padding-box;
+}
+
+/* macOS Typography */
+.style-macos h1 {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.style-macos h2 {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.style-macos h3 {
+  font-weight: 600;
+}
+
+/* macOS Code blocks */
+.style-macos code,
+.style-macos pre,
+.style-macos .code-block {
+  border-radius: var(--radius-md);
+  font-size: 12px;
+}
+
 html, body {
   height: 100%;
 }
@@ -5620,4 +5883,122 @@ button {
   background: var(--color-bg-tertiary);
   color: var(--color-text-muted);
   margin-top: 4px;
+}
+
+/* Visual Style Selector */
+.style-switcher {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.style-option {
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  background: var(--color-bg-secondary);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.style-option:hover {
+  background: var(--color-bg-hover);
+  border-color: var(--color-border-light);
+}
+
+.style-option.selected {
+  border-color: var(--color-accent);
+  background: var(--color-accent-subtle);
+}
+
+.style-option-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.style-option-preview {
+  width: 48px;
+  height: 36px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.style-option-preview.macos {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 100%),
+              linear-gradient(135deg, #4a4a4c 0%, #3a3a3c 100%);
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.style-option-preview.macos::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  display: flex;
+  gap: 4px;
+}
+
+.style-option-preview.macos::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  width: 6px;
+  height: 6px;
+  background: #ff5f57;
+  border-radius: 50%;
+  box-shadow: 10px 0 0 #febc2e, 20px 0 0 #28c840;
+}
+
+.style-option-preview.cli {
+  background: #0d0d0d;
+  border: 1px solid rgba(34, 211, 238, 0.3);
+  font-family: monospace;
+  font-size: 8px;
+  color: #22d3ee;
+  padding: 4px;
+  line-height: 1.2;
+}
+
+.style-option-preview.cli::before {
+  content: '>_';
+  position: absolute;
+  bottom: 4px;
+  left: 6px;
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+.style-option-info {
+  flex: 1;
+}
+
+.style-option-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 2px;
+}
+
+.style-option.selected .style-option-label {
+  color: var(--color-accent);
+}
+
+.style-option-description {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  line-height: 1.4;
 }

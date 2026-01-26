@@ -4,11 +4,12 @@ import { MainContent } from './components/MainContent';
 import { RightPanel } from './components/RightPanel';
 import { WorkspaceSelector } from './components/WorkspaceSelector';
 import { Settings } from './components/Settings';
-import { Task, Workspace, TaskEvent, LLMModelInfo, LLMProviderInfo, SuccessCriteria, UpdateInfo, ThemeMode, AccentColor } from '../shared/types';
+import { Task, Workspace, TaskEvent, LLMModelInfo, LLMProviderInfo, SuccessCriteria, UpdateInfo, ThemeMode, AccentColor, VisualStyle } from '../shared/types';
 
 // Theme storage keys
 const THEME_STORAGE_KEY = 'cowork-theme-mode';
 const ACCENT_STORAGE_KEY = 'cowork-accent-color';
+const STYLE_STORAGE_KEY = 'cowork-visual-style';
 
 // Helper to get effective theme based on system preference
 function getEffectiveTheme(themeMode: ThemeMode): 'light' | 'dark' {
@@ -44,6 +45,10 @@ export function App() {
   const [accentColor, setAccentColor] = useState<AccentColor>(() => {
     const saved = localStorage.getItem(ACCENT_STORAGE_KEY);
     return (saved as AccentColor) || 'cyan';
+  });
+  const [visualStyle, setVisualStyle] = useState<VisualStyle>(() => {
+    const saved = localStorage.getItem(STYLE_STORAGE_KEY);
+    return (saved as VisualStyle) || 'macos';
   });
 
   // Load LLM config status
@@ -99,7 +104,13 @@ export function App() {
 
     // Apply accent class
     root.classList.add(`accent-${accentColor}`);
-  }, [themeMode, accentColor]);
+
+    // Remove existing style classes
+    root.classList.remove('style-macos', 'style-cli');
+
+    // Apply visual style class
+    root.classList.add(`style-${visualStyle}`);
+  }, [themeMode, accentColor, visualStyle]);
 
   // Listen for system theme changes when in 'system' mode
   useEffect(() => {
@@ -274,6 +285,11 @@ export function App() {
     localStorage.setItem(ACCENT_STORAGE_KEY, accent);
   };
 
+  const handleStyleChange = (style: VisualStyle) => {
+    setVisualStyle(style);
+    localStorage.setItem(STYLE_STORAGE_KEY, style);
+  };
+
   return (
     <div className="app">
       <div className="title-bar" />
@@ -350,8 +366,10 @@ export function App() {
           onSettingsChanged={loadLLMConfig}
           themeMode={themeMode}
           accentColor={accentColor}
+          visualStyle={visualStyle}
           onThemeChange={handleThemeChange}
           onAccentChange={handleAccentChange}
+          onStyleChange={handleStyleChange}
         />
       )}
     </div>
