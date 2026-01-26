@@ -135,6 +135,17 @@ You are continuing a previous conversation. The context from the previous conver
   }
 
   /**
+   * Update the workspace and recreate tool registry with new permissions
+   * This is used when permissions change during an active task
+   */
+  updateWorkspace(workspace: Workspace): void {
+    this.workspace = workspace;
+    // Recreate tool registry to pick up new permissions (e.g., shell enabled)
+    this.toolRegistry = new ToolRegistry(workspace, this.daemon, this.task.id);
+    console.log(`Workspace updated for task ${this.task.id}, permissions:`, workspace.permissions);
+  }
+
+  /**
    * Main execution loop
    */
   async execute(): Promise<void> {
