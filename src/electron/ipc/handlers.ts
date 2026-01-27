@@ -788,7 +788,7 @@ function setupMCPHandlers(): void {
   ipcMain.handle(IPC_CHANNELS.MCP_SAVE_SETTINGS, async (_, settings) => {
     checkRateLimit(IPC_CHANNELS.MCP_SAVE_SETTINGS);
     const validated = validateInput(MCPSettingsSchema, settings, 'MCP settings');
-    MCPSettingsManager.saveSettings(validated);
+    MCPSettingsManager.saveSettings(validated as any);
     MCPSettingsManager.clearCache();
     return { success: true };
   });
@@ -804,14 +804,14 @@ function setupMCPHandlers(): void {
     checkRateLimit(IPC_CHANNELS.MCP_ADD_SERVER);
     const validated = validateInput(MCPServerConfigSchema, serverConfig, 'MCP server config');
     const { id, ...configWithoutId } = validated;
-    return MCPSettingsManager.addServer(configWithoutId);
+    return MCPSettingsManager.addServer(configWithoutId as any);
   });
 
   // Update a server
   ipcMain.handle(IPC_CHANNELS.MCP_UPDATE_SERVER, async (_, serverId: string, updates) => {
     const validatedId = validateInput(UUIDSchema, serverId, 'server ID');
     const validatedUpdates = validateInput(MCPServerUpdateSchema, updates, 'server updates');
-    return MCPSettingsManager.updateServer(validatedId, validatedUpdates);
+    return MCPSettingsManager.updateServer(validatedId, validatedUpdates as any);
   });
 
   // Remove a server
