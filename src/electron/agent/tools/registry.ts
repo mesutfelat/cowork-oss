@@ -100,6 +100,7 @@ File Operations:
 Skills:
 - create_spreadsheet: Create Excel spreadsheets with data and formulas
 - create_document: Create Word documents or PDFs
+- edit_document: Edit/append content to existing DOCX files
 - create_presentation: Create PowerPoint presentations
 - organize_folder: Organize and structure files in folders
 
@@ -185,6 +186,7 @@ Plan Control:
     // Skill tools
     if (name === 'create_spreadsheet') return await this.skillTools.createSpreadsheet(input);
     if (name === 'create_document') return await this.skillTools.createDocument(input);
+    if (name === 'edit_document') return await this.skillTools.editDocument(input);
     if (name === 'create_presentation') return await this.skillTools.createPresentation(input);
     if (name === 'organize_folder') return await this.skillTools.organizeFolder(input);
 
@@ -431,6 +433,60 @@ Plan Control:
             },
           },
           required: ['filename', 'format', 'content'],
+        },
+      },
+      {
+        name: 'edit_document',
+        description: 'Edit an existing Word document (DOCX) by appending new content sections. Use this to modify existing documents without recreating them from scratch.',
+        input_schema: {
+          type: 'object',
+          properties: {
+            sourcePath: {
+              type: 'string',
+              description: 'Path to the existing DOCX file to edit',
+            },
+            destPath: {
+              type: 'string',
+              description: 'Optional: Path for the output file. If not specified, the source file will be overwritten.',
+            },
+            newContent: {
+              type: 'array',
+              description: 'New content blocks to append to the document',
+              items: {
+                type: 'object',
+                properties: {
+                  type: {
+                    type: 'string',
+                    enum: ['heading', 'paragraph', 'list', 'table'],
+                    description: 'Type of content block',
+                  },
+                  text: {
+                    type: 'string',
+                    description: 'Text content for the block',
+                  },
+                  level: {
+                    type: 'number',
+                    description: 'For headings: level 1-6',
+                  },
+                  items: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description: 'For lists: array of list items',
+                  },
+                  rows: {
+                    type: 'array',
+                    items: {
+                      type: 'array',
+                      items: { type: 'string' },
+                    },
+                    description: 'For tables: 2D array of cell values',
+                  },
+                },
+                required: ['type', 'text'],
+              },
+            },
+          },
+          required: ['sourcePath', 'newContent'],
         },
       },
       {
