@@ -209,6 +209,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // File APIs
   openFile: (filePath: string, workspacePath?: string) => ipcRenderer.invoke('file:open', filePath, workspacePath),
   showInFinder: (filePath: string, workspacePath?: string) => ipcRenderer.invoke('file:showInFinder', filePath, workspacePath),
+  readFileForViewer: (filePath: string, workspacePath: string) => ipcRenderer.invoke('file:readForViewer', { filePath, workspacePath }),
 
   // Shell APIs
   openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url),
@@ -378,10 +379,24 @@ contextBridge.exposeInMainWorld('electronAPI', {
 });
 
 // Type declarations for TypeScript
+export interface FileViewerResult {
+  success: boolean;
+  data?: {
+    path: string;
+    fileName: string;
+    fileType: 'markdown' | 'code' | 'text' | 'docx' | 'pdf' | 'image' | 'pptx' | 'unsupported';
+    content: string | null;
+    htmlContent?: string;
+    size: number;
+  };
+  error?: string;
+}
+
 export interface ElectronAPI {
   selectFolder: () => Promise<string | null>;
   openFile: (filePath: string, workspacePath?: string) => Promise<string>;
   showInFinder: (filePath: string, workspacePath?: string) => Promise<void>;
+  readFileForViewer: (filePath: string, workspacePath: string) => Promise<FileViewerResult>;
   openExternal: (url: string) => Promise<void>;
   createTask: (data: any) => Promise<any>;
   getTask: (id: string) => Promise<any>;
