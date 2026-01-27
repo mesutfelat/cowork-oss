@@ -230,6 +230,8 @@ export function MainContent({ task, workspace, events, onSendMessage, onCreateTa
   const [expandedEvents, setExpandedEvents] = useState<Set<number>>(new Set());
   const [appVersion, setAppVersion] = useState<string>('');
   const [customSkills, setCustomSkills] = useState<CustomSkill[]>([]);
+  const [showSkillsMenu, setShowSkillsMenu] = useState(false);
+  const skillsMenuRef = useRef<HTMLDivElement>(null);
 
   // Load app version
   useEffect(() => {
@@ -244,6 +246,24 @@ export function MainContent({ task, workspace, events, onSendMessage, onCreateTa
       .then(skills => setCustomSkills(skills.filter(s => s.enabled !== false)))
       .catch(err => console.error('Failed to load custom skills:', err));
   }, []);
+
+  // Close skills menu on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (skillsMenuRef.current && !skillsMenuRef.current.contains(e.target as Node)) {
+        setShowSkillsMenu(false);
+      }
+    };
+    if (showSkillsMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showSkillsMenu]);
+
+  const handleSkillSelect = (skill: CustomSkill) => {
+    setInputValue(skill.prompt);
+    setShowSkillsMenu(false);
+  };
 
   const toggleEventExpanded = (index: number) => {
     setExpandedEvents(prev => {
@@ -517,29 +537,6 @@ export function MainContent({ task, workspace, events, onSendMessage, onCreateTa
               </div>
             </div>
 
-            {/* Custom Skills */}
-            {customSkills.length > 0 && (
-              <div className="cli-commands">
-                <div className="cli-commands-header">
-                  <span className="cli-prompt">&gt;</span>
-                  <span>CUSTOM SKILLS</span>
-                </div>
-                <div className="quick-start-grid">
-                  {customSkills.slice(0, 6).map(skill => (
-                    <button
-                      key={skill.id}
-                      className="quick-start-card"
-                      onClick={() => handleQuickAction(skill.prompt)}
-                    >
-                      <span className="quick-start-icon">{skill.icon}</span>
-                      <span className="quick-start-title">{skill.name}</span>
-                      <span className="quick-start-desc">{skill.description}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {/* Input Area */}
             <div className="welcome-input-container cli-input-container">
               <div className="cli-input-wrapper">
@@ -613,12 +610,49 @@ export function MainContent({ task, workspace, events, onSendMessage, onCreateTa
                     selectedModel={selectedModel}
                     onModelChange={onModelChange}
                   />
+                  {/* Skills Menu Button */}
+                  <div className="skills-menu-container" ref={skillsMenuRef}>
+                    <button
+                      className={`skills-menu-btn ${showSkillsMenu ? 'active' : ''}`}
+                      onClick={() => setShowSkillsMenu(!showSkillsMenu)}
+                      title="Custom Skills"
+                    >
+                      <span>/</span>
+                    </button>
+                    {showSkillsMenu && customSkills.length > 0 && (
+                      <div className="skills-dropdown">
+                        <div className="skills-dropdown-header">Custom Skills</div>
+                        <div className="skills-dropdown-list">
+                          {customSkills.map(skill => (
+                            <button
+                              key={skill.id}
+                              className="skills-dropdown-item"
+                              onClick={() => handleSkillSelect(skill)}
+                            >
+                              <span className="skills-dropdown-icon">{skill.icon}</span>
+                              <div className="skills-dropdown-info">
+                                <span className="skills-dropdown-name">{skill.name}</span>
+                                <span className="skills-dropdown-desc">{skill.description}</span>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {showSkillsMenu && customSkills.length === 0 && (
+                      <div className="skills-dropdown">
+                        <div className="skills-dropdown-empty">
+                          No custom skills found.<br />
+                          Create skills in Settings.
+                        </div>
+                      </div>
+                    )}
+                  </div>
                   <button
-                    className="lets-go-btn"
+                    className="lets-go-btn lets-go-btn-sm"
                     onClick={handleSend}
                     disabled={!inputValue.trim()}
                   >
-                    <span>Let's Start</span>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M12 19V5M5 12l7-7 7 7" />
                     </svg>
