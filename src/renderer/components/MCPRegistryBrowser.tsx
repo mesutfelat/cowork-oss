@@ -106,8 +106,13 @@ export function MCPRegistryBrowser({ onInstall, installedServerIds = [] }: MCPRe
     }
   };
 
-  const isInstalled = (entryId: string): boolean => {
-    return installedServerIds.includes(entryId);
+  const isInstalled = (entry: MCPRegistryEntry): boolean => {
+    // Check both id and name (case-insensitive) since installed servers use name
+    return installedServerIds.some(
+      (installedName) =>
+        installedName.toLowerCase() === entry.id.toLowerCase() ||
+        installedName.toLowerCase() === entry.name.toLowerCase()
+    );
   };
 
   if (loading) {
@@ -214,7 +219,7 @@ export function MCPRegistryBrowser({ onInstall, installedServerIds = [] }: MCPRe
               </div>
 
               <div className="registry-server-actions">
-                {isInstalled(entry.id) ? (
+                {isInstalled(entry) ? (
                   <span className="registry-installed-badge">Installed</span>
                 ) : (
                   <button
@@ -349,7 +354,7 @@ export function MCPRegistryBrowser({ onInstall, installedServerIds = [] }: MCPRe
               </div>
 
               <div className="registry-details-actions">
-                {isInstalled(viewingDetails.id) ? (
+                {isInstalled(viewingDetails) ? (
                   <span className="registry-installed-badge">Already Installed</span>
                 ) : (
                   <button
