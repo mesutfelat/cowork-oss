@@ -292,6 +292,24 @@ export class FileTools {
     if (!relativePath || typeof relativePath !== 'string') {
       throw new Error('Invalid path: path must be a non-empty string');
     }
+
+    // Check for binary file extensions that shouldn't be written with write_file
+    const ext = path.extname(relativePath).toLowerCase();
+    const binaryExtensions = ['.docx', '.xlsx', '.pptx', '.pdf', '.zip', '.png', '.jpg', '.jpeg', '.gif', '.mp3', '.mp4', '.exe', '.dmg'];
+    if (binaryExtensions.includes(ext)) {
+      const suggestions: Record<string, string> = {
+        '.docx': 'Use "create_document" or "edit_document" tool instead',
+        '.xlsx': 'Use "create_spreadsheet" tool instead',
+        '.pptx': 'Use "create_presentation" tool instead',
+        '.pdf': 'Use "create_document" with format="pdf" instead',
+      };
+      const suggestion = suggestions[ext] || 'Use the appropriate skill tool for binary files';
+      throw new Error(
+        `Cannot use write_file for binary file type "${ext}". ` +
+        `The write_file tool is for text files only. ${suggestion}.`
+      );
+    }
+
     if (content === undefined || content === null) {
       throw new Error('Invalid content: content parameter is required but was not provided');
     }

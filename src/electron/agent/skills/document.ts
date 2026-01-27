@@ -15,6 +15,7 @@ import {
   BorderStyle
 } from 'docx';
 import PDFDocument from 'pdfkit';
+import * as mammoth from 'mammoth';
 import { Workspace } from '../../../shared/types';
 
 export interface ContentBlock {
@@ -74,26 +75,56 @@ export class DocumentBuilder {
 
   /**
    * Normalizes content input to always be an array of ContentBlocks
+   * Throws an error if content is empty or invalid to prevent creating empty documents
    */
   private normalizeContent(content: ContentBlock[] | ContentBlock | string | undefined): ContentBlock[] {
-    // Handle undefined/null
+    // Handle undefined/null - FAIL instead of creating empty document
     if (!content) {
-      return [{ type: 'paragraph', text: '' }];
+      throw new Error(
+        'Document content is required. Please provide content as an array of blocks ' +
+        '(e.g., [{ type: "paragraph", text: "Your text here" }]) or as a string.'
+      );
     }
 
     // Handle string input - convert to a single paragraph
     if (typeof content === 'string') {
+      if (content.trim().length === 0) {
+        throw new Error('Document content cannot be empty. Please provide text content.');
+      }
       return [{ type: 'paragraph', text: content }];
     }
 
     // Handle single object (not an array)
     if (!Array.isArray(content)) {
+      if (!content.text || content.text.trim().length === 0) {
+        throw new Error(
+          'Content block must have non-empty text. ' +
+          `Received block with type "${content.type}" but empty or missing text.`
+        );
+      }
       return [content];
     }
 
     // Already an array - ensure it's not empty
     if (content.length === 0) {
-      return [{ type: 'paragraph', text: '' }];
+      throw new Error(
+        'Document content array cannot be empty. ' +
+        'Please provide at least one content block (e.g., [{ type: "paragraph", text: "Your text" }]).'
+      );
+    }
+
+    // Validate each block has content
+    const emptyBlocks = content.filter(block => !block.text || block.text.trim().length === 0);
+    if (emptyBlocks.length > 0) {
+      console.warn(`[DocumentBuilder] Found ${emptyBlocks.length} empty content blocks, filtering them out`);
+      const validBlocks = content.filter(block => block.text && block.text.trim().length > 0);
+      if (validBlocks.length === 0) {
+        throw new Error(
+          'All content blocks have empty text. Please provide content blocks with actual text. ' +
+          `Received ${content.length} blocks but all had empty or missing text fields.`
+        );
+      }
+      return validBlocks;
     }
 
     return content;
@@ -400,5 +431,164 @@ export class DocumentBuilder {
       case 6: return HeadingLevel.HEADING_6;
       default: return HeadingLevel.HEADING_1;
     }
+  }
+
+  /**
+   * Reads an existing DOCX file and extracts its content as HTML
+   */
+  async readDocument(inputPath: string): Promise<{ html: string; text: string; messages: string[] }> {
+    const buffer = await fsPromises.readFile(inputPath);
+    const result = await mammoth.convertToHtml({ buffer });
+    const textResult = await mammoth.extractRawText({ buffer });
+
+    return {
+      html: result.value,
+      text: textResult.value,
+      messages: result.messages.map(m => m.message)
+    };
+  }
+
+  /**
+   * Appends new content sections to an existing DOCX file.
+   * Note: Due to DOCX format complexity, this creates a new document with
+   * the original content (converted to plain text sections) plus the new content.
+   * Some formatting may be lost in the process.
+   */
+  async appendToDocument(
+    inputPath: string,
+    outputPath: string,
+    newContent: ContentBlock[],
+    options: DocumentOptions = {}
+  ): Promise<{ success: boolean; sectionsAdded: number }> {
+    // Read existing document
+    const existingContent = await this.readDocument(inputPath);
+
+    // Convert existing HTML to basic content blocks
+    const existingBlocks = this.htmlToContentBlocks(existingContent.html);
+
+    // Combine with new content
+    const allContent = [...existingBlocks, ...newContent];
+
+    // Create new document with all content
+    await this.createDocx(outputPath, allContent, options);
+
+    return {
+      success: true,
+      sectionsAdded: newContent.length
+    };
+  }
+
+  /**
+   * Converts HTML from mammoth to ContentBlocks
+   * This is a simplified conversion that preserves basic structure
+   */
+  private htmlToContentBlocks(html: string): ContentBlock[] {
+    const blocks: ContentBlock[] = [];
+
+    // Simple regex-based HTML parsing for common elements
+    // Match headings
+    const headingRegex = /<h([1-6])[^>]*>([\s\S]*?)<\/h\1>/gi;
+    // Match paragraphs
+    const paragraphRegex = /<p[^>]*>([\s\S]*?)<\/p>/gi;
+    // Match list items
+    const listRegex = /<ul[^>]*>([\s\S]*?)<\/ul>/gi;
+    const listItemRegex = /<li[^>]*>([\s\S]*?)<\/li>/gi;
+    // Match tables
+    const tableRegex = /<table[^>]*>([\s\S]*?)<\/table>/gi;
+    const trRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+    const tdThRegex = /<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi;
+
+    // Helper to strip HTML tags
+    const stripTags = (str: string): string => str.replace(/<[^>]*>/g, '').trim();
+
+    // Process in order of appearance
+    let lastIndex = 0;
+    const processedRanges: Array<{start: number; end: number}> = [];
+
+    // Find all headings
+    let match;
+    while ((match = headingRegex.exec(html)) !== null) {
+      const text = stripTags(match[2]);
+      if (text) {
+        blocks.push({
+          type: 'heading',
+          text,
+          level: parseInt(match[1], 10)
+        });
+        processedRanges.push({ start: match.index, end: match.index + match[0].length });
+      }
+    }
+
+    // Find all paragraphs
+    paragraphRegex.lastIndex = 0;
+    while ((match = paragraphRegex.exec(html)) !== null) {
+      // Skip if this range overlaps with an already processed element
+      const overlaps = processedRanges.some(r =>
+        (match!.index >= r.start && match!.index < r.end) ||
+        (match!.index + match![0].length > r.start && match!.index + match![0].length <= r.end)
+      );
+      if (overlaps) continue;
+
+      const text = stripTags(match[1]);
+      if (text) {
+        blocks.push({
+          type: 'paragraph',
+          text
+        });
+        processedRanges.push({ start: match.index, end: match.index + match[0].length });
+      }
+    }
+
+    // Find all lists
+    listRegex.lastIndex = 0;
+    while ((match = listRegex.exec(html)) !== null) {
+      const listHtml = match[1];
+      const items: string[] = [];
+      let itemMatch;
+      const itemRegex = /<li[^>]*>([\s\S]*?)<\/li>/gi;
+      while ((itemMatch = itemRegex.exec(listHtml)) !== null) {
+        const itemText = stripTags(itemMatch[1]);
+        if (itemText) items.push(itemText);
+      }
+      if (items.length > 0) {
+        blocks.push({
+          type: 'list',
+          text: items.join('\n'),
+          items
+        });
+      }
+    }
+
+    // Find all tables
+    tableRegex.lastIndex = 0;
+    while ((match = tableRegex.exec(html)) !== null) {
+      const tableHtml = match[1];
+      const rows: string[][] = [];
+      let rowMatch;
+      const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+      while ((rowMatch = rowRegex.exec(tableHtml)) !== null) {
+        const rowHtml = rowMatch[1];
+        const cells: string[] = [];
+        let cellMatch;
+        const cellRegex = /<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi;
+        while ((cellMatch = cellRegex.exec(rowHtml)) !== null) {
+          cells.push(stripTags(cellMatch[1]));
+        }
+        if (cells.length > 0) rows.push(cells);
+      }
+      if (rows.length > 0) {
+        blocks.push({
+          type: 'table',
+          text: '',
+          rows
+        });
+      }
+    }
+
+    // Sort blocks by their original position would require more complex tracking
+    // For now, we return them in the order found (headings, then paragraphs, then lists, then tables)
+    // This may not preserve exact document order
+
+    return blocks;
   }
 }
