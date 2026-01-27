@@ -1,5 +1,15 @@
 import { ipcMain, shell } from 'electron';
 import * as path from 'path';
+import * as fs from 'fs/promises';
+import mammoth from 'mammoth';
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const pdfParse = require('pdf-parse') as (dataBuffer: Buffer) => Promise<{
+  text: string;
+  numpages: number;
+  info: { Title?: string; Author?: string };
+}>;
+
 import { DatabaseManager } from '../database/schema';
 import {
   WorkspaceRepository,
@@ -144,6 +154,136 @@ export function setupIpcHandlers(
       await shell.openExternal(url);
     } catch (error: any) {
       throw new Error(`Failed to open URL: ${error.message}`);
+    }
+  });
+
+  // File viewer handler - read file content for in-app preview
+  ipcMain.handle('file:readForViewer', async (_, data: { filePath: string; workspacePath: string }) => {
+    const { filePath, workspacePath } = data;
+
+    // Security: require workspacePath and validate path is within it
+    if (!workspacePath) {
+      return { success: false, error: 'Workspace path is required for file operations' };
+    }
+
+    // Resolve the path relative to workspace
+    const resolvedPath = path.isAbsolute(filePath)
+      ? filePath
+      : path.resolve(workspacePath, filePath);
+
+    // Validate path is within workspace (prevent path traversal)
+    if (!isPathWithinWorkspace(resolvedPath, workspacePath)) {
+      return { success: false, error: 'Access denied: file path is outside the workspace' };
+    }
+
+    // Check if file exists
+    try {
+      await fs.access(resolvedPath);
+    } catch {
+      return { success: false, error: 'File not found' };
+    }
+
+    // Get file stats
+    const stats = await fs.stat(resolvedPath);
+    const extension = path.extname(resolvedPath).toLowerCase();
+    const fileName = path.basename(resolvedPath);
+
+    // Determine file type
+    const getFileType = (ext: string): 'markdown' | 'code' | 'text' | 'docx' | 'pdf' | 'image' | 'pptx' | 'unsupported' => {
+      const codeExtensions = ['.js', '.ts', '.tsx', '.jsx', '.py', '.java', '.go', '.rs', '.c', '.cpp', '.h', '.css', '.scss', '.html', '.xml', '.json', '.yaml', '.yml', '.toml', '.sh', '.bash', '.zsh', '.sql', '.graphql', '.vue', '.svelte', '.rb', '.php', '.swift', '.kt', '.scala'];
+      const textExtensions = ['.txt', '.log', '.csv', '.env', '.gitignore', '.dockerignore', '.editorconfig', '.prettierrc', '.eslintrc'];
+      const imageExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.bmp', '.ico'];
+
+      if (ext === '.md' || ext === '.markdown') return 'markdown';
+      if (ext === '.docx') return 'docx';
+      if (ext === '.pdf') return 'pdf';
+      if (ext === '.pptx') return 'pptx';
+      if (imageExtensions.includes(ext)) return 'image';
+      if (codeExtensions.includes(ext)) return 'code';
+      if (textExtensions.includes(ext)) return 'text';
+
+      return 'unsupported';
+    };
+
+    const fileType = getFileType(extension);
+
+    // Size limits
+    const MAX_TEXT_SIZE = 5 * 1024 * 1024; // 5MB
+    const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
+
+    if (fileType === 'image' && stats.size > MAX_IMAGE_SIZE) {
+      return { success: false, error: 'File too large for preview (max 10MB for images)' };
+    }
+    if (fileType !== 'image' && fileType !== 'unsupported' && stats.size > MAX_TEXT_SIZE) {
+      return { success: false, error: 'File too large for preview (max 5MB for text files)' };
+    }
+
+    try {
+      let content: string | null = null;
+      let htmlContent: string | undefined;
+
+      switch (fileType) {
+        case 'markdown':
+        case 'code':
+        case 'text': {
+          content = await fs.readFile(resolvedPath, 'utf-8');
+          break;
+        }
+
+        case 'docx': {
+          const buffer = await fs.readFile(resolvedPath);
+          const result = await mammoth.convertToHtml({ buffer });
+          htmlContent = result.value;
+          content = null; // HTML content is in htmlContent
+          break;
+        }
+
+        case 'pdf': {
+          const buffer = await fs.readFile(resolvedPath);
+          const pdfData = await pdfParse(buffer);
+          content = pdfData.text;
+          break;
+        }
+
+        case 'image': {
+          const buffer = await fs.readFile(resolvedPath);
+          const mimeTypes: Record<string, string> = {
+            '.png': 'image/png',
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.gif': 'image/gif',
+            '.webp': 'image/webp',
+            '.svg': 'image/svg+xml',
+            '.bmp': 'image/bmp',
+            '.ico': 'image/x-icon',
+          };
+          const mimeType = mimeTypes[extension] || 'image/png';
+          content = `data:${mimeType};base64,${buffer.toString('base64')}`;
+          break;
+        }
+
+        case 'pptx':
+          // PowerPoint files are complex to render, return placeholder
+          content = null;
+          break;
+
+        default:
+          return { success: false, error: 'Unsupported file type', fileType: 'unsupported' };
+      }
+
+      return {
+        success: true,
+        data: {
+          path: resolvedPath,
+          fileName,
+          fileType,
+          content,
+          htmlContent,
+          size: stats.size,
+        },
+      };
+    } catch (error: any) {
+      return { success: false, error: `Failed to read file: ${error.message}` };
     }
   });
 

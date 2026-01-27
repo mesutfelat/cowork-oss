@@ -4,6 +4,7 @@ import remarkGfm from 'remark-gfm';
 import { Task, TaskEvent, Workspace, ApprovalRequest, LLMModelInfo, SuccessCriteria, CustomSkill } from '../../shared/types';
 import { ApprovalDialog } from './ApprovalDialog';
 import { SkillParameterModal } from './SkillParameterModal';
+import { FileViewer } from './FileViewer';
 
 // Searchable Model Dropdown Component
 interface ModelDropdownProps {
@@ -160,11 +161,29 @@ function ModelDropdown({ models, selectedModel, onModelChange }: ModelDropdownPr
   );
 }
 
-// Clickable file path component - opens file on click, shows in Finder on right-click
-function ClickableFilePath({ path, workspacePath, className = '' }: { path: string; workspacePath?: string; className?: string }) {
+// Clickable file path component - opens file viewer on click, shows in Finder on right-click
+function ClickableFilePath({
+  path,
+  workspacePath,
+  className = '',
+  onOpenViewer
+}: {
+  path: string;
+  workspacePath?: string;
+  className?: string;
+  onOpenViewer?: (path: string) => void;
+}) {
   const handleClick = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+
+    // If viewer callback is provided and we have a workspace, use the in-app viewer
+    if (onOpenViewer && workspacePath) {
+      onOpenViewer(path);
+      return;
+    }
+
+    // Fallback to external app
     try {
       const error = await window.electronAPI.openFile(path, workspacePath);
       if (error) {
@@ -193,7 +212,7 @@ function ClickableFilePath({ path, workspacePath, className = '' }: { path: stri
       className={`clickable-file-path ${className}`}
       onClick={handleClick}
       onContextMenu={handleContextMenu}
-      title={`${path}\n\nClick to open • Right-click to show in Finder`}
+      title={`${path}\n\nClick to preview • Right-click to show in Finder`}
     >
       {fileName}
     </span>
@@ -236,6 +255,7 @@ export function MainContent({ task, workspace, events, onSendMessage, onCreateTa
   const [customSkills, setCustomSkills] = useState<CustomSkill[]>([]);
   const [showSkillsMenu, setShowSkillsMenu] = useState(false);
   const [selectedSkillForParams, setSelectedSkillForParams] = useState<CustomSkill | null>(null);
+  const [viewerFilePath, setViewerFilePath] = useState<string | null>(null);
   const skillsMenuRef = useRef<HTMLDivElement>(null);
 
   // Load app version
@@ -709,6 +729,15 @@ export function MainContent({ task, workspace, events, onSendMessage, onCreateTa
             onCancel={handleSkillParamCancel}
           />
         )}
+
+        {/* File Viewer Modal - Welcome View */}
+        {viewerFilePath && workspace?.path && (
+          <FileViewer
+            filePath={viewerFilePath}
+            workspacePath={workspace.path}
+            onClose={() => setViewerFilePath(null)}
+          />
+        )}
       </div>
     );
   }
@@ -787,7 +816,7 @@ export function MainContent({ task, workspace, events, onSendMessage, onCreateTa
                                   <path d="M9 18l6-6-6-6" />
                                 </svg>
                               )}
-                              <div className="event-title">{renderEventTitle(event, workspace?.path)}</div>
+                              <div className="event-title">{renderEventTitle(event, workspace?.path, setViewerFilePath)}</div>
                             </div>
                             <div className="event-time">{formatTime(event.timestamp)}</div>
                           </div>
@@ -893,6 +922,15 @@ export function MainContent({ task, workspace, events, onSendMessage, onCreateTa
           onCancel={handleSkillParamCancel}
         />
       )}
+
+      {/* File Viewer Modal - Task View */}
+      {viewerFilePath && workspace?.path && (
+        <FileViewer
+          filePath={viewerFilePath}
+          workspacePath={workspace.path}
+          onClose={() => setViewerFilePath(null)}
+        />
+      )}
     </div>
   );
 }
@@ -905,7 +943,11 @@ function truncateForDisplay(text: string, maxLength: number = 2000): string {
   return text.slice(0, maxLength) + '\n\n... [content truncated for display]';
 }
 
-function renderEventTitle(event: TaskEvent, workspacePath?: string): React.ReactNode {
+function renderEventTitle(
+  event: TaskEvent,
+  workspacePath?: string,
+  onOpenViewer?: (path: string) => void
+): React.ReactNode {
   switch (event.type) {
     case 'task_created':
       return 'Task created';
@@ -953,13 +995,13 @@ function renderEventTitle(event: TaskEvent, workspacePath?: string): React.React
     case 'file_created':
       return (
         <span>
-          Created: <ClickableFilePath path={event.payload.path} workspacePath={workspacePath} />
+          Created: <ClickableFilePath path={event.payload.path} workspacePath={workspacePath} onOpenViewer={onOpenViewer} />
         </span>
       );
     case 'file_modified':
       return (
         <span>
-          Modified: <ClickableFilePath path={event.payload.path || event.payload.from} workspacePath={workspacePath} />
+          Modified: <ClickableFilePath path={event.payload.path || event.payload.from} workspacePath={workspacePath} onOpenViewer={onOpenViewer} />
         </span>
       );
     case 'file_deleted':

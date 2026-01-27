@@ -1,11 +1,30 @@
 import { useState, useMemo } from 'react';
 import { Task, Workspace, TaskEvent, PlanStep, QueueStatus } from '../../shared/types';
+import { FileViewer } from './FileViewer';
 
-// Clickable file path component
-function ClickableFilePath({ path, workspacePath, className = '' }: { path: string; workspacePath?: string; className?: string }) {
+// Clickable file path component - opens file viewer on click, shows in Finder on right-click
+function ClickableFilePath({
+  path,
+  workspacePath,
+  className = '',
+  onOpenViewer
+}: {
+  path: string;
+  workspacePath?: string;
+  className?: string;
+  onOpenViewer?: (path: string) => void;
+}) {
   const handleClick = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+
+    // If viewer callback is provided and we have a workspace, use the in-app viewer
+    if (onOpenViewer && workspacePath) {
+      onOpenViewer(path);
+      return;
+    }
+
+    // Fallback to external app
     try {
       const error = await window.electronAPI.openFile(path, workspacePath);
       if (error) {
@@ -33,7 +52,7 @@ function ClickableFilePath({ path, workspacePath, className = '' }: { path: stri
       className={`clickable-file-path ${className}`}
       onClick={handleClick}
       onContextMenu={handleContextMenu}
-      title={`${path}\n\nClick to open • Right-click to show in Finder`}
+      title={`${path}\n\nClick to preview • Right-click to show in Finder`}
     >
       {fileName}
     </span>
@@ -69,6 +88,7 @@ export function RightPanel({ task, workspace, events, tasks = [], queueStatus, o
     folder: true,
     context: true,
   });
+  const [viewerFilePath, setViewerFilePath] = useState<string | null>(null);
 
   // Queue data
   const runningTasks = useMemo(() =>
@@ -308,7 +328,7 @@ export function RightPanel({ task, workspace, events, tasks = [], queueStatus, o
                 {files.map((file, index) => (
                   <div key={`${file.path}-${index}`} className={`cli-file-item ${file.action}`}>
                     <span className={`cli-file-action ${file.action}`}>{getFileActionSymbol(file.action)}</span>
-                    <ClickableFilePath path={file.path} workspacePath={workspace?.path} className="cli-file-name" />
+                    <ClickableFilePath path={file.path} workspacePath={workspace?.path} className="cli-file-name" onOpenViewer={setViewerFilePath} />
                   </div>
                 ))}
               </div>
@@ -359,7 +379,7 @@ export function RightPanel({ task, workspace, events, tasks = [], queueStatus, o
                     <div className="cli-context-label"># files_read:</div>
                     {referencedFiles.map((file, index) => (
                       <div key={`${file}-${index}`} className="cli-context-item">
-                        <ClickableFilePath path={file} workspacePath={workspace?.path} className="cli-context-file" />
+                        <ClickableFilePath path={file} workspacePath={workspace?.path} className="cli-context-file" onOpenViewer={setViewerFilePath} />
                       </div>
                     ))}
                   </div>
@@ -386,6 +406,15 @@ export function RightPanel({ task, workspace, events, tasks = [], queueStatus, o
         <span className="cli-footer-prompt">$</span>
         <span className="cli-footer-text">local execution only</span>
       </div>
+
+      {/* File Viewer Modal */}
+      {viewerFilePath && workspace?.path && (
+        <FileViewer
+          filePath={viewerFilePath}
+          workspacePath={workspace.path}
+          onClose={() => setViewerFilePath(null)}
+        />
+      )}
     </div>
   );
 }
