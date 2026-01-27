@@ -116,7 +116,7 @@ export interface MCPServerCapabilities {
   prompts?: {
     listChanged?: boolean;
   };
-  logging?: {};
+  logging?: Record<string, never>;
 }
 
 // MCP Server Info (returned by initialize)
