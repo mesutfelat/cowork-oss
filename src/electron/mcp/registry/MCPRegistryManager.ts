@@ -480,7 +480,11 @@ export class MCPRegistryManager {
       args: entry.defaultArgs,
     };
 
-    return MCPSettingsManager.updateServer(serverId, updatedConfig);
+    const result = MCPSettingsManager.updateServer(serverId, updatedConfig);
+    if (!result) {
+      throw new Error(`Failed to update server ${serverId}`);
+    }
+    return result;
   }
 
   /**

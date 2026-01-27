@@ -9,8 +9,8 @@ import { ImageTools } from './image-tools';
 import { SystemTools } from './system-tools';
 import { LLMTool } from '../llm/types';
 import { SearchProviderFactory } from '../search';
-import { MCPClientManager } from '../mcp/client/MCPClientManager';
-import { MCPSettingsManager } from '../mcp/settings';
+import { MCPClientManager } from '../../mcp/client/MCPClientManager';
+import { MCPSettingsManager } from '../../mcp/settings';
 
 /**
  * ToolRegistry manages all available tools and their execution
@@ -85,7 +85,7 @@ export class ToolRegistry {
       const settings = MCPSettingsManager.loadSettings();
       const prefix = settings.toolNamePrefix || 'mcp_';
 
-      return mcpTools.map((tool) => ({
+      return mcpTools.map((tool: { name: string; description?: string; inputSchema: any }) => ({
         name: `${prefix}${tool.name}`,
         description: tool.description || `MCP tool: ${tool.name}`,
         input_schema: tool.inputSchema,

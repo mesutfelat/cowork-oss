@@ -245,12 +245,12 @@ export const MCPServerConfigSchema = z.object({
   // stdio transport config
   command: z.string().max(1000).optional(),
   args: z.array(z.string().max(500)).max(50).optional(),
-  env: z.record(z.string().max(500)).optional(),
+  env: z.record(z.string(), z.string().max(500)).optional(),
   cwd: z.string().max(MAX_PATH_LENGTH).optional(),
 
   // HTTP-based transport config
   url: z.string().url().max(500).optional(),
-  headers: z.record(z.string().max(1000)).optional(),
+  headers: z.record(z.string(), z.string().max(1000)).optional(),
 
   // Authentication
   auth: MCPAuthConfigSchema,
