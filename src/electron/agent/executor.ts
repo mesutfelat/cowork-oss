@@ -2561,6 +2561,8 @@ EFFICIENCY RULES (CRITICAL):
     let continueLoop = true;
     let iterationCount = 0;
     let emptyResponseCount = 0;
+    let hasProvidedTextResponse = false;  // Track if agent has given a text answer
+    let hadToolCalls = false;  // Track if any tool calls were made
     const maxIterations = 5;  // Reduced from 10 to prevent excessive iterations
     const maxEmptyResponses = 3;
 
@@ -2614,16 +2616,17 @@ EFFICIENCY RULES (CRITICAL):
           this.updateTracking(response.usage.inputTokens, response.usage.outputTokens);
         }
 
-        // Process response
-        if (response.stopReason === 'end_turn') {
-          continueLoop = false;
-        }
+        // Process response - don't immediately stop, check for text response first
+        let wantsToEnd = response.stopReason === 'end_turn';
 
         // Log any text responses from the assistant and check if asking a question
         let assistantAskedQuestion = false;
+        let hasTextInThisResponse = false;
         if (response.content) {
           for (const content of response.content) {
-            if (content.type === 'text' && content.text) {
+            if (content.type === 'text' && content.text && content.text.trim().length > 0) {
+              hasTextInThisResponse = true;
+              hasProvidedTextResponse = true;  // Track that we got a meaningful text response
               this.daemon.logEvent(this.task.id, 'assistant_message', {
                 message: content.text,
               });
@@ -2840,6 +2843,7 @@ EFFICIENCY RULES (CRITICAL):
         }
 
         if (toolResults.length > 0) {
+          hadToolCalls = true;  // Track that tools were used
           messages.push({
             role: 'user',
             content: toolResults,
@@ -2855,15 +2859,25 @@ EFFICIENCY RULES (CRITICAL):
           }
         }
 
-        // For follow-ups, do NOT stop just because the agent asked a question.
-        // The system prompt instructs the agent not to ask questions, so if it does,
-        // we should continue working. Only truly blocking questions (needing credentials etc.)
-        // will cause the agent to not use any tools, which will naturally end the loop.
-        // REMOVED: Question detection stopping for follow-ups
-        // if (assistantAskedQuestion && toolResults.length === 0) {
-        //   console.log('[TaskExecutor] Assistant asked a question, pausing for user input');
-        //   continueLoop = false;
-        // }
+        // Check if agent wants to end but hasn't provided a text response yet
+        // If tools were called but no summary was given, request one
+        if (wantsToEnd && !hasTextInThisResponse && hadToolCalls && !hasProvidedTextResponse) {
+          console.log('[TaskExecutor] Agent ending without text response after tool calls - requesting summary');
+          messages.push({
+            role: 'user',
+            content: [{
+              type: 'text',
+              text: 'You used tools but did not provide a summary of your findings. Please summarize what you found or explain if you could not find the information.'
+            }],
+          });
+          continueLoop = true;  // Force another iteration to get the summary
+          wantsToEnd = false;
+        }
+
+        // Only end the loop if the agent wants to AND has provided a response
+        if (wantsToEnd && (hasProvidedTextResponse || !hadToolCalls)) {
+          continueLoop = false;
+        }
       }
 
       // Save updated conversation history
