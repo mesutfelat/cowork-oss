@@ -158,12 +158,15 @@ export class ChannelGateway {
       this.daemonListeners[assistantIdx] = { event: 'assistant_message', handler: trackingAssistantMessage };
     }
 
-    const onFollowUpCompleted = (data: { taskId: string }) => {
+    const onFollowUpCompleted = async (data: { taskId: string }) => {
       // If no assistant messages were sent during the follow-up, send a confirmation
       if (!followUpMessagesSent.get(data.taskId)) {
         this.router.sendTaskUpdate(data.taskId, '✅ Done');
       }
       followUpMessagesSent.delete(data.taskId);
+
+      // Send any artifacts (images, screenshots) created during the follow-up
+      await this.router.sendArtifacts(data.taskId);
     };
     agentDaemon.on('follow_up_completed', onFollowUpCompleted);
     this.daemonListeners.push({ event: 'follow_up_completed', handler: onFollowUpCompleted });

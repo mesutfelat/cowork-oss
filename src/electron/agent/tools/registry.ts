@@ -368,8 +368,8 @@ Plan Control:
       console.log(`[ToolRegistry] Executing MCP tool: ${mcpToolName}`);
       const result = await mcpManager.callTool(mcpToolName, input);
 
-      // Format MCP result for consumption by the agent
-      return this.formatMCPResult(result);
+      // Format MCP result and process any generated files
+      return await this.formatMCPResult(result, mcpToolName, input);
     } catch (error) {
       // Not an MCP tool or MCP not initialized
       return null;
@@ -378,14 +378,49 @@ Plan Control:
 
   /**
    * Format MCP call result for agent consumption
+   * Also handles file artifacts (screenshots, etc.) from MCP tools
    */
-  private formatMCPResult(result: any): any {
+  private async formatMCPResult(result: any, toolName?: string, input?: any): Promise<any> {
     if (!result) return { success: true };
+
+    const fs = require('fs').promises;
+    const fsSync = require('fs');
+    const path = require('path');
 
     // Check if it's an MCP CallResult format
     if (result.content && Array.isArray(result.content)) {
       if (result.isError) {
         throw new Error(result.content.map((c: any) => c.text || '').join('\n') || 'MCP tool execution failed');
+      }
+
+      // Handle image content from MCP tools (e.g., take_screenshot)
+      for (const content of result.content) {
+        if (content.type === 'image' && content.data) {
+          // Save inline image to workspace
+          const filename = input?.filePath
+            ? path.basename(input.filePath)
+            : `mcp-screenshot-${Date.now()}.png`;
+          const outputPath = path.join(this.workspace.path, filename);
+
+          try {
+            const imageBuffer = Buffer.from(content.data, 'base64');
+            await fs.writeFile(outputPath, imageBuffer);
+
+            // Emit file_created event
+            this.daemon.logEvent(this.taskId, 'file_created', {
+              path: filename,
+              type: 'screenshot',
+              source: 'mcp',
+            });
+
+            // Register as artifact
+            this.daemon.registerArtifact(this.taskId, outputPath, content.mimeType || 'image/png');
+
+            console.log(`[ToolRegistry] Saved MCP image artifact: ${filename}`);
+          } catch (error) {
+            console.error(`[ToolRegistry] Failed to save MCP image:`, error);
+          }
+        }
       }
 
       // Combine text content
@@ -399,6 +434,59 @@ Plan Control:
 
       // Return raw result if no text content
       return result;
+    }
+
+    // Handle file paths in MCP results (when filePath parameter was provided)
+    if (input?.filePath && typeof input.filePath === 'string') {
+      const providedPath = input.filePath;
+      const filename = path.basename(providedPath);
+      const workspacePath = path.join(this.workspace.path, filename);
+
+      // Check various possible locations for the file
+      const possiblePaths = [
+        providedPath, // Absolute path as provided
+        path.resolve(providedPath), // Resolved relative path
+        path.join(process.cwd(), providedPath), // Relative to current working directory
+        workspacePath, // Already in workspace
+      ];
+
+      for (const sourcePath of possiblePaths) {
+        try {
+          if (fsSync.existsSync(sourcePath)) {
+            // File found - copy to workspace if not already there
+            if (sourcePath !== workspacePath && !sourcePath.startsWith(this.workspace.path)) {
+              await fs.copyFile(sourcePath, workspacePath);
+              console.log(`[ToolRegistry] Copied MCP file to workspace: ${sourcePath} -> ${workspacePath}`);
+            }
+
+            // Emit file_created event with workspace-relative path
+            this.daemon.logEvent(this.taskId, 'file_created', {
+              path: filename,
+              type: 'screenshot',
+              source: 'mcp',
+            });
+
+            // Register as artifact if it's an image
+            const ext = path.extname(filename).toLowerCase();
+            const imageExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp'];
+            if (imageExtensions.includes(ext)) {
+              const mimeTypes: Record<string, string> = {
+                '.png': 'image/png',
+                '.jpg': 'image/jpeg',
+                '.jpeg': 'image/jpeg',
+                '.gif': 'image/gif',
+                '.webp': 'image/webp',
+                '.bmp': 'image/bmp',
+              };
+              this.daemon.registerArtifact(this.taskId, workspacePath, mimeTypes[ext] || 'image/png');
+            }
+
+            break;
+          }
+        } catch (error) {
+          // Continue checking other paths
+        }
+      }
     }
 
     // Return as-is if not in MCP format
