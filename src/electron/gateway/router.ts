@@ -1571,6 +1571,19 @@ export class MessageRouter {
   }
 
   /**
+   * Send any artifacts (images, documents) created during task execution
+   * Called when follow-ups complete to deliver screenshots, etc.
+   */
+  async sendArtifacts(taskId: string): Promise<void> {
+    const pending = this.pendingTaskResponses.get(taskId);
+    if (!pending) {
+      return;
+    }
+
+    await this.sendTaskArtifacts(taskId, pending.adapter, pending.chatId);
+  }
+
+  /**
    * Handle task completion
    * Note: We keep the session linked to the task for follow-up messages
    */
