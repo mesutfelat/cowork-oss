@@ -493,7 +493,8 @@ If requested by the rights holder, we will update naming/branding to avoid confu
   - **Context-Aware Tool Isolation** - Memory/clipboard tools blocked in shared gateway contexts
   - **Concurrent Access Safety** - Mutex locks and idempotency for critical operations
   - **macOS Sandbox Profiles** - Shell command sandboxing with filesystem/network restrictions
-  - **118 Security Unit Tests** - Comprehensive test suite for security components
+  - **Brute-Force Protection** - Pairing code lockout after 5 failed attempts (15 min cooldown)
+  - **132 Security Unit Tests** - Comprehensive test suite for security components
 
 ### Planned
 - [ ] VM sandbox using macOS Virtualization.framework
