@@ -26,7 +26,7 @@ const DEFAULT_SETTINGS: GuardrailSettings = {
   customBlockedPatterns: [],
 
   // Auto-Approve Trusted Commands
-  autoApproveTrustedCommands: false,
+  autoApproveTrustedCommands: true,  // Enabled by default for common safe commands
   trustedCommandPatterns: [],
 
   // File Size

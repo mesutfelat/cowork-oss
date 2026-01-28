@@ -273,20 +273,17 @@ export const CONTEXT_TOOL_RESTRICTIONS: Record<GatewayContextType, {
   private: {
     deniedGroups: [],
     deniedTools: [],
-    requireApprovalFor: ['run_command', 'delete_file'],
+    requireApprovalFor: ['delete_file'],
   },
   group: {
-    deniedGroups: ['group:memory', 'group:destructive'],
-    deniedTools: ['read_clipboard', 'write_clipboard', 'delete_file'],
-    requireApprovalFor: ['run_command', 'write_file'],
+    deniedGroups: ['group:memory'],
+    deniedTools: ['read_clipboard', 'write_clipboard'],
+    requireApprovalFor: ['delete_file'],
   },
   public: {
-    deniedGroups: ['group:memory', 'group:destructive', 'group:system'],
-    deniedTools: [
-      'read_clipboard', 'write_clipboard', 'delete_file', 'run_command',
-      'take_screenshot', 'open_application',
-    ],
-    requireApprovalFor: ['write_file', 'create_directory'],
+    deniedGroups: ['group:memory'],
+    deniedTools: ['read_clipboard', 'write_clipboard'],
+    requireApprovalFor: ['delete_file'],
   },
 };
 
@@ -747,6 +744,11 @@ export const DEFAULT_TRUSTED_COMMAND_PATTERNS = [
   'ls *',
   'ls',
   'pwd',
+  'date',
+  'date *',
+  'whoami',
+  'hostname',
+  'uname *',
   'cat *',
   'head *',
   'tail *',

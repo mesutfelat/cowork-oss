@@ -216,30 +216,58 @@ describe('SecurityPolicyManager', () => {
         expect(result.allowed).toBe(false);
       });
 
-      it('should deny destructive tools in group context', () => {
+      it('should require approval for delete_file in group context', () => {
         const workspace = createMockWorkspace({ delete: true, shell: true });
         const manager = createPolicyManager(workspace, createMockGuardrails(), 'group');
 
+        // delete_file requires approval in group context
         const deleteResult = manager.checkToolAccess('delete_file');
-        expect(deleteResult.allowed).toBe(false);
+        expect(deleteResult.requiresApproval).toBe(true);
+      });
+
+      it('should allow shell commands in group context (workspace permission controls)', () => {
+        const workspace = createMockWorkspace({ shell: true });
+        const manager = createPolicyManager(workspace, createMockGuardrails(), 'group');
+
+        // run_command is allowed in group context (not blocked by context restrictions)
+        const result = manager.checkToolAccess('run_command');
+        expect(result.allowed).toBe(true);
       });
     });
 
     describe('Public context', () => {
-      it('should deny system tools in public context', () => {
+      it('should deny memory tools in public context', () => {
         const workspace = createMockWorkspace({ read: true, write: true });
         const manager = createPolicyManager(workspace, createMockGuardrails(), 'public');
 
-        const result = manager.checkToolAccess('take_screenshot');
+        const result = manager.checkToolAccess('read_clipboard');
         expect(result.allowed).toBe(false);
       });
 
-      it('should deny all destructive operations in public context', () => {
-        const workspace = createMockWorkspace({ shell: true, delete: true });
+      it('should allow system tools in public context (workspace permission controls)', () => {
+        const workspace = createMockWorkspace({ read: true, write: true });
         const manager = createPolicyManager(workspace, createMockGuardrails(), 'public');
 
-        expect(manager.checkToolAccess('run_command').allowed).toBe(false);
-        expect(manager.checkToolAccess('delete_file').allowed).toBe(false);
+        // System tools are allowed - no longer blocked by context
+        const result = manager.checkToolAccess('take_screenshot');
+        expect(result.allowed).toBe(true);
+      });
+
+      it('should allow shell commands in public context (workspace permission controls)', () => {
+        const workspace = createMockWorkspace({ shell: true });
+        const manager = createPolicyManager(workspace, createMockGuardrails(), 'public');
+
+        // run_command is allowed in public context
+        expect(manager.checkToolAccess('run_command').allowed).toBe(true);
+      });
+
+      it('should require approval for delete_file in public context', () => {
+        const workspace = createMockWorkspace({ delete: true });
+        const manager = createPolicyManager(workspace, createMockGuardrails(), 'public');
+
+        // delete_file requires approval
+        const result = manager.checkToolAccess('delete_file');
+        expect(result.requiresApproval).toBe(true);
       });
     });
   });
