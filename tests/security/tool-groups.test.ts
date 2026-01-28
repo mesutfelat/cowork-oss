@@ -172,21 +172,16 @@ describe('Context Tool Restrictions (C1 invariant)', () => {
       expect(privateRestrictions.deniedTools).toHaveLength(0);
     });
 
-    it('should still require approval for dangerous operations', () => {
-      expect(privateRestrictions.requireApprovalFor).toContain('run_command');
+    it('should require approval for delete operations', () => {
       expect(privateRestrictions.requireApprovalFor).toContain('delete_file');
     });
   });
 
-  describe('Group context (moderately restrictive)', () => {
+  describe('Group context', () => {
     const groupRestrictions = CONTEXT_TOOL_RESTRICTIONS['group'];
 
     it('should deny memory group (C1: Memory Tool Isolation)', () => {
       expect(groupRestrictions.deniedGroups).toContain('group:memory');
-    });
-
-    it('should deny destructive group', () => {
-      expect(groupRestrictions.deniedGroups).toContain('group:destructive');
     });
 
     it('should explicitly deny clipboard tools', () => {
@@ -194,47 +189,46 @@ describe('Context Tool Restrictions (C1 invariant)', () => {
       expect(groupRestrictions.deniedTools).toContain('write_clipboard');
     });
 
-    it('should require approval for write operations', () => {
-      expect(groupRestrictions.requireApprovalFor).toContain('write_file');
+    it('should require approval for delete operations', () => {
+      expect(groupRestrictions.requireApprovalFor).toContain('delete_file');
+    });
+
+    it('should allow shell commands (workspace permission controls this)', () => {
+      expect(groupRestrictions.deniedTools).not.toContain('run_command');
+      expect(groupRestrictions.deniedGroups).not.toContain('group:destructive');
     });
   });
 
-  describe('Public context (most restrictive)', () => {
+  describe('Public context', () => {
     const publicRestrictions = CONTEXT_TOOL_RESTRICTIONS['public'];
 
-    it('should deny memory, destructive, and system groups', () => {
+    it('should deny memory group (C1: Memory Tool Isolation)', () => {
       expect(publicRestrictions.deniedGroups).toContain('group:memory');
-      expect(publicRestrictions.deniedGroups).toContain('group:destructive');
-      expect(publicRestrictions.deniedGroups).toContain('group:system');
     });
 
-    it('should deny more tools than group context', () => {
-      const groupDenied = CONTEXT_TOOL_RESTRICTIONS['group'].deniedTools.length;
-      const publicDenied = publicRestrictions.deniedTools.length;
-      expect(publicDenied).toBeGreaterThanOrEqual(groupDenied);
+    it('should explicitly deny clipboard tools', () => {
+      expect(publicRestrictions.deniedTools).toContain('read_clipboard');
+      expect(publicRestrictions.deniedTools).toContain('write_clipboard');
     });
 
-    it('should deny shell commands', () => {
-      expect(publicRestrictions.deniedTools).toContain('run_command');
+    it('should require approval for delete operations', () => {
+      expect(publicRestrictions.requireApprovalFor).toContain('delete_file');
     });
 
-    it('should deny screenshot and app launch', () => {
-      expect(publicRestrictions.deniedTools).toContain('take_screenshot');
-      expect(publicRestrictions.deniedTools).toContain('open_application');
+    it('should allow shell commands (workspace permission controls this)', () => {
+      expect(publicRestrictions.deniedTools).not.toContain('run_command');
     });
   });
 
-  describe('Restriction monotonicity', () => {
-    it('should have increasingly restrictive contexts (private < group < public)', () => {
-      const privateDenied = CONTEXT_TOOL_RESTRICTIONS['private'].deniedGroups.length +
-                           CONTEXT_TOOL_RESTRICTIONS['private'].deniedTools.length;
+  describe('Restriction consistency', () => {
+    it('should have consistent restrictions across group and public contexts', () => {
       const groupDenied = CONTEXT_TOOL_RESTRICTIONS['group'].deniedGroups.length +
                          CONTEXT_TOOL_RESTRICTIONS['group'].deniedTools.length;
       const publicDenied = CONTEXT_TOOL_RESTRICTIONS['public'].deniedGroups.length +
                           CONTEXT_TOOL_RESTRICTIONS['public'].deniedTools.length;
 
-      expect(groupDenied).toBeGreaterThanOrEqual(privateDenied);
-      expect(publicDenied).toBeGreaterThanOrEqual(groupDenied);
+      // Group and public now have the same restrictions (only memory/clipboard blocked)
+      expect(groupDenied).toBe(publicDenied);
     });
   });
 });
