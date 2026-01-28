@@ -187,6 +187,11 @@ export class SecurityManager {
   /**
    * Internal pairing verification logic (called within mutex)
    */
+  // Maximum pairing attempts before lockout (brute-force protection)
+  private static readonly MAX_PAIRING_ATTEMPTS = 5;
+  // Lockout duration in milliseconds (15 minutes)
+  private static readonly PAIRING_LOCKOUT_MS = 15 * 60 * 1000;
+
   private async doVerifyPairingCode(
     channel: Channel,
     userId: string,
@@ -198,15 +203,47 @@ export class SecurityManager {
       return { success: true, user: existingUser };
     }
 
+    // Brute-force protection: Check if user is locked out due to too many failed attempts
+    if (existingUser && existingUser.pairingAttempts >= SecurityManager.MAX_PAIRING_ATTEMPTS) {
+      // Check if lockout period has passed (use pairingExpiresAt as lockout timestamp)
+      const lockoutUntil = existingUser.pairingExpiresAt;
+      if (lockoutUntil && Date.now() < lockoutUntil) {
+        const remainingMinutes = Math.ceil((lockoutUntil - Date.now()) / 60000);
+        return {
+          success: false,
+          error: `Too many failed attempts. Please wait ${remainingMinutes} minute(s) before trying again.`,
+        };
+      }
+      // Lockout expired - reset attempts
+      this.userRepo.update(existingUser.id, {
+        pairingAttempts: 0,
+        pairingExpiresAt: undefined,
+      });
+    }
+
     // Look up the pairing code across all users in the channel
     const codeOwner = this.userRepo.findByPairingCode(channel.id, code.toUpperCase());
 
     if (!codeOwner) {
       // Code not found - increment attempts on the requesting user if they exist
       if (existingUser) {
-        this.userRepo.update(existingUser.id, {
-          pairingAttempts: existingUser.pairingAttempts + 1,
-        });
+        const newAttempts = existingUser.pairingAttempts + 1;
+        const updates: { pairingAttempts: number; pairingExpiresAt?: number } = {
+          pairingAttempts: newAttempts,
+        };
+        // Set lockout timestamp if max attempts reached
+        if (newAttempts >= SecurityManager.MAX_PAIRING_ATTEMPTS) {
+          updates.pairingExpiresAt = Date.now() + SecurityManager.PAIRING_LOCKOUT_MS;
+        }
+        this.userRepo.update(existingUser.id, updates);
+
+        // Warn user about remaining attempts
+        const remaining = SecurityManager.MAX_PAIRING_ATTEMPTS - newAttempts;
+        if (remaining > 0) {
+          return { success: false, error: `Invalid pairing code. ${remaining} attempt(s) remaining.` };
+        } else {
+          return { success: false, error: 'Too many failed attempts. Please wait 15 minutes before trying again.' };
+        }
       }
       return { success: false, error: 'Invalid pairing code' };
     }

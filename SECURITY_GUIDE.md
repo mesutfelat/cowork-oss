@@ -429,6 +429,25 @@ Critical operations use mutex locks and idempotency guarantees to prevent race c
 | Approval responses | Idempotency prevents double-approval |
 | Task creation | Deduplication via idempotency keys |
 
+### Brute-Force Protection
+
+Pairing code verification includes protection against brute-force attacks:
+
+| Feature | Value | Description |
+|---------|-------|-------------|
+| Max attempts | 5 | Failed attempts before lockout |
+| Lockout duration | 15 minutes | Time before retry allowed |
+| Code charset | 32 characters | Excludes ambiguous chars (I, O, 1, 0) |
+| Code length | 6 characters | ~1 billion combinations |
+| Estimated crack time | >1000 years | With lockout enabled |
+
+When a user exceeds the maximum attempts:
+1. Account is locked for 15 minutes
+2. User sees remaining lockout time
+3. Attempts counter resets after lockout expires
+
+**Implementation**: `src/electron/gateway/security.ts`
+
 ### Shell Command Sandboxing
 
 On macOS, shell commands execute within a `sandbox-exec` profile that:
@@ -443,7 +462,7 @@ On macOS, shell commands execute within a `sandbox-exec` profile that:
 ### Running Security Tests
 
 ```bash
-npm test                    # Run all 118 security tests
+npm test                    # Run all 132 security tests
 npm run test:coverage       # With coverage report
 ```
 
@@ -452,6 +471,7 @@ Test files:
 - `tests/security/policy-manager.test.ts` - Policy evaluation tests
 - `tests/security/concurrency.test.ts` - Mutex and idempotency tests
 - `tests/security/sandbox-runner.test.ts` - Sandbox execution tests
+- `tests/security/gateway-security.test.ts` - Brute-force protection tests
 
 ---
 
