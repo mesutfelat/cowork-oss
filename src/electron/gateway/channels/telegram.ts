@@ -16,7 +16,7 @@
  * - Health check endpoint for webhook mode
  */
 
-import { Bot, Context, webhookCallback, InputFile, GrammyError, HttpError } from 'grammy';
+import { Bot, Context, webhookCallback, InputFile, GrammyError, HttpError, InlineKeyboard } from 'grammy';
 import { sequentialize } from '@grammyjs/runner';
 import { apiThrottler } from '@grammyjs/transformer-throttler';
 import * as fs from 'fs';
@@ -33,6 +33,9 @@ import {
   ChannelInfo,
   TelegramConfig,
   MessageAttachment,
+  CallbackQuery,
+  CallbackQueryHandler,
+  InlineKeyboardButton,
 } from './types';
 
 /**
@@ -121,6 +124,7 @@ export class TelegramAdapter implements ChannelAdapter {
   private messageHandlers: MessageHandler[] = [];
   private errorHandlers: ErrorHandler[] = [];
   private statusHandlers: StatusHandler[] = [];
+  private callbackQueryHandlers: CallbackQueryHandler[] = [];
   private config: TelegramAdapterConfig;
 
   // Message deduplication: track processed update IDs
@@ -207,6 +211,11 @@ export class TelegramAdapter implements ChannelAdapter {
       // Set up message handler with deduplication and fragment assembly
       this.bot.on('message:text', async (ctx) => {
         await this.handleTextMessage(ctx);
+      });
+
+      // Set up callback query handler for inline keyboards
+      this.bot.on('callback_query:data', async (ctx) => {
+        await this.handleCallbackQuery(ctx);
       });
 
       // Handle errors with 409 detection and backoff
@@ -763,6 +772,21 @@ export class TelegramAdapter implements ChannelAdapter {
         options.reply_to_message_id = parseInt(message.replyTo, 10);
       }
 
+      // Forum topic thread support
+      if (message.threadId) {
+        options.message_thread_id = parseInt(message.threadId, 10);
+      }
+
+      // Link preview control
+      if (message.disableLinkPreview) {
+        options.link_preview_options = { is_disabled: true };
+      }
+
+      // Inline keyboard support
+      if (message.inlineKeyboard && message.inlineKeyboard.length > 0) {
+        options.reply_markup = this.buildInlineKeyboard(message.inlineKeyboard);
+      }
+
       try {
         const sent = await this.bot.api.sendMessage(message.chatId, processedText, options);
         return sent.message_id.toString();
@@ -770,7 +794,11 @@ export class TelegramAdapter implements ChannelAdapter {
         // If markdown parsing fails, retry without parse_mode
         if (error?.error_code === 400 && error?.description?.includes("can't parse entities")) {
           console.log('Markdown parsing failed, retrying without parse_mode');
-          const plainOptions: Record<string, unknown> = {};
+          const plainOptions: Record<string, unknown> = {
+            ...(message.threadId && { message_thread_id: parseInt(message.threadId, 10) }),
+            ...(message.disableLinkPreview && { link_preview_options: { is_disabled: true } }),
+            ...(message.inlineKeyboard && { reply_markup: this.buildInlineKeyboard(message.inlineKeyboard) }),
+          };
           if (message.replyTo) {
             plainOptions.reply_to_message_id = parseInt(message.replyTo, 10);
           }
@@ -783,6 +811,58 @@ export class TelegramAdapter implements ChannelAdapter {
 
     // If no text but had attachments, return the last attachment message ID
     return lastMessageId || '';
+  }
+
+  /**
+   * Build grammY InlineKeyboard from our button format
+   */
+  private buildInlineKeyboard(buttons: InlineKeyboardButton[][]): InlineKeyboard {
+    const keyboard = new InlineKeyboard();
+    for (const row of buttons) {
+      for (const button of row) {
+        if (button.url) {
+          keyboard.url(button.text, button.url);
+        } else if (button.callbackData) {
+          keyboard.text(button.text, button.callbackData);
+        }
+      }
+      keyboard.row();
+    }
+    return keyboard;
+  }
+
+  /**
+   * Handle incoming callback query from inline keyboard button press
+   */
+  private async handleCallbackQuery(ctx: Context): Promise<void> {
+    const query = ctx.callbackQuery!;
+    if (!query.data || !query.message) {
+      return;
+    }
+
+    const callbackQuery: CallbackQuery = {
+      id: query.id,
+      userId: query.from.id.toString(),
+      userName: query.from.first_name + (query.from.last_name ? ` ${query.from.last_name}` : ''),
+      chatId: query.message.chat.id.toString(),
+      messageId: query.message.message_id.toString(),
+      data: query.data,
+      threadId: (query.message as { message_thread_id?: number }).message_thread_id?.toString(),
+      raw: ctx,
+    };
+
+    // Notify all registered handlers
+    for (const handler of this.callbackQueryHandlers) {
+      try {
+        await handler(callbackQuery);
+      } catch (error) {
+        console.error('Error in callback query handler:', error);
+        this.handleError(
+          error instanceof Error ? error : new Error(String(error)),
+          'callbackQueryHandler'
+        );
+      }
+    }
   }
 
   /**
@@ -1038,6 +1118,58 @@ export class TelegramAdapter implements ChannelAdapter {
    */
   onMessage(handler: MessageHandler): void {
     this.messageHandlers.push(handler);
+  }
+
+  /**
+   * Register a callback query handler (for inline keyboard buttons)
+   */
+  onCallbackQuery(handler: CallbackQueryHandler): void {
+    this.callbackQueryHandlers.push(handler);
+  }
+
+  /**
+   * Answer a callback query (acknowledge button press)
+   * Call this to remove the loading state from the button.
+   */
+  async answerCallbackQuery(queryId: string, text?: string, showAlert?: boolean): Promise<void> {
+    if (!this.bot || this._status !== 'connected') {
+      throw new Error('Telegram bot is not connected');
+    }
+
+    await this.bot.api.answerCallbackQuery(queryId, {
+      text,
+      show_alert: showAlert,
+    });
+  }
+
+  /**
+   * Edit a message with a new inline keyboard
+   */
+  async editMessageWithKeyboard(
+    chatId: string,
+    messageId: string,
+    text?: string,
+    inlineKeyboard?: InlineKeyboardButton[][]
+  ): Promise<void> {
+    if (!this.bot || this._status !== 'connected') {
+      throw new Error('Telegram bot is not connected');
+    }
+
+    const msgId = parseInt(messageId, 10);
+    if (isNaN(msgId)) {
+      throw new Error(`Invalid message ID: ${messageId}`);
+    }
+
+    const options: Record<string, unknown> = {};
+    if (inlineKeyboard && inlineKeyboard.length > 0) {
+      options.reply_markup = this.buildInlineKeyboard(inlineKeyboard);
+    }
+
+    if (text) {
+      await this.bot.api.editMessageText(chatId, msgId, text, options);
+    } else if (inlineKeyboard) {
+      await this.bot.api.editMessageReplyMarkup(chatId, msgId, options);
+    }
   }
 
   /**
@@ -1322,6 +1454,10 @@ export class TelegramAdapter implements ChannelAdapter {
     const from = msg.from!;
     const chat = msg.chat;
 
+    // Check for forum topic (message_thread_id indicates a forum topic)
+    const threadId = msg.message_thread_id?.toString();
+    const isForumTopic = msg.is_topic_message === true || threadId !== undefined;
+
     return {
       messageId: msg.message_id.toString(),
       channel: 'telegram',
@@ -1331,6 +1467,8 @@ export class TelegramAdapter implements ChannelAdapter {
       text: overrideText ?? msg.text ?? '',
       timestamp: new Date(msg.date * 1000),
       replyTo: msg.reply_to_message?.message_id.toString(),
+      threadId,
+      isForumTopic,
       raw: ctx,
     };
   }

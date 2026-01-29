@@ -37,8 +37,24 @@ export interface IncomingMessage {
   replyTo?: string;
   /** Optional attachments */
   attachments?: MessageAttachment[];
+  /** Forum topic thread ID (Telegram) */
+  threadId?: string;
+  /** Whether this is a forum topic message */
+  isForumTopic?: boolean;
   /** Raw message object from the channel SDK */
   raw?: unknown;
+}
+
+/**
+ * Inline keyboard button
+ */
+export interface InlineKeyboardButton {
+  /** Button label text */
+  text: string;
+  /** Callback data sent when button is pressed */
+  callbackData?: string;
+  /** URL to open when button is pressed */
+  url?: string;
 }
 
 /**
@@ -55,7 +71,40 @@ export interface OutgoingMessage {
   parseMode?: 'text' | 'markdown' | 'html';
   /** Optional attachments */
   attachments?: MessageAttachment[];
+  /** Forum topic thread ID (Telegram) */
+  threadId?: string;
+  /** Inline keyboard buttons (rows of buttons) */
+  inlineKeyboard?: InlineKeyboardButton[][];
+  /** Disable link preview (default: false) */
+  disableLinkPreview?: boolean;
 }
+
+/**
+ * Callback query from inline keyboard button press
+ */
+export interface CallbackQuery {
+  /** Unique callback query ID */
+  id: string;
+  /** User who pressed the button */
+  userId: string;
+  /** User display name */
+  userName: string;
+  /** Chat ID where button was pressed */
+  chatId: string;
+  /** Message ID containing the button */
+  messageId: string;
+  /** Callback data from the button */
+  data: string;
+  /** Forum topic thread ID (if in forum) */
+  threadId?: string;
+  /** Raw callback query object */
+  raw?: unknown;
+}
+
+/**
+ * Callback query handler
+ */
+export type CallbackQueryHandler = (query: CallbackQuery) => void | Promise<void>;
 
 /**
  * Message attachment (file, image, etc.)
@@ -188,6 +237,34 @@ export interface ChannelAdapter {
    * @param handler Function to call when a message is received
    */
   onMessage(handler: MessageHandler): void;
+
+  /**
+   * Register a callback query handler (for inline keyboard buttons)
+   * @param handler Function to call when a button is pressed
+   */
+  onCallbackQuery?(handler: CallbackQueryHandler): void;
+
+  /**
+   * Answer a callback query (acknowledge button press)
+   * @param queryId Callback query ID
+   * @param text Optional notification text
+   * @param showAlert Show as alert instead of toast
+   */
+  answerCallbackQuery?(queryId: string, text?: string, showAlert?: boolean): Promise<void>;
+
+  /**
+   * Edit message with inline keyboard
+   * @param chatId Chat ID
+   * @param messageId Message ID
+   * @param text New text (optional)
+   * @param inlineKeyboard New keyboard (optional)
+   */
+  editMessageWithKeyboard?(
+    chatId: string,
+    messageId: string,
+    text?: string,
+    inlineKeyboard?: InlineKeyboardButton[][]
+  ): Promise<void>;
 
   /**
    * Register an error handler
