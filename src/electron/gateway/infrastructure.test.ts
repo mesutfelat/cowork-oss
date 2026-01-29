@@ -172,13 +172,20 @@ describe('Gateway Infrastructure - Repository Logic', () => {
 
   describe('DeliveryTrackingRepository', () => {
     it('should track delivery status progression', () => {
-      const record = {
+      const record: {
+        id: string;
+        messageId: string;
+        status: 'pending' | 'sent' | 'delivered' | 'read' | 'failed';
+        sentAt: number | undefined;
+        deliveredAt: number | undefined;
+        readAt: number | undefined;
+      } = {
         id: 'del-123',
         messageId: 'msg-456',
-        status: 'pending' as const,
-        sentAt: undefined as number | undefined,
-        deliveredAt: undefined as number | undefined,
-        readAt: undefined as number | undefined,
+        status: 'pending',
+        sentAt: undefined,
+        deliveredAt: undefined,
+        readAt: undefined,
       };
 
       // Sent

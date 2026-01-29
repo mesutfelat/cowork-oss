@@ -974,19 +974,6 @@ export class TelegramAdapter implements ChannelAdapter {
   }
 
   /**
-   * Send typing indicator
-   */
-  async sendTyping(chatId: string): Promise<void> {
-    if (!this.bot) return;
-
-    try {
-      await this.bot.api.sendChatAction(chatId, 'typing');
-    } catch {
-      // Ignore errors
-    }
-  }
-
-  /**
    * Convert GitHub-flavored markdown to Telegram-compatible format
    * Telegram legacy Markdown only supports: *bold*, _italic_, `code`, ```code blocks```, [links](url)
    */
@@ -1203,9 +1190,8 @@ export class TelegramAdapter implements ChannelAdapter {
     }
 
     const msgId = parseInt(messageId, 10);
-    await this.bot.api.setMessageReaction(chatId, msgId, {
-      reaction: [{ type: 'emoji', emoji }],
-    });
+    // Cast emoji to the expected type - Telegram will reject invalid emojis at runtime
+    await this.bot.api.setMessageReaction(chatId, msgId, [{ type: 'emoji', emoji: emoji as '👍' }]);
   }
 
   /**
@@ -1217,9 +1203,7 @@ export class TelegramAdapter implements ChannelAdapter {
     }
 
     const msgId = parseInt(messageId, 10);
-    await this.bot.api.setMessageReaction(chatId, msgId, {
-      reaction: [],
-    });
+    await this.bot.api.setMessageReaction(chatId, msgId, []);
   }
 
   /**
