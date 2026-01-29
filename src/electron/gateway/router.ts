@@ -15,6 +15,8 @@ import {
   ChannelType,
   GatewayEvent,
   GatewayEventHandler,
+  CallbackQuery,
+  InlineKeyboardButton,
 } from './channels/types';
 import { TelegramAdapter } from './channels/telegram';
 import { SecurityManager } from './security';
@@ -128,6 +130,13 @@ export class MessageRouter {
     adapter.onMessage(async (message) => {
       await this.handleMessage(adapter, message);
     });
+
+    // Set up callback query handler for inline keyboards
+    if (adapter.onCallbackQuery) {
+      adapter.onCallbackQuery(async (query) => {
+        await this.handleCallbackQuery(adapter, query);
+      });
+    }
 
     // Set up error handler
     adapter.onError((error, context) => {
@@ -583,21 +592,30 @@ export class MessageRouter {
     if (workspaces.length === 0) {
       await adapter.sendMessage({
         chatId: message.chatId,
-        text: '📁 No workspaces configured yet.\n\nAdd a workspace in the CoWork desktop app first.',
+        text: '📁 No workspaces configured yet.\n\nAdd a workspace in the CoWork desktop app first, or use:\n`/addworkspace /path/to/your/project`',
+        parseMode: 'markdown',
       });
       return;
     }
 
-    let text = '📁 *Available Workspaces*\n\n';
-    workspaces.forEach((ws, index) => {
-      text += `${index + 1}. *${ws.name}*\n   \`${ws.path}\`\n\n`;
-    });
-    text += 'Use `/workspace <number>` or `/workspace <name>` to select a workspace.';
+    // Build inline keyboard with workspace buttons
+    const keyboard: InlineKeyboardButton[][] = [];
+    for (const ws of workspaces) {
+      // Create one button per row for better readability
+      keyboard.push([{
+        text: `📁 ${ws.name}`,
+        callbackData: `workspace:${ws.id}`,
+      }]);
+    }
+
+    let text = '📁 *Available Workspaces*\n\nTap a workspace to select it:';
 
     await adapter.sendMessage({
       chatId: message.chatId,
       text,
       parseMode: 'markdown',
+      inlineKeyboard: keyboard,
+      threadId: message.threadId,
     });
   }
 
@@ -1808,16 +1826,22 @@ export class MessageRouter {
       message += `Details: ${JSON.stringify(approval.details, null, 2)}\n\n`;
     }
 
-    message += `Reply with:\n`;
-    message += `• \`/approve\` - Allow this action\n`;
-    message += `• \`/deny\` - Reject this action\n\n`;
     message += `⏳ _Expires in 5 minutes_`;
+
+    // Create inline keyboard with Approve/Deny buttons
+    const keyboard: InlineKeyboardButton[][] = [
+      [
+        { text: '✅ Approve', callbackData: 'approve:' + approval.id },
+        { text: '❌ Deny', callbackData: 'deny:' + approval.id },
+      ],
+    ];
 
     try {
       await pending.adapter.sendMessage({
         chatId: pending.chatId,
         text: message,
         parseMode: 'markdown',
+        inlineKeyboard: keyboard,
       });
     } catch (error) {
       console.error('Error sending approval request:', error);
@@ -2305,32 +2329,58 @@ ${status.queuedCount > 0 ? `Queued task IDs: ${status.queuedTaskIds.join(', ')}`
     adapter: ChannelAdapter,
     message: IncomingMessage
   ): Promise<void> {
-    const providers = LLMProviderFactory.getAvailableProviders();
-    const current = LLMProviderFactory.getSelectedProvider();
+    const status = LLMProviderFactory.getConfigStatus();
+    const current = status.currentProvider;
 
     const providerEmoji: Record<string, string> = {
       anthropic: '🟠',
       openai: '🟢',
-      google: '🔵',
+      gemini: '🔵',
       bedrock: '🟡',
       ollama: '⚪',
-      perplexity: '🟣',
-      pi: '🩷',
+      openrouter: '🟣',
     };
 
-    let text = '🤖 *Available Providers*\n\n';
-    for (const provider of providers) {
+    // Build inline keyboard with provider buttons
+    const keyboard: InlineKeyboardButton[][] = [];
+    const row1: InlineKeyboardButton[] = [];
+    const row2: InlineKeyboardButton[] = [];
+
+    // Get configured providers for the keyboard
+    const providerOrder: LLMProviderType[] = ['anthropic', 'openai', 'gemini', 'bedrock', 'openrouter', 'ollama'];
+
+    for (let i = 0; i < providerOrder.length; i++) {
+      const provider = providerOrder[i];
       const emoji = providerEmoji[provider] || '⚡';
-      const isCurrent = provider === current ? ' ← current' : '';
-      text += `${emoji} \`${provider}\`${isCurrent}\n`;
+      const isCurrent = provider === current ? ' ✓' : '';
+      const providerInfo = status.providers.find(p => p.type === provider);
+      const name = providerInfo?.name || provider;
+
+      const button: InlineKeyboardButton = {
+        text: `${emoji} ${name}${isCurrent}`,
+        callbackData: `provider:${provider}`,
+      };
+
+      // Split into two rows
+      if (i < 3) {
+        row1.push(button);
+      } else {
+        row2.push(button);
+      }
     }
 
-    text += '\n_Use `/provider <name>` to switch_';
+    keyboard.push(row1);
+    keyboard.push(row2);
+
+    const currentProviderInfo = status.providers.find(p => p.type === current);
+    let text = `🤖 *AI Providers*\n\nCurrent: ${currentProviderInfo?.name || current}\n\nTap to switch:`;
 
     await adapter.sendMessage({
       chatId: message.chatId,
       text,
       parseMode: 'markdown',
+      inlineKeyboard: keyboard,
+      threadId: message.threadId,
     });
   }
 
@@ -2470,6 +2520,250 @@ Node.js: \`${nodeVersion}\`
 2. \`/shell on\` (if needed)
 3. Send your task message
 4. \`/newtask\` to start fresh`;
+  }
+
+  /**
+   * Handle callback query from inline keyboard button press
+   */
+  private async handleCallbackQuery(adapter: ChannelAdapter, query: CallbackQuery): Promise<void> {
+    const { data, chatId } = query;
+
+    // Parse callback data (format: action:param)
+    const [action, ...params] = data.split(':');
+    const param = params.join(':');
+
+    try {
+      // Get or create session for this chat
+      const channel = this.channelRepo.findByType(adapter.type);
+      if (!channel) {
+        console.error(`No channel configuration found for ${adapter.type}`);
+        return;
+      }
+
+      // Find existing session or create one
+      let session = this.sessionRepo.findByChatId(channel.id, chatId);
+      if (!session) {
+        // Create a minimal session for handling callback
+        session = this.sessionRepo.create({
+          channelId: channel.id,
+          chatId,
+          state: 'idle',
+        });
+      }
+
+      // Answer the callback to remove loading indicator
+      if (adapter.answerCallbackQuery) {
+        await adapter.answerCallbackQuery(query.id);
+      }
+
+      switch (action) {
+        case 'workspace':
+          await this.handleWorkspaceCallback(adapter, query, session.id, param);
+          break;
+
+        case 'provider':
+          await this.handleProviderCallback(adapter, query, param);
+          break;
+
+        case 'model':
+          await this.handleModelCallback(adapter, query, param);
+          break;
+
+        case 'approve':
+          await this.handleApprovalCallback(adapter, query, session.id, true);
+          break;
+
+        case 'deny':
+          await this.handleApprovalCallback(adapter, query, session.id, false);
+          break;
+
+        default:
+          console.log(`Unknown callback action: ${action}`);
+      }
+    } catch (error) {
+      console.error('Error handling callback query:', error);
+    }
+  }
+
+  /**
+   * Handle workspace selection callback
+   */
+  private async handleWorkspaceCallback(
+    adapter: ChannelAdapter,
+    query: CallbackQuery,
+    sessionId: string,
+    workspaceId: string
+  ): Promise<void> {
+    const workspace = this.workspaceRepo.findById(workspaceId);
+    if (!workspace) {
+      await adapter.sendMessage({
+        chatId: query.chatId,
+        text: '❌ Workspace not found.',
+      });
+      return;
+    }
+
+    // Update session workspace
+    this.sessionManager.setSessionWorkspace(sessionId, workspace.id);
+
+    // Update the original message with the selection
+    if (adapter.editMessageWithKeyboard) {
+      await adapter.editMessageWithKeyboard(
+        query.chatId,
+        query.messageId,
+        `✅ Workspace selected: *${workspace.name}*\n\`${workspace.path}\`\n\nYou can now send messages to create tasks.`
+      );
+    } else {
+      await adapter.sendMessage({
+        chatId: query.chatId,
+        text: `✅ Workspace set to: *${workspace.name}*\n\`${workspace.path}\``,
+        parseMode: 'markdown',
+      });
+    }
+  }
+
+  /**
+   * Handle provider selection callback
+   */
+  private async handleProviderCallback(
+    adapter: ChannelAdapter,
+    query: CallbackQuery,
+    providerType: string
+  ): Promise<void> {
+    const settings = LLMProviderFactory.loadSettings();
+    const status = LLMProviderFactory.getConfigStatus();
+
+    // Update provider
+    const newSettings: LLMSettings = {
+      ...settings,
+      providerType: providerType as LLMProviderType,
+    };
+
+    LLMProviderFactory.saveSettings(newSettings);
+    LLMProviderFactory.clearCache();
+
+    const providerInfo = status.providers.find(p => p.type === providerType);
+
+    // Update the original message
+    if (adapter.editMessageWithKeyboard) {
+      await adapter.editMessageWithKeyboard(
+        query.chatId,
+        query.messageId,
+        `✅ Provider changed to: *${providerInfo?.name || providerType}*\n\nUse /models to see available models.`
+      );
+    } else {
+      await adapter.sendMessage({
+        chatId: query.chatId,
+        text: `✅ Provider changed to: *${providerInfo?.name || providerType}*`,
+        parseMode: 'markdown',
+      });
+    }
+  }
+
+  /**
+   * Handle model selection callback
+   */
+  private async handleModelCallback(
+    adapter: ChannelAdapter,
+    query: CallbackQuery,
+    modelKey: string
+  ): Promise<void> {
+    const settings = LLMProviderFactory.loadSettings();
+    const status = LLMProviderFactory.getConfigStatus();
+    const providerType = status.currentProvider;
+
+    // Save to the appropriate provider-specific setting
+    let newSettings: LLMSettings = { ...settings };
+    let displayName = modelKey;
+
+    switch (providerType) {
+      case 'openai':
+        newSettings.openai = { ...settings.openai, model: modelKey };
+        break;
+      case 'gemini':
+        newSettings.gemini = { ...settings.gemini, model: modelKey };
+        break;
+      case 'openrouter':
+        newSettings.openrouter = { ...settings.openrouter, model: modelKey };
+        break;
+      case 'ollama':
+        newSettings.ollama = { ...settings.ollama, model: modelKey };
+        break;
+      default:
+        newSettings.modelKey = modelKey as ModelKey;
+        const modelInfo = status.models.find(m => m.key === modelKey);
+        displayName = modelInfo?.displayName || modelKey;
+    }
+
+    LLMProviderFactory.saveSettings(newSettings);
+    LLMProviderFactory.clearCache();
+
+    // Update the original message
+    if (adapter.editMessageWithKeyboard) {
+      await adapter.editMessageWithKeyboard(
+        query.chatId,
+        query.messageId,
+        `✅ Model changed to: *${displayName}*`
+      );
+    } else {
+      await adapter.sendMessage({
+        chatId: query.chatId,
+        text: `✅ Model changed to: *${displayName}*`,
+        parseMode: 'markdown',
+      });
+    }
+  }
+
+  /**
+   * Handle approval/deny callback from inline buttons
+   */
+  private async handleApprovalCallback(
+    adapter: ChannelAdapter,
+    query: CallbackQuery,
+    sessionId: string,
+    approved: boolean
+  ): Promise<void> {
+    // Find pending approval for this session
+    const approvalEntry = Array.from(this.pendingApprovals.entries())
+      .find(([, data]) => data.sessionId === sessionId);
+
+    if (!approvalEntry) {
+      if (adapter.editMessageWithKeyboard) {
+        await adapter.editMessageWithKeyboard(
+          query.chatId,
+          query.messageId,
+          '❌ No pending approval request (may have expired).'
+        );
+      }
+      return;
+    }
+
+    const [approvalId] = approvalEntry;
+    this.pendingApprovals.delete(approvalId);
+
+    try {
+      await this.agentDaemon?.respondToApproval(approvalId, approved);
+
+      const statusText = approved ? '✅ Approved! Executing...' : '🛑 Denied. Action cancelled.';
+      if (adapter.editMessageWithKeyboard) {
+        await adapter.editMessageWithKeyboard(
+          query.chatId,
+          query.messageId,
+          statusText
+        );
+      } else {
+        await adapter.sendMessage({
+          chatId: query.chatId,
+          text: statusText,
+        });
+      }
+    } catch (error) {
+      console.error('Error responding to approval:', error);
+      await adapter.sendMessage({
+        chatId: query.chatId,
+        text: '❌ Failed to process response.',
+      });
+    }
   }
 
   /**
