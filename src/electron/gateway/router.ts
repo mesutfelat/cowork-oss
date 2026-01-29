@@ -2132,7 +2132,7 @@ ${status.queuedCount > 0 ? `Queued task IDs: ${status.queuedTaskIds.join(', ')}`
     // Find the last task for this session's workspace that failed or was cancelled
     const tasks = this.taskRepo.findByWorkspace(session.workspaceId);
     const lastFailedTask = tasks
-      .filter((t: Task) => t.status === 'error' || t.status === 'cancelled')
+      .filter((t: Task) => t.status === 'failed' || t.status === 'cancelled')
       .sort((a: Task, b: Task) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
 
     if (!lastFailedTask) {
