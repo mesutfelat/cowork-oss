@@ -112,26 +112,22 @@ export class TrayManager {
       return;
     }
 
-    // Create tray icon (use template image for macOS)
-    const icon = this.getTrayIcon('idle');
+    try {
+      // Create tray icon (use template image for macOS)
+      const icon = this.getTrayIcon('idle');
 
-    this.tray = new Tray(icon);
-    this.tray.setToolTip('CoWork-OSS');
+      this.tray = new Tray(icon);
+      this.tray.setToolTip('CoWork-OSS');
 
-    // Build and set context menu
-    this.updateContextMenu();
+      // Build and set context menu
+      this.updateContextMenu();
 
-    // Handle click events
-    this.tray.on('click', () => {
-      this.toggleMainWindow();
-    });
-
-    // On macOS, right-click shows the menu by default
-    // On Windows/Linux, left-click typically shows the menu
-    if (process.platform !== 'darwin') {
+      // Handle click events - always show context menu on click
       this.tray.on('click', () => {
         this.tray?.popUpContextMenu();
       });
+    } catch (error) {
+      console.error('[TrayManager] Failed to create tray:', error);
     }
   }
 
@@ -156,36 +152,67 @@ export class TrayManager {
   }
 
   /**
-   * Create a programmatic tray icon
-   * This creates a simple "C" icon for CoWork-OSS
+   * Create a programmatic tray icon using raw RGBA bitmap
+   * More reliable than SVG data URLs for Electron tray icons
    */
   private createProgrammaticIcon(state: 'idle' | 'active' | 'error'): NativeImage {
-    // Create a 32x32 icon (will be scaled for retina)
-    const size = 32;
+    // Standard macOS menu bar icon size (16x16 for 1x, 32x32 for 2x retina)
+    const size = 16;
+    const scale = 2; // Create at 2x for retina
+    const actualSize = size * scale;
 
-    // Create a data URL for a simple SVG icon
-    // Using a "C" letter in a circle for CoWork
-    const color = state === 'error' ? '#FF3B30' :
-                  state === 'active' ? '#007AFF' : '#000000';
+    // Create RGBA buffer (4 bytes per pixel)
+    const buffer = Buffer.alloc(actualSize * actualSize * 4);
 
-    const svg = `
-      <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="16" cy="16" r="14" fill="none" stroke="${color}" stroke-width="2"/>
-        <text x="16" y="21" font-family="system-ui, -apple-system, sans-serif" font-size="16" font-weight="600" fill="${color}" text-anchor="middle">C</text>
-      </svg>
-    `;
+    // Get color based on state
+    const [r, g, b] = state === 'error' ? [255, 59, 48] :      // Red
+                       state === 'active' ? [0, 122, 255] :     // Blue
+                       [255, 255, 255];                          // White
 
-    const dataUrl = `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
-    const icon = nativeImage.createFromDataURL(dataUrl);
+    // Draw a simple filled circle
+    const centerX = actualSize / 2;
+    const centerY = actualSize / 2;
+    const outerRadius = actualSize / 2 - 2;
+    const innerRadius = outerRadius - 4;
 
-    // Resize to proper dimensions for tray
-    const resized = icon.resize({ width: 18, height: 18 });
+    for (let y = 0; y < actualSize; y++) {
+      for (let x = 0; x < actualSize; x++) {
+        const dx = x - centerX;
+        const dy = y - centerY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
 
-    if (process.platform === 'darwin') {
-      resized.setTemplateImage(true);
+        const idx = (y * actualSize + x) * 4;
+
+        // Draw ring (between inner and outer radius)
+        if (distance <= outerRadius && distance >= innerRadius) {
+          // Anti-aliasing at edges
+          let alpha = 255;
+          if (distance > outerRadius - 1) {
+            alpha = Math.round(255 * (outerRadius - distance));
+          } else if (distance < innerRadius + 1) {
+            alpha = Math.round(255 * (distance - innerRadius));
+          }
+          alpha = Math.max(0, Math.min(255, alpha));
+
+          buffer[idx] = r;
+          buffer[idx + 1] = g;
+          buffer[idx + 2] = b;
+          buffer[idx + 3] = alpha;
+        } else {
+          // Transparent
+          buffer[idx] = 0;
+          buffer[idx + 1] = 0;
+          buffer[idx + 2] = 0;
+          buffer[idx + 3] = 0;
+        }
+      }
     }
 
-    return resized;
+    return nativeImage.createFromBuffer(buffer, {
+      width: actualSize,
+      height: actualSize,
+      scaleFactor: scale,
+    });
   }
 
   /**
