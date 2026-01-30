@@ -639,8 +639,8 @@ export class MessageRouter {
       return;
     }
 
-    // WhatsApp doesn't support inline keyboards - use text-based selection
-    if (adapter.type === 'whatsapp') {
+    // WhatsApp and iMessage don't support inline keyboards - use text-based selection
+    if (adapter.type === 'whatsapp' || adapter.type === 'imessage') {
       let text = '📁 *Available Workspaces*\n\n';
       workspaces.forEach((ws, index) => {
         text += `${index + 1}. *${ws.name}*\n   \`${ws.path}\`\n\n`;
@@ -1636,8 +1636,8 @@ export class MessageRouter {
       await adapter.startDraftStream(message.chatId);
     }
 
-    // Send acknowledgment - concise for WhatsApp
-    const ackMessage = adapter.type === 'whatsapp'
+    // Send acknowledgment - concise for WhatsApp and iMessage
+    const ackMessage = (adapter.type === 'whatsapp' || adapter.type === 'imessage')
       ? `⏳ Working on it...`
       : `🚀 Task Started: "${taskTitle}"\n\nI'll notify you when it's complete or if I need your input.`;
     await adapter.sendMessage({
@@ -1740,11 +1740,11 @@ export class MessageRouter {
     if (!pending) return;
 
     try {
-      // WhatsApp-optimized completion message
-      const isWhatsApp = pending.adapter.type === 'whatsapp';
+      // WhatsApp/iMessage-optimized completion message
+      const isSimpleMessaging = pending.adapter.type === 'whatsapp' || pending.adapter.type === 'imessage';
       let message: string;
 
-      if (isWhatsApp) {
+      if (isSimpleMessaging) {
         message = result
           ? `✅ Done!\n\n${result}`
           : '✅ Done!';
@@ -1764,8 +1764,8 @@ export class MessageRouter {
           await pending.adapter.sendCompletionReaction(pending.chatId, pending.originalMessageId);
         }
       } else {
-        // Split long messages (Telegram has 4096 char limit, WhatsApp ~65k but keep it reasonable)
-        const maxLen = isWhatsApp ? 4000 : 4000;
+        // Split long messages (Telegram has 4096 char limit, WhatsApp/iMessage ~65k but keep it reasonable)
+        const maxLen = isSimpleMessaging ? 4000 : 4000;
         const chunks = this.splitMessage(message, maxLen);
         for (const chunk of chunks) {
           await pending.adapter.sendMessage({
@@ -1901,23 +1901,38 @@ export class MessageRouter {
 
     message += `⏳ _Expires in 5 minutes_`;
 
-    // Create inline keyboard with Approve/Deny buttons
-    const keyboard: InlineKeyboardButton[][] = [
-      [
-        { text: '✅ Approve', callbackData: 'approve:' + approval.id },
-        { text: '❌ Deny', callbackData: 'deny:' + approval.id },
-      ],
-    ];
+    // WhatsApp/iMessage don't support inline keyboards - use text commands
+    if (pending.adapter.type === 'whatsapp' || pending.adapter.type === 'imessage') {
+      message += `\n\n━━━━━━━━━━━━━━━\nReply */approve* or */deny*`;
 
-    try {
-      await pending.adapter.sendMessage({
-        chatId: pending.chatId,
-        text: message,
-        parseMode: 'markdown',
-        inlineKeyboard: keyboard,
-      });
-    } catch (error) {
-      console.error('Error sending approval request:', error);
+      try {
+        await pending.adapter.sendMessage({
+          chatId: pending.chatId,
+          text: message,
+          parseMode: 'markdown',
+        });
+      } catch (error) {
+        console.error('Error sending approval request:', error);
+      }
+    } else {
+      // Create inline keyboard with Approve/Deny buttons for Telegram/Discord
+      const keyboard: InlineKeyboardButton[][] = [
+        [
+          { text: '✅ Approve', callbackData: 'approve:' + approval.id },
+          { text: '❌ Deny', callbackData: 'deny:' + approval.id },
+        ],
+      ];
+
+      try {
+        await pending.adapter.sendMessage({
+          chatId: pending.chatId,
+          text: message,
+          parseMode: 'markdown',
+          inlineKeyboard: keyboard,
+        });
+      } catch (error) {
+        console.error('Error sending approval request:', error);
+      }
     }
   }
 
@@ -2446,15 +2461,37 @@ ${status.queuedCount > 0 ? `Queued task IDs: ${status.queuedTaskIds.join(', ')}`
     keyboard.push(row2);
 
     const currentProviderInfo = status.providers.find(p => p.type === current);
-    let text = `🤖 *AI Providers*\n\nCurrent: ${currentProviderInfo?.name || current}\n\nTap to switch:`;
 
-    await adapter.sendMessage({
-      chatId: message.chatId,
-      text,
-      parseMode: 'markdown',
-      inlineKeyboard: keyboard,
-      threadId: message.threadId,
-    });
+    // WhatsApp/iMessage don't support inline keyboards - use text-based selection
+    if (adapter.type === 'whatsapp' || adapter.type === 'imessage') {
+      let text = `🤖 *AI Providers*\n\nCurrent: *${currentProviderInfo?.name || current}*\n\n`;
+      providerOrder.forEach((provider, index) => {
+        const emoji = providerEmoji[provider] || '⚡';
+        const providerInfo = status.providers.find(p => p.type === provider);
+        const name = providerInfo?.name || provider;
+        const isCurrent = provider === current ? ' ✓' : '';
+        text += `${index + 1}. ${emoji} *${name}*${isCurrent}\n`;
+      });
+      text += '\n━━━━━━━━━━━━━━━\n';
+      text += 'Reply with number to switch.\nExample: `1` for Anthropic';
+
+      await adapter.sendMessage({
+        chatId: message.chatId,
+        text,
+        parseMode: 'markdown',
+        threadId: message.threadId,
+      });
+    } else {
+      let text = `🤖 *AI Providers*\n\nCurrent: ${currentProviderInfo?.name || current}\n\nTap to switch:`;
+
+      await adapter.sendMessage({
+        chatId: message.chatId,
+        text,
+        parseMode: 'markdown',
+        inlineKeyboard: keyboard,
+        threadId: message.threadId,
+      });
+    }
   }
 
   /**
@@ -2557,8 +2594,8 @@ Node.js: \`${nodeVersion}\`
     const session = this.sessionRepo.findById(sessionId);
     const workspaces = this.workspaceRepo.findAll();
 
-    // WhatsApp-optimized welcome flow
-    if (adapter.type === 'whatsapp') {
+    // WhatsApp/iMessage-optimized welcome flow (no inline keyboards)
+    if (adapter.type === 'whatsapp' || adapter.type === 'imessage') {
       if (session?.workspaceId) {
         const workspace = this.workspaceRepo.findById(session.workspaceId);
         await adapter.sendMessage({

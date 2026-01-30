@@ -17,12 +17,14 @@ import {
   DiscordConfig,
   SlackConfig,
   WhatsAppConfig,
+  ImessageConfig,
   GatewayEventHandler,
 } from './channels/types';
 import { TelegramAdapter, createTelegramAdapter } from './channels/telegram';
 import { DiscordAdapter, createDiscordAdapter } from './channels/discord';
 import { SlackAdapter, createSlackAdapter } from './channels/slack';
 import { WhatsAppAdapter, createWhatsAppAdapter } from './channels/whatsapp';
+import { ImessageAdapter, createImessageAdapter } from './channels/imessage';
 import {
   ChannelRepository,
   ChannelUserRepository,
@@ -367,6 +369,49 @@ export class ChannelGateway {
       securityConfig: {
         mode: securityMode,
         allowedUsers: allowedNumbers,
+        pairingCodeTTL: 300, // 5 minutes
+        maxPairingAttempts: 5,
+        rateLimitPerMinute: 30,
+      },
+      status: 'disconnected',
+    });
+
+    return channel;
+  }
+
+  /**
+   * Add a new iMessage channel
+   */
+  async addImessageChannel(
+    name: string,
+    cliPath?: string,
+    dbPath?: string,
+    allowedContacts?: string[],
+    securityMode: 'open' | 'allowlist' | 'pairing' = 'pairing',
+    dmPolicy: 'open' | 'allowlist' | 'pairing' | 'disabled' = 'pairing',
+    groupPolicy: 'open' | 'allowlist' | 'disabled' = 'allowlist'
+  ): Promise<Channel> {
+    // Check if iMessage channel already exists
+    const existing = this.channelRepo.findByType('imessage');
+    if (existing) {
+      throw new Error('iMessage channel already configured. Update or remove it first.');
+    }
+
+    // Create channel record
+    const channel = this.channelRepo.create({
+      type: 'imessage',
+      name,
+      enabled: false, // Don't enable until connected
+      config: {
+        cliPath,
+        dbPath,
+        allowedContacts,
+        dmPolicy,
+        groupPolicy,
+      },
+      securityConfig: {
+        mode: securityMode,
+        allowedUsers: allowedContacts,
         pairingCodeTTL: 300, // 5 minutes
         maxPairingAttempts: 5,
         rateLimitPerMinute: 30,
@@ -748,6 +793,17 @@ export class ChannelGateway {
           responsePrefix: channel.config.responsePrefix as string | undefined ?? '🤖',
         });
 
+      case 'imessage':
+        return createImessageAdapter({
+          enabled: channel.enabled,
+          cliPath: channel.config.cliPath as string | undefined,
+          dbPath: channel.config.dbPath as string | undefined,
+          dmPolicy: channel.config.dmPolicy as 'open' | 'allowlist' | 'pairing' | 'disabled' | undefined,
+          groupPolicy: channel.config.groupPolicy as 'open' | 'allowlist' | 'disabled' | undefined,
+          allowedContacts: channel.config.allowedContacts as string[] | undefined,
+          responsePrefix: channel.config.responsePrefix as string | undefined,
+        });
+
       default:
         throw new Error(`Unsupported channel type: ${channel.type}`);
     }
@@ -763,3 +819,4 @@ export { TelegramAdapter, createTelegramAdapter } from './channels/telegram';
 export { DiscordAdapter, createDiscordAdapter } from './channels/discord';
 export { SlackAdapter, createSlackAdapter } from './channels/slack';
 export { WhatsAppAdapter, createWhatsAppAdapter } from './channels/whatsapp';
+export { ImessageAdapter, createImessageAdapter } from './channels/imessage';
