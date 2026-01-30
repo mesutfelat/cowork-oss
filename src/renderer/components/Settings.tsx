@@ -13,8 +13,9 @@ import { QueueSettings } from './QueueSettings';
 import { SkillsSettings } from './SkillsSettings';
 import { MCPSettings } from './MCPSettings';
 import { BuiltinToolsSettings } from './BuiltinToolsSettings';
+import { TraySettings } from './TraySettings';
 
-type SettingsTab = 'appearance' | 'llm' | 'search' | 'telegram' | 'discord' | 'slack' | 'whatsapp' | 'imessage' | 'updates' | 'guardrails' | 'queue' | 'skills' | 'mcp' | 'tools';
+type SettingsTab = 'appearance' | 'tray' | 'llm' | 'search' | 'telegram' | 'discord' | 'slack' | 'whatsapp' | 'imessage' | 'updates' | 'guardrails' | 'queue' | 'skills' | 'mcp' | 'tools';
 
 interface SettingsProps {
   onBack: () => void;
@@ -672,6 +673,19 @@ export function Settings({ onBack, onSettingsChanged, themeMode, accentColor, on
             </svg>
             Appearance
           </button>
+          {navigator.platform.toLowerCase().includes('mac') && (
+            <button
+              className={`settings-nav-item ${activeTab === 'tray' ? 'active' : ''}`}
+              onClick={() => setActiveTab('tray')}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="2" y="3" width="20" height="4" rx="1" />
+                <path d="M12 7v4M8 11h8" />
+                <rect x="4" y="14" width="16" height="7" rx="1" />
+              </svg>
+              Menu Bar
+            </button>
+          )}
           <button
             className={`settings-nav-item ${activeTab === 'llm' ? 'active' : ''}`}
             onClick={() => setActiveTab('llm')}
@@ -817,6 +831,8 @@ export function Settings({ onBack, onSettingsChanged, themeMode, accentColor, on
               onThemeChange={onThemeChange}
               onAccentChange={onAccentChange}
             />
+          ) : activeTab === 'tray' ? (
+            <TraySettings />
           ) : activeTab === 'telegram' ? (
             <TelegramSettings />
           ) : activeTab === 'discord' ? (
