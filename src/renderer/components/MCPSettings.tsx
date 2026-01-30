@@ -95,6 +95,7 @@ export function MCPSettings() {
   const [editingServer, setEditingServer] = useState<string | null>(null);
   const [editServerArgs, setEditServerArgs] = useState('');
   const [editServerEnv, setEditServerEnv] = useState('');
+  const [editServerPaths, setEditServerPaths] = useState<string[]>([]);
 
   useEffect(() => {
     loadData();
@@ -251,12 +252,49 @@ export function MCPSettings() {
     }
   };
 
+  const isFilesystemServer = (config: MCPServerConfig | undefined): boolean => {
+    if (!config) return false;
+    // Check if it's the filesystem server by command or name
+    const commandMatch = config.command?.includes('server-filesystem') ||
+      config.args?.some(arg => arg.includes('server-filesystem'));
+    const nameMatch = config.name?.toLowerCase() === 'filesystem';
+    return commandMatch || nameMatch;
+  };
+
   const handleOpenEditServer = (serverId: string) => {
     const config = settings?.servers.find(s => s.id === serverId);
     if (!config) return;
 
-    // Convert args array to space-separated string
-    setEditServerArgs(config.args?.join(' ') || '');
+    // For Filesystem server, extract paths from args (after -y @modelcontextprotocol/server-filesystem)
+    if (isFilesystemServer(config)) {
+      const paths: string[] = [];
+      const args = config.args || [];
+      // Find paths - they come after the package name
+      let foundPackage = false;
+      for (const arg of args) {
+        if (arg.includes('server-filesystem')) {
+          foundPackage = true;
+          continue;
+        }
+        if (foundPackage && arg.startsWith('/')) {
+          paths.push(arg);
+        }
+      }
+      setEditServerPaths(paths);
+    } else {
+      setEditServerPaths([]);
+    }
+
+    // Convert args array to space-separated string (excluding filesystem paths for that server)
+    if (isFilesystemServer(config)) {
+      // For filesystem server, only show non-path args
+      const nonPathArgs = (config.args || []).filter(arg =>
+        !arg.startsWith('/') || arg.includes('server-filesystem')
+      );
+      setEditServerArgs(nonPathArgs.join(' '));
+    } else {
+      setEditServerArgs(config.args?.join(' ') || '');
+    }
 
     // Convert env object to KEY=VALUE format
     const envString = config.env
@@ -271,8 +309,15 @@ export function MCPSettings() {
     if (!editingServer) return;
 
     try {
+      const config = settings?.servers.find(s => s.id === editingServer);
+
       // Parse args from space-separated string
-      const args = editServerArgs ? editServerArgs.split(' ').filter(a => a.trim()) : [];
+      let args = editServerArgs ? editServerArgs.split(' ').filter(a => a.trim()) : [];
+
+      // For Filesystem server, append the paths to args
+      if (isFilesystemServer(config)) {
+        args = [...args, ...editServerPaths];
+      }
 
       // Parse env from KEY=VALUE format
       const env: Record<string, string> = {};
@@ -301,6 +346,21 @@ export function MCPSettings() {
       console.error('Failed to update server:', error);
       alert(`Failed to update server: ${error.message}`);
     }
+  };
+
+  const handleAddPath = async () => {
+    try {
+      const result = await window.electronAPI.selectFolder();
+      if (result && !editServerPaths.includes(result)) {
+        setEditServerPaths([...editServerPaths, result]);
+      }
+    } catch (error) {
+      console.error('Failed to open folder picker:', error);
+    }
+  };
+
+  const handleRemovePath = (pathToRemove: string) => {
+    setEditServerPaths(editServerPaths.filter(p => p !== pathToRemove));
   };
 
   const handleSaveSettings = async () => {
@@ -780,19 +840,68 @@ export function MCPSettings() {
               </button>
             </div>
             <div className="mcp-modal-content">
-              <div className="settings-field">
-                <label>Command Arguments</label>
-                <input
-                  type="text"
-                  value={editServerArgs}
-                  onChange={(e) => setEditServerArgs(e.target.value)}
-                  placeholder="e.g., postgresql://user:pass@localhost/db"
-                />
-                <p className="settings-description">
-                  Space-separated arguments passed to the server command.
-                  For PostgreSQL, enter the database URL here.
-                </p>
-              </div>
+              {/* Filesystem Server: Show Allowed Paths UI */}
+              {isFilesystemServer(settings?.servers.find(s => s.id === editingServer)) && (
+                <div className="settings-field">
+                  <label>Allowed Paths</label>
+                  <p className="settings-description">
+                    The Filesystem server can only access these directories. Add folders you want to allow.
+                  </p>
+                  <div className="mcp-paths-list">
+                    {editServerPaths.length === 0 ? (
+                      <div className="mcp-paths-empty">
+                        No paths configured. Add at least one folder.
+                      </div>
+                    ) : (
+                      editServerPaths.map((path, index) => (
+                        <div key={index} className="mcp-path-item">
+                          <span className="mcp-path-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                            </svg>
+                          </span>
+                          <span className="mcp-path-value">{path}</span>
+                          <button
+                            className="mcp-path-remove"
+                            onClick={() => handleRemovePath(path)}
+                            title="Remove path"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M18 6L6 18M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  <button
+                    className="button-small button-secondary mcp-add-path-btn"
+                    onClick={handleAddPath}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M12 5v14M5 12h14" />
+                    </svg>
+                    Add Folder
+                  </button>
+                </div>
+              )}
+
+              {/* Non-Filesystem Server: Show generic args */}
+              {!isFilesystemServer(settings?.servers.find(s => s.id === editingServer)) && (
+                <div className="settings-field">
+                  <label>Command Arguments</label>
+                  <input
+                    type="text"
+                    value={editServerArgs}
+                    onChange={(e) => setEditServerArgs(e.target.value)}
+                    placeholder="e.g., postgresql://user:pass@localhost/db"
+                  />
+                  <p className="settings-description">
+                    Space-separated arguments passed to the server command.
+                    For PostgreSQL, enter the database URL here.
+                  </p>
+                </div>
+              )}
 
               <div className="settings-field">
                 <label>Environment Variables</label>
