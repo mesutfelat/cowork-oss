@@ -505,7 +505,7 @@ export interface ElectronAPI {
   getBedrockModels: (config?: { region?: string; accessKeyId?: string; secretAccessKey?: string; profile?: string }) => Promise<Array<{ id: string; name: string; provider: string; description: string }>>;
   // Gateway / Channel APIs
   getGatewayChannels: () => Promise<any[]>;
-  addGatewayChannel: (data: { type: string; name: string; botToken?: string; securityMode?: string; applicationId?: string; guildIds?: string[]; appToken?: string; signingSecret?: string; allowedNumbers?: string[]; selfChatMode?: boolean; responsePrefix?: string }) => Promise<any>;
+  addGatewayChannel: (data: { type: string; name: string; botToken?: string; securityMode?: string; applicationId?: string; guildIds?: string[]; appToken?: string; signingSecret?: string; allowedNumbers?: string[]; selfChatMode?: boolean; responsePrefix?: string; cliPath?: string; dbPath?: string; allowedContacts?: string[]; dmPolicy?: string; groupPolicy?: string }) => Promise<any>;
   updateGatewayChannel: (data: { id: string; name?: string; securityMode?: string; config?: { selfChatMode?: boolean; responsePrefix?: string; [key: string]: unknown } }) => Promise<void>;
   removeGatewayChannel: (id: string) => Promise<void>;
   enableGatewayChannel: (id: string) => Promise<void>;

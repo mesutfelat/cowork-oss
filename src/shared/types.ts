@@ -618,7 +618,7 @@ export interface LLMConfigStatus {
 }
 
 // Gateway / Channel types
-export type ChannelType = 'telegram' | 'discord' | 'slack' | 'whatsapp';
+export type ChannelType = 'telegram' | 'discord' | 'slack' | 'whatsapp' | 'imessage';
 export type ChannelStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
 export type SecurityMode = 'open' | 'allowlist' | 'pairing';
 
@@ -663,6 +663,12 @@ export interface AddChannelRequest {
   allowedNumbers?: string[];
   selfChatMode?: boolean;
   responsePrefix?: string;
+  // iMessage-specific fields
+  cliPath?: string;
+  dbPath?: string;
+  dmPolicy?: 'open' | 'allowlist' | 'pairing' | 'disabled';
+  groupPolicy?: 'open' | 'allowlist' | 'disabled';
+  allowedContacts?: string[];
 }
 
 export interface UpdateChannelRequest {

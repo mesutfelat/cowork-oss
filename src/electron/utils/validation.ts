@@ -211,11 +211,27 @@ export const AddWhatsAppChannelSchema = z.object({
   responsePrefix: z.string().max(20).optional(),
 });
 
+export const DmPolicySchema = z.enum(['open', 'allowlist', 'pairing', 'disabled']);
+export const GroupPolicySchema = z.enum(['open', 'allowlist', 'disabled']);
+
+export const AddImessageChannelSchema = z.object({
+  type: z.literal('imessage'),
+  name: z.string().min(1).max(MAX_TITLE_LENGTH),
+  cliPath: z.string().max(500).optional(),
+  dbPath: z.string().max(500).optional(),
+  allowedContacts: z.array(z.string().max(100)).max(100).optional(),
+  securityMode: SecurityModeSchema.optional(),
+  dmPolicy: DmPolicySchema.optional(),
+  groupPolicy: GroupPolicySchema.optional(),
+  responsePrefix: z.string().max(20).optional(),
+});
+
 export const AddChannelSchema = z.discriminatedUnion('type', [
   AddTelegramChannelSchema,
   AddDiscordChannelSchema,
   AddSlackChannelSchema,
   AddWhatsAppChannelSchema,
+  AddImessageChannelSchema,
 ]);
 
 export const ChannelConfigSchema = z.object({

@@ -973,6 +973,34 @@ export function setupIpcHandlers(
       };
     }
 
+    if (validated.type === 'imessage') {
+      const channel = await gateway.addImessageChannel(
+        validated.name,
+        validated.cliPath,
+        validated.dbPath,
+        validated.allowedContacts,
+        validated.securityMode || 'pairing',
+        validated.dmPolicy || 'pairing',
+        validated.groupPolicy || 'allowlist'
+      );
+
+      // Automatically enable and connect iMessage
+      gateway.enableChannel(channel.id).catch((err) => {
+        console.error('Failed to enable iMessage channel:', err);
+      });
+
+      return {
+        id: channel.id,
+        type: channel.type,
+        name: channel.name,
+        enabled: channel.enabled,
+        status: 'connecting', // Indicate we're connecting
+        securityMode: channel.securityConfig.mode,
+        createdAt: channel.createdAt,
+        config: channel.config,
+      };
+    }
+
     // TypeScript exhaustiveness check - should never reach here due to discriminated union
     throw new Error(`Unsupported channel type`);
   });
