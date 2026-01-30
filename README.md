@@ -114,6 +114,7 @@ CoWork-OSS is **free and open source**. To run tasks, you must configure your ow
 - **Telegram Bot**: Run tasks remotely via Telegram with workspace selection and streaming responses
 - **Discord Bot**: Run tasks via Discord with slash commands and direct messages
 - **Slack Bot**: Run tasks via Slack with Socket Mode, direct messages, and channel mentions
+- **iMessage Bot** (macOS): Run tasks via iMessage using the imsg CLI with pairing support
 - **Web Search**: Multi-provider web search (Tavily, Brave, SerpAPI, Google) with fallback support
 - **Browser Automation**: Full web browser control with Playwright:
   - Navigate to URLs, take screenshots, save pages as PDF
@@ -471,6 +472,7 @@ If requested by the rights holder, we will update naming/branding to avoid confu
 - [x] Telegram bot integration for remote task execution
 - [x] **Discord bot integration** with slash commands and DM support
 - [x] **Slack bot integration** with Socket Mode and channel mentions
+- [x] **iMessage bot integration** (macOS) with imsg CLI and pairing support
 - [x] Web search integration (Tavily, Brave, SerpAPI, Google)
 - [x] Local LLM support via Ollama (free, runs on your machine)
 - [x] **Browser automation** with Playwright (navigate, click, fill, screenshot, PDF)
@@ -929,6 +931,134 @@ The bot converts responses to Slack mrkdwn format:
 - Code blocks are preserved
 - Links use Slack's `<url|text>` format
 - Long messages are automatically chunked (Slack's 4000 char limit)
+
+---
+
+## iMessage Bot Integration (macOS Only)
+
+CoWork-OSS supports running tasks via iMessage on macOS using the `imsg` CLI tool. This allows you to interact with your agent through Apple's native messaging platform.
+
+### Prerequisites
+
+- macOS with Messages app signed in
+- `imsg` CLI tool installed
+- Full Disk Access permission granted
+
+### Setting Up iMessage
+
+#### 1. Install the imsg CLI
+
+```bash
+brew install steipete/tap/imsg
+```
+
+#### 2. Grant Full Disk Access
+
+The imsg CLI needs Full Disk Access to read the Messages database:
+
+1. Open **System Settings** → **Privacy & Security** → **Full Disk Access**
+2. Enable access for your **Terminal** application (or CoWork-OSS if running as a packaged app)
+
+#### 3. Configure in CoWork-OSS
+
+1. Open CoWork-OSS and go to **Settings** (gear icon)
+2. Navigate to the **iMessage** tab
+3. Configure settings:
+   - **Channel Name**: Display name for the channel
+   - **Security Mode**: Choose Pairing, Allowlist, or Open
+   - **DM Policy**: How to handle direct messages
+   - **Group Policy**: How to handle group messages
+4. Click **Connect iMessage**
+
+### How iMessage Integration Works
+
+Unlike other messaging platforms, iMessage integration has a unique behavior:
+
+- **Messages from the same Apple ID** (your iPhone, iPad, etc.) are filtered as "from self"
+- **Messages from other Apple IDs** are processed by the bot
+
+This means to use the bot, you need **someone else** to message your Mac's Apple ID, or use a **different Apple ID** for the bot.
+
+### Typical Setup
+
+The recommended setup for an iMessage bot:
+
+1. **Bot Mac**: Sign into Messages with a dedicated Apple ID (e.g., `bot@icloud.com`)
+2. **Your Phone**: Use your personal Apple ID
+3. **Message the bot**: Send messages from your phone to `bot@icloud.com`
+4. **Bot responds**: Responses appear in your conversation with the bot account
+
+### Bot Commands
+
+| Command | Description |
+|---------|-------------|
+| `/start` | Start the bot and get help |
+| `/help` | Show available commands |
+| `/workspaces` | List all available workspaces |
+| `/workspace <name>` | Select a workspace |
+| `/newtask` | Start a fresh task/conversation |
+| `/status` | Check bot status |
+| `/cancel` | Cancel the running task |
+| `/pair <code>` | Pair with a pairing code |
+| `/approve` | Approve a pending request |
+| `/deny` | Deny a pending request |
+
+### Security Modes
+
+| Mode | Description | Best For |
+|------|-------------|----------|
+| **Pairing** (default) | Users must enter a pairing code generated in the app | Personal use |
+| **Allowlist** | Only pre-approved contacts can interact | Team use |
+| **Open** | Anyone can message the bot | Not recommended |
+
+### Pairing a User
+
+1. In CoWork-OSS Settings → iMessage, click **Generate Pairing Code**
+2. The user sends the 6-character code to the bot via iMessage
+3. Once verified, the user is authorized to use the bot
+4. Pairing codes expire after 5 minutes
+
+### Example Conversation
+
+```
+User: /workspaces
+Bot: 📁 Available Workspaces
+
+     1. *project-a*
+        `/Users/me/Documents/project-a`
+
+     2. *Downloads*
+        `/Users/me/Downloads`
+
+     ━━━━━━━━━━━━━━━
+     Reply with the number or name to select.
+     Example: `1` or `myproject`
+
+User: 1
+Bot: ✅ *project-a* selected!
+     You can now send me tasks.
+
+User: List all JavaScript files
+Bot: ⏳ Working on it...
+Bot: ✅ Done!
+     Found 15 JavaScript files in the workspace...
+```
+
+### Troubleshooting
+
+**"Permission denied" error:**
+- Ensure Full Disk Access is granted for Terminal or CoWork-OSS
+- Try running `imsg --version` in Terminal to verify the CLI works
+
+**Messages not being received:**
+- Check that the channel status shows "Connected"
+- Verify the sender is using a different Apple ID than your Mac
+- Messages from your own devices (same Apple ID) are filtered out
+
+**Bot not responding:**
+- Check the CoWork-OSS logs for errors
+- Ensure a workspace is selected
+- Verify the user is paired/authorized
 
 ---
 
