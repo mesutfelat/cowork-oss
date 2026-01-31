@@ -13,6 +13,76 @@ Live Canvas enables agents to:
 
 Each canvas session opens in a dedicated Electron BrowserWindow and is isolated per task.
 
+## In-App Preview
+
+When an agent pushes content to a canvas, a **live preview** appears directly in the task view:
+
+### Preview Modes
+
+The preview supports two modes, toggled with the **I** key or the pointer button:
+
+#### Interactive Mode (Default)
+
+- **Full browser experience**: Interact with canvas content directly in the preview
+- **Click buttons, fill forms, scroll**: All standard browser interactions work
+- **No external window needed**: Stay in the main app while using the canvas
+- **Snapshot paused**: Auto-refresh is disabled to avoid interrupting your interaction
+
+#### Snapshot Mode
+
+- **Static screenshot**: Shows a captured image of the canvas content
+- **Auto-refresh**: Automatically updates every 2 seconds while active
+- **Click to expand**: Click the preview image to open the full canvas window
+- **Lower resource usage**: Good for monitoring when not actively interacting
+
+### Features
+
+- **Resizable preview**: Drag the bottom edge to make the preview taller or shorter
+- **Minimize/Expand**: Toggle button to collapse or expand the preview without closing the session
+- **Status indicator**: Shows current session status:
+  - 🟢 **Live** - Session is active and auto-refreshing
+  - 🟡 **Paused** - Session is paused
+  - 🔴 **Closed** - Session has been closed
+- **Dimensions display**: Shows the current canvas resolution (e.g., "1800 x 1336")
+
+### Preview Controls
+
+| Button | Action | Keyboard |
+|--------|--------|----------|
+| 🖱️ Pointer | Toggle interactive/snapshot mode | I |
+| 📋 Copy | Copy snapshot to clipboard | C |
+| 💾 Save | Save snapshot as PNG file | S |
+| 🕐 History | Show/hide snapshot history | H |
+| 📺 Console | Show/hide console logs | L |
+| 📤 Export | Export options menu | E |
+| ⏸️ Pause/▶️ Resume | Toggle auto-refresh on/off | P |
+| 🔄 Refresh | Force immediate snapshot update | R |
+| 🌐 Browser | Open canvas in system browser | B |
+| ↗️ Open in window | Open full interactive canvas window | O |
+| ➖ Minimize | Collapse preview to header only | M |
+| ✕ Close | Close the canvas session | - |
+
+**Note:** Keyboard shortcuts work when the preview is focused (click on it first).
+
+### Export Options
+
+The export menu (E key or export button) provides three options:
+
+- **Export HTML**: Download the canvas as a standalone HTML file
+- **Open in Browser**: Open the canvas in your default system browser
+- **Show in Finder**: Open the canvas session folder in Finder
+
+### Additional Features
+
+- **Snapshot history**: Browse through previous snapshots with the history panel
+- **Console viewer**: View console logs from the canvas (when available)
+- **Copy to clipboard**: Quickly copy the current snapshot for pasting into documents or chat
+- **Save as PNG**: Download the snapshot with an auto-generated filename
+- **Error details**: When errors occur, see specific details and a "Try Again" button
+- **Memory efficient**: Previous images are cleared before loading new ones to reduce memory usage
+
+The in-app preview allows you to interact with canvas content directly without switching windows. Use interactive mode (default) for full browser-like interaction, or switch to snapshot mode when you just want to monitor changes.
+
 ## Architecture
 
 ```
@@ -24,9 +94,10 @@ Each canvas session opens in a dedicated Electron BrowserWindow and is isolated 
 ┌─────────────────────────────────────────────────┐
 │              Canvas Manager                      │
 │  - Session lifecycle management                  │
-│  - BrowserWindow creation                        │
+│  - BrowserWindow creation (hidden for snapshots) │
 │  - File watching (chokidar)                      │
 │  - Event broadcasting                            │
+│  - Snapshot capture for in-app preview           │
 └─────────────────────────────────────────────────┘
                       ↓
 ┌─────────────────────────────────────────────────┐
@@ -34,7 +105,17 @@ Each canvas session opens in a dedicated Electron BrowserWindow and is isolated 
 │  - Loads content via canvas:// protocol          │
 │  - Isolated session directory                    │
 │  - A2UI bridge for user interactions             │
+│  - Hidden by default, shown on demand            │
 └─────────────────────────────────────────────────┘
+          ↓                           ↓
+┌─────────────────────────┐   ┌─────────────────────────┐
+│     In-App Preview      │   │   Full Canvas Window    │
+│  - Interactive mode     │   │   - Full interactivity  │
+│    (embedded webview)   │   │   - Form submissions    │
+│  - Snapshot mode        │   │   - A2UI communication  │
+│  - Resizable            │   │   - Separate window     │
+│  - Export options       │   │                         │
+└─────────────────────────┘   └─────────────────────────┘
                       ↓
 ┌─────────────────────────────────────────────────┐
 │           canvas:// Protocol Handler             │
@@ -228,10 +309,10 @@ await canvas_push({
   `
 });
 
-// Show the canvas
-await canvas_show({ session_id: sessionId });
+// The in-app preview automatically shows the content!
+// No need to call canvas_show unless user needs full interactivity
 
-// Take a snapshot
+// Optional: Take a snapshot programmatically
 const { imageBase64 } = await canvas_snapshot({ session_id: sessionId });
 ```
 
@@ -285,6 +366,9 @@ await canvas_push({
   `
 });
 
+// For interactive forms, show the canvas window so user can interact
+// The in-app preview shows a snapshot, but for clicking buttons/filling forms,
+// the user needs the full window
 await canvas_show({ session_id: sessionId });
 ```
 
@@ -398,6 +482,24 @@ The Canvas Manager emits events that can be observed in the main process:
 
 ## Troubleshooting
 
+### In-App Preview Not Appearing
+
+1. The preview only appears after content is pushed (not when session is created)
+2. Wait for the initial load - the preview retries up to 3 times before showing an error
+3. Ensure the canvas session is still active (not closed)
+
+### Preview Shows "Failed to capture canvas"
+
+1. The hidden browser window may not have loaded the content yet
+2. Try clicking the refresh button to force a new snapshot
+3. Check that the HTML content is valid and doesn't have JavaScript errors
+
+### Preview Not Updating
+
+1. Auto-refresh only works when the session status is "active"
+2. Make sure the preview is not minimized (minimized previews don't auto-refresh)
+3. The refresh interval is 2 seconds - be patient for updates
+
 ### Canvas Window Not Showing
 
 1. Ensure the session exists with `canvas_list`
@@ -424,3 +526,5 @@ See the following files for implementation details:
 - `src/electron/canvas/canvas-protocol.ts` - URL protocol handler
 - `src/electron/agent/tools/canvas-tools.ts` - Agent tool definitions
 - `src/electron/ipc/canvas-handlers.ts` - IPC handlers
+- `src/renderer/components/CanvasPreview.tsx` - In-app preview component
+- `src/renderer/components/MainContent.tsx` - Canvas session integration

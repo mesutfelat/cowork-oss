@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Live Canvas Interactive Mode** - Full browser-like interaction directly in the preview
+  - **Interactive mode** (default): Embedded webview for clicking, scrolling, and interacting with canvas content
+  - **Snapshot mode**: Static screenshot with auto-refresh for monitoring
+  - Toggle between modes with **I** key or pointer button
+  - Resizable preview by dragging the bottom edge
+  - Export options: Download HTML, open in browser, show in Finder
+  - Snapshot history panel to browse previous states
+  - Console viewer for canvas logs
 - **Scheduled Tasks (Cron Jobs)** - Automate recurring tasks with cron expressions
   - Schedule tasks using standard cron syntax (minute, hour, day, month, weekday)
   - Visual schedule builder for users unfamiliar with cron syntax

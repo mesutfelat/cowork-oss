@@ -26,7 +26,7 @@ export function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [currentView, setCurrentView] = useState<AppView>('main');
-  const [settingsTab, setSettingsTab] = useState<'appearance' | 'llm' | 'search' | 'telegram' | 'discord' | 'updates' | 'guardrails' | 'queue' | 'skills'>('appearance');
+  const [settingsTab, setSettingsTab] = useState<'appearance' | 'llm' | 'search' | 'telegram' | 'discord' | 'updates' | 'guardrails' | 'queue' | 'skills' | 'scheduled'>('appearance');
   const [events, setEvents] = useState<TaskEvent[]>([]);
 
   // Model selection state
@@ -454,6 +454,7 @@ export function App() {
       <div className="title-bar">
         <div className="title-bar-left">
           <button
+            type="button"
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -464,6 +465,10 @@ export function App() {
               backgroundColor: 'transparent',
               border: 'none',
               cursor: 'pointer',
+              position: 'relative',
+              zIndex: 1,
+              // @ts-expect-error - webkit property for Electron
+              WebkitAppRegion: 'no-drag',
             }}
             onClick={() => setLeftSidebarCollapsed(!leftSidebarCollapsed)}
             title={leftSidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'}
@@ -476,6 +481,7 @@ export function App() {
         </div>
         <div className="title-bar-actions">
           <button
+            type="button"
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -486,6 +492,10 @@ export function App() {
               backgroundColor: 'transparent',
               border: 'none',
               cursor: 'pointer',
+              position: 'relative',
+              zIndex: 1,
+              // @ts-expect-error - webkit property for Electron
+              WebkitAppRegion: 'no-drag',
             }}
             onClick={() => {
               const effectiveTheme = getEffectiveTheme(themeMode);
@@ -513,16 +523,24 @@ export function App() {
           </button>
           <NotificationPanel
             onNotificationClick={(notification) => {
+              // Prioritize taskId to show the completed task result
               if (notification.taskId) {
                 const task = tasks.find(t => t.id === notification.taskId);
                 if (task) {
                   setSelectedTaskId(task.id);
                   setCurrentView('main');
+                  return;
                 }
+              }
+              // Fall back to scheduled tasks settings if only cronJobId
+              if (notification.cronJobId) {
+                setSettingsTab('scheduled');
+                setCurrentView('settings');
               }
             }}
           />
           <button
+            type="button"
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -533,6 +551,10 @@ export function App() {
               backgroundColor: 'transparent',
               border: 'none',
               cursor: 'pointer',
+              position: 'relative',
+              zIndex: 1,
+              // @ts-expect-error - webkit property for Electron
+              WebkitAppRegion: 'no-drag',
             }}
             onClick={() => setRightSidebarCollapsed(!rightSidebarCollapsed)}
             title={rightSidebarCollapsed ? 'Show panel' : 'Hide panel'}

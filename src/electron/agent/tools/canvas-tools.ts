@@ -76,6 +76,12 @@ export class CanvasTools {
     content: string,
     filename: string = 'index.html'
   ): Promise<{ success: boolean }> {
+    // Validate content parameter
+    if (content === undefined || content === null) {
+      console.error(`[CanvasTools] canvas_push called without content. sessionId=${sessionId}, filename=${filename}, content type=${typeof content}`);
+      throw new Error('Content parameter is required for canvas_push. The agent must provide HTML content to display.');
+    }
+
     this.daemon.logEvent(this.taskId, 'tool_call', {
       tool: 'canvas_push',
       sessionId,
@@ -301,8 +307,9 @@ export class CanvasTools {
         name: 'canvas_push',
         description:
           'Push HTML/CSS/JS content to a canvas session. ' +
-          'Use this to display interactive visualizations, forms, dashboards, or any web content. ' +
-          'The content will be rendered in the canvas window and auto-reload on changes.',
+          'You MUST provide both session_id and content parameters. ' +
+          'The content parameter must be a complete HTML string (e.g., "<!DOCTYPE html><html><body>...</body></html>"). ' +
+          'Use this to display interactive visualizations, forms, dashboards, or any web content.',
         input_schema: {
           type: 'object',
           properties: {
@@ -312,7 +319,7 @@ export class CanvasTools {
             },
             content: {
               type: 'string',
-              description: 'HTML content to display (can include embedded CSS and JavaScript)',
+              description: 'REQUIRED: The complete HTML content to display. Must be a valid HTML string, e.g., "<!DOCTYPE html><html><head><style>body{background:#1a1a2e;color:#fff}</style></head><body><h1>Title</h1></body></html>"',
             },
             filename: {
               type: 'string',
@@ -324,7 +331,10 @@ export class CanvasTools {
       },
       {
         name: 'canvas_show',
-        description: 'Show the canvas window and bring it to focus',
+        description:
+          'OPTIONAL: Open the canvas in a separate interactive window. ' +
+          'The in-app preview already shows your content automatically after canvas_push. ' +
+          'Only use canvas_show when the user needs full interactivity (clicking buttons, filling forms, etc.)',
         input_schema: {
           type: 'object',
           properties: {

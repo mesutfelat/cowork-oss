@@ -12,10 +12,10 @@
  * - A2UI (Agent-to-UI) action handling
  */
 
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, screen, shell } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs/promises';
-import { existsSync } from 'fs';
+import { existsSync, readdirSync } from 'fs';
 import { randomUUID } from 'crypto';
 import chokidar, { type FSWatcher } from 'chokidar';
 import type {
@@ -24,6 +24,7 @@ import type {
   CanvasA2UIAction,
   CanvasSnapshot,
 } from '../../shared/types';
+import { loadCanvasStore, saveCanvasStore } from './canvas-store';
 
 // Default HTML scaffold for new canvas sessions
 const DEFAULT_HTML = `<!DOCTYPE html>
@@ -104,6 +105,41 @@ export class CanvasManager {
   }
 
   /**
+   * Restore sessions from disk storage
+   * Called on app startup to reload persisted sessions
+   */
+  async restoreSessions(): Promise<void> {
+    try {
+      const store = await loadCanvasStore();
+
+      for (const session of store.sessions) {
+        // Only restore active sessions with valid directories
+        if (session.status === 'active' && existsSync(session.sessionDir)) {
+          this.sessions.set(session.id, session);
+          console.log(`[CanvasManager] Restored session ${session.id} for task ${session.taskId}`);
+        }
+      }
+
+      console.log(`[CanvasManager] Restored ${this.sessions.size} sessions from disk`);
+    } catch (error) {
+      console.error('[CanvasManager] Failed to restore sessions:', error);
+    }
+  }
+
+  /**
+   * Persist all sessions to disk
+   */
+  async persistSessions(): Promise<void> {
+    try {
+      const sessions = Array.from(this.sessions.values());
+      await saveCanvasStore({ version: 1, sessions });
+      console.log(`[CanvasManager] Persisted ${sessions.length} sessions to disk`);
+    } catch (error) {
+      console.error('[CanvasManager] Failed to persist sessions:', error);
+    }
+  }
+
+  /**
    * Create a new canvas session
    */
   async createSession(
@@ -140,6 +176,9 @@ export class CanvasManager {
     };
 
     this.sessions.set(sessionId, session);
+
+    // Persist sessions to disk
+    await this.persistSessions();
 
     // Emit event
     this.emitEvent({
@@ -194,7 +233,10 @@ export class CanvasManager {
   ): Promise<void> {
     const session = this.sessions.get(sessionId);
     if (!session) {
-      throw new Error('Canvas session not found');
+      const existingSessions = Array.from(this.sessions.keys());
+      console.error(`[CanvasManager] Session not found: "${sessionId}"`);
+      console.error(`[CanvasManager] Existing sessions: ${existingSessions.length > 0 ? existingSessions.join(', ') : 'none'}`);
+      throw new Error(`Canvas session not found: "${sessionId}". Available sessions: ${existingSessions.join(', ') || 'none'}`);
     }
 
     // Sanitize filename to prevent path traversal
@@ -205,6 +247,13 @@ export class CanvasManager {
 
     // Update session timestamp
     session.lastUpdatedAt = Date.now();
+
+    // Persist sessions to disk (in background, don't await to avoid blocking)
+    this.persistSessions().catch(err => console.error('[CanvasManager] Failed to persist after push:', err));
+
+    // Ensure a hidden window exists for snapshots (NOT shown to user)
+    // The window will only be shown when user explicitly requests via showCanvas()
+    await this.ensureWindowForSnapshots(sessionId);
 
     // Emit event
     this.emitEvent({
@@ -218,9 +267,11 @@ export class CanvasManager {
   }
 
   /**
-   * Show the canvas window
+   * Ensure a window exists for taking snapshots (hidden by default)
+   * This creates a hidden window that can be used for previews without
+   * showing a separate window to the user
    */
-  async showCanvas(sessionId: string): Promise<void> {
+  private async ensureWindowForSnapshots(sessionId: string): Promise<BrowserWindow> {
     const session = this.sessions.get(sessionId);
     if (!session) {
       throw new Error('Canvas session not found');
@@ -229,11 +280,35 @@ export class CanvasManager {
     let window = this.windows.get(sessionId);
 
     if (!window || window.isDestroyed()) {
-      // Create new window
+      // Calculate initial position - to the right of main window or right side of screen
+      let initialX: number | undefined;
+      let initialY: number | undefined;
+      let initialHeight = 700;
+
+      if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+        const mainBounds = this.mainWindow.getBounds();
+        initialX = mainBounds.x + mainBounds.width + 20;
+        initialY = mainBounds.y;
+        initialHeight = mainBounds.height;
+      } else {
+        // Fallback: position on right side of primary display
+        const primaryDisplay = screen.getPrimaryDisplay();
+        const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
+        initialX = screenWidth - 920; // 900 width + 20 margin
+        initialY = 50;
+        initialHeight = screenHeight - 100;
+      }
+
+      // Create new HIDDEN window for snapshots
+      // NOT a child window - will be positioned to the side when shown
       window = new BrowserWindow({
+        x: initialX,
+        y: initialY,
         width: 900,
-        height: 700,
+        height: initialHeight,
         title: session.title || 'Live Canvas',
+        show: false, // Start hidden - only show when user explicitly requests
+        // No parent - independent window that won't overlap main app
         webPreferences: {
           preload: path.join(__dirname, 'canvas-preload.js'),
           contextIsolation: true,
@@ -260,13 +335,61 @@ export class CanvasManager {
       this.startWatcher(sessionId, session.sessionDir, window);
     }
 
-    window.show();
-    window.focus();
+    return window;
+  }
+
+  /**
+   * Show the canvas window (opens it visibly to the user)
+   */
+  async showCanvas(sessionId: string): Promise<void> {
+    // Ensure window exists (may be hidden)
+    const window = await this.ensureWindowForSnapshots(sessionId);
+
+    let bounds: { x: number; y: number; width: number; height: number };
+
+    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+      const mainBounds = this.mainWindow.getBounds();
+      console.log(`[CanvasManager] Main window bounds:`, mainBounds);
+
+      // Position canvas window completely to the RIGHT of the main window
+      // This ensures it never overlaps with the main app
+      bounds = {
+        x: mainBounds.x + mainBounds.width + 20, // 20px gap to the right
+        y: mainBounds.y,
+        width: 900,
+        height: mainBounds.height,
+      };
+    } else {
+      console.log(`[CanvasManager] WARNING: mainWindow not available, using fallback position`);
+      // Fallback: position on right side of primary display
+      const primaryDisplay = screen.getPrimaryDisplay();
+      const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
+      bounds = {
+        x: screenWidth - 920, // 900 width + 20 margin
+        y: 50,
+        width: 900,
+        height: screenHeight - 100,
+      };
+    }
+
+    console.log(`[CanvasManager] Setting canvas window bounds:`, bounds);
+
+    // Always set position first to ensure correct placement
+    window.setPosition(bounds.x, bounds.y);
+    window.setSize(bounds.width, bounds.height);
+
+    // Show the window without stealing focus (using setVisibleOnAllWorkspaces to ensure visibility)
+    if (!window.isVisible()) {
+      window.showInactive();
+    }
+
+    // Ensure bounds are applied after show (some systems need this)
+    window.setBounds(bounds);
 
     this.emitEvent({
       type: 'window_opened',
       sessionId,
-      taskId: session.taskId,
+      taskId: this.sessions.get(sessionId)!.taskId,
       timestamp: Date.now(),
     });
   }
@@ -302,6 +425,9 @@ export class CanvasManager {
     // Update session status
     session.status = 'closed';
 
+    // Persist sessions to disk (removes closed sessions)
+    await this.persistSessions();
+
     // Emit event
     this.emitEvent({
       type: 'session_closed',
@@ -317,9 +443,10 @@ export class CanvasManager {
    * Execute JavaScript in the canvas context
    */
   async evalScript(sessionId: string, script: string): Promise<unknown> {
-    const window = this.windows.get(sessionId);
+    // Ensure window exists (create hidden one if needed)
+    const window = await this.ensureWindowForSnapshots(sessionId);
     if (!window || window.isDestroyed()) {
-      throw new Error('Canvas window not open');
+      throw new Error('Canvas window could not be created');
     }
 
     return window.webContents.executeJavaScript(script);
@@ -329,9 +456,10 @@ export class CanvasManager {
    * Take a screenshot of the canvas
    */
   async takeSnapshot(sessionId: string): Promise<CanvasSnapshot> {
-    const window = this.windows.get(sessionId);
+    // Ensure window exists (create hidden one if needed)
+    const window = await this.ensureWindowForSnapshots(sessionId);
     if (!window || window.isDestroyed()) {
-      throw new Error('Canvas window not open');
+      throw new Error('Canvas window could not be created');
     }
 
     const image = await window.webContents.capturePage();
@@ -343,6 +471,88 @@ export class CanvasManager {
       width: size.width,
       height: size.height,
     };
+  }
+
+  /**
+   * Export canvas content as a standalone HTML file
+   * Returns the HTML content with all assets inlined if possible
+   */
+  async exportAsHTML(sessionId: string): Promise<{ content: string; filename: string }> {
+    const session = this.sessions.get(sessionId);
+    if (!session) {
+      throw new Error(`Canvas session not found: ${sessionId}`);
+    }
+
+    const htmlPath = path.join(session.sessionDir, 'index.html');
+    if (!existsSync(htmlPath)) {
+      throw new Error('Canvas index.html not found');
+    }
+
+    const content = await fs.readFile(htmlPath, 'utf-8');
+    const filename = `canvas-${session.title?.replace(/[^a-z0-9]/gi, '-') || sessionId.slice(0, 8)}.html`;
+
+    console.log(`[CanvasManager] Exported HTML for session ${sessionId}`);
+    return { content, filename };
+  }
+
+  /**
+   * Export all canvas files to a target directory
+   */
+  async exportToFolder(sessionId: string, targetDir: string): Promise<{ files: string[]; targetDir: string }> {
+    const session = this.sessions.get(sessionId);
+    if (!session) {
+      throw new Error(`Canvas session not found: ${sessionId}`);
+    }
+
+    if (!existsSync(session.sessionDir)) {
+      throw new Error('Canvas session directory not found');
+    }
+
+    // Create target directory if it doesn't exist
+    await fs.mkdir(targetDir, { recursive: true });
+
+    // Get all files in the session directory
+    const files = readdirSync(session.sessionDir);
+    const copiedFiles: string[] = [];
+
+    for (const file of files) {
+      const srcPath = path.join(session.sessionDir, file);
+      const destPath = path.join(targetDir, file);
+      await fs.copyFile(srcPath, destPath);
+      copiedFiles.push(file);
+    }
+
+    console.log(`[CanvasManager] Exported ${copiedFiles.length} files for session ${sessionId} to ${targetDir}`);
+    return { files: copiedFiles, targetDir };
+  }
+
+  /**
+   * Open canvas content in the default system browser
+   */
+  async openInBrowser(sessionId: string): Promise<{ success: boolean; path: string }> {
+    const session = this.sessions.get(sessionId);
+    if (!session) {
+      throw new Error(`Canvas session not found: ${sessionId}`);
+    }
+
+    const htmlPath = path.join(session.sessionDir, 'index.html');
+    if (!existsSync(htmlPath)) {
+      throw new Error('Canvas index.html not found');
+    }
+
+    // Open in default browser
+    await shell.openPath(htmlPath);
+
+    console.log(`[CanvasManager] Opened session ${sessionId} in browser: ${htmlPath}`);
+    return { success: true, path: htmlPath };
+  }
+
+  /**
+   * Get the session directory path for external access
+   */
+  getSessionDir(sessionId: string): string | null {
+    const session = this.sessions.get(sessionId);
+    return session?.sessionDir || null;
   }
 
   /**

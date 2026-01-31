@@ -13,6 +13,8 @@ const IPC_CHANNELS = {
   TASK_EVENT: 'task:event',
   TASK_EVENTS: 'task:events',
   TASK_SEND_MESSAGE: 'task:sendMessage',
+  TASK_SEND_STDIN: 'task:sendStdin',
+  TASK_KILL_COMMAND: 'task:killCommand',
   WORKSPACE_SELECT: 'workspace:select',
   WORKSPACE_LIST: 'workspace:list',
   WORKSPACE_CREATE: 'workspace:create',
@@ -207,6 +209,10 @@ const IPC_CHANNELS = {
   CANVAS_SNAPSHOT: 'canvas:snapshot',
   CANVAS_A2UI_ACTION: 'canvas:a2uiAction',
   CANVAS_EVENT: 'canvas:event',
+  CANVAS_EXPORT_HTML: 'canvas:exportHTML',
+  CANVAS_EXPORT_TO_FOLDER: 'canvas:exportToFolder',
+  CANVAS_OPEN_IN_BROWSER: 'canvas:openInBrowser',
+  CANVAS_GET_SESSION_DIR: 'canvas:getSessionDir',
 } as const;
 
 // Custom Skill types (inlined for sandboxed preload)
@@ -850,6 +856,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   cancelTask: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.TASK_CANCEL, id),
   pauseTask: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.TASK_PAUSE, id),
   resumeTask: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.TASK_RESUME, id),
+  sendStdin: (taskId: string, input: string) => ipcRenderer.invoke(IPC_CHANNELS.TASK_SEND_STDIN, { taskId, input }),
+  killCommand: (taskId: string, force?: boolean) => ipcRenderer.invoke(IPC_CHANNELS.TASK_KILL_COMMAND, { taskId, force }),
   renameTask: (id: string, title: string) => ipcRenderer.invoke(IPC_CHANNELS.TASK_RENAME, { id, title }),
   deleteTask: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.TASK_DELETE, id),
 
@@ -1207,6 +1215,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke(IPC_CHANNELS.CANVAS_EVAL, data),
   canvasSnapshot: (sessionId: string) =>
     ipcRenderer.invoke(IPC_CHANNELS.CANVAS_SNAPSHOT, sessionId),
+  canvasExportHTML: (sessionId: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.CANVAS_EXPORT_HTML, sessionId),
+  canvasExportToFolder: (data: { sessionId: string; targetDir: string }) =>
+    ipcRenderer.invoke(IPC_CHANNELS.CANVAS_EXPORT_TO_FOLDER, data),
+  canvasOpenInBrowser: (sessionId: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.CANVAS_OPEN_IN_BROWSER, sessionId),
+  canvasGetSessionDir: (sessionId: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.CANVAS_GET_SESSION_DIR, sessionId),
   onCanvasEvent: (callback: (event: CanvasEvent) => void) => {
     const subscription = (_: Electron.IpcRendererEvent, data: CanvasEvent) => callback(data);
     ipcRenderer.on(IPC_CHANNELS.CANVAS_EVENT, subscription);
@@ -1242,6 +1258,8 @@ export interface ElectronAPI {
   cancelTask: (id: string) => Promise<void>;
   pauseTask: (id: string) => Promise<void>;
   resumeTask: (id: string) => Promise<void>;
+  sendStdin: (taskId: string, input: string) => Promise<boolean>;
+  killCommand: (taskId: string, force?: boolean) => Promise<boolean>;
   renameTask: (id: string, title: string) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
   onTaskEvent: (callback: (event: any) => void) => () => void;
@@ -1551,6 +1569,10 @@ export interface ElectronAPI {
   canvasPush: (data: { sessionId: string; content: string; filename?: string }) => Promise<{ success: boolean }>;
   canvasEval: (data: { sessionId: string; script: string }) => Promise<{ result: unknown }>;
   canvasSnapshot: (sessionId: string) => Promise<{ imageBase64: string; width: number; height: number }>;
+  canvasExportHTML: (sessionId: string) => Promise<{ content: string; filename: string }>;
+  canvasExportToFolder: (data: { sessionId: string; targetDir: string }) => Promise<{ files: string[]; targetDir: string }>;
+  canvasOpenInBrowser: (sessionId: string) => Promise<{ success: boolean; path: string }>;
+  canvasGetSessionDir: (sessionId: string) => Promise<string | null>;
   onCanvasEvent: (callback: (event: CanvasEvent) => void) => () => void;
 }
 

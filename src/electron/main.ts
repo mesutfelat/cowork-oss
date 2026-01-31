@@ -42,6 +42,7 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      webviewTag: true, // Enable webview for canvas interactive mode
       preload: path.join(__dirname, 'preload.js'),
     },
   });
@@ -289,6 +290,9 @@ app.whenReady().then(async () => {
     // Initialize Live Canvas handlers and set main window reference
     setupCanvasHandlers(mainWindow, agentDaemon);
     CanvasManager.getInstance().setMainWindow(mainWindow);
+
+    // Restore persisted canvas sessions from disk
+    await CanvasManager.getInstance().restoreSessions();
 
     // Initialize control plane (WebSocket gateway)
     setupControlPlaneHandlers(mainWindow);

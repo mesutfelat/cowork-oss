@@ -126,6 +126,17 @@ CoWork-OSS is **free and open source**. To run tasks, you must configure your ow
   - Click, fill forms, type text, press keys
   - Extract page content, links, and form data
   - Scroll pages, wait for elements, execute JavaScript
+- **Live Canvas**: Agent-driven visual workspace for dynamic content:
+  - Create interactive HTML/CSS/JavaScript visualizations
+  - **In-app preview**: Live preview embedded in the task view with two modes:
+    - **Interactive mode** (default): Full browser-like interaction directly in the preview
+    - **Snapshot mode**: Static screenshot with auto-refresh every 2 seconds
+  - Resize preview by dragging the bottom edge
+  - Open in separate window for expanded view
+  - Execute JavaScript in canvas context and retrieve results
+  - A2UI (Agent-to-UI) communication for interactive workflows
+  - Export options: Download HTML, open in browser, show in Finder
+  - Perfect for dashboards, charts, forms, and prototypes
 - **Code Tools**: Claude Code-style tools for code navigation and editing:
   - **glob** - Fast pattern-based file search (e.g., `**/*.ts`, `src/**/*.tsx`)
   - **grep** - Regex content search across files with context lines
@@ -181,6 +192,8 @@ CoWork-OSS is **free and open source**. To run tasks, you must configure your ow
 │  - Approval Dialogs                              │
 │  - Workspace Selector                            │
 │  - Notification Panel                            │
+│  - Live Command Output (In-app terminal view)    │
+│  - Live Canvas Preview (Interactive browser)     │
 │  - MCP Settings & Registry Browser               │
 └─────────────────────────────────────────────────┘
                       ↕ IPC
@@ -193,6 +206,7 @@ CoWork-OSS is **free and open source**. To run tasks, you must configure your ow
 │  - Custom Skill Loader                           │
 │  - Cron Service (Scheduled Tasks)                │
 │  - Notification Service                          │
+│  - Canvas Manager (Live visual workspace)        │
 └─────────────────────────────────────────────────┘
                       ↕
 ┌─────────────────────────────────────────────────┐
@@ -615,6 +629,36 @@ Notifications are stored locally and persist across app restarts. They include:
 
 ---
 
+## In-App Views
+
+CoWork-OSS provides embedded views for monitoring and interacting with agent activities directly within the main window.
+
+### Live Command Output
+
+When the agent executes shell commands, a live terminal view appears showing:
+- **Real-time output**: See command stdout/stderr as it streams
+- **Running indicator**: Visual feedback while commands execute
+- **Exit code**: Shows success (0) or failure codes when complete
+- **Dismissible**: Close the output panel when done reviewing
+- **Auto-show**: Automatically appears when a new command starts
+
+### Live Canvas Preview
+
+When the agent creates visual content using Live Canvas, an interactive preview appears:
+- **Interactive mode** (default): Full browser-like interaction directly in the preview
+  - Click buttons, fill forms, scroll content
+  - No need to open external windows for basic interactions
+- **Snapshot mode**: Static screenshot with auto-refresh every 2 seconds
+- **Toggle with I key**: Switch between interactive and snapshot modes
+- **Resizable**: Drag the bottom edge to adjust preview height
+- **Export options**: Download HTML, open in browser, show in Finder
+- **History panel**: Browse through previous snapshots
+- **Keyboard shortcuts**: Quick access to all features (see [Live Canvas docs](docs/live-canvas.md))
+
+Both views appear inline in the task timeline, allowing you to monitor agent activities without switching windows.
+
+---
+
 ## Compliance
 
 This project requires users to comply with their model provider's terms and policies:
@@ -664,6 +708,8 @@ If requested by the rights holder, we will update naming/branding to avoid confu
 - [x] **Toast notifications** - Real-time notifications for task completion and failures
 - [x] **Scheduled Tasks** - Cron-based task scheduling with channel delivery and run history
 - [x] **In-App Notification Center** - Bell icon notification panel with mark as read, delete, and click-to-navigate
+- [x] **Live Canvas Interactive Mode** - In-app browser preview with interactive/snapshot modes, export options, and history
+- [x] **Live Command Output** - In-app terminal view showing real-time shell command execution
 - [x] **75+ Bundled Skills** - Pre-configured integrations for GitHub, Slack, Notion, Spotify, Apple Notes/Reminders, and many more
 - [x] **MCP Client** - Connect to external MCP servers and use their tools
 - [x] **MCP Host** - Expose CoWork's tools as an MCP server for external clients

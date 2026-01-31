@@ -1223,6 +1223,48 @@ export class TaskExecutor {
       }
     }
 
+    // Handle canvas_push - normalize parameter names and log missing content
+    if (toolName === 'canvas_push') {
+      let modified = false;
+      let inference = '';
+
+      // Check for alternative parameter names the LLM might use
+      if (!input?.content) {
+        // Try alternative names
+        const alternatives = ['html', 'html_content', 'body', 'htmlContent', 'page', 'markup'];
+        for (const alt of alternatives) {
+          if (input?.[alt]) {
+            input.content = input[alt];
+            modified = true;
+            inference = `Normalized ${alt} -> content`;
+            console.log(`[TaskExecutor] Parameter inference for canvas_push: ${inference}`);
+            break;
+          }
+        }
+
+        // Log all available keys for debugging if content still missing
+        if (!input?.content) {
+          console.error(`[TaskExecutor] canvas_push missing 'content' parameter. Input keys: ${Object.keys(input || {}).join(', ')}`);
+          console.error(`[TaskExecutor] canvas_push full input:`, JSON.stringify(input, null, 2));
+        }
+      }
+
+      // Normalize session_id variants
+      if (!input?.session_id) {
+        const sessionAlts = ['sessionId', 'canvas_id', 'canvasId', 'id'];
+        for (const alt of sessionAlts) {
+          if (input?.[alt]) {
+            input.session_id = input[alt];
+            modified = true;
+            inference += (inference ? '; ' : '') + `Normalized ${alt} -> session_id`;
+            break;
+          }
+        }
+      }
+
+      return { input, modified, inference: modified ? inference : undefined };
+    }
+
     return { input, modified: false };
   }
 
@@ -2119,6 +2161,9 @@ ANTI-PATTERNS (NEVER DO THESE):
 - DO: Navigate -> browser_get_content -> process -> repeat for each source -> summarize all findings
 
 CRITICAL TOOL PARAMETER REQUIREMENTS:
+- canvas_push: MUST provide BOTH 'session_id' AND 'content' parameters. The 'content' MUST be a complete HTML string.
+  Example: canvas_push({ session_id: "abc-123", content: "<!DOCTYPE html><html><head><style>body{background:#1a1a2e;color:#fff;font-family:sans-serif;padding:20px}</style></head><body><h1>Dashboard</h1><p>Content here</p></body></html>" })
+  FAILURE TO INCLUDE 'content' WILL CAUSE THE TOOL TO FAIL.
 - edit_document: MUST provide 'sourcePath' (path to existing DOCX file) and 'newContent' (array of content blocks)
   Example: edit_document({ sourcePath: "document.docx", newContent: [{ type: "heading", text: "New Section", level: 2 }, { type: "paragraph", text: "Content here" }] })
 - copy_file: MUST provide 'sourcePath' and 'destPath'
@@ -2998,6 +3043,28 @@ SCHEDULING & REMINDERS:
       });
       throw error;
     }
+  }
+
+  /**
+   * Send stdin input to the currently running shell command
+   */
+  sendStdin(input: string): boolean {
+    return this.toolRegistry.sendStdin(input);
+  }
+
+  /**
+   * Check if a shell command is currently running
+   */
+  hasActiveShellProcess(): boolean {
+    return this.toolRegistry.hasActiveShellProcess();
+  }
+
+  /**
+   * Kill the currently running shell command (send SIGINT like Ctrl+C)
+   * @param force - If true, send SIGKILL immediately instead of graceful escalation
+   */
+  killShellProcess(force?: boolean): boolean {
+    return this.toolRegistry.killShellProcess(force);
   }
 
   /**

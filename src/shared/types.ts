@@ -70,7 +70,8 @@ export type EventType =
   | 'follow_up_completed'
   | 'follow_up_failed'
   | 'tool_warning'
-  | 'user_message';
+  | 'user_message'
+  | 'command_output';
 
 export type ToolType =
   | 'read_file'
@@ -432,6 +433,8 @@ export const IPC_CHANNELS = {
   TASK_EVENT: 'task:event',
   TASK_EVENTS: 'task:events',
   TASK_SEND_MESSAGE: 'task:sendMessage',
+  TASK_SEND_STDIN: 'task:sendStdin',  // Send stdin input to running command
+  TASK_KILL_COMMAND: 'task:killCommand',  // Kill running command (Ctrl+C)
 
   // Workspace operations
   WORKSPACE_SELECT: 'workspace:select',
@@ -654,6 +657,10 @@ export const IPC_CHANNELS = {
   CANVAS_SNAPSHOT: 'canvas:snapshot',
   CANVAS_A2UI_ACTION: 'canvas:a2uiAction',
   CANVAS_EVENT: 'canvas:event',
+  CANVAS_EXPORT_HTML: 'canvas:exportHTML',
+  CANVAS_EXPORT_TO_FOLDER: 'canvas:exportToFolder',
+  CANVAS_OPEN_IN_BROWSER: 'canvas:openInBrowser',
+  CANVAS_GET_SESSION_DIR: 'canvas:getSessionDir',
 } as const;
 
 // LLM Provider types

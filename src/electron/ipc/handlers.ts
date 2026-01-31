@@ -472,6 +472,14 @@ export async function setupIpcHandlers(
     taskRepo.update(id, { status: 'executing' });
   });
 
+  ipcMain.handle(IPC_CHANNELS.TASK_SEND_STDIN, async (_, data: { taskId: string; input: string }) => {
+    return agentDaemon.sendStdinToTask(data.taskId, data.input);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.TASK_KILL_COMMAND, async (_, data: { taskId: string; force?: boolean }) => {
+    return agentDaemon.killCommandInTask(data.taskId, data.force);
+  });
+
   ipcMain.handle(IPC_CHANNELS.TASK_RENAME, async (_, data) => {
     const validated = validateInput(TaskRenameSchema, data, 'task rename');
     taskRepo.update(validated.id, { title: validated.title });

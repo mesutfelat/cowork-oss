@@ -103,6 +103,35 @@ export function setupCanvasHandlers(
     return manager.takeSnapshot(sessionId);
   });
 
+  // Export canvas as HTML
+  ipcMain.handle(IPC_CHANNELS.CANVAS_EXPORT_HTML, async (_, sessionId: string): Promise<{
+    content: string;
+    filename: string;
+  }> => {
+    return manager.exportAsHTML(sessionId);
+  });
+
+  // Export canvas to folder
+  ipcMain.handle(IPC_CHANNELS.CANVAS_EXPORT_TO_FOLDER, async (_, data: {
+    sessionId: string;
+    targetDir: string;
+  }): Promise<{ files: string[]; targetDir: string }> => {
+    return manager.exportToFolder(data.sessionId, data.targetDir);
+  });
+
+  // Open canvas in browser
+  ipcMain.handle(IPC_CHANNELS.CANVAS_OPEN_IN_BROWSER, async (_, sessionId: string): Promise<{
+    success: boolean;
+    path: string;
+  }> => {
+    return manager.openInBrowser(sessionId);
+  });
+
+  // Get session directory
+  ipcMain.handle(IPC_CHANNELS.CANVAS_GET_SESSION_DIR, async (_, sessionId: string): Promise<string | null> => {
+    return manager.getSessionDir(sessionId);
+  });
+
   // Handle A2UI action from canvas window (internal IPC from canvas preload)
   ipcMain.handle('canvas:a2ui-action-from-window', async (event, action: {
     actionName: string;

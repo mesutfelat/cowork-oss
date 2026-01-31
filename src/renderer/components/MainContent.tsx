@@ -36,6 +36,8 @@ const isImportantEvent = (event: TaskEvent): boolean => {
 import { ApprovalDialog } from './ApprovalDialog';
 import { SkillParameterModal } from './SkillParameterModal';
 import { FileViewer } from './FileViewer';
+import { CommandOutput } from './CommandOutput';
+import { CanvasPreview } from './CanvasPreview';
 
 // Code block component with copy button
 interface CodeBlockProps {
@@ -102,6 +104,41 @@ function CodeBlock({ children, className, ...props }: CodeBlockProps) {
       </div>
       <code className={className} {...props}>{children}</code>
     </div>
+  );
+}
+
+// Copy button for user messages
+function MessageCopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
+  return (
+    <button
+      className={`message-copy-btn ${copied ? 'copied' : ''}`}
+      onClick={handleCopy}
+      title={copied ? 'Copied!' : 'Copy message'}
+    >
+      {copied ? (
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M20 6L9 17l-5-5" />
+        </svg>
+      ) : (
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+          <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+        </svg>
+      )}
+      <span>{copied ? 'Copied' : 'Copy'}</span>
+    </button>
   );
 }
 
@@ -345,11 +382,42 @@ interface MainContentProps {
   onModelChange: (model: string) => void;
 }
 
+// Track active command execution state
+interface ActiveCommand {
+  command: string;
+  output: string;
+  isRunning: boolean;
+  exitCode: number | null;
+}
+
+// Canvas session type
+interface CanvasSession {
+  id: string;
+  taskId: string;
+  workspaceId: string;
+  sessionDir: string;
+  status: 'active' | 'paused' | 'closed';
+  title?: string;
+  createdAt: number;
+  lastUpdatedAt: number;
+}
+
 export function MainContent({ task, workspace, events, onSendMessage, onCreateTask, onChangeWorkspace, onSelectWorkspace, onOpenSettings, onStopTask, selectedModel, availableModels, onModelChange }: MainContentProps) {
   const [pendingApproval, setPendingApproval] = useState<ApprovalRequest | null>(null);
   const [inputValue, setInputValue] = useState('');
   // Shell permission state - tracks current workspace's shell permission
   const [shellEnabled, setShellEnabled] = useState(workspace?.permissions?.shell ?? false);
+  // Active command execution state
+  const [activeCommand, setActiveCommand] = useState<ActiveCommand | null>(null);
+  // Track dismissed command outputs by task ID (persisted in localStorage)
+  const [dismissedCommandOutputs, setDismissedCommandOutputs] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem('dismissedCommandOutputs');
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
   // Goal Mode state
   const [goalModeEnabled, setGoalModeEnabled] = useState(false);
   const [verificationCommand, setVerificationCommand] = useState('');
@@ -365,6 +433,8 @@ export function MainContent({ task, workspace, events, onSendMessage, onCreateTa
   const [skillsSearchQuery, setSkillsSearchQuery] = useState('');
   const [selectedSkillForParams, setSelectedSkillForParams] = useState<CustomSkill | null>(null);
   const [viewerFilePath, setViewerFilePath] = useState<string | null>(null);
+  // Canvas sessions state - track active canvas sessions for current task
+  const [canvasSessions, setCanvasSessions] = useState<CanvasSession[]>([]);
   // Workspace dropdown state
   const [showWorkspaceDropdown, setShowWorkspaceDropdown] = useState(false);
   const [workspacesList, setWorkspacesList] = useState<Workspace[]>([]);
@@ -406,6 +476,75 @@ export function MainContent({ task, workspace, events, onSendMessage, onCreateTa
       .then(skills => setCustomSkills(skills.filter(s => s.enabled !== false)))
       .catch(err => console.error('Failed to load custom skills:', err));
   }, []);
+
+  // Load canvas sessions when task changes
+  useEffect(() => {
+    if (!task?.id) {
+      setCanvasSessions([]);
+      return;
+    }
+
+    // Load existing canvas sessions for this task
+    window.electronAPI.canvasListSessions(task.id)
+      .then(sessions => {
+        // Filter to only active/paused sessions
+        setCanvasSessions(sessions.filter(s => s.status !== 'closed'));
+      })
+      .catch(err => console.error('Failed to load canvas sessions:', err));
+  }, [task?.id]);
+
+  // Subscribe to canvas events
+  useEffect(() => {
+    const unsubscribe = window.electronAPI.onCanvasEvent((event) => {
+      // Only process events for the current task
+      if (task?.id && event.taskId === task.id) {
+        // Don't show preview on session_created - wait until content is actually pushed
+        if (event.type === 'content_pushed') {
+          // Content has been pushed, now show the preview if not already showing
+          // Fetch the session info and add it to the list
+          window.electronAPI.canvasGetSession(event.sessionId)
+            .then(session => {
+              if (session && session.status !== 'closed') {
+                setCanvasSessions(prev => {
+                  // Only add if not already in the list
+                  if (prev.some(s => s.id === session.id)) {
+                    return prev;
+                  }
+                  return [...prev, session];
+                });
+              }
+            })
+            .catch(err => console.error('Failed to get canvas session:', err));
+        } else if (event.type === 'session_updated' && event.session) {
+          setCanvasSessions(prev =>
+            prev.map(s => s.id === event.sessionId ? event.session! : s)
+          );
+        } else if (event.type === 'session_closed') {
+          setCanvasSessions(prev => prev.filter(s => s.id !== event.sessionId));
+        }
+      }
+    });
+
+    return unsubscribe;
+  }, [task?.id]);
+
+  // Handle removing a canvas session from the UI
+  const handleCanvasClose = useCallback((sessionId: string) => {
+    setCanvasSessions(prev => prev.filter(s => s.id !== sessionId));
+  }, []);
+
+  // Handle dismissing command output for current task
+  const handleDismissCommandOutput = useCallback(() => {
+    if (!task?.id) return;
+    setDismissedCommandOutputs(prev => {
+      const updated = new Set(prev);
+      updated.add(task.id);
+      // Persist to localStorage
+      localStorage.setItem('dismissedCommandOutputs', JSON.stringify([...updated]));
+      return updated;
+    });
+    setActiveCommand(null);
+  }, [task?.id]);
 
   // Filter skills based on search query
   const filteredSkills = useMemo(() => {
@@ -612,6 +751,79 @@ export function MainContent({ task, workspace, events, onSendMessage, onCreateTa
 
     prevTaskStatusRef.current = currentStatus;
   }, [task?.status, queuedMessage, onSendMessage]);
+
+  // Process command_output events to track live command execution
+  useEffect(() => {
+    // Get the last command_output event
+    const commandOutputEvents = events.filter(e => e.type === 'command_output');
+    if (commandOutputEvents.length === 0) {
+      setActiveCommand(null);
+      return;
+    }
+
+    // Build the command state from events
+    let currentCommand: string | null = null;
+    let output = '';
+    let isRunning = false;
+    let exitCode: number | null = null;
+
+    for (const event of commandOutputEvents) {
+      const payload = event.payload;
+      if (payload.type === 'start') {
+        // New command started
+        currentCommand = payload.command;
+        output = payload.output || '';
+        isRunning = true;
+        exitCode = null;
+      } else if (payload.type === 'stdout' || payload.type === 'stderr' || payload.type === 'stdin') {
+        // Append output (stdin shows what user typed)
+        output += payload.output || '';
+      } else if (payload.type === 'end') {
+        // Command finished
+        isRunning = false;
+        exitCode = payload.exitCode;
+      } else if (payload.type === 'error') {
+        // Error output
+        output += payload.output || '';
+      }
+    }
+
+    // Check if this task's command output was dismissed
+    const isDismissed = task?.id ? dismissedCommandOutputs.has(task.id) : false;
+
+    // If a new command is running, clear the dismissed state for this task
+    if (isRunning && task?.id && isDismissed) {
+      setDismissedCommandOutputs(prev => {
+        const updated = new Set(prev);
+        updated.delete(task.id);
+        localStorage.setItem('dismissedCommandOutputs', JSON.stringify([...updated]));
+        return updated;
+      });
+    }
+
+    // Show command output if:
+    // 1. There's a command AND it's not dismissed, OR
+    // 2. Command is currently running (always show while running)
+    const shouldShowOutput = currentCommand && (isRunning || !isDismissed);
+
+    // Limit output size in UI to prevent performance issues (keep last 50KB)
+    const MAX_UI_OUTPUT = 50 * 1024;
+    let truncatedOutput = output;
+    if (output.length > MAX_UI_OUTPUT) {
+      truncatedOutput = '[... earlier output truncated ...]\n\n' + output.slice(-MAX_UI_OUTPUT);
+    }
+
+    if (shouldShowOutput) {
+      setActiveCommand({
+        command: currentCommand!,
+        output: truncatedOutput,
+        isRunning,
+        exitCode,
+      });
+    } else {
+      setActiveCommand(null);
+    }
+  }, [events, task?.id, task?.status, dismissedCommandOutputs]);
 
   // Check for approval requests in events
   useEffect(() => {
@@ -1033,98 +1245,148 @@ export function MainContent({ task, workspace, events, onSendMessage, onCreateTa
         <div className="task-content">
           {/* User Prompt - Right aligned like chat */}
           <div className="chat-message user-message">
-            <div className="chat-bubble user-bubble">
-              <p>{task.prompt}</p>
+            <div className="chat-bubble user-bubble markdown-content">
+              <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                {task.prompt}
+              </ReactMarkdown>
             </div>
+            <MessageCopyButton text={task.prompt} />
           </div>
 
-          {/* Timeline (View steps) */}
-          {events.length > 0 && (
-            <div className="timeline-section">
-              <div className="timeline-controls">
-                <button
-                  className={`view-steps-btn ${showSteps ? 'expanded' : ''}`}
-                  onClick={() => setShowSteps(!showSteps)}
-                >
-                  View steps
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M9 18l6-6-6-6" />
-                  </svg>
-                </button>
-                {showSteps && (
-                  <button
-                    className={`verbose-toggle-btn ${verboseSteps ? 'active' : ''}`}
-                    onClick={toggleVerboseSteps}
-                    title={verboseSteps ? 'Show important steps only' : 'Show all steps (verbose)'}
-                  >
-                    {verboseSteps ? 'Verbose' : 'Summary'}
-                  </button>
-                )}
-              </div>
-
+          {/* View steps toggle - show right after original prompt */}
+          {events.some(e => e.type !== 'user_message' && e.type !== 'assistant_message') && (
+            <div className="timeline-controls">
+              <button
+                className={`view-steps-btn ${showSteps ? 'expanded' : ''}`}
+                onClick={() => setShowSteps(!showSteps)}
+              >
+                {showSteps ? 'Hide steps' : 'View steps'}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M9 18l6-6-6-6" />
+                </svg>
+              </button>
               {showSteps && (
-                <div className="timeline-events" ref={timelineRef}>
-                  {filteredEvents.map((event, index) => {
-                    const isExpandable = hasEventDetails(event);
-                    const isExpanded = isEventExpanded(event);
-                    const isUserMessage = event.type === 'user_message';
-
-                    // Render user messages as chat bubbles on the right (same style as original prompt)
-                    if (isUserMessage) {
-                      return (
-                        <div key={event.id || `event-${index}`} className="chat-message user-message">
-                          <div className="chat-bubble user-bubble">
-                            <p>{event.payload?.message || 'User message'}</p>
-                          </div>
-                        </div>
-                      );
-                    }
-
-                    return (
-                      <div key={event.id || `event-${index}`} className="timeline-event">
-                        <div className="event-indicator">
-                          <div className={`event-dot ${getEventDotClass(event.type)}`} />
-                          {index < filteredEvents.length - 1 && <div className="event-line" />}
-                        </div>
-                        <div className="event-content">
-                          <div
-                            className={`event-header ${isExpandable ? 'expandable' : ''} ${isExpanded ? 'expanded' : ''}`}
-                            onClick={isExpandable ? () => toggleEventExpanded(event.id) : undefined}
-                          >
-                            <div className="event-header-left">
-                              {isExpandable && (
-                                <svg className="event-expand-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                  <path d="M9 18l6-6-6-6" />
-                                </svg>
-                              )}
-                              <div className="event-title">{renderEventTitle(event, workspace?.path, setViewerFilePath)}</div>
-                            </div>
-                            <div className="event-time">{formatTime(event.timestamp)}</div>
-                          </div>
-                          {isExpanded && renderEventDetails(event)}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                <button
+                  className={`verbose-toggle-btn ${verboseSteps ? 'active' : ''}`}
+                  onClick={toggleVerboseSteps}
+                  title={verboseSteps ? 'Show important steps only' : 'Show all steps (verbose)'}
+                >
+                  {verboseSteps ? 'Verbose' : 'Summary'}
+                </button>
               )}
             </div>
           )}
 
-          {/* Assistant response - Always visible below steps */}
-          {lastAssistantMessage && (
-            <div className="chat-message assistant-message">
-              <div className="chat-bubble assistant-bubble">
-                <div className="chat-bubble-header">
-                  {task.status === 'completed' && <span className="chat-status">✅ Task Done!</span>}
-                  {task.status === 'executing' && <span className="chat-status executing">⏳ Working...</span>}
-                </div>
-                <div className="chat-bubble-content markdown-content">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-                    {lastAssistantMessage.payload.message}
-                  </ReactMarkdown>
-                </div>
-              </div>
+          {/* Conversation Flow - renders all events in order */}
+          {events.length > 0 && (
+            <div className="conversation-flow" ref={timelineRef}>
+              {filteredEvents.map((event, index) => {
+                const isUserMessage = event.type === 'user_message';
+                const isAssistantMessage = event.type === 'assistant_message';
+
+                // Render user messages as chat bubbles on the right
+                if (isUserMessage) {
+                  const messageText = event.payload?.message || 'User message';
+                  return (
+                    <div key={event.id || `event-${index}`} className="chat-message user-message">
+                      <div className="chat-bubble user-bubble markdown-content">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                          {messageText}
+                        </ReactMarkdown>
+                      </div>
+                      <MessageCopyButton text={messageText} />
+                    </div>
+                  );
+                }
+
+                // Render assistant messages as chat bubbles on the left
+                if (isAssistantMessage) {
+                  const messageText = event.payload?.message || '';
+                  const isLastAssistant = event === lastAssistantMessage;
+                  return (
+                    <div key={event.id || `event-${index}`} className="chat-message assistant-message">
+                      <div className="chat-bubble assistant-bubble">
+                        {isLastAssistant && (
+                          <div className="chat-bubble-header">
+                            {task.status === 'completed' && <span className="chat-status">✅ Task Done!</span>}
+                            {task.status === 'executing' && (
+                              <span className="chat-status executing">
+                                <svg className="spinner" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
+                                  <path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round" />
+                                </svg>
+                                Working...
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        <div className="chat-bubble-content markdown-content">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                            {messageText}
+                          </ReactMarkdown>
+                        </div>
+                      </div>
+                      <MessageCopyButton text={messageText} />
+                    </div>
+                  );
+                }
+
+                // Technical events - only show when showSteps is true
+                if (!showSteps) return null;
+
+                const isExpandable = hasEventDetails(event);
+                const isExpanded = isEventExpanded(event);
+
+                return (
+                  <div key={event.id || `event-${index}`} className="timeline-event">
+                    <div className="event-indicator">
+                      <div className={`event-dot ${getEventDotClass(event.type)}`} />
+                    </div>
+                    <div className="event-content">
+                      <div
+                        className={`event-header ${isExpandable ? 'expandable' : ''} ${isExpanded ? 'expanded' : ''}`}
+                        onClick={isExpandable ? () => toggleEventExpanded(event.id) : undefined}
+                      >
+                        <div className="event-header-left">
+                          {isExpandable && (
+                            <svg className="event-expand-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M9 18l6-6-6-6" />
+                            </svg>
+                          )}
+                          <div className="event-title">{renderEventTitle(event, workspace?.path, setViewerFilePath)}</div>
+                        </div>
+                        <div className="event-time">{formatTime(event.timestamp)}</div>
+                      </div>
+                      {isExpanded && renderEventDetails(event)}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Live Command Output - shown when a command is running or has output */}
+          {activeCommand && (
+            <CommandOutput
+              command={activeCommand.command}
+              output={activeCommand.output}
+              isRunning={activeCommand.isRunning}
+              exitCode={activeCommand.exitCode}
+              taskId={task?.id}
+              onClose={handleDismissCommandOutput}
+            />
+          )}
+
+          {/* Live Canvas Previews - shown when canvas sessions are active */}
+          {canvasSessions.length > 0 && (
+            <div className="canvas-previews-container">
+              {canvasSessions.map(session => (
+                <CanvasPreview
+                  key={session.id}
+                  session={session}
+                  onClose={() => handleCanvasClose(session.id)}
+                />
+              ))}
             </div>
           )}
         </div>
@@ -1179,9 +1441,21 @@ export function MainContent({ task, workspace, events, onSendMessage, onCreateTa
               )}
             </div>
           </div>
-          <div className="input-disclaimer">
-            AI can make mistakes. Please double-check responses.
+          <div className="input-below-actions">
+            <button
+              className={`shell-toggle ${shellEnabled ? 'enabled' : ''}`}
+              onClick={handleShellToggle}
+              title={shellEnabled ? 'Shell commands enabled - click to disable' : 'Shell commands disabled - click to enable'}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M4 17l6-6-6-6M12 19h8" />
+              </svg>
+              <span>Shell {shellEnabled ? 'ON' : 'OFF'}</span>
+            </button>
           </div>
+        </div>
+        <div className="footer-disclaimer">
+          AI can make mistakes. Please double-check responses.
         </div>
       </div>
 
@@ -1333,10 +1607,13 @@ function renderEventDetails(event: TaskEvent) {
       );
     case 'assistant_message':
       return (
-        <div className="event-details assistant-message event-details-scrollable markdown-content">
-          <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-            {event.payload.message}
-          </ReactMarkdown>
+        <div className="event-details assistant-message event-details-scrollable">
+          <div className="markdown-content">
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+              {event.payload.message}
+            </ReactMarkdown>
+          </div>
+          <MessageCopyButton text={event.payload.message} />
         </div>
       );
     case 'error':

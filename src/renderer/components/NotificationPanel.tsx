@@ -27,6 +27,7 @@ const styles: Record<string, React.CSSProperties> = {
   container: {
     position: 'relative',
     zIndex: 9999,
+    overflow: 'visible',
   },
   bellButton: {
     display: 'flex',
@@ -40,6 +41,7 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
     transition: 'all 0.15s ease',
     position: 'relative' as const,
+    overflow: 'visible',
   },
   bellButtonHover: {
     color: '#3b82f6',
@@ -346,6 +348,8 @@ export function NotificationPanel({ onNotificationClick }: NotificationPanelProp
         console.error('Failed to mark as read:', error);
       }
     }
+    // Close the panel
+    setIsOpen(false);
     // Trigger callback
     if (onNotificationClick) {
       onNotificationClick(notification);

@@ -278,6 +278,30 @@ export class AgentDaemon extends EventEmitter {
   }
 
   /**
+   * Send stdin input to a running command in a task
+   */
+  sendStdinToTask(taskId: string, input: string): boolean {
+    const cached = this.activeTasks.get(taskId);
+    if (!cached) {
+      return false;
+    }
+    return cached.executor.sendStdin(input);
+  }
+
+  /**
+   * Kill the running command in a task (send SIGINT like Ctrl+C)
+   * @param taskId - The task ID
+   * @param force - If true, send SIGKILL immediately instead of graceful escalation
+   */
+  killCommandInTask(taskId: string, force?: boolean): boolean {
+    const cached = this.activeTasks.get(taskId);
+    if (!cached) {
+      return false;
+    }
+    return cached.executor.killShellProcess(force);
+  }
+
+  /**
    * Request approval from user for an action
    */
   async requestApproval(

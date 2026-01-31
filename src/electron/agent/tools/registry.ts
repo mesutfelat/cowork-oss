@@ -75,6 +75,28 @@ export class ToolRegistry {
   }
 
   /**
+   * Send stdin input to the currently running shell command
+   */
+  sendStdin(input: string): boolean {
+    return this.shellTools.sendStdin(input);
+  }
+
+  /**
+   * Check if a shell command is currently running
+   */
+  hasActiveShellProcess(): boolean {
+    return this.shellTools.hasActiveProcess();
+  }
+
+  /**
+   * Kill the currently running shell command (send SIGINT)
+   * @param force - If true, send SIGKILL immediately instead of graceful escalation
+   */
+  killShellProcess(force?: boolean): boolean {
+    return this.shellTools.killProcess(force);
+  }
+
+  /**
    * Check if a tool is allowed based on security policy
    */
   isToolAllowed(toolName: string): boolean {
@@ -346,13 +368,15 @@ Scheduling:
 
 Live Canvas (Visual Workspace):
 - canvas_create: Create a new canvas session for displaying interactive content
-- canvas_push: Push HTML/CSS/JS content to the canvas
-- canvas_show: Show and focus the canvas window
+- canvas_push: Push HTML/CSS/JS content to the canvas. REQUIRED parameters: session_id and content (the HTML string).
+  Example: canvas_push({ session_id: "abc-123", content: "<!DOCTYPE html><html><body><h1>Hello</h1></body></html>" })
+- canvas_show: OPTIONAL - Only use if user needs full interactivity (clicking buttons, forms)
 - canvas_hide: Hide the canvas window
 - canvas_close: Close a canvas session
 - canvas_eval: Execute JavaScript in the canvas context
 - canvas_snapshot: Take a screenshot of the canvas
 - canvas_list: List all active canvas sessions
+IMPORTANT: When using canvas_push, you MUST provide the 'content' parameter with the full HTML string to display.
 
 Plan Control:
 - revise_plan: Modify remaining plan steps when obstacles are encountered or new information discovered`;
@@ -422,7 +446,12 @@ Plan Control:
 
     // Canvas tools
     if (name === 'canvas_create') return await this.canvasTools.createCanvas(input.title);
-    if (name === 'canvas_push') return await this.canvasTools.pushContent(input.session_id, input.content, input.filename);
+    if (name === 'canvas_push') {
+      console.log(`[ToolRegistry] canvas_push input keys:`, Object.keys(input || {}));
+      console.log(`[ToolRegistry] canvas_push session_id:`, input?.session_id);
+      console.log(`[ToolRegistry] canvas_push content present:`, 'content' in (input || {}), `content length:`, input?.content?.length ?? 'N/A');
+      return await this.canvasTools.pushContent(input.session_id, input.content, input.filename);
+    }
     if (name === 'canvas_show') return await this.canvasTools.showCanvas(input.session_id);
     if (name === 'canvas_hide') return this.canvasTools.hideCanvas(input.session_id);
     if (name === 'canvas_close') return await this.canvasTools.closeCanvas(input.session_id);
