@@ -8,13 +8,29 @@ import path from 'node:path';
 import { app } from 'electron';
 import type { AppNotification, NotificationStoreFile } from '../../shared/types';
 
-// Get the app data directory
-function getConfigDir(): string {
-  return path.join(app.getPath('userData'));
+// Lazy-evaluated paths (app.getPath() is not available until app is ready)
+let _notificationDir: string | null = null;
+let _notificationStorePath: string | null = null;
+
+export function getNotificationDir(): string {
+  if (!_notificationDir) {
+    _notificationDir = path.join(app.getPath('userData'), 'notifications');
+  }
+  return _notificationDir;
 }
 
-export const DEFAULT_NOTIFICATION_DIR = path.join(getConfigDir(), 'notifications');
-export const DEFAULT_NOTIFICATION_STORE_PATH = path.join(DEFAULT_NOTIFICATION_DIR, 'notifications.json');
+export function getNotificationStorePath(): string {
+  if (!_notificationStorePath) {
+    _notificationStorePath = path.join(getNotificationDir(), 'notifications.json');
+  }
+  return _notificationStorePath;
+}
+
+// Legacy exports - these are getters that evaluate lazily
+// eslint-disable-next-line @typescript-eslint/naming-convention
+export const DEFAULT_NOTIFICATION_DIR = '' as string; // Placeholder, use getNotificationDir()
+// eslint-disable-next-line @typescript-eslint/naming-convention
+export const DEFAULT_NOTIFICATION_STORE_PATH = '' as string; // Placeholder, use getNotificationStorePath()
 
 // Maximum notifications to keep (to prevent unbounded growth)
 const MAX_NOTIFICATIONS = 100;
@@ -23,9 +39,10 @@ const MAX_NOTIFICATIONS = 100;
  * Load notifications from the store file
  * Returns empty array if file doesn't exist or is invalid
  */
-export async function loadNotificationStore(storePath: string = DEFAULT_NOTIFICATION_STORE_PATH): Promise<NotificationStoreFile> {
+export async function loadNotificationStore(storePath?: string): Promise<NotificationStoreFile> {
+  const effectivePath = storePath || getNotificationStorePath();
   try {
-    const raw = await fs.promises.readFile(storePath, 'utf-8');
+    const raw = await fs.promises.readFile(effectivePath, 'utf-8');
     const parsed = JSON.parse(raw) as Partial<NotificationStoreFile> | null;
     const notifications = Array.isArray(parsed?.notifications) ? parsed.notifications : [];
 
@@ -56,9 +73,10 @@ export async function loadNotificationStore(storePath: string = DEFAULT_NOTIFICA
 /**
  * Load notification store synchronously (for initialization)
  */
-export function loadNotificationStoreSync(storePath: string = DEFAULT_NOTIFICATION_STORE_PATH): NotificationStoreFile {
+export function loadNotificationStoreSync(storePath?: string): NotificationStoreFile {
+  const effectivePath = storePath || getNotificationStorePath();
   try {
-    const raw = fs.readFileSync(storePath, 'utf-8');
+    const raw = fs.readFileSync(effectivePath, 'utf-8');
     const parsed = JSON.parse(raw) as Partial<NotificationStoreFile> | null;
     const notifications = Array.isArray(parsed?.notifications) ? parsed.notifications : [];
 
