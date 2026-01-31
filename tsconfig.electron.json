@@ -22,5 +22,5 @@
     }
   },
   "include": ["src/electron/**/*", "src/shared/**/*"],
-  "exclude": ["node_modules", "dist", "src/renderer"]
+  "exclude": ["node_modules", "dist", "src/renderer", "**/__tests__/**", "**/*.test.ts"]
 }

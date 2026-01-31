@@ -26,6 +26,9 @@ export {
 
 export {
   startTailscaleExposure,
+  stopTailscaleExposure,
+  getExposureStatus,
+  checkTailscaleAvailability,
   type TailscaleExposureConfig,
   type TailscaleExposureResult,
 } from './exposure';

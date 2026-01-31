@@ -151,7 +151,7 @@ export class SkillRegistry {
         throw new Error(`Failed to get skill details: ${response.status}`);
       }
 
-      return await response.json();
+      return (await response.json()) as SkillRegistryEntry;
     } catch (error) {
       console.error(`[SkillRegistry] Failed to get skill ${skillId}:`, error);
       return null;

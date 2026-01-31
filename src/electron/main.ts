@@ -14,8 +14,9 @@ import { MCPClientManager } from './mcp/client/MCPClientManager';
 import { trayManager } from './tray';
 import { CronService, setCronService, DEFAULT_CRON_STORE_PATH } from './cron';
 import { setupControlPlaneHandlers, shutdownControlPlane } from './control-plane';
-import { registerCanvasScheme, registerCanvasProtocol, CanvasManager } from './canvas';
-import { setupCanvasHandlers, cleanupCanvasHandlers } from './ipc/canvas-handlers';
+// Canvas feature is WIP - uncomment when ready
+// import { registerCanvasScheme, registerCanvasProtocol, CanvasManager } from './canvas';
+// import { setupCanvasHandlers, cleanupCanvasHandlers } from './ipc/canvas-handlers';
 
 let mainWindow: BrowserWindow | null = null;
 let dbManager: DatabaseManager;
@@ -24,7 +25,7 @@ let channelGateway: ChannelGateway;
 let cronService: CronService | null = null;
 
 // Register canvas:// protocol scheme (must be called before app.ready)
-registerCanvasScheme();
+// registerCanvasScheme(); // Canvas WIP
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -271,10 +272,10 @@ app.whenReady().then(async () => {
   });
 
   // Setup IPC handlers
-  setupIpcHandlers(dbManager, agentDaemon, channelGateway);
+  await setupIpcHandlers(dbManager, agentDaemon, channelGateway);
 
   // Register canvas:// protocol handler (must be after app.ready)
-  registerCanvasProtocol();
+  // registerCanvasProtocol(); // Canvas WIP
 
   // Create window
   createWindow();
@@ -286,13 +287,14 @@ app.whenReady().then(async () => {
     updateManager.setMainWindow(mainWindow);
 
     // Initialize Live Canvas handlers and set main window reference
-    setupCanvasHandlers(mainWindow, agentDaemon);
-    CanvasManager.getInstance().setMainWindow(mainWindow);
+    // Canvas WIP - uncomment when ready
+    // setupCanvasHandlers(mainWindow, agentDaemon);
+    // CanvasManager.getInstance().setMainWindow(mainWindow);
 
     // Clean up old canvas sessions (older than 7 days)
-    CanvasManager.getInstance().cleanupOldSessions().catch((err) => {
-      console.error('[Main] Failed to cleanup old canvas sessions:', err);
-    });
+    // CanvasManager.getInstance().cleanupOldSessions().catch((err: Error) => {
+    //   console.error('[Main] Failed to cleanup old canvas sessions:', err);
+    // });
 
     // Initialize control plane (WebSocket gateway)
     setupControlPlaneHandlers(mainWindow);
@@ -344,7 +346,7 @@ app.on('before-quit', async () => {
   }
 
   // Cleanup canvas manager (close all windows and watchers)
-  await cleanupCanvasHandlers();
+  // await cleanupCanvasHandlers(); // Canvas WIP
 
   // Shutdown control plane (WebSocket gateway and Tailscale)
   await shutdownControlPlane();
