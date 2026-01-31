@@ -16,6 +16,7 @@ import {
   estimateTokens,
 } from './context-manager';
 import { GuardrailManager } from '../guardrails/guardrail-manager';
+import { PersonalityManager } from '../settings/personality-manager';
 import { calculateCost, formatCost } from './llm/pricing';
 import { getCustomSkillLoader } from './custom-skill-loader';
 
@@ -957,6 +958,11 @@ export class TaskExecutor {
       this.handlePlanRevision(newSteps, reason);
     });
 
+    // Set up workspace switch handler
+    this.toolRegistry.setWorkspaceSwitchHandler(async (newWorkspace) => {
+      await this.handleWorkspaceSwitch(newWorkspace);
+    });
+
     // Initialize sandbox runner
     this.sandboxRunner = new SandboxRunner(workspace);
 
@@ -1375,6 +1381,15 @@ You are continuing a previous conversation. The context from the previous conver
     this.workspace = workspace;
     // Recreate tool registry to pick up new permissions (e.g., shell enabled)
     this.toolRegistry = new ToolRegistry(workspace, this.daemon, this.task.id);
+
+    // Re-register handlers after recreating tool registry
+    this.toolRegistry.setPlanRevisionHandler((newSteps, reason) => {
+      this.handlePlanRevision(newSteps, reason);
+    });
+    this.toolRegistry.setWorkspaceSwitchHandler(async (newWorkspace) => {
+      await this.handleWorkspaceSwitch(newWorkspace);
+    });
+
     console.log(`Workspace updated for task ${this.task.id}, permissions:`, workspace.permissions);
   }
 
@@ -1548,6 +1563,33 @@ You are continuing a previous conversation. The context from the previous conver
   }
 
   /**
+   * Handle workspace switch during task execution
+   * Updates the executor's workspace reference and the task record in database
+   */
+  private async handleWorkspaceSwitch(newWorkspace: Workspace): Promise<void> {
+    const oldWorkspacePath = this.workspace.path;
+
+    // Update the executor's workspace reference
+    this.workspace = newWorkspace;
+
+    // Update the sandbox runner with new workspace
+    this.sandboxRunner = new SandboxRunner(newWorkspace);
+
+    // Update the task's workspace in the database
+    this.daemon.updateTaskWorkspace(this.task.id, newWorkspace.id);
+
+    // Log the workspace switch
+    this.daemon.logEvent(this.task.id, 'workspace_switched', {
+      oldWorkspace: oldWorkspacePath,
+      newWorkspace: newWorkspace.path,
+      newWorkspaceId: newWorkspace.id,
+      newWorkspaceName: newWorkspace.name,
+    });
+
+    console.log(`[TaskExecutor] Workspace switched: ${oldWorkspacePath} -> ${newWorkspace.path}`);
+  }
+
+  /**
    * Pre-task Analysis Phase (inspired by Cowork's AskUserQuestion pattern)
    * Analyzes the task to understand what's involved and gather helpful context
    * This helps the LLM create better plans by understanding the workspace context first
@@ -1557,22 +1599,38 @@ You are continuing a previous conversation. The context from the previous conver
 
     const prompt = this.task.prompt.toLowerCase();
 
-    // Detect task types and gather relevant context
-    const isDocumentModification = prompt.includes('modify') || prompt.includes('edit') || prompt.includes('update') ||
+    // Exclusion patterns: code/development tasks should NOT trigger document hints
+    const isCodeTask = /\b(code|function|class|module|api|bug|test|refactor|debug|lint|build|compile|deploy|security|audit|review|implement|fix|feature|component|endpoint|database|schema|migration|typescript|javascript|python|react|node)\b/.test(prompt);
+
+    // Document format mentions - strong signal for actual document tasks
+    const mentionsDocFormat = /\b(docx|word|pdf|powerpoint|pptx|excel|xlsx|spreadsheet)\b/.test(prompt);
+    const mentionsSpecificFile = /\.(docx|pdf|xlsx|pptx)/.test(prompt);
+
+    // Detect task types - only trigger for explicit document tasks, NOT code tasks
+    const isDocumentModification = !isCodeTask && (mentionsDocFormat || mentionsSpecificFile) && (
+      prompt.includes('modify') || prompt.includes('edit') || prompt.includes('update') ||
       prompt.includes('change') || prompt.includes('add to') || prompt.includes('append') ||
-      prompt.includes('duplicate') || prompt.includes('copy') || prompt.includes('version');
+      prompt.includes('duplicate') || prompt.includes('copy') || prompt.includes('version')
+    );
 
-    const isDocumentCreation = prompt.includes('create') || prompt.includes('make') || prompt.includes('generate') ||
-      prompt.includes('write a document') || prompt.includes('write a report');
-
-    const mentionsSpecificFile = /\.(docx|pdf|xlsx|pptx|txt|md)/.test(prompt);
+    // Document creation requires explicit document format mention OR specific document phrases
+    const isDocumentCreation = !isCodeTask && (
+      mentionsDocFormat ||
+      mentionsSpecificFile ||
+      prompt.includes('write a document') ||
+      prompt.includes('create a document') ||
+      prompt.includes('write a word') ||
+      prompt.includes('create a pdf') ||
+      prompt.includes('make a pdf')
+    );
 
     let additionalContext = '';
     let taskType = 'general';
 
     try {
       // If the task mentions modifying documents or specific files, list workspace contents
-      if (isDocumentModification || mentionsSpecificFile) {
+      // Only trigger for non-code tasks with explicit document file mentions
+      if (isDocumentModification || (!isCodeTask && mentionsSpecificFile)) {
         taskType = 'document_modification';
 
         // List workspace to find relevant files
@@ -1753,6 +1811,27 @@ PLANNING RULES:
 - DO NOT include redundant "verify" or "review" steps for each action.
 - DO NOT plan to create multiple versions of files - pick ONE target file.
 - DO NOT plan to read the same file multiple times in different steps.
+
+PATH DISCOVERY (CRITICAL):
+- When users mention a folder or path (e.g., "electron/agent folder"), they may give a PARTIAL path, not the full path.
+- NEVER assume a path doesn't exist just because it's not in your workspace root.
+- If a mentioned path doesn't exist directly, your FIRST step should be to SEARCH for it using:
+  - glob tool with patterns like "**/electron/agent/**" or "**/[folder-name]/**"
+  - list_files to explore the directory structure
+  - search_files to find files containing relevant names
+- The user's intended path may be:
+  - In a subdirectory of the workspace
+  - In a parent directory (if unrestrictedFileAccess is enabled)
+  - In an allowed path outside the workspace
+- ALWAYS search before concluding something doesn't exist.
+- Example: If user says "audit the src/components folder" and workspace is /tmp/tasks, search for "**/src/components/**" first.
+
+SKILL USAGE (IMPORTANT):
+- Check if a custom skill matches the task before planning manually.
+- Skills are pre-configured workflows that can simplify complex tasks.
+- Use the use_skill tool with skill_id and required parameters.
+- Examples: git-commit for commits, code-review for reviews, translate for translations.
+- If a skill matches, use it early in the plan to leverage its specialized instructions.
 
 WEB ACCESS & CONTENT EXTRACTION (IMPORTANT):
 - For web access: browser_navigate THEN browser_get_content (both required).
@@ -2096,8 +2175,14 @@ Format your plan as a JSON object with this structure:
     const skillLoader = getCustomSkillLoader();
     const guidelinesPrompt = skillLoader.getEnabledGuidelinesPrompt();
 
+    // Get personality and identity prompts
+    const personalityPrompt = PersonalityManager.getPersonalityPrompt();
+    const identityPrompt = PersonalityManager.getIdentityPrompt();
+
     // Define system prompt once so we can track its token usage
-    this.systemPrompt = `You are an autonomous task executor. Use the available tools to complete each step.
+    this.systemPrompt = `${identityPrompt}
+
+You are an autonomous task executor. Use the available tools to complete each step.
 Current time: ${getCurrentDateTimeContext()}
 Workspace: ${this.workspace.path}
 
@@ -2105,6 +2190,16 @@ IMPORTANT INSTRUCTIONS:
 - Always use tools to accomplish tasks. Do not just describe what you would do - actually call the tools.
 - The delete_file tool has a built-in approval mechanism that will prompt the user. Just call the tool directly.
 - Do NOT ask "Should I proceed?" or wait for permission in text - the tools handle approvals automatically.
+
+PATH DISCOVERY (CRITICAL):
+- When a task mentions a folder or path (e.g., "electron/agent folder"), users often give PARTIAL paths.
+- NEVER conclude a path doesn't exist without SEARCHING for it first.
+- If the mentioned path isn't found directly in the workspace, use:
+  - glob with patterns like "**/electron/agent/**" or "**/[folder-name]/**"
+  - list_files to explore directory structure
+  - search_files to find files with relevant names
+- The intended path may be in a subdirectory, a parent directory, or an allowed external path.
+- ALWAYS search comprehensively before saying something doesn't exist.
 
 TOOL CALL STYLE:
 - Default: do NOT narrate routine, low-risk tool calls. Just call the tool silently.
@@ -2191,7 +2286,7 @@ SCHEDULING & REMINDERS:
   - "once": One-time task at a specific time (for reminders, single events)
   - "interval": Recurring at fixed intervals ("every 5m", "every 1h", "every 1d")
   - "cron": Standard cron expressions for complex schedules ("0 9 * * 1-5" for weekdays at 9am)
-- When creating reminders, make the prompt text descriptive so the reminder is self-explanatory when it fires.${guidelinesPrompt ? `\n\n${guidelinesPrompt}` : ''}`;
+- When creating reminders, make the prompt text descriptive so the reminder is self-explanatory when it fires.${personalityPrompt ? `\n\n${personalityPrompt}` : ''}${guidelinesPrompt ? `\n\n${guidelinesPrompt}` : ''}`;
 
     const systemPromptTokens = estimateTokens(this.systemPrompt);
 
@@ -2574,9 +2669,15 @@ SCHEDULING & REMINDERS:
     const skillLoader = getCustomSkillLoader();
     const guidelinesPrompt = skillLoader.getEnabledGuidelinesPrompt();
 
+    // Get personality and identity prompts
+    const personalityPrompt = PersonalityManager.getPersonalityPrompt();
+    const identityPrompt = PersonalityManager.getIdentityPrompt();
+
     // Ensure system prompt is set
     if (!this.systemPrompt) {
-      this.systemPrompt = `You are an autonomous task executor. Use the available tools to complete each step.
+      this.systemPrompt = `${identityPrompt}
+
+You are an autonomous task executor. Use the available tools to complete each step.
 Current time: ${getCurrentDateTimeContext()}
 Workspace: ${this.workspace.path}
 
@@ -2584,6 +2685,16 @@ IMPORTANT INSTRUCTIONS:
 - Always use tools to accomplish tasks. Do not just describe what you would do - actually call the tools.
 - The delete_file tool has a built-in approval mechanism that will prompt the user. Just call the tool directly.
 - Do NOT ask "Should I proceed?" or wait for permission in text - the tools handle approvals automatically.
+
+PATH DISCOVERY (CRITICAL):
+- When a task mentions a folder or path (e.g., "electron/agent folder"), users often give PARTIAL paths.
+- NEVER conclude a path doesn't exist without SEARCHING for it first.
+- If the mentioned path isn't found directly in the workspace, use:
+  - glob with patterns like "**/electron/agent/**" or "**/[folder-name]/**"
+  - list_files to explore directory structure
+  - search_files to find files with relevant names
+- The intended path may be in a subdirectory, a parent directory, or an allowed external path.
+- ALWAYS search comprehensively before saying something doesn't exist.
 
 TOOL CALL STYLE:
 - Default: do NOT narrate routine, low-risk tool calls. Just call the tool silently.
@@ -2668,7 +2779,7 @@ SCHEDULING & REMINDERS:
   - "once": One-time task at a specific time (for reminders, single events)
   - "interval": Recurring at fixed intervals ("every 5m", "every 1h", "every 1d")
   - "cron": Standard cron expressions for complex schedules ("0 9 * * 1-5" for weekdays at 9am)
-- When creating reminders, make the prompt text descriptive so the reminder is self-explanatory when it fires.${guidelinesPrompt ? `\n\n${guidelinesPrompt}` : ''}`;
+- When creating reminders, make the prompt text descriptive so the reminder is self-explanatory when it fires.${personalityPrompt ? `\n\n${personalityPrompt}` : ''}${guidelinesPrompt ? `\n\n${guidelinesPrompt}` : ''}`;
     }
 
     const systemPromptTokens = estimateTokens(this.systemPrompt);

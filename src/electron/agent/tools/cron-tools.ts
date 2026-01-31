@@ -31,6 +31,13 @@ export class CronTools {
   ) {}
 
   /**
+   * Update the workspace for this tool
+   */
+  setWorkspace(workspace: Workspace): void {
+    this.workspace = workspace;
+  }
+
+  /**
    * Get the status of the cron scheduler
    */
   async getStatus(): Promise<CronStatusSummary | { error: string }> {

@@ -10,7 +10,7 @@ import {
   ApprovalRepository,
   ArtifactRepository,
 } from '../database/repositories';
-import { Task, TaskStatus, IPC_CHANNELS, QueueSettings, QueueStatus } from '../../shared/types';
+import { Task, TaskStatus, IPC_CHANNELS, QueueSettings, QueueStatus, Workspace, WorkspacePermissions } from '../../shared/types';
 import { TaskExecutor } from './executor';
 import { TaskQueueManager } from './queue-manager';
 import { approvalIdempotency, taskIdempotency, IdempotencyManager } from '../security/concurrency';
@@ -475,6 +475,41 @@ export class AgentDaemon extends EventEmitter {
    */
   updateTaskStatus(taskId: string, status: Task['status']): void {
     this.taskRepo.update(taskId, { status });
+  }
+
+  /**
+   * Update task workspace ID in database
+   */
+  updateTaskWorkspace(taskId: string, workspaceId: string): void {
+    this.taskRepo.update(taskId, { workspaceId });
+  }
+
+  /**
+   * Get workspace by ID
+   */
+  getWorkspaceById(id: string): Workspace | undefined {
+    return this.workspaceRepo.findById(id);
+  }
+
+  /**
+   * Get workspace by path
+   */
+  getWorkspaceByPath(path: string): Workspace | undefined {
+    return this.workspaceRepo.findByPath(path);
+  }
+
+  /**
+   * Create a new workspace with default permissions
+   */
+  createWorkspace(name: string, path: string): Workspace {
+    const defaultPermissions: WorkspacePermissions = {
+      read: true,
+      write: true,
+      delete: false,
+      network: true,
+      shell: false,
+    };
+    return this.workspaceRepo.create(name, path, defaultPermissions);
   }
 
   /**

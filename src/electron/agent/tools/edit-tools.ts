@@ -16,6 +16,13 @@ export class EditTools {
   ) {}
 
   /**
+   * Update the workspace for this tool
+   */
+  setWorkspace(workspace: Workspace): void {
+    this.workspace = workspace;
+  }
+
+  /**
    * Get tool definitions for Edit tools
    */
   static getToolDefinitions(): LLMTool[] {

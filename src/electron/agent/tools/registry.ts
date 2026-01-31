@@ -22,6 +22,9 @@ import { MCPClientManager } from '../../mcp/client/MCPClientManager';
 import { MCPSettingsManager } from '../../mcp/settings';
 import { isToolAllowedQuick } from '../../security/policy-manager';
 import { BuiltinToolsSettingsManager } from './builtin-settings';
+import { getCustomSkillLoader } from '../custom-skill-loader';
+import { PersonalityManager } from '../../settings/personality-manager';
+import { PersonalityId, PERSONALITY_DEFINITIONS } from '../../../shared/types';
 
 /**
  * ToolRegistry manages all available tools and their execution
@@ -64,6 +67,34 @@ export class ToolRegistry {
     this.cronTools = new CronTools(workspace, daemon, taskId);
     this.canvasTools = new CanvasTools(workspace, daemon, taskId);
     this.gatewayContext = gatewayContext;
+  }
+
+  /**
+   * Get the current workspace
+   */
+  getWorkspace(): Workspace {
+    return this.workspace;
+  }
+
+  /**
+   * Update the workspace for all tools
+   * Used when switching workspaces mid-task
+   */
+  setWorkspace(workspace: Workspace): void {
+    this.workspace = workspace;
+    this.fileTools.setWorkspace(workspace);
+    this.skillTools.setWorkspace(workspace);
+    this.searchTools.setWorkspace(workspace);
+    this.webFetchTools.setWorkspace(workspace);
+    this.globTools.setWorkspace(workspace);
+    this.grepTools.setWorkspace(workspace);
+    this.editTools.setWorkspace(workspace);
+    this.browserTools.setWorkspace(workspace);
+    this.shellTools.setWorkspace(workspace);
+    this.imageTools.setWorkspace(workspace);
+    this.systemTools.setWorkspace(workspace);
+    this.cronTools.setWorkspace(workspace);
+    this.canvasTools.setWorkspace(workspace);
   }
 
   /**
@@ -182,7 +213,7 @@ export class ToolRegistry {
         return true;
       }
       // Meta tools are always enabled
-      if (tool.name === 'revise_plan') {
+      if (tool.name === 'revise_plan' || tool.name === 'set_personality' || tool.name === 'set_agent_name') {
         return true;
       }
       // Check built-in tool settings
@@ -262,6 +293,113 @@ export class ToolRegistry {
   }
 
   /**
+   * Callback for handling workspace switches (set by executor)
+   */
+  private workspaceSwitchHandler?: (newWorkspace: Workspace) => Promise<void>;
+
+  /**
+   * Set the callback for handling workspace switches
+   */
+  setWorkspaceSwitchHandler(handler: (newWorkspace: Workspace) => Promise<void>): void {
+    this.workspaceSwitchHandler = handler;
+  }
+
+  /**
+   * Switch to a different workspace
+   * Used internally by switch_workspace tool
+   */
+  async switchWorkspace(input: { path?: string; workspace_id?: string }): Promise<{
+    success: boolean;
+    workspace?: { id: string; name: string; path: string };
+    error?: string;
+  }> {
+    const { path: workspacePath, workspace_id } = input;
+
+    if (!workspacePath && !workspace_id) {
+      return {
+        success: false,
+        error: 'Either path or workspace_id must be provided',
+      };
+    }
+
+    if (!this.workspaceSwitchHandler) {
+      return {
+        success: false,
+        error: 'Workspace switching is not available in this context',
+      };
+    }
+
+    try {
+      // Look up the workspace
+      let newWorkspace: Workspace | undefined;
+
+      if (workspace_id) {
+        newWorkspace = this.daemon.getWorkspaceById(workspace_id);
+        if (!newWorkspace) {
+          return {
+            success: false,
+            error: `Workspace not found with id: ${workspace_id}`,
+          };
+        }
+      } else if (workspacePath) {
+        newWorkspace = this.daemon.getWorkspaceByPath(workspacePath);
+        if (!newWorkspace) {
+          // Try to create a new workspace for this path
+          const pathModule = await import('path');
+          const fsModule = await import('fs');
+
+          // Check if path exists and is a directory
+          if (!fsModule.existsSync(workspacePath)) {
+            return {
+              success: false,
+              error: `Path does not exist: ${workspacePath}`,
+            };
+          }
+
+          const stats = fsModule.statSync(workspacePath);
+          if (!stats.isDirectory()) {
+            return {
+              success: false,
+              error: `Path is not a directory: ${workspacePath}`,
+            };
+          }
+
+          // Create a new workspace for this path
+          const name = pathModule.basename(workspacePath);
+          newWorkspace = this.daemon.createWorkspace(name, workspacePath);
+        }
+      }
+
+      if (!newWorkspace) {
+        return {
+          success: false,
+          error: 'Failed to find or create workspace',
+        };
+      }
+
+      // Call the switch handler to update executor and task
+      await this.workspaceSwitchHandler(newWorkspace);
+
+      // Update the local workspace reference
+      this.setWorkspace(newWorkspace);
+
+      return {
+        success: true,
+        workspace: {
+          id: newWorkspace.id,
+          name: newWorkspace.name,
+          path: newWorkspace.path,
+        },
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Failed to switch workspace',
+      };
+    }
+  }
+
+  /**
    * Get human-readable tool descriptions
    */
   getToolDescriptions(): string {
@@ -283,6 +421,7 @@ Skills:
 - edit_document: Edit/append content to existing DOCX files
 - create_presentation: Create PowerPoint presentations
 - organize_folder: Organize and structure files in folders
+- use_skill: Invoke a custom skill by ID to help accomplish tasks (see available skills below)
 
 Code Tools (PREFERRED for code navigation and editing):
 - glob: Fast pattern-based file search (e.g., "**/*.ts", "src/**/*.test.ts")
@@ -379,7 +518,20 @@ Live Canvas (Visual Workspace):
 IMPORTANT: When using canvas_push, you MUST provide the 'content' parameter with the full HTML string to display.
 
 Plan Control:
-- revise_plan: Modify remaining plan steps when obstacles are encountered or new information discovered`;
+- revise_plan: Modify remaining plan steps when obstacles are encountered or new information discovered
+- switch_workspace: Switch to a different workspace/working directory. Use when you need to work in a different folder.
+- set_personality: Change the assistant's communication style (professional, friendly, concise, creative, technical, casual).
+- set_agent_name: Set or change the assistant's name when the user wants to give you a name.`;
+
+    // Add custom skills available for use_skill
+    const skillLoader = getCustomSkillLoader();
+    const skillDescriptions = skillLoader.getSkillDescriptionsForModel();
+    if (skillDescriptions) {
+      descriptions += `
+
+Custom Skills (invoke with use_skill tool):
+${skillDescriptions}`;
+    }
 
     return descriptions.trim();
   }
@@ -404,6 +556,7 @@ Plan Control:
     if (name === 'edit_document') return await this.skillTools.editDocument(input);
     if (name === 'create_presentation') return await this.skillTools.createPresentation(input);
     if (name === 'organize_folder') return await this.skillTools.organizeFolder(input);
+    if (name === 'use_skill') return await this.executeUseSkill(input);
 
     // Code tools (glob, grep, edit)
     if (name === 'glob') return await this.globTools.glob(input);
@@ -471,6 +624,18 @@ Plan Control:
         success: true,
         message: `Plan revised: ${newSteps.length} new steps added. Reason: ${reason}`,
       };
+    }
+
+    if (name === 'switch_workspace') {
+      return await this.switchWorkspace(input);
+    }
+
+    if (name === 'set_personality') {
+      return this.setPersonality(input);
+    }
+
+    if (name === 'set_agent_name') {
+      return this.setAgentName(input);
     }
 
     // MCP tools (prefixed with mcp_ by default)
@@ -641,6 +806,81 @@ Plan Control:
    */
   async cleanup(): Promise<void> {
     await this.browserTools.cleanup();
+  }
+
+  /**
+   * Execute the use_skill tool - invokes a custom skill by ID
+   */
+  private async executeUseSkill(input: { skill_id: string; parameters?: Record<string, any> }): Promise<any> {
+    const { skill_id, parameters = {} } = input;
+
+    const skillLoader = getCustomSkillLoader();
+    const skill = skillLoader.getSkill(skill_id);
+
+    if (!skill) {
+      // List available skills to help the agent
+      const availableSkills = skillLoader.listModelInvocableSkills().map(s => s.id);
+      return {
+        success: false,
+        error: `Skill '${skill_id}' not found`,
+        available_skills: availableSkills.slice(0, 20), // Show up to 20 skills
+        hint: 'Use one of the available skill IDs listed above',
+      };
+    }
+
+    // Check if skill can be invoked by model
+    if (skill.invocation?.disableModelInvocation) {
+      return {
+        success: false,
+        error: `Skill '${skill_id}' cannot be invoked automatically`,
+        reason: 'This skill is configured for manual invocation only',
+      };
+    }
+
+    // Check for required parameters
+    const missingParams: string[] = [];
+    if (skill.parameters) {
+      for (const param of skill.parameters) {
+        if (param.required && !(param.name in parameters) && param.default === undefined) {
+          missingParams.push(param.name);
+        }
+      }
+    }
+
+    if (missingParams.length > 0) {
+      return {
+        success: false,
+        error: `Missing required parameters: ${missingParams.join(', ')}`,
+        skill_id,
+        parameters: skill.parameters?.map(p => ({
+          name: p.name,
+          type: p.type,
+          description: p.description,
+          required: p.required,
+          default: p.default,
+          options: p.options,
+        })),
+      };
+    }
+
+    // Expand the skill prompt with provided parameters
+    const expandedPrompt = skillLoader.expandPrompt(skill, parameters);
+
+    // Log the skill invocation
+    this.daemon.logEvent(this.taskId, 'log', {
+      message: `Using skill: ${skill.name}`,
+      skillId: skill_id,
+      parameters,
+    });
+
+    return {
+      success: true,
+      skill_id,
+      skill_name: skill.name,
+      skill_description: skill.description,
+      expanded_prompt: expandedPrompt,
+      instruction: 'Execute the task according to the expanded_prompt above. Follow its instructions to complete the user\'s request.',
+    };
   }
 
   /**
@@ -947,6 +1187,28 @@ Plan Control:
           required: ['path', 'strategy'],
         },
       },
+      {
+        name: 'use_skill',
+        description:
+          'Use a custom skill by ID to help accomplish a task. Skills are pre-configured prompt templates ' +
+          'that provide specialized capabilities. Use this when a skill matches what you need to do. ' +
+          'The skill\'s expanded prompt will be injected into your context to guide execution.',
+        input_schema: {
+          type: 'object',
+          properties: {
+            skill_id: {
+              type: 'string',
+              description: 'The ID of the skill to use (e.g., "git-commit", "code-review", "translate")',
+            },
+            parameters: {
+              type: 'object',
+              description: 'Parameter values for the skill. Check skill description for required parameters.',
+              additionalProperties: true,
+            },
+          },
+          required: ['skill_id'],
+        },
+      },
     ];
   }
 
@@ -1036,6 +1298,70 @@ Plan Control:
   }
 
   /**
+   * Set the agent's personality
+   */
+  private setPersonality(input: { personality: string }): {
+    success: boolean;
+    personality: string;
+    description: string;
+    message: string;
+  } {
+    const personalityId = input.personality as PersonalityId;
+    const validIds: PersonalityId[] = ['professional', 'friendly', 'concise', 'creative', 'technical', 'casual'];
+
+    if (!validIds.includes(personalityId)) {
+      throw new Error(`Invalid personality: ${personalityId}. Valid options are: ${validIds.join(', ')}`);
+    }
+
+    // Save the new personality
+    PersonalityManager.setActivePersonality(personalityId);
+
+    // Get the personality definition for the response
+    const personality = PERSONALITY_DEFINITIONS.find(p => p.id === personalityId);
+    const description = personality?.description || '';
+    const name = personality?.name || personalityId;
+
+    console.log(`[ToolRegistry] Personality changed to: ${personalityId}`);
+
+    return {
+      success: true,
+      personality: personalityId,
+      description,
+      message: `Personality changed to "${name}". ${description}. This will take effect in future responses.`,
+    };
+  }
+
+  /**
+   * Set the agent's name
+   */
+  private setAgentName(input: { name: string }): {
+    success: boolean;
+    name: string;
+    message: string;
+  } {
+    const newName = input.name?.trim();
+
+    if (!newName || newName.length === 0) {
+      throw new Error('Name cannot be empty');
+    }
+
+    if (newName.length > 50) {
+      throw new Error('Name is too long (max 50 characters)');
+    }
+
+    // Save the new name
+    PersonalityManager.setAgentName(newName);
+
+    console.log(`[ToolRegistry] Agent name changed to: ${newName}`);
+
+    return {
+      success: true,
+      name: newName,
+      message: `Great! From now on, I'll go by "${newName}". Nice to meet you!`,
+    };
+  }
+
+  /**
    * Define meta tools for execution control
    */
   private getMetaToolDefinitions(): LLMTool[] {
@@ -1069,6 +1395,62 @@ Plan Control:
             },
           },
           required: ['reason', 'newSteps'],
+        },
+      },
+      {
+        name: 'switch_workspace',
+        description:
+          'Switch to a different workspace/working directory. Use this when you need to work in a different folder ' +
+          'than the current workspace. You can specify either a path to the folder or a workspace ID. ' +
+          'If the path doesn\'t have an existing workspace, a new one will be created.',
+        input_schema: {
+          type: 'object',
+          properties: {
+            path: {
+              type: 'string',
+              description: 'Absolute path to the folder to switch to (e.g., "/Users/user/projects/myapp")',
+            },
+            workspace_id: {
+              type: 'string',
+              description: 'ID of an existing workspace to switch to',
+            },
+          },
+        },
+      },
+      {
+        name: 'set_personality',
+        description:
+          'Change the assistant\'s communication style and personality. Use this when the user asks you to be more friendly, ' +
+          'professional, concise, creative, technical, or casual. Available personalities: professional (formal, business-oriented), ' +
+          'friendly (warm, encouraging), concise (brief, to-the-point), creative (imaginative, expressive), ' +
+          'technical (detailed, precise), casual (relaxed, informal). The change takes effect for all future interactions.',
+        input_schema: {
+          type: 'object',
+          properties: {
+            personality: {
+              type: 'string',
+              enum: ['professional', 'friendly', 'concise', 'creative', 'technical', 'casual'],
+              description: 'The personality to switch to',
+            },
+          },
+          required: ['personality'],
+        },
+      },
+      {
+        name: 'set_agent_name',
+        description:
+          'Set or change the assistant\'s name. Use this when the user wants to give you a name, rename you, or asks ' +
+          '"what should I call you?" The name will be remembered and used in all future interactions. ' +
+          'Default name is "CoWork" if not customized.',
+        input_schema: {
+          type: 'object',
+          properties: {
+            name: {
+              type: 'string',
+              description: 'The new name for the assistant (e.g., "Jarvis", "Friday", "Max")',
+            },
+          },
+          required: ['name'],
         },
       },
     ];

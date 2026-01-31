@@ -27,6 +27,18 @@ export class SkillTools {
   }
 
   /**
+   * Update the workspace for this tool
+   * Recreates all sub-builders with the new workspace
+   */
+  setWorkspace(workspace: Workspace): void {
+    this.workspace = workspace;
+    this.spreadsheetBuilder = new SpreadsheetBuilder(workspace);
+    this.documentBuilder = new DocumentBuilder(workspace);
+    this.presentationBuilder = new PresentationBuilder(workspace);
+    this.folderOrganizer = new FolderOrganizer(workspace, this.daemon, this.taskId);
+  }
+
+  /**
    * Create spreadsheet
    */
   async createSpreadsheet(input: {

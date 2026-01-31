@@ -30,6 +30,13 @@ export class CanvasTools {
   }
 
   /**
+   * Update the workspace for this tool
+   */
+  setWorkspace(workspace: Workspace): void {
+    this.workspace = workspace;
+  }
+
+  /**
    * Create a new canvas session
    */
   async createCanvas(title?: string): Promise<{

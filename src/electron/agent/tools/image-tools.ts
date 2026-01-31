@@ -22,6 +22,15 @@ export class ImageTools {
   }
 
   /**
+   * Update the workspace for this tool
+   * Recreates the image generator with the new workspace
+   */
+  setWorkspace(workspace: Workspace): void {
+    this.workspace = workspace;
+    this.imageGenerator = new ImageGenerator(workspace);
+  }
+
+  /**
    * Generate an image from a text prompt
    */
   async generateImage(input: {

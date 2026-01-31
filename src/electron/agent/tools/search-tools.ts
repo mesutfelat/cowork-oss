@@ -19,6 +19,13 @@ export class SearchTools {
   ) {}
 
   /**
+   * Update the workspace for this tool
+   */
+  setWorkspace(workspace: Workspace): void {
+    this.workspace = workspace;
+  }
+
+  /**
    * Perform a web search with automatic fallback support
    */
   async webSearch(input: {

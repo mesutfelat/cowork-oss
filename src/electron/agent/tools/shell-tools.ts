@@ -166,6 +166,13 @@ export class ShellTools {
   ) {}
 
   /**
+   * Update the workspace for this tool
+   */
+  setWorkspace(workspace: Workspace): void {
+    this.workspace = workspace;
+  }
+
+  /**
    * Clear all pending escalation timeouts
    * Called when process exits to prevent killing reused PIDs
    */

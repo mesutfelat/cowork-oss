@@ -16,6 +16,13 @@ export class GrepTools {
   ) {}
 
   /**
+   * Update the workspace for this tool
+   */
+  setWorkspace(workspace: Workspace): void {
+    this.workspace = workspace;
+  }
+
+  /**
    * Get tool definitions for Grep tools
    */
   static getToolDefinitions(): LLMTool[] {

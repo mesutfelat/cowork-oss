@@ -16,6 +16,13 @@ export class GlobTools {
   ) {}
 
   /**
+   * Update the workspace for this tool
+   */
+  setWorkspace(workspace: Workspace): void {
+    this.workspace = workspace;
+  }
+
+  /**
    * Get tool definitions for Glob tools
    */
   static getToolDefinitions(): LLMTool[] {

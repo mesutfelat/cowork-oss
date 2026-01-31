@@ -28,6 +28,13 @@ export class FileTools {
   ) {}
 
   /**
+   * Update the workspace for this tool
+   */
+  setWorkspace(workspace: Workspace): void {
+    this.workspace = workspace;
+  }
+
+  /**
    * Dangerous paths that should never be written to, even with unrestricted access
    */
   private static readonly PROTECTED_PATHS = [

@@ -16,6 +16,13 @@ export class WebFetchTools {
   ) {}
 
   /**
+   * Update the workspace for this tool
+   */
+  setWorkspace(workspace: Workspace): void {
+    this.workspace = workspace;
+  }
+
+  /**
    * Get tool definitions for WebFetch tools
    */
   static getToolDefinitions(): LLMTool[] {

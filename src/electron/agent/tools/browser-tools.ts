@@ -21,6 +21,19 @@ export class BrowserTools {
   }
 
   /**
+   * Update the workspace for this tool
+   * Recreates the browser service with the new workspace
+   */
+  setWorkspace(workspace: Workspace): void {
+    this.workspace = workspace;
+    // Recreate browser service with new workspace
+    this.browserService = new BrowserService(workspace, {
+      headless: true,
+      timeout: 90000
+    });
+  }
+
+  /**
    * Get the tool definitions for browser automation
    */
   static getToolDefinitions() {
