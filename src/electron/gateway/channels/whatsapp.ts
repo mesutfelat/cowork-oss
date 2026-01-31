@@ -2,7 +2,6 @@
  * WhatsApp Channel Adapter
  *
  * Implements the ChannelAdapter interface using Baileys for WhatsApp Web API.
- * Based on 's implementation pattern.
  *
  * Features:
  * - QR code authentication for WhatsApp Web

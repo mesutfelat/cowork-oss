@@ -585,7 +585,6 @@ export class DiscordAdapter implements ChannelAdapter {
 
   /**
    * Smart message splitting that preserves code fences
-   * Based on 's chunking logic
    */
   private splitMessageSmart(text: string, maxLength: number): string[] {
     if (text.length <= maxLength) {
