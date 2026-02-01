@@ -230,7 +230,7 @@ export function RightPanel({ task, workspace, events, tasks = [], queueStatus, o
       <div className="right-panel-section cli-section">
         <div className="cli-section-header" onClick={() => toggleSection('progress')}>
           <span className="cli-section-prompt">&gt;</span>
-          <span className="cli-section-title">PROGRESS</span>
+          <span className="cli-section-title">OUR PROGRESS</span>
           <span className="cli-section-toggle">{expandedSections.progress ? '[-]' : '[+]'}</span>
         </div>
         {expandedSections.progress && (
@@ -251,22 +251,22 @@ export function RightPanel({ task, workspace, events, tasks = [], queueStatus, o
               <div className="cli-empty-state">
                 <div className="cli-ascii-box">
                   ┌─────────────────────┐
-                  │   {task?.status === 'executing' ? '◉ EXECUTING...' : task?.status === 'completed' ? '✓ COMPLETED' : '○ WAITING'}{'     '}│
+                  │   {task?.status === 'executing' ? '◉ WORKING...' : task?.status === 'completed' ? '✓ ALL DONE' : '○ READY'}{'     '}│
                   └─────────────────────┘
                 </div>
-                <p className="cli-hint"># awaiting task steps...</p>
+                <p className="cli-hint"># standing by...</p>
               </div>
             )}
           </div>
         )}
       </div>
 
-      {/* Task Queue Section */}
+      {/* Lineup Section */}
       {totalQueueActive > 0 && (
         <div className="right-panel-section cli-section">
           <div className="cli-section-header" onClick={() => toggleSection('queue')}>
             <span className="cli-section-prompt">&gt;</span>
-            <span className="cli-section-title">QUEUE</span>
+            <span className="cli-section-title">LINEUP</span>
             <span className="cli-queue-badge">{queueStatus?.runningCount}/{queueStatus?.maxConcurrent}{queueStatus && queueStatus.queuedCount > 0 && ` +${queueStatus.queuedCount}`}</span>
             <span className="cli-section-toggle">{expandedSections.queue ? '[-]' : '[+]'}</span>
           </div>
@@ -274,7 +274,7 @@ export function RightPanel({ task, workspace, events, tasks = [], queueStatus, o
             <div className="cli-section-content">
               {runningTasks.length > 0 && (
                 <div className="cli-queue-group">
-                  <div className="cli-context-label"># running:</div>
+                  <div className="cli-context-label"># active:</div>
                   {runningTasks.map(t => (
                     <div key={t.id} className="cli-queue-item running">
                       <span className="cli-queue-status">[~]</span>
@@ -288,7 +288,7 @@ export function RightPanel({ task, workspace, events, tasks = [], queueStatus, o
               )}
               {queuedTasks.length > 0 && (
                 <div className="cli-queue-group">
-                  <div className="cli-context-label"># queued:</div>
+                  <div className="cli-context-label"># next up:</div>
                   {queuedTasks.map((t, i) => (
                     <div key={t.id} className="cli-queue-item queued">
                       <span className="cli-queue-status">[{i + 1}]</span>

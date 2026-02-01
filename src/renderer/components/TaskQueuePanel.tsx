@@ -77,7 +77,7 @@ export function TaskQueuePanel({
       >
         <div className="queue-panel-title">
           <span className="queue-icon">|||</span>
-          <span>Task Queue</span>
+          <span>Lineup</span>
           {totalActive > 0 && (
             <span className="queue-badge">
               {queueStatus.runningCount}/{queueStatus.maxConcurrent}
@@ -93,11 +93,11 @@ export function TaskQueuePanel({
       {/* Content */}
       {isExpanded && (
         <div className="queue-panel-content">
-          {/* Running Tasks */}
+          {/* Active Sessions */}
           {runningTasks.length > 0 && (
             <div className="queue-section">
               <div className="queue-section-header">
-                RUNNING ({runningTasks.length})
+                ACTIVE ({runningTasks.length})
               </div>
               {runningTasks.map(task => (
                 <TaskQueueItem
@@ -111,11 +111,11 @@ export function TaskQueuePanel({
             </div>
           )}
 
-          {/* Queued Tasks */}
+          {/* Next Up */}
           {queuedTasks.length > 0 && (
             <div className="queue-section">
               <div className="queue-section-header">
-                QUEUED ({queuedTasks.length})
+                NEXT UP ({queuedTasks.length})
               </div>
               {queuedTasks.map((task, index) => (
                 <TaskQueueItem
@@ -132,7 +132,7 @@ export function TaskQueuePanel({
 
           {totalActive === 0 && (
             <div className="queue-empty">
-              All tasks completed
+              All done!
             </div>
           )}
         </div>

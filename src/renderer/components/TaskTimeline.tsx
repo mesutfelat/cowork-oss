@@ -61,35 +61,35 @@ export function TaskTimeline({ events }: TaskTimelineProps) {
   const getEventTitle = (event: TaskEvent) => {
     switch (event.type) {
       case 'task_created':
-        return '🚀 Task Started';
+        return '🚀 Session Started';
       case 'plan_created':
-        return 'Execution plan created';
+        return 'Here\'s our approach';
       case 'step_started':
-        return `Started: ${event.payload.step?.description || 'Step'}`;
+        return `Working on: ${event.payload.step?.description || 'Getting started'}`;
       case 'step_completed':
-        return `Completed: ${event.payload.step?.description || event.payload.message || 'Step'}`;
+        return `✓ ${event.payload.step?.description || event.payload.message || 'Done'}`;
       case 'tool_call':
-        return `Tool: ${event.payload.tool}`;
+        return `Using: ${event.payload.tool}`;
       case 'tool_result':
-        return `Result: ${event.payload.tool}`;
+        return `${event.payload.tool} done`;
       case 'file_created':
         return `Created: ${event.payload.path}`;
       case 'file_modified':
-        return `Modified: ${event.payload.path || event.payload.from}`;
+        return `Updated: ${event.payload.path || event.payload.from}`;
       case 'file_deleted':
-        return `Deleted: ${event.payload.path}`;
+        return `Removed: ${event.payload.path}`;
       case 'error':
-        return 'Error occurred';
+        return 'Hit a snag';
       case 'task_cancelled':
-        return 'Task stopped by user';
+        return 'Session stopped';
       case 'approval_requested':
-        return `Approval needed: ${event.payload.approval?.description}`;
+        return `Need your input: ${event.payload.approval?.description}`;
       case 'executing':
-        return event.payload.message || 'Executing';
+        return event.payload.message || 'Working on it';
       case 'task_completed':
-        return '✅ Task Done!';
+        return '✅ All done!';
       case 'follow_up_completed':
-        return '✅ Task Done!';
+        return '✅ All done!';
       case 'log':
         return event.payload.message;
       default:
@@ -133,7 +133,7 @@ export function TaskTimeline({ events }: TaskTimelineProps) {
       case 'task_cancelled':
         return (
           <div className="event-details cancelled">
-            {event.payload.message || 'Execution was stopped'}
+            {event.payload.message || 'Session was stopped'}
           </div>
         );
       default:
@@ -144,14 +144,14 @@ export function TaskTimeline({ events }: TaskTimelineProps) {
   if (visibleEvents.length === 0 && blockedEvents.length === 0) {
     return (
       <div className="timeline-empty">
-        <p>No activity yet</p>
+        <p>Nothing happening yet</p>
       </div>
     );
   }
 
   return (
     <div className="timeline">
-      <h3>Activity Timeline</h3>
+      <h3>What We've Done</h3>
       <div className="timeline-events">
         {visibleEvents.map(event => (
           <div key={event.id} className="timeline-event">

@@ -42,7 +42,7 @@ export function ApprovalDialog({ approval, onApprove, onDeny }: ApprovalDialogPr
         <div className="approval-icon">{getApprovalIcon(approval.type)}</div>
 
         <div className="approval-content">
-          <h3>Approval Required</h3>
+          <h3>Need Your Input</h3>
           <p className="approval-description">{approval.description}</p>
 
           {approval.details && (

@@ -42,7 +42,7 @@ export function QuickTaskFAB({ onCreateTask, disabled }: QuickTaskFABProps) {
             ref={inputRef}
             type="text"
             className="quick-task-input"
-            placeholder="Quick task..."
+            placeholder="What should we do?"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -60,7 +60,7 @@ export function QuickTaskFAB({ onCreateTask, disabled }: QuickTaskFABProps) {
         className={`quick-task-fab ${isOpen ? 'open' : ''}`}
         onClick={() => setIsOpen(!isOpen)}
         disabled={disabled}
-        title="Quick task"
+        title="Quick start"
       >
         <span className="fab-icon">{isOpen ? 'x' : '+'}</span>
       </button>

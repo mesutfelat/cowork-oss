@@ -17,50 +17,83 @@ export class DatabaseManager {
     this.initializeSchema();
   }
 
+  // Migration version - increment this to force re-migration for users with partial migrations
+  private static readonly MIGRATION_VERSION = 2;
+
   /**
    * Migrate data from the old cowork-oss directory to the new cowork-os directory.
    * This ensures users don't lose their data when upgrading.
    */
   private migrateFromLegacyDirectory(newDataPath: string): void {
+    // Normalize path - remove trailing slash if present
+    const normalizedNewPath = newDataPath.replace(/\/+$/, '');
+
     // Determine the old directory path
-    // If new path ends with 'cowork-os', old path would be 'cowork-oss'
-    const oldDataPath = newDataPath.replace(/cowork-os$/, 'cowork-oss');
+    // Handle both 'cowork-os' and 'cowork-os/' patterns
+    const oldDataPath = normalizedNewPath.replace(/cowork-os$/, 'cowork-oss');
+
+    // Verify the replacement actually happened (paths should be different)
+    if (oldDataPath === normalizedNewPath) {
+      console.log('[DatabaseManager] Cannot determine legacy path from:', newDataPath);
+      return;
+    }
 
     // Check if old directory exists
     if (!fs.existsSync(oldDataPath)) {
+      console.log('[DatabaseManager] No legacy directory found at:', oldDataPath);
       return; // No legacy data to migrate
     }
 
-    // Check if migration is needed (new database doesn't exist or is empty)
-    const newDbPath = path.join(newDataPath, 'cowork-os.db');
+    const newDbPath = path.join(normalizedNewPath, 'cowork-os.db');
     const oldDbPath = path.join(oldDataPath, 'cowork-oss.db');
+    const migrationMarker = path.join(normalizedNewPath, '.migrated-from-cowork-oss');
 
-    // Skip if already migrated (check for migration marker file)
-    const migrationMarker = path.join(newDataPath, '.migrated-from-cowork-oss');
+    // Check if migration already completed with current version
     if (fs.existsSync(migrationMarker)) {
-      return; // Already migrated
+      try {
+        const markerContent = fs.readFileSync(migrationMarker, 'utf-8');
+        const markerData = JSON.parse(markerContent);
+        if (markerData.version >= DatabaseManager.MIGRATION_VERSION) {
+          return; // Already migrated with current or newer version
+        }
+        console.log('[DatabaseManager] Re-running migration (version upgrade)...');
+      } catch {
+        // Old format marker (just a date string) - re-run migration
+        console.log('[DatabaseManager] Re-running migration (old marker format)...');
+      }
     }
 
     console.log('[DatabaseManager] Migrating data from cowork-oss to cowork-os...');
+    console.log('[DatabaseManager] Old path:', oldDataPath);
+    console.log('[DatabaseManager] New path:', normalizedNewPath);
+
+    let migrationSuccessful = true;
+    const migratedFiles: string[] = [];
+    const migratedDirs: string[] = [];
 
     try {
       // Ensure new directory exists
-      if (!fs.existsSync(newDataPath)) {
-        fs.mkdirSync(newDataPath, { recursive: true });
+      if (!fs.existsSync(normalizedNewPath)) {
+        fs.mkdirSync(normalizedNewPath, { recursive: true });
       }
 
-      // 1. Migrate database if old exists and new doesn't (or new is smaller/empty)
+      // 1. Migrate database if old exists and new doesn't (or new is smaller)
       if (fs.existsSync(oldDbPath)) {
-        const shouldMigrateDb = !fs.existsSync(newDbPath) ||
-          (fs.statSync(oldDbPath).size > fs.statSync(newDbPath).size);
+        const oldDbSize = fs.statSync(oldDbPath).size;
+        const newDbExists = fs.existsSync(newDbPath);
+        const newDbSize = newDbExists ? fs.statSync(newDbPath).size : 0;
 
-        if (shouldMigrateDb) {
-          console.log('[DatabaseManager] Copying database from legacy directory...');
+        // Copy if new doesn't exist, or old is significantly larger (has more data)
+        if (!newDbExists || oldDbSize > newDbSize) {
+          console.log(`[DatabaseManager] Copying database (old: ${oldDbSize} bytes, new: ${newDbSize} bytes)...`);
           fs.copyFileSync(oldDbPath, newDbPath);
+          migratedFiles.push('cowork-os.db');
+        } else {
+          console.log('[DatabaseManager] Database already exists and is larger, skipping...');
         }
       }
 
-      // 2. Migrate settings files
+      // 2. Migrate settings files - copy if old exists and (new doesn't exist OR old is larger)
       const settingsFiles = [
         'appearance-settings.json',
         'builtin-tools-settings.json',
@@ -76,41 +109,84 @@ export class DatabaseManager {
 
       for (const file of settingsFiles) {
         const oldFile = path.join(oldDataPath, file);
-        const newFile = path.join(newDataPath, file);
+        const newFile = path.join(normalizedNewPath, file);
 
-        if (fs.existsSync(oldFile) && !fs.existsSync(newFile)) {
-          console.log(`[DatabaseManager] Migrating ${file}...`);
-          fs.copyFileSync(oldFile, newFile);
-        }
-      }
+        if (fs.existsSync(oldFile)) {
+          const oldSize = fs.statSync(oldFile).size;
+          const newExists = fs.existsSync(newFile);
+          const newSize = newExists ? fs.statSync(newFile).size : 0;
 
-      // 3. Migrate directories (skills, whatsapp-auth, cron)
-      const directories = ['skills', 'whatsapp-auth', 'cron', 'canvas', 'notifications'];
-
-      for (const dir of directories) {
-        const oldDir = path.join(oldDataPath, dir);
-        const newDir = path.join(newDataPath, dir);
-
-        if (fs.existsSync(oldDir) && fs.statSync(oldDir).isDirectory()) {
-          // Only copy if new directory doesn't exist or is empty
-          const newDirEmpty = !fs.existsSync(newDir) ||
-            (fs.readdirSync(newDir).length === 0);
-
-          if (newDirEmpty) {
-            console.log(`[DatabaseManager] Migrating ${dir}/ directory...`);
-            this.copyDirectoryRecursive(oldDir, newDir);
+          // Copy if new doesn't exist, or old file is larger (has more data)
+          if (!newExists || oldSize > newSize) {
+            console.log(`[DatabaseManager] Migrating ${file} (old: ${oldSize} bytes, new: ${newSize} bytes)...`);
+            fs.copyFileSync(oldFile, newFile);
+            migratedFiles.push(file);
           }
         }
       }
 
-      // Create migration marker to prevent re-migration
-      fs.writeFileSync(migrationMarker, new Date().toISOString());
+      // 3. Migrate directories (skills, whatsapp-auth, cron, canvas, notifications)
+      const directories = ['skills', 'whatsapp-auth', 'cron', 'canvas', 'notifications'];
 
-      console.log('[DatabaseManager] Migration from cowork-oss completed successfully.');
+      for (const dir of directories) {
+        const oldDir = path.join(oldDataPath, dir);
+        const newDir = path.join(normalizedNewPath, dir);
+
+        if (fs.existsSync(oldDir) && fs.statSync(oldDir).isDirectory()) {
+          const oldDirCount = this.countFilesRecursive(oldDir);
+          const newDirExists = fs.existsSync(newDir);
+          const newDirCount = newDirExists ? this.countFilesRecursive(newDir) : 0;
+
+          // Copy if new doesn't exist, is empty, or has significantly fewer files
+          if (!newDirExists || newDirCount === 0 || oldDirCount > newDirCount * 2) {
+            console.log(`[DatabaseManager] Migrating ${dir}/ (old: ${oldDirCount} files, new: ${newDirCount} files)...`);
+            this.copyDirectoryRecursive(oldDir, newDir);
+            migratedDirs.push(dir);
+          }
+        }
+      }
+
+      // Create migration marker with version info
+      const markerData = {
+        version: DatabaseManager.MIGRATION_VERSION,
+        timestamp: new Date().toISOString(),
+        migratedFiles,
+        migratedDirs,
+      };
+      fs.writeFileSync(migrationMarker, JSON.stringify(markerData, null, 2));
+
+      console.log('[DatabaseManager] Migration completed successfully.');
+      console.log('[DatabaseManager] Migrated files:', migratedFiles);
+      console.log('[DatabaseManager] Migrated directories:', migratedDirs);
     } catch (error) {
       console.error('[DatabaseManager] Migration failed:', error);
-      // Don't throw - allow app to continue with fresh data
+      migrationSuccessful = false;
+      // Don't create marker if migration failed - allows retry on next startup
     }
+
+    if (!migrationSuccessful) {
+      console.warn('[DatabaseManager] Migration incomplete - will retry on next startup');
+    }
+  }
+
+  /**
+   * Count files recursively in a directory
+   */
+  private countFilesRecursive(dirPath: string): number {
+    let count = 0;
+    try {
+      const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+      for (const entry of entries) {
+        if (entry.isDirectory()) {
+          count += this.countFilesRecursive(path.join(dirPath, entry.name));
+        } else {
+          count++;
+        }
+      }
+    } catch {
+      // Directory might not be readable
+    }
+    return count;
   }
 
   /**

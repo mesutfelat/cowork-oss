@@ -154,7 +154,7 @@ export function SkillsSettings({ onSkillSelect }: SkillsSettingsProps) {
           </div>
         </div>
         <p className="settings-description">
-          Create custom prompt templates to automate common tasks. Skills are stored as JSON files
+          Create custom prompt templates for things we do often. Skills are stored as JSON files
           and can be shared or version controlled.
         </p>
       </div>

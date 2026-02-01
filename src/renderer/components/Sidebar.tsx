@@ -292,27 +292,27 @@ export function Sidebar({
 
   return (
     <div className="sidebar cli-sidebar">
-      {/* New Task Button */}
+      {/* New Session Button */}
       <div className="sidebar-header">
         <button className="new-task-btn cli-new-task-btn" onClick={handleNewTask}>
           <span className="cli-btn-bracket">[</span>
           <span className="cli-btn-plus">+</span>
           <span className="cli-btn-bracket">]</span>
-          <span className="cli-btn-text">new_task</span>
+          <span className="cli-btn-text">new_session</span>
         </button>
       </div>
 
-      {/* Task List */}
+      {/* Sessions List */}
       <div className="task-list cli-task-list">
         <div className="task-list-header cli-list-header">
           <span className="cli-section-prompt">&gt;</span>
-          <span>RECENTS</span>
+          <span>SESSIONS</span>
         </div>
         {taskTree.length === 0 ? (
           <div className="sidebar-empty cli-empty">
-            <pre className="cli-tree">{`├── (no tasks)
+            <pre className="cli-tree">{`├── (no sessions yet)
 └── ...`}</pre>
-            <p className="cli-hint"># run new_task to begin</p>
+            <p className="cli-hint"># start a new session above</p>
           </div>
         ) : (
           taskTree.map((node, index) =>

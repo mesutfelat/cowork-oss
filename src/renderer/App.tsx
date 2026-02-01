@@ -620,6 +620,7 @@ export function App() {
             )}
             <MainContent
               task={selectedTask}
+              selectedTaskId={selectedTaskId}
               workspace={currentWorkspace}
               events={events}
               onSendMessage={handleSendMessage}

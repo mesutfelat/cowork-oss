@@ -67,8 +67,8 @@ export function TaskView({ task }: TaskViewProps) {
               <rect x="9" y="3" width="6" height="4" rx="1" />
             </svg>
           </div>
-          <h2>No task selected</h2>
-          <p>Select a task from the sidebar or create a new one to get started</p>
+          <h2>No session selected</h2>
+          <p>Pick a session from the sidebar or start a new one to work together</p>
         </div>
       </div>
     );
@@ -97,7 +97,7 @@ export function TaskView({ task }: TaskViewProps) {
         </div>
 
         <div className="task-prompt">
-          <h3>Task Description</h3>
+          <h3>What We're Working On</h3>
           <p>{task.prompt}</p>
         </div>
 

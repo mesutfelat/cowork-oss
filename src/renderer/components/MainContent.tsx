@@ -369,6 +369,7 @@ type SettingsTab = 'appearance' | 'llm' | 'search' | 'telegram' | 'discord' | 'u
 
 interface MainContentProps {
   task: Task | undefined;
+  selectedTaskId: string | null;  // Added to distinguish "no task" from "task not in list"
   workspace: Workspace | null;
   events: TaskEvent[];
   onSendMessage: (message: string) => void;
@@ -403,7 +404,7 @@ interface CanvasSession {
   lastUpdatedAt: number;
 }
 
-export function MainContent({ task, workspace, events, onSendMessage, onCreateTask, onChangeWorkspace, onSelectWorkspace, onOpenSettings, onStopTask, selectedModel, availableModels, onModelChange }: MainContentProps) {
+export function MainContent({ task, selectedTaskId, workspace, events, onSendMessage, onCreateTask, onChangeWorkspace, onSelectWorkspace, onOpenSettings, onStopTask, selectedModel, availableModels, onModelChange }: MainContentProps) {
   const [pendingApproval, setPendingApproval] = useState<ApprovalRequest | null>(null);
   const [inputValue, setInputValue] = useState('');
   // Shell permission state - tracks current workspace's shell permission
@@ -883,8 +884,11 @@ export function MainContent({ task, workspace, events, onSendMessage, onCreateTa
 
   const handleSend = () => {
     if (inputValue.trim()) {
-      if (!task && onCreateTask) {
-        // Create new task with optional Goal Mode options
+      // Use selectedTaskId to determine if we should follow-up or create new task
+      // This fixes the bug where old tasks (beyond the 100 most recent) would create new tasks
+      // instead of sending follow-up messages
+      if (!selectedTaskId && onCreateTask) {
+        // No task selected - create new task with optional Goal Mode options
         const title = inputValue.trim().slice(0, 50);
         const options: GoalModeOptions | undefined = goalModeEnabled && verificationCommand
           ? {
@@ -898,6 +902,7 @@ export function MainContent({ task, workspace, events, onSendMessage, onCreateTa
         setVerificationCommand('');
         setMaxAttempts(3);
       } else {
+        // Task is selected (even if not in current list) - send follow-up message
         onSendMessage(inputValue.trim());
       }
       setInputValue('');
@@ -953,12 +958,12 @@ export function MainContent({ task, workspace, events, onSendMessage, onCreateTa
             {/* ASCII Terminal Header */}
             <div className="cli-header">
               <pre className="ascii-art">{`
-  ██████╗ ██████╗ ██╗    ██╗ ██████╗ ██████╗ ██╗  ██╗       ██████╗ ███████╗
- ██╔════╝██╔═══██╗██║    ██║██╔═══██╗██╔══██╗██║ ██╔╝      ██╔═══██╗██╔════╝
- ██║     ██║   ██║██║ █╗ ██║██║   ██║██████╔╝█████╔╝ █████╗██║   ██║███████╗
- ██║     ██║   ██║██║███╗██║██║   ██║██╔══██╗██╔═██╗ ╚════╝██║   ██║╚════██║
- ╚██████╗╚██████╔╝╚███╔███╔╝╚██████╔╝██║  ██║██║  ██╗      ╚██████╔╝███████║
-  ╚═════╝ ╚═════╝  ╚══╝╚══╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝       ╚═════╝ ╚══════╝`}</pre>
+  ██████╗ ██████╗ ██╗    ██╗ ██████╗ ██████╗ ██╗  ██╗      ██████╗ ███████╗
+ ██╔════╝██╔═══██╗██║    ██║██╔═══██╗██╔══██╗██║ ██╔╝     ██╔═══██╗██╔════╝
+ ██║     ██║   ██║██║ █╗ ██║██║   ██║██████╔╝█████╔╝      ██║   ██║███████╗
+ ██║     ██║   ██║██║███╗██║██║   ██║██╔══██╗██╔═██╗      ██║   ██║╚════██║
+ ╚██████╗╚██████╔╝╚███╔███╔╝╚██████╔╝██║  ██║██║  ██╗     ╚██████╔╝███████║
+  ╚═════╝ ╚═════╝  ╚══╝╚══╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝      ╚═════╝ ╚══════╝`}</pre>
               <div className="cli-version">{appVersion ? `v${appVersion}` : ''}</div>
             </div>
 
@@ -966,7 +971,7 @@ export function MainContent({ task, workspace, events, onSendMessage, onCreateTa
             <div className="cli-info">
               <div className="cli-line">
                 <span className="cli-prompt">$</span>
-                <span className="cli-text">Welcome to CoWork OS - your AI-powered task automation assistant</span>
+                <span className="cli-text">Welcome to CoWork OS - let's get things done together</span>
               </div>
               <div className="cli-line cli-line-disclosure">
                 <span className="cli-prompt">#</span>
@@ -974,7 +979,7 @@ export function MainContent({ task, workspace, events, onSendMessage, onCreateTa
               </div>
               <div className="cli-line">
                 <span className="cli-prompt">$</span>
-                <span className="cli-text">Type a task below or select a quick command to get started</span>
+                <span className="cli-text">What should we work on? Type below or pick a quick start</span>
               </div>
             </div>
 
@@ -985,35 +990,35 @@ export function MainContent({ task, workspace, events, onSendMessage, onCreateTa
                 <span>QUICK START</span>
               </div>
               <div className="quick-start-grid">
-                <button className="quick-start-card" onClick={() => handleQuickAction('Help me organize the files in this folder. Sort them by type and rename them with clear, consistent names.')}>
+                <button className="quick-start-card" onClick={() => handleQuickAction('Let\'s organize the files in this folder together. Sort them by type and rename them with clear, consistent names.')}>
                   <span className="quick-start-icon">📁</span>
                   <span className="quick-start-title">Organize files</span>
-                  <span className="quick-start-desc">Sort and rename files in the workspace</span>
+                  <span className="quick-start-desc">Let's sort and tidy up the workspace</span>
                 </button>
-                <button className="quick-start-card" onClick={() => handleQuickAction('Help me write a document. I\'ll describe what I need and you can create it for me.')}>
+                <button className="quick-start-card" onClick={() => handleQuickAction('Let\'s write a document together. I\'ll describe what I need and we can create it.')}>
                   <span className="quick-start-icon">📝</span>
-                  <span className="quick-start-title">Write a document</span>
-                  <span className="quick-start-desc">Create reports, summaries, or notes</span>
+                  <span className="quick-start-title">Write together</span>
+                  <span className="quick-start-desc">Co-create reports, summaries, or notes</span>
                 </button>
-                <button className="quick-start-card" onClick={() => handleQuickAction('Help me analyze the data files in this folder. Summarize the key findings and create a report.')}>
+                <button className="quick-start-card" onClick={() => handleQuickAction('Let\'s analyze the data files in this folder together. We\'ll summarize the key findings and create a report.')}>
                   <span className="quick-start-icon">📊</span>
                   <span className="quick-start-title">Analyze data</span>
-                  <span className="quick-start-desc">Process spreadsheets or data files</span>
+                  <span className="quick-start-desc">Work through spreadsheets or data files</span>
                 </button>
-                <button className="quick-start-card" onClick={() => handleQuickAction('Generate documentation for this project. Create a README, API docs, or code comments as needed.')}>
+                <button className="quick-start-card" onClick={() => handleQuickAction('Let\'s generate documentation for this project together. We can create a README, API docs, or code comments as needed.')}>
                   <span className="quick-start-icon">📖</span>
                   <span className="quick-start-title">Generate docs</span>
-                  <span className="quick-start-desc">Create documentation for the project</span>
+                  <span className="quick-start-desc">Build documentation for the project</span>
                 </button>
-                <button className="quick-start-card" onClick={() => handleQuickAction('Help me research and summarize information from the files in this folder.')}>
+                <button className="quick-start-card" onClick={() => handleQuickAction('Let\'s research and summarize information from the files in this folder together.')}>
                   <span className="quick-start-icon">🔍</span>
-                  <span className="quick-start-title">Research & summarize</span>
-                  <span className="quick-start-desc">Gather info from multiple files</span>
+                  <span className="quick-start-title">Research together</span>
+                  <span className="quick-start-desc">Dig through files and find insights</span>
                 </button>
-                <button className="quick-start-card" onClick={() => handleQuickAction('Help me prepare for a meeting. Create an agenda, talking points, gather relevant documents, and organize materials needed to run a clean meeting.')}>
+                <button className="quick-start-card" onClick={() => handleQuickAction('Let\'s prepare for a meeting together. We\'ll create an agenda, talking points, and organize materials needed.')}>
                   <span className="quick-start-icon">📋</span>
-                  <span className="quick-start-title">Meeting Preparation</span>
-                  <span className="quick-start-desc">Prepare everything needed to run a clean meeting</span>
+                  <span className="quick-start-title">Meeting prep</span>
+                  <span className="quick-start-desc">Get everything ready for a clean meeting</span>
                 </button>
               </div>
             </div>
@@ -1025,7 +1030,7 @@ export function MainContent({ task, workspace, events, onSendMessage, onCreateTa
                 <textarea
                   ref={textareaRef}
                   className="welcome-input cli-input input-textarea"
-                  placeholder="Enter your task..."
+                  placeholder="What should we work on together?"
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                   onKeyDown={handleKeyDown}
@@ -1351,14 +1356,14 @@ export function MainContent({ task, workspace, events, onSendMessage, onCreateTa
                         <div className="chat-bubble assistant-bubble">
                           {isLastAssistant && (
                             <div className="chat-bubble-header">
-                              {task.status === 'completed' && <span className="chat-status">✅ Task Done!</span>}
+                              {task.status === 'completed' && <span className="chat-status">✅ All done!</span>}
                               {task.status === 'executing' && (
                                 <span className="chat-status executing">
                                   <svg className="spinner" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                     <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
                                     <path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round" />
                                   </svg>
-                                  Working...
+                                  Working on it...
                                 </span>
                               )}
                             </div>
@@ -1487,7 +1492,7 @@ export function MainContent({ task, workspace, events, onSendMessage, onCreateTa
             <textarea
               ref={textareaRef}
               className="input-field input-textarea"
-              placeholder={queuedMessage ? "Message queued..." : "Reply..."}
+              placeholder={queuedMessage ? "Message queued..." : "What's next?"}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
@@ -1573,21 +1578,21 @@ function renderEventTitle(
 ): React.ReactNode {
   switch (event.type) {
     case 'task_created':
-      return 'Task created';
+      return 'Session started';
     case 'task_completed':
-      return '✓ Task completed successfully';
+      return '✓ All done!';
     case 'plan_created':
-      return 'Execution plan created';
+      return 'Here\'s our approach';
     case 'step_started':
-      return `Step: ${event.payload.step?.description || 'Starting...'}`;
+      return `Working on: ${event.payload.step?.description || 'Getting started...'}`;
     case 'step_completed':
-      return `✓ ${event.payload.step?.description || event.payload.message || 'Step done'}`;
+      return `✓ ${event.payload.step?.description || event.payload.message || 'Done'}`;
     case 'tool_call':
-      return `Tool: ${event.payload.tool}`;
+      return `Using: ${event.payload.tool}`;
     case 'tool_result': {
       const result = event.payload.result;
       const success = result?.success !== false && !result?.error;
-      const status = success ? 'succeeded' : 'failed';
+      const status = success ? 'done' : 'issue';
 
       // Extract useful info from result to show inline
       let detail = '';
@@ -1614,7 +1619,7 @@ function renderEventTitle(
       return `${event.payload.tool} ${status}${detail}`;
     }
     case 'assistant_message':
-      return 'Assistant';
+      return 'CoWork';
     case 'file_created':
       return (
         <span>
@@ -1624,26 +1629,26 @@ function renderEventTitle(
     case 'file_modified':
       return (
         <span>
-          Modified: <ClickableFilePath path={event.payload.path || event.payload.from} workspacePath={workspacePath} onOpenViewer={onOpenViewer} />
+          Updated: <ClickableFilePath path={event.payload.path || event.payload.from} workspacePath={workspacePath} onOpenViewer={onOpenViewer} />
         </span>
       );
     case 'file_deleted':
-      return `Deleted: ${event.payload.path}`;
+      return `Removed: ${event.payload.path}`;
     case 'error':
-      return 'Error occurred';
+      return 'Hit a snag';
     case 'approval_requested':
-      return `Approval needed: ${event.payload.approval?.description}`;
+      return `Need your input: ${event.payload.approval?.description}`;
     case 'log':
       return event.payload.message;
     // Goal Mode verification events
     case 'verification_started':
-      return 'Running verification...';
+      return 'Checking our work...';
     case 'verification_passed':
-      return `Verification passed (attempt ${event.payload.attempt})`;
+      return `Verified! (attempt ${event.payload.attempt})`;
     case 'verification_failed':
-      return `Verification failed (attempt ${event.payload.attempt}/${event.payload.maxAttempts})`;
+      return `Not quite right (attempt ${event.payload.attempt}/${event.payload.maxAttempts})`;
     case 'retry_started':
-      return `Retrying (attempt ${event.payload.attempt}/${event.payload.maxAttempts})`;
+      return `Let's try again (attempt ${event.payload.attempt}/${event.payload.maxAttempts})`;
     default:
       return event.type;
   }
