@@ -6,6 +6,12 @@ import { SlackSettings } from './SlackSettings';
 import { WhatsAppSettings } from './WhatsAppSettings';
 import { ImessageSettings } from './ImessageSettings';
 import { SignalSettings } from './SignalSettings';
+import { MattermostSettings } from './MattermostSettings';
+import { MatrixSettings } from './MatrixSettings';
+import { TwitchSettings } from './TwitchSettings';
+import { LineSettings } from './LineSettings';
+import { BlueBubblesSettings } from './BlueBubblesSettings';
+import { EmailSettings } from './EmailSettings';
 import { SearchSettings } from './SearchSettings';
 import { UpdateSettings } from './UpdateSettings';
 import { GuardrailSettings } from './GuardrailSettings';
@@ -24,7 +30,7 @@ import { NodesSettings } from './NodesSettings';
 import { ExtensionsSettings } from './ExtensionsSettings';
 import { AgentSquadSettings } from './AgentSquadSettings';
 
-type SettingsTab = 'appearance' | 'personality' | 'squad' | 'tray' | 'llm' | 'search' | 'telegram' | 'discord' | 'slack' | 'whatsapp' | 'imessage' | 'signal' | 'updates' | 'guardrails' | 'queue' | 'skills' | 'skillhub' | 'mcp' | 'tools' | 'scheduled' | 'hooks' | 'controlplane' | 'nodes' | 'extensions';
+type SettingsTab = 'appearance' | 'personality' | 'squad' | 'tray' | 'llm' | 'search' | 'telegram' | 'discord' | 'slack' | 'whatsapp' | 'imessage' | 'signal' | 'mattermost' | 'matrix' | 'twitch' | 'line' | 'bluebubbles' | 'email' | 'updates' | 'guardrails' | 'queue' | 'skills' | 'skillhub' | 'mcp' | 'tools' | 'scheduled' | 'hooks' | 'controlplane' | 'nodes' | 'extensions';
 
 interface SettingsProps {
   onBack: () => void;
@@ -800,6 +806,66 @@ export function Settings({ onBack, onSettingsChanged, themeMode, accentColor, on
             Signal
           </button>
           <button
+            className={`settings-nav-item ${activeTab === 'mattermost' ? 'active' : ''}`}
+            onClick={() => setActiveTab('mattermost')}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <path d="M9 9h6v6H9z" />
+            </svg>
+            Mattermost
+          </button>
+          <button
+            className={`settings-nav-item ${activeTab === 'matrix' ? 'active' : ''}`}
+            onClick={() => setActiveTab('matrix')}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="2" y="2" width="20" height="20" rx="2" />
+              <path d="M7 7h10M7 12h10M7 17h10" />
+            </svg>
+            Matrix
+          </button>
+          <button
+            className={`settings-nav-item ${activeTab === 'twitch' ? 'active' : ''}`}
+            onClick={() => setActiveTab('twitch')}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 2H3v16h5v4l4-4h5l4-4V2zM11 11V7M16 11V7" />
+            </svg>
+            Twitch
+          </button>
+          <button
+            className={`settings-nav-item ${activeTab === 'line' ? 'active' : ''}`}
+            onClick={() => setActiveTab('line')}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 2C6.48 2 2 5.92 2 10.73c0 3.21 2.11 6.01 5.24 7.52-.06.5-.32 1.83-.37 2.11 0 0-.08.29.15.4.23.11.49.01.49.01 3.1-2.05 3.59-2.32 4.49-2.32 5.52 0 10-3.92 10-8.72C22 5.92 17.52 2 12 2z" />
+            </svg>
+            LINE
+          </button>
+          <button
+            className={`settings-nav-item ${activeTab === 'bluebubbles' ? 'active' : ''}`}
+            onClick={() => setActiveTab('bluebubbles')}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+              <line x1="9" y1="9" x2="9.01" y2="9" />
+              <line x1="15" y1="9" x2="15.01" y2="9" />
+            </svg>
+            BlueBubbles
+          </button>
+          <button
+            className={`settings-nav-item ${activeTab === 'email' ? 'active' : ''}`}
+            onClick={() => setActiveTab('email')}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="2" y="4" width="20" height="16" rx="2" />
+              <path d="M22 6l-10 7L2 6" />
+            </svg>
+            Email
+          </button>
+          <button
             className={`settings-nav-item ${activeTab === 'guardrails' ? 'active' : ''}`}
             onClick={() => setActiveTab('guardrails')}
           >
@@ -951,6 +1017,18 @@ export function Settings({ onBack, onSettingsChanged, themeMode, accentColor, on
             <ImessageSettings />
           ) : activeTab === 'signal' ? (
             <SignalSettings />
+          ) : activeTab === 'mattermost' ? (
+            <MattermostSettings />
+          ) : activeTab === 'matrix' ? (
+            <MatrixSettings />
+          ) : activeTab === 'twitch' ? (
+            <TwitchSettings />
+          ) : activeTab === 'line' ? (
+            <LineSettings />
+          ) : activeTab === 'bluebubbles' ? (
+            <BlueBubblesSettings />
+          ) : activeTab === 'email' ? (
+            <EmailSettings />
           ) : activeTab === 'search' ? (
             <SearchSettings />
           ) : activeTab === 'updates' ? (
