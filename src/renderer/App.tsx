@@ -58,6 +58,8 @@ export function App() {
   const [disclaimerAccepted, setDisclaimerAccepted] = useState<boolean | null>(null);
   // Onboarding state (null = loading)
   const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
+  // Timestamp of when onboarding was completed
+  const [onboardingCompletedAt, setOnboardingCompletedAt] = useState<string | undefined>(undefined);
 
   const handleDisclaimerAccept = (dontShowAgain: boolean) => {
     // Save to main process for persistence
@@ -65,12 +67,26 @@ export function App() {
     setDisclaimerAccepted(true);
   };
 
-  const handleOnboardingComplete = () => {
+  const handleOnboardingComplete = (dontShowAgain: boolean) => {
+    const timestamp = new Date().toISOString();
     // Save to main process for persistence
-    window.electronAPI.saveAppearanceSettings({ onboardingCompleted: true });
-    setOnboardingCompleted(true);
+    // If dontShowAgain is true, mark as completed with timestamp
+    // If false, just save the timestamp but don't mark as completed (user can see it again next time)
+    window.electronAPI.saveAppearanceSettings({
+      onboardingCompleted: dontShowAgain,
+      onboardingCompletedAt: timestamp,
+    });
+    setOnboardingCompleted(true); // Always allow proceeding to main app
+    setOnboardingCompletedAt(timestamp);
     // Refresh LLM config after onboarding (user may have configured a provider)
     loadLLMConfig();
+  };
+
+  const handleShowOnboarding = () => {
+    // Reset onboarding state to show the wizard again
+    setOnboardingCompleted(false);
+    // Close settings view if open
+    setCurrentView('main');
   };
 
   // Load LLM config status
@@ -99,10 +115,12 @@ export function App() {
         setAccentColor(settings.accentColor);
         setDisclaimerAccepted(settings.disclaimerAccepted ?? false);
         setOnboardingCompleted(settings.onboardingCompleted ?? false);
+        setOnboardingCompletedAt(settings.onboardingCompletedAt);
       } catch (error) {
         console.error('Failed to load appearance settings:', error);
         setDisclaimerAccepted(false);
         setOnboardingCompleted(false);
+        setOnboardingCompletedAt(undefined);
       }
     };
     loadAppearanceSettings();
@@ -746,6 +764,8 @@ export function App() {
           onThemeChange={handleThemeChange}
           onAccentChange={handleAccentChange}
           initialTab={settingsTab}
+          onShowOnboarding={handleShowOnboarding}
+          onboardingCompletedAt={onboardingCompletedAt}
         />
       )}
     </div>

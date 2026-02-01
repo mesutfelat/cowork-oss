@@ -41,6 +41,8 @@ interface SettingsProps {
   onThemeChange: (theme: ThemeMode) => void;
   onAccentChange: (accent: AccentColor) => void;
   initialTab?: SettingsTab;
+  onShowOnboarding?: () => void;
+  onboardingCompletedAt?: string;
 }
 
 interface ModelOption {
@@ -225,7 +227,7 @@ function SearchableSelect({ options, value, onChange, placeholder = 'Select...',
   );
 }
 
-export function Settings({ onBack, onSettingsChanged, themeMode, accentColor, onThemeChange, onAccentChange, initialTab = 'appearance' }: SettingsProps) {
+export function Settings({ onBack, onSettingsChanged, themeMode, accentColor, onThemeChange, onAccentChange, initialTab = 'appearance', onShowOnboarding, onboardingCompletedAt }: SettingsProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
   const [settings, setSettings] = useState<LLMSettingsData>({
     providerType: 'anthropic',
@@ -1011,6 +1013,8 @@ export function Settings({ onBack, onSettingsChanged, themeMode, accentColor, on
               accentColor={accentColor}
               onThemeChange={onThemeChange}
               onAccentChange={onAccentChange}
+              onShowOnboarding={onShowOnboarding}
+              onboardingCompletedAt={onboardingCompletedAt}
             />
           ) : activeTab === 'personality' ? (
             <PersonalitySettings onSettingsChanged={onSettingsChanged} />

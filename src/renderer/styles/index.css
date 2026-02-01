@@ -4678,6 +4678,39 @@ button {
   line-height: 1.5;
 }
 
+/* Onboarding section in Settings */
+.settings-section.onboarding-section {
+  padding: 16px;
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-subtle);
+}
+
+.settings-section.onboarding-section h3 {
+  margin-bottom: 6px;
+}
+
+.settings-section.onboarding-section .settings-description {
+  margin-bottom: 14px;
+}
+
+.onboarding-completed-info {
+  color: var(--color-text-secondary);
+}
+
+.show-onboarding-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.show-onboarding-btn svg {
+  opacity: 0.8;
+}
+
 .provider-options {
   display: flex;
   flex-direction: column;
@@ -12727,6 +12760,37 @@ button {
 
 .onboarding-channel-note strong {
   color: var(--color-text);
+}
+
+/* Don't show again checkbox */
+.onboarding-dont-show-again {
+  margin-bottom: 20px;
+  padding: 16px;
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-md);
+}
+
+.onboarding-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--color-text);
+}
+
+.onboarding-checkbox-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-accent);
+  cursor: pointer;
+}
+
+.onboarding-checkbox-hint {
+  margin-top: 8px;
+  margin-left: 28px;
+  font-size: 12px;
+  color: var(--color-text-muted);
 }
 
 /* Light theme adjustments */

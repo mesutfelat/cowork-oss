@@ -5,6 +5,8 @@ interface AppearanceSettingsProps {
   accentColor: AccentColor;
   onThemeChange: (theme: ThemeMode) => void;
   onAccentChange: (accent: AccentColor) => void;
+  onShowOnboarding?: () => void;
+  onboardingCompletedAt?: string;
 }
 
 export function AppearanceSettings({
@@ -12,9 +14,47 @@ export function AppearanceSettings({
   accentColor,
   onThemeChange,
   onAccentChange,
+  onShowOnboarding,
+  onboardingCompletedAt,
 }: AppearanceSettingsProps) {
+  const formatCompletedDate = (isoString?: string) => {
+    if (!isoString) return null;
+    try {
+      const date = new Date(isoString);
+      return date.toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+    } catch {
+      return null;
+    }
+  };
+
   return (
     <div className="appearance-settings">
+      {/* Onboarding Section - at the top */}
+      <div className="settings-section onboarding-section">
+        <h3>Setup Wizard</h3>
+        <p className="settings-description">
+          Re-run the initial setup wizard to configure your AI provider and messaging channels.
+          {onboardingCompletedAt && (
+            <span className="onboarding-completed-info">
+              {' '}Completed on {formatCompletedDate(onboardingCompletedAt)}.
+            </span>
+          )}
+        </p>
+        <button
+          className="button-secondary show-onboarding-btn"
+          onClick={onShowOnboarding}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+          </svg>
+          Show Setup Wizard
+        </button>
+      </div>
+
       <div className="settings-section">
         <h3>Appearance</h3>
         <p className="settings-description">

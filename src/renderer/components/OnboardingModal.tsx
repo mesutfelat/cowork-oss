@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ThemeMode, AccentColor, ACCENT_COLORS, LLMSettingsData } from '../../shared/types';
 
 interface OnboardingModalProps {
-  onComplete: () => void;
+  onComplete: (dontShowAgain: boolean) => void;
   themeMode: ThemeMode;
   accentColor: AccentColor;
   onThemeChange: (theme: ThemeMode) => void;
@@ -218,6 +218,7 @@ export function OnboardingModal({
   const [saving, setSaving] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; error?: string } | null>(null);
   const [selectedChannels, setSelectedChannels] = useState<Set<ChannelType>>(new Set());
+  const [dontShowAgain, setDontShowAgain] = useState(true); // Default to true - most users want to complete onboarding once
 
   // Check if Ollama is available locally when selected
   useEffect(() => {
@@ -321,7 +322,7 @@ export function OnboardingModal({
   const handleFinish = () => {
     // Just complete onboarding - channels can be configured in Settings
     // The selected channels are just informational at this point
-    onComplete();
+    onComplete(dontShowAgain);
   };
 
   const getDefaultModel = (provider: LLMProviderType): string => {
@@ -655,6 +656,20 @@ export function OnboardingModal({
                 </span>
               </div>
             )}
+
+            <div className="onboarding-dont-show-again">
+              <label className="onboarding-checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={dontShowAgain}
+                  onChange={(e) => setDontShowAgain(e.target.checked)}
+                />
+                <span>Don't show this again</span>
+              </label>
+              <p className="onboarding-checkbox-hint">
+                You can re-open onboarding anytime from Settings &gt; Appearance
+              </p>
+            </div>
 
             <div className="onboarding-actions">
               <button className="onboarding-btn-secondary" onClick={() => setStep('llm')}>

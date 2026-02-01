@@ -9,6 +9,7 @@ export interface AppearanceSettings {
   accentColor: AccentColor;
   disclaimerAccepted?: boolean;
   onboardingCompleted?: boolean;
+  onboardingCompletedAt?: string; // ISO timestamp of when onboarding was completed
 }
 
 // Tray (Menu Bar) Settings

@@ -2100,12 +2100,14 @@ export interface ElectronAPI {
     accentColor: 'cyan' | 'blue' | 'purple' | 'pink' | 'rose' | 'orange' | 'green' | 'teal';
     disclaimerAccepted?: boolean;
     onboardingCompleted?: boolean;
+    onboardingCompletedAt?: string;
   }>;
   saveAppearanceSettings: (settings: {
     themeMode?: 'light' | 'dark' | 'system';
     accentColor?: 'cyan' | 'blue' | 'purple' | 'pink' | 'rose' | 'orange' | 'green' | 'teal';
     disclaimerAccepted?: boolean;
     onboardingCompleted?: boolean;
+    onboardingCompletedAt?: string;
   }) => Promise<{ success: boolean }>;
   // Personality Settings
   getPersonalitySettings: () => Promise<{
