@@ -1219,6 +1219,87 @@ export async function setupIpcHandlers(
       };
     }
 
+    if (validated.type === 'mattermost') {
+      const channel = await gateway.addMattermostChannel(
+        validated.name,
+        validated.mattermostServerUrl!,
+        validated.mattermostToken!,
+        validated.mattermostTeamId,
+        validated.securityMode || 'pairing'
+      );
+
+      // Automatically enable and connect Mattermost
+      gateway.enableChannel(channel.id).catch((err) => {
+        console.error('Failed to enable Mattermost channel:', err);
+      });
+
+      return {
+        id: channel.id,
+        type: channel.type,
+        name: channel.name,
+        enabled: channel.enabled,
+        status: 'connecting',
+        securityMode: channel.securityConfig.mode,
+        createdAt: channel.createdAt,
+        config: channel.config,
+      };
+    }
+
+    if (validated.type === 'matrix') {
+      const channel = await gateway.addMatrixChannel(
+        validated.name,
+        validated.matrixHomeserver!,
+        validated.matrixUserId!,
+        validated.matrixAccessToken!,
+        validated.matrixDeviceId,
+        validated.matrixRoomIds,
+        validated.securityMode || 'pairing'
+      );
+
+      // Automatically enable and connect Matrix
+      gateway.enableChannel(channel.id).catch((err) => {
+        console.error('Failed to enable Matrix channel:', err);
+      });
+
+      return {
+        id: channel.id,
+        type: channel.type,
+        name: channel.name,
+        enabled: channel.enabled,
+        status: 'connecting',
+        securityMode: channel.securityConfig.mode,
+        createdAt: channel.createdAt,
+        config: channel.config,
+      };
+    }
+
+    if (validated.type === 'twitch') {
+      const channel = await gateway.addTwitchChannel(
+        validated.name,
+        validated.twitchUsername!,
+        validated.twitchOauthToken!,
+        validated.twitchChannels || [],
+        validated.twitchAllowWhispers ?? false,
+        validated.securityMode || 'pairing'
+      );
+
+      // Automatically enable and connect Twitch
+      gateway.enableChannel(channel.id).catch((err) => {
+        console.error('Failed to enable Twitch channel:', err);
+      });
+
+      return {
+        id: channel.id,
+        type: channel.type,
+        name: channel.name,
+        enabled: channel.enabled,
+        status: 'connecting',
+        securityMode: channel.securityConfig.mode,
+        createdAt: channel.createdAt,
+        config: channel.config,
+      };
+    }
+
     // TypeScript exhaustiveness check - should never reach here due to discriminated union
     throw new Error(`Unsupported channel type`);
   });

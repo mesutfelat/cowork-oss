@@ -19,6 +19,9 @@ import {
   WhatsAppConfig,
   ImessageConfig,
   SignalConfig,
+  MattermostConfig,
+  MatrixConfig,
+  TwitchConfig,
   GatewayEventHandler,
 } from './channels/types';
 import { TelegramAdapter, createTelegramAdapter } from './channels/telegram';
@@ -27,6 +30,9 @@ import { SlackAdapter, createSlackAdapter } from './channels/slack';
 import { WhatsAppAdapter, createWhatsAppAdapter } from './channels/whatsapp';
 import { ImessageAdapter, createImessageAdapter } from './channels/imessage';
 import { SignalAdapter, createSignalAdapter } from './channels/signal';
+import { MattermostAdapter, createMattermostAdapter } from './channels/mattermost';
+import { MatrixAdapter, createMatrixAdapter } from './channels/matrix';
+import { TwitchAdapter, createTwitchAdapter } from './channels/twitch';
 import {
   ChannelRepository,
   ChannelUserRepository,
@@ -474,6 +480,129 @@ export class ChannelGateway {
   }
 
   /**
+   * Add a new Mattermost channel
+   */
+  async addMattermostChannel(
+    name: string,
+    serverUrl: string,
+    token: string,
+    teamId?: string,
+    securityMode: 'open' | 'allowlist' | 'pairing' = 'pairing'
+  ): Promise<Channel> {
+    // Check if Mattermost channel already exists
+    const existing = this.channelRepo.findByType('mattermost');
+    if (existing) {
+      throw new Error('Mattermost channel already configured. Update or remove it first.');
+    }
+
+    // Create channel record
+    const channel = this.channelRepo.create({
+      type: 'mattermost',
+      name,
+      enabled: false, // Don't enable until connected
+      config: {
+        serverUrl,
+        token,
+        teamId,
+      },
+      securityConfig: {
+        mode: securityMode,
+        allowedUsers: [],
+        pairingCodeTTL: 300, // 5 minutes
+        maxPairingAttempts: 5,
+        rateLimitPerMinute: 30,
+      },
+      status: 'disconnected',
+    });
+
+    return channel;
+  }
+
+  /**
+   * Add a new Matrix channel
+   */
+  async addMatrixChannel(
+    name: string,
+    homeserver: string,
+    userId: string,
+    accessToken: string,
+    deviceId?: string,
+    roomIds?: string[],
+    securityMode: 'open' | 'allowlist' | 'pairing' = 'pairing'
+  ): Promise<Channel> {
+    // Check if Matrix channel already exists
+    const existing = this.channelRepo.findByType('matrix');
+    if (existing) {
+      throw new Error('Matrix channel already configured. Update or remove it first.');
+    }
+
+    // Create channel record
+    const channel = this.channelRepo.create({
+      type: 'matrix',
+      name,
+      enabled: false, // Don't enable until connected
+      config: {
+        homeserver,
+        userId,
+        accessToken,
+        deviceId,
+        roomIds,
+      },
+      securityConfig: {
+        mode: securityMode,
+        allowedUsers: [],
+        pairingCodeTTL: 300, // 5 minutes
+        maxPairingAttempts: 5,
+        rateLimitPerMinute: 30,
+      },
+      status: 'disconnected',
+    });
+
+    return channel;
+  }
+
+  /**
+   * Add a new Twitch channel
+   */
+  async addTwitchChannel(
+    name: string,
+    username: string,
+    oauthToken: string,
+    channels: string[],
+    allowWhispers: boolean = false,
+    securityMode: 'open' | 'allowlist' | 'pairing' = 'pairing'
+  ): Promise<Channel> {
+    // Check if Twitch channel already exists
+    const existing = this.channelRepo.findByType('twitch');
+    if (existing) {
+      throw new Error('Twitch channel already configured. Update or remove it first.');
+    }
+
+    // Create channel record
+    const channel = this.channelRepo.create({
+      type: 'twitch',
+      name,
+      enabled: false, // Don't enable until connected
+      config: {
+        username,
+        oauthToken,
+        channels,
+        allowWhispers,
+      },
+      securityConfig: {
+        mode: securityMode,
+        allowedUsers: [],
+        pairingCodeTTL: 300, // 5 minutes
+        maxPairingAttempts: 5,
+        rateLimitPerMinute: 30,
+      },
+      status: 'disconnected',
+    });
+
+    return channel;
+  }
+
+  /**
    * Update a channel configuration
    */
   updateChannel(channelId: string, updates: Partial<Channel>): void {
@@ -872,6 +1001,38 @@ export class ChannelGateway {
           responsePrefix: channel.config.responsePrefix as string | undefined,
         });
 
+      case 'mattermost':
+        return createMattermostAdapter({
+          enabled: channel.enabled,
+          serverUrl: channel.config.serverUrl as string,
+          token: channel.config.token as string,
+          teamId: channel.config.teamId as string | undefined,
+          responsePrefix: channel.config.responsePrefix as string | undefined,
+        });
+
+      case 'matrix':
+        return createMatrixAdapter({
+          enabled: channel.enabled,
+          homeserver: channel.config.homeserver as string,
+          userId: channel.config.userId as string,
+          accessToken: channel.config.accessToken as string,
+          deviceId: channel.config.deviceId as string | undefined,
+          roomIds: channel.config.roomIds as string[] | undefined,
+          sendTypingIndicators: channel.config.sendTypingIndicators as boolean | undefined,
+          sendReadReceipts: channel.config.sendReadReceipts as boolean | undefined,
+          responsePrefix: channel.config.responsePrefix as string | undefined,
+        });
+
+      case 'twitch':
+        return createTwitchAdapter({
+          enabled: channel.enabled,
+          username: channel.config.username as string,
+          oauthToken: channel.config.oauthToken as string,
+          channels: channel.config.channels as string[],
+          allowWhispers: channel.config.allowWhispers as boolean | undefined,
+          responsePrefix: channel.config.responsePrefix as string | undefined,
+        });
+
       default:
         throw new Error(`Unsupported channel type: ${channel.type}`);
     }
@@ -891,5 +1052,11 @@ export { WhatsAppAdapter, createWhatsAppAdapter } from './channels/whatsapp';
 export { ImessageAdapter, createImessageAdapter } from './channels/imessage';
 export { SignalAdapter, createSignalAdapter } from './channels/signal';
 export { SignalClient } from './channels/signal-client';
+export { MattermostAdapter, createMattermostAdapter } from './channels/mattermost';
+export { MattermostClient } from './channels/mattermost-client';
+export { MatrixAdapter, createMatrixAdapter } from './channels/matrix';
+export { MatrixClient } from './channels/matrix-client';
+export { TwitchAdapter, createTwitchAdapter } from './channels/twitch';
+export { TwitchClient } from './channels/twitch-client';
 export { TunnelManager, getAvailableTunnelProviders, createAutoTunnel } from './tunnel';
 export type { TunnelProvider, TunnelStatus, TunnelConfig, TunnelInfo } from './tunnel';

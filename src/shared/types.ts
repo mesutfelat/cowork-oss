@@ -861,7 +861,7 @@ export interface LLMConfigStatus {
 }
 
 // Gateway / Channel types
-export type ChannelType = 'telegram' | 'discord' | 'slack' | 'whatsapp' | 'imessage' | 'signal';
+export type ChannelType = 'telegram' | 'discord' | 'slack' | 'whatsapp' | 'imessage' | 'signal' | 'mattermost' | 'matrix' | 'twitch';
 export type ChannelStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
 export type SecurityMode = 'open' | 'allowlist' | 'pairing';
 
@@ -919,6 +919,21 @@ export interface AddChannelRequest {
   trustMode?: 'always' | 'on-first-use' | 'never';
   sendReadReceipts?: boolean;
   sendTypingIndicators?: boolean;
+  // Mattermost-specific fields
+  mattermostServerUrl?: string;
+  mattermostToken?: string;
+  mattermostTeamId?: string;
+  // Matrix-specific fields
+  matrixHomeserver?: string;
+  matrixUserId?: string;
+  matrixAccessToken?: string;
+  matrixDeviceId?: string;
+  matrixRoomIds?: string[];
+  // Twitch-specific fields
+  twitchUsername?: string;
+  twitchOauthToken?: string;
+  twitchChannels?: string[];
+  twitchAllowWhispers?: boolean;
 }
 
 export interface UpdateChannelRequest {

@@ -248,6 +248,36 @@ export const AddSignalChannelSchema = z.object({
   sendTypingIndicators: z.boolean().optional(),
 });
 
+export const AddMattermostChannelSchema = z.object({
+  type: z.literal('mattermost'),
+  name: z.string().min(1).max(MAX_TITLE_LENGTH),
+  mattermostServerUrl: z.string().url().min(1).max(500),
+  mattermostToken: z.string().min(1).max(500),
+  mattermostTeamId: z.string().max(100).optional(),
+  securityMode: SecurityModeSchema.optional(),
+});
+
+export const AddMatrixChannelSchema = z.object({
+  type: z.literal('matrix'),
+  name: z.string().min(1).max(MAX_TITLE_LENGTH),
+  matrixHomeserver: z.string().url().min(1).max(500),
+  matrixUserId: z.string().min(1).max(200),
+  matrixAccessToken: z.string().min(1).max(1000),
+  matrixDeviceId: z.string().max(200).optional(),
+  matrixRoomIds: z.array(z.string().max(200)).max(100).optional(),
+  securityMode: SecurityModeSchema.optional(),
+});
+
+export const AddTwitchChannelSchema = z.object({
+  type: z.literal('twitch'),
+  name: z.string().min(1).max(MAX_TITLE_LENGTH),
+  twitchUsername: z.string().min(1).max(100),
+  twitchOauthToken: z.string().min(1).max(500),
+  twitchChannels: z.array(z.string().max(100)).min(1).max(50),
+  twitchAllowWhispers: z.boolean().optional(),
+  securityMode: SecurityModeSchema.optional(),
+});
+
 export const AddChannelSchema = z.discriminatedUnion('type', [
   AddTelegramChannelSchema,
   AddDiscordChannelSchema,
@@ -255,6 +285,9 @@ export const AddChannelSchema = z.discriminatedUnion('type', [
   AddWhatsAppChannelSchema,
   AddImessageChannelSchema,
   AddSignalChannelSchema,
+  AddMattermostChannelSchema,
+  AddMatrixChannelSchema,
+  AddTwitchChannelSchema,
 ]);
 
 export const ChannelConfigSchema = z.object({
@@ -367,7 +400,7 @@ export const MCPRegistrySearchSchema = z.object({
 
 // ============ Hooks (Webhooks) Schemas ============
 
-export const HookMappingChannelSchema = z.enum(['telegram', 'discord', 'slack', 'whatsapp', 'imessage', 'signal', 'last']);
+export const HookMappingChannelSchema = z.enum(['telegram', 'discord', 'slack', 'whatsapp', 'imessage', 'signal', 'mattermost', 'matrix', 'twitch', 'last']);
 
 export const HookMappingSchema = z.object({
   id: z.string().max(100).optional(),

@@ -22,12 +22,12 @@
 
 **The operating system for personal AI assistants**
 
-Your AI needs a secure home. CoWork OS provides the runtime, security layers, and I/O channels to run AI agents across WhatsApp, Telegram, Discord, Slack, iMessage, and Signal — with the control you expect from an operating system.
+Your AI needs a secure home. CoWork OS provides the runtime, security layers, and I/O channels to run AI agents across WhatsApp, Telegram, Discord, Slack, iMessage, Signal, Mattermost, Matrix, and Twitch — with the control you expect from an operating system.
 
 | | |
 |---|---|
 | **6 AI Providers** | Claude, GPT-4, Gemini, Bedrock, OpenRouter, Ollama (free/local) |
-| **6 Messaging Channels** | WhatsApp, Telegram, Discord, Slack, iMessage, Signal |
+| **9 Messaging Channels** | WhatsApp, Telegram, Discord, Slack, iMessage, Signal, Mattermost, Matrix, Twitch |
 | **Security-First** | 390+ unit tests, configurable guardrails, approval workflows |
 | **Local-First** | Your data stays on your machine. BYOK (Bring Your Own Key) |
 
@@ -62,7 +62,7 @@ Your AI needs a secure home. CoWork OS provides the runtime, security layers, an
 
 ### Connect from Anywhere
 
-- Message your AI from WhatsApp, Telegram, Discord, Slack, iMessage, or Signal
+- Message your AI from WhatsApp, Telegram, Discord, Slack, iMessage, Signal, Mattermost, Matrix, or Twitch
 - Schedule recurring tasks with cron expressions
 - Secure remote access via Tailscale or SSH tunnels
 - WebSocket API for custom integrations
@@ -128,6 +128,9 @@ CoWork OS is **free and open source**. To run tasks, configure your own model cr
 - **Slack**: Socket Mode, channel mentions, file uploads
 - **iMessage**: macOS native integration, pairing codes
 - **Signal**: End-to-end encrypted messaging via signal-cli
+- **Mattermost**: WebSocket real-time, REST API, team/channel support
+- **Matrix**: Federated messaging, room-based, end-to-end encryption ready
+- **Twitch**: IRC chat integration, multi-channel, whisper support
 
 All channels support:
 - Security modes (pairing, allowlist, open)
@@ -415,7 +418,7 @@ Schedule recurring tasks with cron expressions and optional channel delivery.
 
 - **Cron Expressions**: Standard cron syntax (minute, hour, day, month, weekday)
 - **Workspace Binding**: Each job runs in a specific workspace
-- **Channel Delivery**: Send results to Telegram, Discord, Slack, WhatsApp, iMessage, or Signal
+- **Channel Delivery**: Send results to Telegram, Discord, Slack, WhatsApp, iMessage, Signal, Mattermost, Matrix, or Twitch
 - **Run History**: View execution history with status and duration
 - **Enable/Disable**: Toggle jobs without deleting them
 

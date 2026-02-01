@@ -8,7 +8,7 @@
 /**
  * Supported channel types
  */
-export type ChannelType = 'telegram' | 'discord' | 'slack' | 'whatsapp' | 'imessage' | 'signal';
+export type ChannelType = 'telegram' | 'discord' | 'slack' | 'whatsapp' | 'imessage' | 'signal' | 'mattermost' | 'matrix' | 'twitch';
 
 /**
  * Channel connection status
@@ -257,6 +257,64 @@ export interface SignalConfig extends ChannelConfig {
   responsePrefix?: string;
   /** Poll interval for receiving messages in ms (default: 1000) */
   pollInterval?: number;
+}
+
+/**
+ * Mattermost-specific configuration
+ */
+export interface MattermostConfig extends ChannelConfig {
+  /** Mattermost server URL (e.g., https://mattermost.example.com) */
+  serverUrl: string;
+  /** Personal access token */
+  token: string;
+  /** Team ID to operate in (optional) */
+  teamId?: string;
+  /** Response prefix for bot messages */
+  responsePrefix?: string;
+  /** Enable message deduplication (default: true) */
+  deduplicationEnabled?: boolean;
+}
+
+/**
+ * Matrix-specific configuration
+ */
+export interface MatrixConfig extends ChannelConfig {
+  /** Matrix homeserver URL (e.g., https://matrix.org) */
+  homeserver: string;
+  /** User ID (e.g., @user:matrix.org) */
+  userId: string;
+  /** Access token */
+  accessToken: string;
+  /** Device ID (optional) */
+  deviceId?: string;
+  /** Room IDs to listen to (optional, listens to all joined rooms if not specified) */
+  roomIds?: string[];
+  /** Response prefix for bot messages */
+  responsePrefix?: string;
+  /** Send typing indicators (default: true) */
+  sendTypingIndicators?: boolean;
+  /** Send read receipts (default: true) */
+  sendReadReceipts?: boolean;
+  /** Enable message deduplication (default: true) */
+  deduplicationEnabled?: boolean;
+}
+
+/**
+ * Twitch-specific configuration
+ */
+export interface TwitchConfig extends ChannelConfig {
+  /** Twitch username (login name) */
+  username: string;
+  /** OAuth token (with oauth: prefix or without) */
+  oauthToken: string;
+  /** Channels to join (without # prefix) */
+  channels: string[];
+  /** Response prefix for bot messages */
+  responsePrefix?: string;
+  /** Enable message deduplication (default: true) */
+  deduplicationEnabled?: boolean;
+  /** Whether to respond to whispers (DMs) - default: false */
+  allowWhispers?: boolean;
 }
 
 /**
