@@ -3043,3 +3043,183 @@ export const ANALOGY_DOMAINS: Record<AnalogyDomain, { name: string; description:
   movies: { name: 'Movies', description: 'Cinema, storytelling, directors', examples: '"Like editing a film - pacing matters"' },
   construction: { name: 'Construction', description: 'Building, architecture, tools', examples: '"You need a solid foundation first"' },
 };
+
+// ============ Voice Mode Types ============
+
+/**
+ * Voice provider options
+ */
+export type VoiceProvider = 'elevenlabs' | 'openai' | 'local';
+
+/**
+ * Voice input mode - when to listen for voice input
+ */
+export type VoiceInputMode = 'push_to_talk' | 'voice_activity' | 'disabled';
+
+/**
+ * Voice response mode - when to speak responses
+ */
+export type VoiceResponseMode = 'auto' | 'manual' | 'smart';
+
+/**
+ * Voice settings configuration
+ */
+export interface VoiceSettings {
+  /** Whether voice mode is enabled */
+  enabled: boolean;
+
+  /** Text-to-speech provider */
+  ttsProvider: VoiceProvider;
+
+  /** Speech-to-text provider */
+  sttProvider: VoiceProvider;
+
+  /** ElevenLabs API key (stored securely) */
+  elevenLabsApiKey?: string;
+
+  /** OpenAI API key for voice (if different from main key) */
+  openaiApiKey?: string;
+
+  /** Selected ElevenLabs voice ID */
+  elevenLabsVoiceId?: string;
+
+  /** Selected OpenAI voice name */
+  openaiVoice?: 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer';
+
+  /** Voice input mode */
+  inputMode: VoiceInputMode;
+
+  /** Voice response mode */
+  responseMode: VoiceResponseMode;
+
+  /** Push-to-talk keyboard shortcut */
+  pushToTalkKey: string;
+
+  /** Volume level (0-100) */
+  volume: number;
+
+  /** Speech rate (0.5-2.0) */
+  speechRate: number;
+
+  /** Language for STT */
+  language: string;
+
+  /** Enable wake word detection */
+  wakeWordEnabled: boolean;
+
+  /** Custom wake word (if supported) */
+  wakeWord?: string;
+
+  /** Auto-stop after silence (seconds) */
+  silenceTimeout: number;
+
+  /** Enable audio feedback sounds */
+  audioFeedback: boolean;
+}
+
+/**
+ * Voice state for real-time UI updates
+ */
+export interface VoiceState {
+  /** Is voice mode currently active */
+  isActive: boolean;
+
+  /** Is currently listening for input */
+  isListening: boolean;
+
+  /** Is currently speaking */
+  isSpeaking: boolean;
+
+  /** Is processing speech-to-text */
+  isProcessing: boolean;
+
+  /** Current audio level (0-100) for visualization */
+  audioLevel: number;
+
+  /** Partial transcription while speaking */
+  partialTranscript?: string;
+
+  /** Any error message */
+  error?: string;
+}
+
+/**
+ * ElevenLabs voice info
+ */
+export interface ElevenLabsVoice {
+  voice_id: string;
+  name: string;
+  category?: string;
+  description?: string;
+  preview_url?: string;
+  labels?: Record<string, string>;
+}
+
+/**
+ * Voice event types for IPC communication
+ */
+export type VoiceEventType =
+  | 'voice:state-changed'
+  | 'voice:transcript'
+  | 'voice:partial-transcript'
+  | 'voice:speaking-start'
+  | 'voice:speaking-end'
+  | 'voice:error'
+  | 'voice:audio-level';
+
+/**
+ * Voice event payload
+ */
+export interface VoiceEvent {
+  type: VoiceEventType;
+  data: VoiceState | string | number | Error;
+}
+
+/**
+ * Default voice settings
+ */
+export const DEFAULT_VOICE_SETTINGS: VoiceSettings = {
+  enabled: false,
+  ttsProvider: 'elevenlabs',
+  sttProvider: 'openai',
+  inputMode: 'push_to_talk',
+  responseMode: 'auto',
+  pushToTalkKey: 'Space',
+  volume: 80,
+  speechRate: 1.0,
+  language: 'en-US',
+  wakeWordEnabled: false,
+  silenceTimeout: 2,
+  audioFeedback: true,
+};
+
+/**
+ * Available OpenAI TTS voices
+ */
+export const OPENAI_VOICES = [
+  { id: 'alloy', name: 'Alloy', description: 'Neutral and balanced' },
+  { id: 'echo', name: 'Echo', description: 'Warm and conversational' },
+  { id: 'fable', name: 'Fable', description: 'Expressive and animated' },
+  { id: 'onyx', name: 'Onyx', description: 'Deep and authoritative' },
+  { id: 'nova', name: 'Nova', description: 'Bright and friendly' },
+  { id: 'shimmer', name: 'Shimmer', description: 'Clear and pleasant' },
+] as const;
+
+/**
+ * Supported voice languages
+ */
+export const VOICE_LANGUAGES = [
+  { code: 'en-US', name: 'English (US)' },
+  { code: 'en-GB', name: 'English (UK)' },
+  { code: 'en-AU', name: 'English (Australia)' },
+  { code: 'es-ES', name: 'Spanish (Spain)' },
+  { code: 'es-MX', name: 'Spanish (Mexico)' },
+  { code: 'fr-FR', name: 'French' },
+  { code: 'de-DE', name: 'German' },
+  { code: 'it-IT', name: 'Italian' },
+  { code: 'pt-BR', name: 'Portuguese (Brazil)' },
+  { code: 'ja-JP', name: 'Japanese' },
+  { code: 'ko-KR', name: 'Korean' },
+  { code: 'zh-CN', name: 'Chinese (Mandarin)' },
+  { code: 'tr-TR', name: 'Turkish' },
+] as const;

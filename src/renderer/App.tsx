@@ -496,6 +496,8 @@ export function App() {
 
   const handleModelChange = (modelKey: string) => {
     setSelectedModel(modelKey);
+    // Persist to main process
+    window.electronAPI.setLLMModel(modelKey);
     // When model changes during a task, clear the current task to start fresh
     if (selectedTaskId) {
       setSelectedTaskId(null);

@@ -136,6 +136,20 @@ vi.mock('../../search', () => ({
   },
 }));
 
+// Mock MentionTools to avoid DatabaseManager dependency
+vi.mock('../mention-tools', () => {
+  return {
+    MentionTools: class MockMentionTools {
+      getTools() {
+        return [];
+      }
+      static getToolDefinitions() {
+        return [];
+      }
+    },
+  };
+});
+
 // Import after mocking
 import { ToolRegistry } from '../registry';
 import type { Workspace } from '../../../../shared/types';

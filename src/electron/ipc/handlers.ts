@@ -85,6 +85,8 @@ import {
 } from '../hooks';
 import { MemoryService } from '../memory/MemoryService';
 import type { MemorySettings } from '../database/repositories';
+import { VoiceSettingsManager } from '../voice/voice-settings-manager';
+import { getVoiceService } from '../voice/VoiceService';
 
 // Global notification service instance
 let notificationService: NotificationService | null = null;
@@ -925,6 +927,36 @@ export async function setupIpcHandlers(
       providers,
       models,
     };
+  });
+
+  // Set the current model (persists selection across sessions)
+  ipcMain.handle(IPC_CHANNELS.LLM_SET_MODEL, async (_, modelKey: string) => {
+    const settings = LLMProviderFactory.loadSettings();
+
+    // Update the model key based on the current provider
+    switch (settings.providerType) {
+      case 'gemini':
+        settings.gemini = { ...settings.gemini, model: modelKey };
+        break;
+      case 'openrouter':
+        settings.openrouter = { ...settings.openrouter, model: modelKey };
+        break;
+      case 'ollama':
+        settings.ollama = { ...settings.ollama, model: modelKey };
+        break;
+      case 'openai':
+        settings.openai = { ...settings.openai, model: modelKey };
+        break;
+      case 'anthropic':
+      case 'bedrock':
+      default:
+        // For Anthropic/Bedrock, use the modelKey field
+        settings.modelKey = modelKey as ModelKey;
+        break;
+    }
+
+    LLMProviderFactory.saveSettings(settings);
+    return { success: true };
   });
 
   ipcMain.handle(IPC_CHANNELS.LLM_GET_OLLAMA_MODELS, async (_, baseUrl?: string) => {
@@ -3033,4 +3065,174 @@ function setupMemoryHandlers(): void {
   });
 
   console.log('[Tunnel] Handlers initialized');
+
+  // === Voice Mode Handlers ===
+
+  // Initialize voice settings manager
+  VoiceSettingsManager.initialize();
+
+  // Get voice settings
+  ipcMain.handle(IPC_CHANNELS.VOICE_GET_SETTINGS, async () => {
+    try {
+      return VoiceSettingsManager.loadSettings();
+    } catch (error) {
+      console.error('[Voice] Failed to get settings:', error);
+      throw error;
+    }
+  });
+
+  // Save voice settings
+  ipcMain.handle(IPC_CHANNELS.VOICE_SAVE_SETTINGS, async (_, settings: any) => {
+    try {
+      const updated = VoiceSettingsManager.updateSettings(settings);
+      // Update the voice service with new settings
+      const voiceService = getVoiceService();
+      voiceService.updateSettings(updated);
+      return updated;
+    } catch (error) {
+      console.error('[Voice] Failed to save settings:', error);
+      throw error;
+    }
+  });
+
+  // Get voice state
+  ipcMain.handle(IPC_CHANNELS.VOICE_GET_STATE, async () => {
+    try {
+      const voiceService = getVoiceService();
+      return voiceService.getState();
+    } catch (error) {
+      console.error('[Voice] Failed to get state:', error);
+      throw error;
+    }
+  });
+
+  // Speak text
+  ipcMain.handle(IPC_CHANNELS.VOICE_SPEAK, async (_, text: string) => {
+    try {
+      const voiceService = getVoiceService();
+      await voiceService.speak(text);
+      return { success: true };
+    } catch (error: any) {
+      console.error('[Voice] Failed to speak:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  // Stop speaking
+  ipcMain.handle(IPC_CHANNELS.VOICE_STOP_SPEAKING, async () => {
+    try {
+      const voiceService = getVoiceService();
+      voiceService.stopSpeaking();
+      return { success: true };
+    } catch (error: any) {
+      console.error('[Voice] Failed to stop speaking:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  // Transcribe audio
+  ipcMain.handle(IPC_CHANNELS.VOICE_TRANSCRIBE, async (_, audioData: ArrayBuffer) => {
+    try {
+      const voiceService = getVoiceService();
+      const audioBlob = new Blob([audioData], { type: 'audio/webm' });
+      const text = await voiceService.transcribe(audioBlob);
+      return { text };
+    } catch (error: any) {
+      console.error('[Voice] Failed to transcribe:', error);
+      return { text: '', error: error.message };
+    }
+  });
+
+  // Get ElevenLabs voices
+  ipcMain.handle(IPC_CHANNELS.VOICE_GET_ELEVENLABS_VOICES, async () => {
+    try {
+      const voiceService = getVoiceService();
+      return await voiceService.getElevenLabsVoices();
+    } catch (error: any) {
+      console.error('[Voice] Failed to get ElevenLabs voices:', error);
+      return [];
+    }
+  });
+
+  // Test ElevenLabs connection
+  ipcMain.handle(IPC_CHANNELS.VOICE_TEST_ELEVENLABS, async () => {
+    try {
+      const voiceService = getVoiceService();
+      return await voiceService.testElevenLabsConnection();
+    } catch (error: any) {
+      console.error('[Voice] Failed to test ElevenLabs:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  // Test OpenAI voice connection
+  ipcMain.handle(IPC_CHANNELS.VOICE_TEST_OPENAI, async () => {
+    try {
+      const voiceService = getVoiceService();
+      return await voiceService.testOpenAIConnection();
+    } catch (error: any) {
+      console.error('[Voice] Failed to test OpenAI voice:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  // Initialize voice service with saved settings
+  const savedVoiceSettings = VoiceSettingsManager.loadSettings();
+  const voiceService = getVoiceService({ settings: savedVoiceSettings });
+
+  // Forward voice events to renderer
+  voiceService.on('stateChange', (state) => {
+    const mainWindow = getMainWindow();
+    if (mainWindow) {
+      mainWindow.webContents.send(IPC_CHANNELS.VOICE_EVENT, {
+        type: 'voice:state-changed',
+        data: state,
+      });
+    }
+  });
+
+  voiceService.on('speakingStart', (text) => {
+    const mainWindow = getMainWindow();
+    if (mainWindow) {
+      mainWindow.webContents.send(IPC_CHANNELS.VOICE_EVENT, {
+        type: 'voice:speaking-start',
+        data: text,
+      });
+    }
+  });
+
+  voiceService.on('speakingEnd', () => {
+    const mainWindow = getMainWindow();
+    if (mainWindow) {
+      mainWindow.webContents.send(IPC_CHANNELS.VOICE_EVENT, {
+        type: 'voice:speaking-end',
+        data: null,
+      });
+    }
+  });
+
+  voiceService.on('transcript', (text) => {
+    const mainWindow = getMainWindow();
+    if (mainWindow) {
+      mainWindow.webContents.send(IPC_CHANNELS.VOICE_EVENT, {
+        type: 'voice:transcript',
+        data: text,
+      });
+    }
+  });
+
+  voiceService.on('error', (error) => {
+    const mainWindow = getMainWindow();
+    if (mainWindow) {
+      mainWindow.webContents.send(IPC_CHANNELS.VOICE_EVENT, {
+        type: 'voice:error',
+        data: { message: error.message },
+      });
+    }
+  });
+
+  // Initialize voice service
+  await voiceService.initialize();
+
+  console.log('[Voice] Handlers initialized');
 }

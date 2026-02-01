@@ -311,6 +311,17 @@ const IPC_CHANNELS = {
   CONTEXT_POLICY_DELETE: 'contextPolicy:delete',
   CONTEXT_POLICY_CREATE_DEFAULTS: 'contextPolicy:createDefaults',
   CONTEXT_POLICY_IS_TOOL_ALLOWED: 'contextPolicy:isToolAllowed',
+  // Voice Mode
+  VOICE_GET_SETTINGS: 'voice:getSettings',
+  VOICE_SAVE_SETTINGS: 'voice:saveSettings',
+  VOICE_GET_STATE: 'voice:getState',
+  VOICE_SPEAK: 'voice:speak',
+  VOICE_STOP_SPEAKING: 'voice:stopSpeaking',
+  VOICE_TRANSCRIBE: 'voice:transcribe',
+  VOICE_GET_ELEVENLABS_VOICES: 'voice:getElevenLabsVoices',
+  VOICE_TEST_ELEVENLABS: 'voice:testElevenLabs',
+  VOICE_TEST_OPENAI: 'voice:testOpenAI',
+  VOICE_EVENT: 'voice:event',
 } as const;
 
 // Mobile Companion Node types (inlined for sandboxed preload)
@@ -1875,6 +1886,24 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke(IPC_CHANNELS.CONTEXT_POLICY_CREATE_DEFAULTS, channelId),
   isToolAllowedInContext: (channelId: string, contextType: ContextTypeValue, toolName: string, toolGroups: string[]) =>
     ipcRenderer.invoke(IPC_CHANNELS.CONTEXT_POLICY_IS_TOOL_ALLOWED, channelId, contextType, toolName, toolGroups),
+
+  // Voice Mode
+  getVoiceSettings: () => ipcRenderer.invoke(IPC_CHANNELS.VOICE_GET_SETTINGS),
+  saveVoiceSettings: (settings: Partial<VoiceSettingsData>) =>
+    ipcRenderer.invoke(IPC_CHANNELS.VOICE_SAVE_SETTINGS, settings),
+  getVoiceState: () => ipcRenderer.invoke(IPC_CHANNELS.VOICE_GET_STATE),
+  voiceSpeak: (text: string) => ipcRenderer.invoke(IPC_CHANNELS.VOICE_SPEAK, text),
+  voiceStopSpeaking: () => ipcRenderer.invoke(IPC_CHANNELS.VOICE_STOP_SPEAKING),
+  voiceTranscribe: (audioData: ArrayBuffer) =>
+    ipcRenderer.invoke(IPC_CHANNELS.VOICE_TRANSCRIBE, audioData),
+  getElevenLabsVoices: () => ipcRenderer.invoke(IPC_CHANNELS.VOICE_GET_ELEVENLABS_VOICES),
+  testElevenLabsConnection: () => ipcRenderer.invoke(IPC_CHANNELS.VOICE_TEST_ELEVENLABS),
+  testOpenAIVoiceConnection: () => ipcRenderer.invoke(IPC_CHANNELS.VOICE_TEST_OPENAI),
+  onVoiceEvent: (callback: (event: VoiceEventData) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: VoiceEventData) => callback(data);
+    ipcRenderer.on(IPC_CHANNELS.VOICE_EVENT, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.VOICE_EVENT, handler);
+  },
 });
 
 // Type declarations for TypeScript
@@ -2454,6 +2483,17 @@ export interface ElectronAPI {
   deleteContextPolicies: (channelId: string) => Promise<{ count: number }>;
   createDefaultContextPolicies: (channelId: string) => Promise<{ success: boolean }>;
   isToolAllowedInContext: (channelId: string, contextType: ContextTypeValue, toolName: string, toolGroups: string[]) => Promise<{ allowed: boolean }>;
+  // Voice Mode APIs
+  getVoiceSettings: () => Promise<VoiceSettingsData>;
+  saveVoiceSettings: (settings: Partial<VoiceSettingsData>) => Promise<VoiceSettingsData>;
+  getVoiceState: () => Promise<VoiceStateData>;
+  voiceSpeak: (text: string) => Promise<{ success: boolean; error?: string }>;
+  voiceStopSpeaking: () => Promise<{ success: boolean }>;
+  voiceTranscribe: (audioData: ArrayBuffer) => Promise<{ text: string; error?: string }>;
+  getElevenLabsVoices: () => Promise<ElevenLabsVoiceData[]>;
+  testElevenLabsConnection: () => Promise<{ success: boolean; voiceCount?: number; error?: string }>;
+  testOpenAIVoiceConnection: () => Promise<{ success: boolean; error?: string }>;
+  onVoiceEvent: (callback: (event: VoiceEventData) => void) => () => void;
 }
 
 // Migration status type (for showing one-time notifications after app rename)
@@ -2492,6 +2532,64 @@ export interface TunnelStatusData {
   url?: string;
   error?: string;
   startedAt?: number;
+}
+
+// Voice Mode types (inlined for sandboxed preload)
+export type VoiceProvider = 'elevenlabs' | 'openai' | 'local';
+export type VoiceInputMode = 'push_to_talk' | 'voice_activity' | 'disabled';
+export type VoiceResponseMode = 'auto' | 'manual' | 'smart';
+
+export interface VoiceSettingsData {
+  enabled: boolean;
+  ttsProvider: VoiceProvider;
+  sttProvider: VoiceProvider;
+  elevenLabsApiKey?: string;
+  openaiApiKey?: string;
+  elevenLabsVoiceId?: string;
+  openaiVoice?: 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer';
+  inputMode: VoiceInputMode;
+  responseMode: VoiceResponseMode;
+  pushToTalkKey: string;
+  volume: number;
+  speechRate: number;
+  language: string;
+  wakeWordEnabled: boolean;
+  wakeWord?: string;
+  silenceTimeout: number;
+  audioFeedback: boolean;
+}
+
+export interface VoiceStateData {
+  isActive: boolean;
+  isListening: boolean;
+  isSpeaking: boolean;
+  isProcessing: boolean;
+  audioLevel: number;
+  partialTranscript?: string;
+  error?: string;
+}
+
+export interface ElevenLabsVoiceData {
+  voice_id: string;
+  name: string;
+  category?: string;
+  description?: string;
+  preview_url?: string;
+  labels?: Record<string, string>;
+}
+
+export type VoiceEventType =
+  | 'voice:state-changed'
+  | 'voice:transcript'
+  | 'voice:partial-transcript'
+  | 'voice:speaking-start'
+  | 'voice:speaking-end'
+  | 'voice:error'
+  | 'voice:audio-level';
+
+export interface VoiceEventData {
+  type: VoiceEventType;
+  data: VoiceStateData | string | number | { message: string };
 }
 
 declare global {

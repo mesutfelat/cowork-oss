@@ -196,6 +196,28 @@ All channels support:
 - **Document Creation**: Excel, Word, PDF, PowerPoint with professional formatting
 - **Persistent Memory**: Cross-session context with privacy-aware observation capture
 
+### Voice Mode (NEW)
+
+Talk to your AI assistant with voice input and audio responses.
+
+| Feature | Description |
+|---------|-------------|
+| **Text-to-Speech** | ElevenLabs (premium), OpenAI TTS, or local Web Speech API |
+| **Speech-to-Text** | OpenAI Whisper for accurate transcription |
+| **Multiple Voices** | Choose from ElevenLabs voices or OpenAI voices (alloy, echo, fable, onyx, nova, shimmer) |
+| **Customizable** | Volume, speech rate, language settings |
+| **Secure Storage** | API keys stored securely using Electron safeStorage |
+
+**Supported Providers:**
+
+| Provider | TTS | STT | Cost |
+|----------|-----|-----|------|
+| **ElevenLabs** | ✓ (Premium quality) | — | Pay-per-character |
+| **OpenAI** | ✓ | ✓ (Whisper) | Pay-per-token |
+| **Local** | ✓ (Web Speech API) | Coming soon | Free |
+
+Configure in **Settings** > **Voice**.
+
 ### Persistent Memory System
 
 Capture and recall observations across sessions for improved context continuity.
@@ -1574,6 +1596,7 @@ Users must comply with their model provider's terms:
 - [x] Enhanced pairing code UI with countdown
 - [x] Persistent memory system with privacy protection
 - [x] Mobile Companions with LAN access support
+- [x] Voice Mode with ElevenLabs and OpenAI integration
 
 ### Planned
 
