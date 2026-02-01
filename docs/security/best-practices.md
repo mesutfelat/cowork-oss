@@ -88,6 +88,76 @@ Install updates promptly:
 - Be cautious with group access
 - Consider business API for production
 
+### Microsoft Teams
+
+- Use Azure Bot with proper tenant configuration
+- Keep App Password rotated regularly
+- Use pairing mode for multi-tenant deployments
+- Monitor webhook endpoint access logs
+
+### Google Chat
+
+- Use dedicated service account with minimal permissions
+- Restrict to specific Google Workspace organizations
+- Review Chat API quotas and rate limits
+- Use pairing mode for space-level access control
+
+### iMessage (macOS)
+
+- Only available on macOS with Messages app signed in
+- Use pairing mode for external users
+- Consider contact allowlist for stricter control
+- Monitor imsg CLI access
+
+### Signal
+
+- E2E encrypted - messages are secure in transit
+- Use trust-on-first-use (TOFU) carefully
+- Keep signal-cli data directory secure
+- Use pairing mode for unknown contacts
+
+### Mattermost
+
+- Use personal access token with minimal permissions
+- Restrict to specific teams/channels
+- Use pairing mode for external users
+- Monitor WebSocket connection health
+
+### Matrix
+
+- Verify homeserver security practices
+- Consider E2E encryption for sensitive rooms
+- Use access token rotation
+- Monitor room memberships
+
+### Twitch
+
+- Use OAuth tokens with minimal scopes
+- Restrict to channels you moderate
+- Disable whispers unless needed
+- Monitor chat activity for abuse
+
+### LINE
+
+- Protect Channel Secret and Access Token
+- Use webhook signature verification
+- Monitor webhook server logs
+- Consider rate limiting for high-traffic channels
+
+### BlueBubbles (macOS)
+
+- Secure BlueBubbles server with strong password
+- Use local network only if possible
+- Use pairing mode for unknown contacts
+- Keep BlueBubbles server updated
+
+### Email
+
+- Use app passwords, not main account password
+- Consider dedicated email account for bot
+- Use subject line filtering to limit access
+- Monitor for phishing attempts in responses
+
 ## Environment Recommendations
 
 ### Development
