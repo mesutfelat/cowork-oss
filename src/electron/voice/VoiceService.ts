@@ -3,6 +3,9 @@
  *
  * Provides voice interaction capabilities using ElevenLabs for TTS
  * and OpenAI Whisper for STT.
+ *
+ * NOTE: This service runs in the Electron main process.
+ * Audio playback must be handled by the renderer process.
  */
 
 import { EventEmitter } from 'events';
@@ -28,10 +31,6 @@ export interface VoiceServiceOptions {
 export class VoiceService extends EventEmitter {
   private settings: VoiceSettings;
   private state: VoiceState;
-  private audioContext: AudioContext | null = null;
-  private audioQueue: AudioBuffer[] = [];
-  private isPlaying = false;
-  private currentSource: AudioBufferSourceNode | null = null;
 
   constructor(options: VoiceServiceOptions = {}) {
     super();
@@ -54,8 +53,6 @@ export class VoiceService extends EventEmitter {
    */
   async initialize(): Promise<void> {
     console.log('[VoiceService] Initializing...');
-
-    // AudioContext will be created lazily when needed (browser security requires user gesture)
     this.updateState({ isActive: this.settings.enabled });
     console.log('[VoiceService] Initialized with settings:', {
       enabled: this.settings.enabled,
@@ -88,19 +85,20 @@ export class VoiceService extends EventEmitter {
   }
 
   /**
-   * Text-to-Speech: Convert text to audio and play it
+   * Text-to-Speech: Convert text to audio data
+   * Returns audio data as Buffer for the renderer to play
    */
-  async speak(text: string): Promise<void> {
+  async speak(text: string): Promise<Buffer | null> {
     if (!this.settings.enabled) {
       console.log('[VoiceService] Voice mode disabled, skipping TTS');
-      return;
+      return null;
     }
 
     if (!text || text.trim().length === 0) {
-      return;
+      return null;
     }
 
-    console.log('[VoiceService] Speaking:', text.substring(0, 100) + (text.length > 100 ? '...' : ''));
+    console.log('[VoiceService] Generating TTS:', text.substring(0, 100) + (text.length > 100 ? '...' : ''));
 
     try {
       // Clear any previous error
@@ -117,48 +115,45 @@ export class VoiceService extends EventEmitter {
           audioBuffer = await this.openaiTTS(text);
           break;
         case 'local':
-          // Use Web Speech API as fallback
-          await this.localTTS(text);
-          return;
+          // Local TTS requires browser APIs - not available in main process
+          throw new Error('Local TTS is not available in the main process. Please use ElevenLabs or OpenAI.');
         default:
           throw new Error(`Unknown TTS provider: ${this.settings.ttsProvider}`);
       }
 
       this.updateState({ isProcessing: false });
-      await this.playAudio(audioBuffer);
+
+      // Return audio data as Buffer for renderer to play
+      return Buffer.from(audioBuffer);
     } catch (error) {
       console.error('[VoiceService] TTS error:', error);
       this.updateState({ error: (error as Error).message, isSpeaking: false, isProcessing: false });
       this.emit('error', error);
       throw error;
-    } finally {
-      this.updateState({ isSpeaking: false });
-      this.emit('speakingEnd');
     }
+  }
+
+  /**
+   * Mark speaking as finished (called by renderer after audio playback)
+   */
+  finishSpeaking(): void {
+    this.updateState({ isSpeaking: false });
+    this.emit('speakingEnd');
   }
 
   /**
    * Stop current speech
    */
   stopSpeaking(): void {
-    if (this.currentSource) {
-      try {
-        this.currentSource.stop();
-      } catch {
-        // Ignore if already stopped
-      }
-      this.currentSource = null;
-    }
-    this.audioQueue = [];
-    this.isPlaying = false;
     this.updateState({ isSpeaking: false });
     this.emit('speakingEnd');
   }
 
   /**
    * Speech-to-Text: Transcribe audio to text
+   * Accepts audio data as Buffer from the renderer
    */
-  async transcribe(audioBlob: Blob): Promise<string> {
+  async transcribe(audioData: Buffer): Promise<string> {
     if (!this.settings.enabled) {
       throw new Error('Voice mode is disabled');
     }
@@ -172,15 +167,15 @@ export class VoiceService extends EventEmitter {
 
       switch (this.settings.sttProvider) {
         case 'openai':
-          transcript = await this.openaiSTT(audioBlob);
+          transcript = await this.openaiSTT(audioData);
           break;
         case 'local':
-          transcript = await this.localSTT(audioBlob);
-          break;
+          // Local STT requires browser APIs - not available in main process
+          throw new Error('Local STT is not available in the main process. Please use OpenAI Whisper.');
         case 'elevenlabs':
           // ElevenLabs doesn't have an STT API - redirect to OpenAI if key available
           if (this.settings.openaiApiKey) {
-            transcript = await this.openaiSTT(audioBlob);
+            transcript = await this.openaiSTT(audioData);
           } else {
             throw new Error('ElevenLabs does not provide speech-to-text. Please use OpenAI Whisper or configure an OpenAI API key.');
           }
@@ -221,7 +216,7 @@ export class VoiceService extends EventEmitter {
       throw new Error(`Failed to fetch voices: ${error}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as { voices?: ElevenLabsVoice[] };
     return data.voices || [];
   }
 
@@ -277,10 +272,6 @@ export class VoiceService extends EventEmitter {
    */
   dispose(): void {
     this.stopSpeaking();
-    if (this.audioContext) {
-      this.audioContext.close();
-      this.audioContext = null;
-    }
     this.removeAllListeners();
   }
 
@@ -363,38 +354,21 @@ export class VoiceService extends EventEmitter {
   }
 
   /**
-   * Local TTS using Web Speech API (fallback)
-   */
-  private async localTTS(text: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      if (!('speechSynthesis' in window)) {
-        reject(new Error('Web Speech API not supported'));
-        return;
-      }
-
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = this.settings.language;
-      utterance.rate = this.settings.speechRate;
-      utterance.volume = this.settings.volume / 100;
-
-      utterance.onend = () => resolve();
-      utterance.onerror = (event) => reject(new Error(event.error));
-
-      window.speechSynthesis.speak(utterance);
-    });
-  }
-
-  /**
    * OpenAI Whisper Speech-to-Text
    */
-  private async openaiSTT(audioBlob: Blob): Promise<string> {
+  private async openaiSTT(audioData: Buffer): Promise<string> {
     const apiKey = this.settings.openaiApiKey;
     if (!apiKey) {
       throw new Error('OpenAI API key not configured');
     }
 
+    // Create a Blob-like object for Node.js fetch
+    // Convert Buffer to Uint8Array for BlobPart compatibility
+    const uint8Array = new Uint8Array(audioData.buffer as ArrayBuffer, audioData.byteOffset, audioData.byteLength);
+    const blob = new Blob([uint8Array], { type: 'audio/webm' });
+
     const formData = new FormData();
-    formData.append('file', audioBlob, 'audio.webm');
+    formData.append('file', blob, 'audio.webm');
     formData.append('model', 'whisper-1');
     formData.append('language', this.settings.language.split('-')[0]); // e.g., 'en' from 'en-US'
 
@@ -411,59 +385,8 @@ export class VoiceService extends EventEmitter {
       throw new Error(`OpenAI STT failed: ${errorText}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as { text: string };
     return data.text;
-  }
-
-  /**
-   * Local STT using Web Speech API (fallback)
-   */
-  private async localSTT(_audioBlob: Blob): Promise<string> {
-    // Note: Web Speech Recognition API works differently - it streams from microphone
-    // This is a placeholder for potential future implementation
-    throw new Error('Local STT not yet implemented. Use OpenAI Whisper for speech-to-text.');
-  }
-
-  /**
-   * Play audio buffer
-   */
-  private async playAudio(audioData: ArrayBuffer): Promise<void> {
-    // Ensure AudioContext exists
-    if (!this.audioContext) {
-      this.audioContext = new AudioContext();
-    }
-
-    // Resume if suspended
-    if (this.audioContext.state === 'suspended') {
-      await this.audioContext.resume();
-    }
-
-    try {
-      const audioBuffer = await this.audioContext.decodeAudioData(audioData.slice(0));
-
-      // Create gain node for volume control
-      const gainNode = this.audioContext.createGain();
-      gainNode.gain.value = this.settings.volume / 100;
-      gainNode.connect(this.audioContext.destination);
-
-      // Create and start source
-      const source = this.audioContext.createBufferSource();
-      source.buffer = audioBuffer;
-      source.connect(gainNode);
-
-      this.currentSource = source;
-
-      return new Promise((resolve) => {
-        source.onended = () => {
-          this.currentSource = null;
-          resolve();
-        };
-        source.start(0);
-      });
-    } catch (error) {
-      console.error('[VoiceService] Failed to play audio:', error);
-      throw error;
-    }
   }
 }
 

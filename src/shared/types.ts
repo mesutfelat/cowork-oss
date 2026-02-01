@@ -1247,6 +1247,18 @@ export const IPC_CHANNELS = {
   TUNNEL_STOP: 'tunnel:stop',
   TUNNEL_GET_CONFIG: 'tunnel:getConfig',
   TUNNEL_SET_CONFIG: 'tunnel:setConfig',
+
+  // Voice Mode (TTS/STT)
+  VOICE_GET_SETTINGS: 'voice:getSettings',
+  VOICE_SAVE_SETTINGS: 'voice:saveSettings',
+  VOICE_GET_STATE: 'voice:getState',
+  VOICE_SPEAK: 'voice:speak',
+  VOICE_STOP_SPEAKING: 'voice:stopSpeaking',
+  VOICE_TRANSCRIBE: 'voice:transcribe',
+  VOICE_GET_ELEVENLABS_VOICES: 'voice:getElevenLabsVoices',
+  VOICE_TEST_ELEVENLABS: 'voice:testElevenLabs',
+  VOICE_TEST_OPENAI: 'voice:testOpenAI',
+  VOICE_EVENT: 'voice:event',
 } as const;
 
 // LLM Provider types

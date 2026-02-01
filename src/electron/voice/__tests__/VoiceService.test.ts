@@ -1,5 +1,8 @@
 /**
  * Tests for VoiceService
+ *
+ * Tests the main process voice service that handles TTS/STT API calls.
+ * Audio playback is handled by the renderer process.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -10,84 +13,21 @@ import { DEFAULT_VOICE_SETTINGS } from '../../../shared/types';
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
-// Mock window.speechSynthesis for local TTS
-const mockSpeechSynthesis = {
-  speak: vi.fn((utterance: any) => {
-    // Simulate async completion
-    setTimeout(() => {
-      if (utterance.onend) utterance.onend();
-    }, 10);
-  }),
-  cancel: vi.fn(),
-  getVoices: vi.fn().mockReturnValue([]),
-};
-
-// Mock SpeechSynthesisUtterance
-class MockSpeechSynthesisUtterance {
-  text = '';
-  lang = '';
-  rate = 1;
-  volume = 1;
-  onend: (() => void) | null = null;
-  onerror: ((event: any) => void) | null = null;
-  constructor(text?: string) {
-    this.text = text || '';
+// Mock Blob class for Node.js environment
+class MockBlob {
+  parts: any[];
+  type: string;
+  size: number;
+  constructor(parts: any[], options?: { type?: string }) {
+    this.parts = parts;
+    this.type = options?.type || '';
+    this.size = parts.reduce((acc: number, part: any) => acc + (part.byteLength || part.length || 0), 0);
   }
 }
-// @ts-expect-error Mock class
-global.SpeechSynthesisUtterance = MockSpeechSynthesisUtterance;
+// @ts-expect-error Mock Blob
+global.Blob = MockBlob;
 
-// @ts-expect-error Mock window for speechSynthesis
-global.window = {
-  speechSynthesis: mockSpeechSynthesis,
-};
-
-// Mock AudioContext instance methods
-const mockDecodeAudioData = vi.fn().mockResolvedValue({
-  duration: 1,
-  numberOfChannels: 1,
-  sampleRate: 44100,
-});
-
-const mockCreateGain = vi.fn().mockReturnValue({
-  gain: { value: 1 },
-  connect: vi.fn(),
-});
-
-const mockSourceNode = {
-  buffer: null,
-  connect: vi.fn(),
-  start: vi.fn(),
-  stop: vi.fn(),
-  onended: null as (() => void) | null,
-};
-
-const mockCreateBufferSource = vi.fn().mockReturnValue(mockSourceNode);
-const mockResume = vi.fn().mockResolvedValue(undefined);
-const mockClose = vi.fn();
-
-// Create a proper mock AudioContext class
-class MockAudioContext {
-  state = 'running';
-  destination = {};
-  resume = mockResume;
-  close = mockClose;
-  decodeAudioData = mockDecodeAudioData;
-  createGain = mockCreateGain;
-  createBufferSource = mockCreateBufferSource;
-}
-
-// @ts-expect-error Mock AudioContext
-global.AudioContext = MockAudioContext;
-
-// Mock Blob
-global.Blob = vi.fn().mockImplementation((parts, options) => ({
-  parts,
-  type: options?.type || '',
-  size: parts.reduce((acc: number, part: any) => acc + (part.byteLength || part.length || 0), 0),
-}));
-
-// Mock FormData
+// Mock FormData for Node.js environment
 class MockFormData {
   private data = new Map<string, any>();
   append(key: string, value: any, _filename?: string) {
@@ -202,28 +142,32 @@ describe('VoiceService', () => {
   });
 
   describe('speak', () => {
-    it('should do nothing when disabled', async () => {
+    it('should return null when disabled', async () => {
       service.updateSettings({ enabled: false });
-      await service.speak('Hello');
+      const result = await service.speak('Hello');
+      expect(result).toBeNull();
       expect(mockFetch).not.toHaveBeenCalled();
     });
 
-    it('should do nothing for empty text', async () => {
+    it('should return null for empty text', async () => {
       service.updateSettings({ enabled: true });
-      await service.speak('');
+      const result = await service.speak('');
+      expect(result).toBeNull();
       expect(mockFetch).not.toHaveBeenCalled();
     });
 
-    it('should do nothing for whitespace text', async () => {
+    it('should return null for whitespace text', async () => {
       service.updateSettings({ enabled: true });
-      await service.speak('   ');
+      const result = await service.speak('   ');
+      expect(result).toBeNull();
       expect(mockFetch).not.toHaveBeenCalled();
     });
 
-    it('should call ElevenLabs API when provider is elevenlabs', async () => {
+    it('should call ElevenLabs API and return Buffer when provider is elevenlabs', async () => {
+      const mockAudioData = new ArrayBuffer(1000);
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(1000)),
+        arrayBuffer: vi.fn().mockResolvedValue(mockAudioData),
       });
 
       service.updateSettings({
@@ -232,20 +176,10 @@ describe('VoiceService', () => {
         elevenLabsApiKey: 'test-api-key',
       });
 
-      // Mock decodeAudioData to trigger onended
-      mockDecodeAudioData.mockImplementation(async () => {
-        setTimeout(() => {
-          if (mockSourceNode.onended) mockSourceNode.onended();
-        }, 10);
-        return {
-          duration: 1,
-          numberOfChannels: 1,
-          sampleRate: 44100,
-        };
-      });
+      const result = await service.speak('Hello');
 
-      await service.speak('Hello');
-
+      expect(result).toBeInstanceOf(Buffer);
+      expect(result?.length).toBe(1000);
       expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining('api.elevenlabs.io'),
         expect.objectContaining({
@@ -267,10 +201,11 @@ describe('VoiceService', () => {
       await expect(service.speak('Hello')).rejects.toThrow('ElevenLabs API key not configured');
     });
 
-    it('should call OpenAI API when provider is openai', async () => {
+    it('should call OpenAI API and return Buffer when provider is openai', async () => {
+      const mockAudioData = new ArrayBuffer(500);
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(1000)),
+        arrayBuffer: vi.fn().mockResolvedValue(mockAudioData),
       });
 
       service.updateSettings({
@@ -279,19 +214,10 @@ describe('VoiceService', () => {
         openaiApiKey: 'test-openai-key',
       });
 
-      mockDecodeAudioData.mockImplementation(async () => {
-        setTimeout(() => {
-          if (mockSourceNode.onended) mockSourceNode.onended();
-        }, 10);
-        return {
-          duration: 1,
-          numberOfChannels: 1,
-          sampleRate: 44100,
-        };
-      });
+      const result = await service.speak('Hello');
 
-      await service.speak('Hello');
-
+      expect(result).toBeInstanceOf(Buffer);
+      expect(result?.length).toBe(500);
       expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining('api.openai.com'),
         expect.objectContaining({
@@ -303,16 +229,23 @@ describe('VoiceService', () => {
       );
     });
 
-    it('should emit speakingStart and speakingEnd events', async () => {
+    it('should throw for local TTS provider (not available in main process)', async () => {
+      service.updateSettings({
+        enabled: true,
+        ttsProvider: 'local',
+      });
+
+      await expect(service.speak('Hello')).rejects.toThrow('Local TTS is not available');
+    });
+
+    it('should emit speakingStart event', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(1000)),
+        arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(100)),
       });
 
       const startHandler = vi.fn();
-      const endHandler = vi.fn();
       service.on('speakingStart', startHandler);
-      service.on('speakingEnd', endHandler);
 
       service.updateSettings({
         enabled: true,
@@ -320,26 +253,26 @@ describe('VoiceService', () => {
         openaiApiKey: 'test-key',
       });
 
-      mockDecodeAudioData.mockImplementation(async () => {
-        setTimeout(() => {
-          if (mockSourceNode.onended) mockSourceNode.onended();
-        }, 10);
-        return {
-          duration: 1,
-          numberOfChannels: 1,
-          sampleRate: 44100,
-        };
-      });
-
       await service.speak('Hello');
 
       expect(startHandler).toHaveBeenCalledWith('Hello');
+    });
+  });
+
+  describe('finishSpeaking', () => {
+    it('should update state and emit speakingEnd', () => {
+      const endHandler = vi.fn();
+      service.on('speakingEnd', endHandler);
+
+      service.finishSpeaking();
+
+      expect(service.getState().isSpeaking).toBe(false);
       expect(endHandler).toHaveBeenCalled();
     });
   });
 
   describe('stopSpeaking', () => {
-    it('should stop current audio', () => {
+    it('should update state', () => {
       service.stopSpeaking();
       expect(service.getState().isSpeaking).toBe(false);
     });
@@ -349,6 +282,75 @@ describe('VoiceService', () => {
       service.on('speakingEnd', handler);
       service.stopSpeaking();
       expect(handler).toHaveBeenCalled();
+    });
+  });
+
+  describe('transcribe', () => {
+    it('should throw when disabled', async () => {
+      service.updateSettings({ enabled: false });
+      const audioBuffer = Buffer.from('test audio data');
+
+      await expect(service.transcribe(audioBuffer)).rejects.toThrow('Voice mode is disabled');
+    });
+
+    it('should call OpenAI Whisper API when provider is openai', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ text: 'Hello world' }),
+      });
+
+      service.updateSettings({
+        enabled: true,
+        sttProvider: 'openai',
+        openaiApiKey: 'test-key',
+        language: 'en-US',
+      });
+
+      const audioBuffer = Buffer.from('test audio data');
+      const result = await service.transcribe(audioBuffer);
+
+      expect(result).toBe('Hello world');
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('transcriptions'),
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-key',
+          }),
+        })
+      );
+    });
+
+    it('should throw for local STT provider (not available in main process)', async () => {
+      service.updateSettings({
+        enabled: true,
+        sttProvider: 'local',
+      });
+
+      const audioBuffer = Buffer.from('test audio data');
+      await expect(service.transcribe(audioBuffer)).rejects.toThrow('Local STT is not available');
+    });
+
+    it('should emit transcript event on success', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ text: 'Test transcript' }),
+      });
+
+      const transcriptHandler = vi.fn();
+      service.on('transcript', transcriptHandler);
+
+      service.updateSettings({
+        enabled: true,
+        sttProvider: 'openai',
+        openaiApiKey: 'test-key',
+        language: 'en-US',
+      });
+
+      const audioBuffer = Buffer.from('test audio data');
+      await service.transcribe(audioBuffer);
+
+      expect(transcriptHandler).toHaveBeenCalledWith('Test transcript');
     });
   });
 
@@ -522,13 +524,7 @@ describe('VoiceService events', () => {
     // Second call succeeds
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(8)),
-    });
-    mockDecodeAudioData.mockImplementation(async () => {
-      setTimeout(() => {
-        if (mockSourceNode.onended) mockSourceNode.onended();
-      }, 10);
-      return { duration: 1, numberOfChannels: 1, sampleRate: 44100 };
+      arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(100)),
     });
 
     await service.speak('Hello again');
@@ -539,13 +535,6 @@ describe('VoiceService events', () => {
 
 describe('VoiceService STT edge cases', () => {
   let service: VoiceService;
-
-  // Create a mock blob for testing
-  const createMockBlob = () => ({
-    type: 'audio/webm',
-    size: 100,
-    arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(100)),
-  } as unknown as Blob);
 
   beforeEach(() => {
     resetVoiceService();
@@ -564,8 +553,8 @@ describe('VoiceService STT edge cases', () => {
       openaiApiKey: undefined,
     });
 
-    const blob = createMockBlob();
-    await expect(service.transcribe(blob)).rejects.toThrow(
+    const audioBuffer = Buffer.from('test audio data');
+    await expect(service.transcribe(audioBuffer)).rejects.toThrow(
       'ElevenLabs does not provide speech-to-text'
     );
   });
@@ -583,8 +572,8 @@ describe('VoiceService STT edge cases', () => {
       json: vi.fn().mockResolvedValue({ text: 'Transcribed text' }),
     });
 
-    const blob = createMockBlob();
-    const result = await service.transcribe(blob);
+    const audioBuffer = Buffer.from('test audio data');
+    const result = await service.transcribe(audioBuffer);
 
     expect(result).toBe('Transcribed text');
     expect(mockFetch).toHaveBeenCalledWith(

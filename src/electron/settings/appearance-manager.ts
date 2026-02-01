@@ -16,6 +16,8 @@ const DEFAULT_SETTINGS: AppearanceSettings = {
   themeMode: 'dark',
   accentColor: 'cyan',
   disclaimerAccepted: false,
+  onboardingCompleted: false,
+  onboardingCompletedAt: undefined,
 };
 
 export class AppearanceManager {
@@ -77,6 +79,8 @@ export class AppearanceManager {
         themeMode: isValidThemeMode(settings.themeMode) ? settings.themeMode : existingSettings.themeMode,
         accentColor: isValidAccentColor(settings.accentColor) ? settings.accentColor : existingSettings.accentColor,
         disclaimerAccepted: settings.disclaimerAccepted ?? existingSettings.disclaimerAccepted,
+        onboardingCompleted: settings.onboardingCompleted ?? existingSettings.onboardingCompleted,
+        onboardingCompletedAt: settings.onboardingCompletedAt ?? existingSettings.onboardingCompletedAt,
       };
 
       fs.writeFileSync(this.settingsPath, JSON.stringify(validatedSettings, null, 2));

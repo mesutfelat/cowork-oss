@@ -3106,15 +3106,19 @@ function setupMemoryHandlers(): void {
     }
   });
 
-  // Speak text
+  // Speak text - returns audio data for renderer to play
   ipcMain.handle(IPC_CHANNELS.VOICE_SPEAK, async (_, text: string) => {
     try {
       const voiceService = getVoiceService();
-      await voiceService.speak(text);
-      return { success: true };
+      const audioBuffer = await voiceService.speak(text);
+      if (audioBuffer) {
+        // Return audio data as array for serialization over IPC
+        return { success: true, audioData: Array.from(audioBuffer) };
+      }
+      return { success: true, audioData: null };
     } catch (error: any) {
       console.error('[Voice] Failed to speak:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error.message, audioData: null };
     }
   });
 
@@ -3130,12 +3134,13 @@ function setupMemoryHandlers(): void {
     }
   });
 
-  // Transcribe audio
-  ipcMain.handle(IPC_CHANNELS.VOICE_TRANSCRIBE, async (_, audioData: ArrayBuffer) => {
+  // Transcribe audio - accepts audio data as array from renderer
+  ipcMain.handle(IPC_CHANNELS.VOICE_TRANSCRIBE, async (_, audioData: number[]) => {
     try {
       const voiceService = getVoiceService();
-      const audioBlob = new Blob([audioData], { type: 'audio/webm' });
-      const text = await voiceService.transcribe(audioBlob);
+      // Convert array back to Buffer
+      const audioBuffer = Buffer.from(audioData);
+      const text = await voiceService.transcribe(audioBuffer);
       return { text };
     } catch (error: any) {
       console.error('[Voice] Failed to transcribe:', error);
@@ -3232,7 +3237,9 @@ function setupMemoryHandlers(): void {
   });
 
   // Initialize voice service
-  await voiceService.initialize();
+  voiceService.initialize().catch((err) => {
+    console.error('[Voice] Failed to initialize:', err);
+  });
 
   console.log('[Voice] Handlers initialized');
 }

@@ -559,7 +559,7 @@ export class GoogleChatAdapter implements ChannelAdapter {
 
     try {
       const response = await this.makeApiRequest('POST', apiUrl, accessToken, payload);
-      return response.name || '';
+      return (response.name as string) || '';
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       console.error('Error sending Google Chat message:', errorMessage);
@@ -592,7 +592,7 @@ export class GoogleChatAdapter implements ChannelAdapter {
       };
 
       if (postData) {
-        options.headers!['Content-Length'] = Buffer.byteLength(postData);
+        (options.headers as Record<string, string | number>)['Content-Length'] = Buffer.byteLength(postData);
       }
 
       const req = https.request(options, (res) => {

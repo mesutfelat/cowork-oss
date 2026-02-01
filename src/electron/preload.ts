@@ -1895,7 +1895,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   voiceSpeak: (text: string) => ipcRenderer.invoke(IPC_CHANNELS.VOICE_SPEAK, text),
   voiceStopSpeaking: () => ipcRenderer.invoke(IPC_CHANNELS.VOICE_STOP_SPEAKING),
   voiceTranscribe: (audioData: ArrayBuffer) =>
-    ipcRenderer.invoke(IPC_CHANNELS.VOICE_TRANSCRIBE, audioData),
+    ipcRenderer.invoke(IPC_CHANNELS.VOICE_TRANSCRIBE, Array.from(new Uint8Array(audioData))),
   getElevenLabsVoices: () => ipcRenderer.invoke(IPC_CHANNELS.VOICE_GET_ELEVENLABS_VOICES),
   testElevenLabsConnection: () => ipcRenderer.invoke(IPC_CHANNELS.VOICE_TEST_ELEVENLABS),
   testOpenAIVoiceConnection: () => ipcRenderer.invoke(IPC_CHANNELS.VOICE_TEST_OPENAI),
