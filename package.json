@@ -66,6 +66,7 @@
     "@types/jszip": "^3.4.0",
     "@whiskeysockets/baileys": "^6.7.16",
     "better-sqlite3": "^12.6.2",
+    "botbuilder": "^4.23.3",
     "chokidar": "^5.0.0",
     "discord.js": "^14.25.1",
     "docx": "^9.5.1",
