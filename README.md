@@ -350,6 +350,25 @@ Customize agent behavior via Settings or conversation:
 - **Playwright automation**: ~200-500 MB when active
 - **CPU**: Mostly idle; spikes during AI API calls (network I/O bound)
 
+### Running on a macOS VM
+
+If you prefer not to run CoWork OS on your main Mac, you can install it on a macOS virtual machine:
+
+| Platform | VM Options |
+|----------|------------|
+| **Apple Silicon Mac** | UTM, Parallels Desktop, VMware Fusion |
+| **Intel Mac** | Parallels Desktop, VMware Fusion, VirtualBox |
+
+**Recommended VM specs:**
+- 4+ GB RAM allocated to VM
+- 2+ CPU cores
+- 40+ GB disk space
+
+This is a good option for:
+- Testing before installing on your main machine
+- Isolating AI agent file operations from your primary system
+- Running experimental tasks in a sandboxed environment
+
 ---
 
 ## Setup
