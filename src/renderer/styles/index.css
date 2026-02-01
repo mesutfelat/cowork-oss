@@ -855,6 +855,8 @@ a,
 /* ==================== LEFT SIDEBAR ==================== */
 .sidebar {
   width: var(--sidebar-width);
+  min-width: var(--sidebar-width);
+  max-width: var(--sidebar-width);
   height: 100%;
   min-height: 0;
   background: var(--color-bg-sidebar);
@@ -863,6 +865,7 @@ a,
   border-right: 1px solid var(--color-border-subtle);
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
   overflow: hidden;
   position: relative;
   padding-top: 38px;
@@ -958,6 +961,7 @@ a,
 .task-list {
   flex: 1;
   min-height: 0;
+  overflow-x: hidden;
   overflow-y: auto;
   padding: 0 8px;
 }
@@ -6146,6 +6150,7 @@ button {
 /* CLI Task List */
 .cli-task-list {
   padding: 0;
+  overflow-x: hidden;
 }
 
 .cli-list-header {
