@@ -1,6 +1,6 @@
 # Remote Access Guide
 
-CoWork-OSS provides multiple options for remote access to your Control Plane, allowing you to manage tasks, monitor progress, and interact with agents from anywhere.
+CoWork OS provides multiple options for remote access to your Control Plane, allowing you to manage tasks, monitor progress, and interact with agents from anywhere.
 
 ## Overview
 

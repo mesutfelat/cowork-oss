@@ -1,6 +1,6 @@
 # Security Considerations for AI Assistants
 
-When choosing a self-hosted AI assistant platform, security should be a primary concern. This document outlines key security considerations and how CoWork-OSS addresses them.
+When choosing a self-hosted AI assistant platform, security should be a primary concern. This document outlines key security considerations and how CoWork OS addresses them.
 
 ## Key Questions to Ask
 
@@ -11,7 +11,7 @@ When choosing a self-hosted AI assistant platform, security should be a primary 
 - Can a compromised agent escape its sandbox?
 - What filesystem access does it have?
 
-**CoWork-OSS approach:**
+**CoWork OS approach:**
 - Native Electron app with workspace boundaries
 - All file operations constrained to selected workspace folder
 - Path traversal protection prevents escape attempts
@@ -24,7 +24,7 @@ When choosing a self-hosted AI assistant platform, security should be a primary 
 - Who can access the credential storage?
 - Are credentials encrypted at rest?
 
-**CoWork-OSS approach:**
+**CoWork OS approach:**
 - OS keychain integration via Electron's `safeStorage`
 - Credentials encrypted using the operating system's secure storage
 - No plain text credential storage
@@ -37,7 +37,7 @@ When choosing a self-hosted AI assistant platform, security should be a primary 
 - Is there brute-force protection?
 - How are users authenticated?
 
-**CoWork-OSS approach:**
+**CoWork OS approach:**
 - **Three security modes**: Pairing (code-based), Allowlist (pre-approved users), Open
 - **Brute-force protection**: Lockout after 5 failed pairing attempts (15 minute cooldown)
 - **Per-channel allowlists**: Control access at the user level for each messaging channel
@@ -50,7 +50,7 @@ When choosing a self-hosted AI assistant platform, security should be a primary 
 - Is there human-in-the-loop approval?
 - Can you define what's allowed and blocked?
 
-**CoWork-OSS approach:**
+**CoWork OS approach:**
 - **Dangerous command blocking**: Built-in patterns block `sudo`, `rm -rf /`, `mkfs`, fork bombs, etc.
 - **Custom patterns**: Add your own regex patterns to block specific commands
 - **Approval workflows**: Shell commands require explicit user approval before execution
@@ -63,7 +63,7 @@ When choosing a self-hosted AI assistant platform, security should be a primary 
 - Can infinite loops exhaust resources?
 - What happens if a task goes out of control?
 
-**CoWork-OSS approach:**
+**CoWork OS approach:**
 - **Token budget**: Configure maximum tokens (1K - 10M) per task
 - **Cost budget**: Set maximum estimated cost ($0.01 - $100) per task
 - **Iteration limit**: Cap LLM calls (5 - 500) to prevent infinite loops
@@ -77,7 +77,7 @@ When choosing a self-hosted AI assistant platform, security should be a primary 
 - What prevents malicious navigation?
 - Are browser actions logged?
 
-**CoWork-OSS approach:**
+**CoWork OS approach:**
 - **Domain allowlist**: Optionally restrict browser to approved domains only
 - **Workspace isolation**: Downloaded files go to the workspace, not arbitrary locations
 - **Action logging**: All browser actions logged in the task timeline
@@ -89,7 +89,7 @@ When choosing a self-hosted AI assistant platform, security should be a primary 
 - Is the codebase auditable?
 - How are vulnerabilities handled?
 
-**CoWork-OSS approach:**
+**CoWork OS approach:**
 - **132 security unit tests** for access control and policy enforcement
 - **259 WebSocket protocol tests** for API security
 - **Monotonic policy precedence**: Deny-wins across all security layers
@@ -103,7 +103,7 @@ When choosing a self-hosted AI assistant platform, security should be a primary 
 - Is there context-aware permission control?
 - Are memory/clipboard tools available to remote users?
 
-**CoWork-OSS approach:**
+**CoWork OS approach:**
 - **Context-aware tool isolation**: Memory and clipboard tools blocked in gateway (messaging) contexts
 - **Risk-level categorization**: Tools categorized by risk level (read/write/destructive/system/network)
 - **Gateway vs local context**: Different tool availability based on access method
@@ -112,7 +112,7 @@ When choosing a self-hosted AI assistant platform, security should be a primary 
 
 ## Security Feature Comparison
 
-| Feature | Important For | CoWork-OSS |
+| Feature | Important For | CoWork OS |
 |---------|---------------|------------|
 | Workspace boundaries | Limiting file access | Yes |
 | Path traversal protection | Preventing escape | Yes |
@@ -147,7 +147,7 @@ Regardless of which AI assistant platform you use, follow these practices:
 
 ## Reporting Security Issues
 
-If you discover a security vulnerability in CoWork-OSS:
+If you discover a security vulnerability in CoWork OS:
 
 1. **Do NOT** report via public GitHub issues
 2. Use GitHub Security Advisories (preferred)

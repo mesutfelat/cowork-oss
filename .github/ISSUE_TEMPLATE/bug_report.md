@@ -1,6 +1,6 @@
 ---
 name: Bug Report
-about: Create a report to help us improve CoWork-OSS
+about: Create a report to help us improve CoWork OS
 title: '[BUG] '
 labels: bug
 assignees: ''
@@ -26,7 +26,7 @@ If applicable, add screenshots to help explain your problem.
 
 ## Environment
 - **OS**: macOS [version, e.g., 14.2]
-- **CoWork-OSS Version**: [e.g., 0.3.0]
+- **CoWork OS Version**: [e.g., 0.3.0]
 - **Node.js Version**: [e.g., 20.10.0]
 - **LLM Provider**: [Anthropic API / AWS Bedrock / Gemini / OpenRouter / OpenAI / Ollama]
 - **Messaging Channel**: [WhatsApp / Telegram / Discord / Slack / iMessage / N/A]
@@ -62,5 +62,5 @@ Add any other context about the problem here.
 ## Checklist
 - [ ] I have searched existing issues to ensure this is not a duplicate
 - [ ] I have included all relevant information above
-- [ ] I am using the latest version of CoWork-OSS
+- [ ] I am using the latest version of CoWork OS
 - [ ] This is NOT a security vulnerability (report those via SECURITY.md)

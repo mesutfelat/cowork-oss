@@ -1,17 +1,17 @@
 <p align="center">
-  <img src="screenshots/cowork-oss-logo.png" alt="CoWork-OSS Logo" width="120">
+  <img src="screenshots/cowork-os-logo.png" alt="CoWork OS Logo" width="120">
 </p>
 
-# CoWork-OSS
+# CoWork OS
 
-[![CI](https://github.com/cowork-oss/cowork-oss/actions/workflows/ci.yml/badge.svg)](https://github.com/cowork-oss/cowork-oss/actions/workflows/ci.yml)
+[![CI](https://github.com/CoWork-OS/CoWork-OS/actions/workflows/ci.yml/badge.svg)](https://github.com/CoWork-OS/CoWork-OS/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![macOS](https://img.shields.io/badge/platform-macOS-blue.svg)](https://www.apple.com/macos/)
 [![Electron](https://img.shields.io/badge/electron-40.0.0-47848F.svg)](https://www.electronjs.org/)
 
-**Self-hosted personal AI assistant with security-first design**
+**The operating system for personal AI assistants**
 
-Run your own AI assistant across WhatsApp, Telegram, Discord, Slack, and iMessage — with full control over your data, configurable guardrails, and comprehensive security.
+Your AI needs a secure home. CoWork OS provides the runtime, security layers, and I/O channels to run AI agents across WhatsApp, Telegram, Discord, Slack, and iMessage — with the control you expect from an operating system.
 
 | | |
 |---|---|
@@ -25,14 +25,14 @@ Run your own AI assistant across WhatsApp, Telegram, Discord, Slack, and iMessag
 ---
 
 <p align="center">
-  <img src="screenshots/cowork-oss4.jpeg" alt="CoWork-OSS Interface" width="700">
+  <img src="screenshots/cowork-oss4.jpeg" alt="CoWork OS Interface" width="700">
   <br>
   <em>Terminal-inspired UI with real-time task timeline</em>
 </p>
 
 ---
 
-## Why CoWork-OSS?
+## Why CoWork OS?
 
 ### Security Without Compromise
 
@@ -67,7 +67,7 @@ Run your own AI assistant across WhatsApp, Telegram, Discord, Slack, and iMessag
 
 ## Security Architecture
 
-CoWork-OSS is designed with security as a core principle, not an afterthought.
+CoWork OS is designed with security as a core principle, not an afterthought.
 
 ### Defense in Depth
 
@@ -91,7 +91,7 @@ CoWork-OSS is designed with security as a core principle, not an afterthought.
 
 ## Providers & Costs (BYOK)
 
-CoWork-OSS is **free and open source**. To run tasks, configure your own model credentials or use local models.
+CoWork OS is **free and open source**. To run tasks, configure your own model credentials or use local models.
 
 | Provider | Configuration | Billing |
 |----------|---------------|---------|
@@ -103,7 +103,7 @@ CoWork-OSS is **free and open source**. To run tasks, configure your own model c
 | AWS Bedrock | AWS credentials in Settings | Pay-per-token via AWS |
 | Ollama (Local) | Install Ollama and pull models | **Free** (runs locally) |
 
-**Your usage is billed directly by your provider.** CoWork-OSS does not proxy or resell model access.
+**Your usage is billed directly by your provider.** CoWork OS does not proxy or resell model access.
 
 ---
 
@@ -252,8 +252,8 @@ Customize agent behavior via Settings or conversation:
 
 ```bash
 # Clone the repository
-git clone https://github.com/cowork-oss/cowork-oss.git
-cd cowork-oss
+git clone https://github.com/CoWork-OS/CoWork-OS.git
+cd CoWork-OS
 
 # Install dependencies
 npm install
@@ -278,13 +278,13 @@ The packaged app will be in the `release/` directory.
 ## Screenshots
 
 <p align="center">
-  <img src="screenshots/cowork-oss2.jpeg" alt="CoWork-OSS Welcome Screen" width="800">
+  <img src="screenshots/cowork-oss2.jpeg" alt="CoWork OS Welcome Screen" width="800">
   <br>
   <em>Welcome screen with AI disclosure and quick commands</em>
 </p>
 
 <p align="center">
-  <img src="screenshots/cowork-oss3.jpeg" alt="CoWork-OSS Task Execution" width="800">
+  <img src="screenshots/cowork-oss3.jpeg" alt="CoWork OS Task Execution" width="800">
   <br>
   <em>Real-time task execution with plan steps and tool calls</em>
 </p>
@@ -295,7 +295,7 @@ The packaged app will be in the `release/` directory.
 
 ### 1. Select a Workspace
 
-On first launch, select a folder where CoWork-OSS can work. This folder will be:
+On first launch, select a folder where CoWork OS can work. This folder will be:
 - Mounted for read/write access
 - Protected by permission boundaries
 - Used as the working directory for all tasks
@@ -825,4 +825,4 @@ MIT License. See [LICENSE](LICENSE).
 
 ## Legal
 
-"Cowork" is an Anthropic product name. CoWork-OSS is an independent open-source project and is not affiliated with, endorsed by, or sponsored by Anthropic. If requested by the rights holder, we will update naming/branding.
+"Cowork" is an Anthropic product name. CoWork OS is an independent open-source project and is not affiliated with, endorsed by, or sponsored by Anthropic. If requested by the rights holder, we will update naming/branding.

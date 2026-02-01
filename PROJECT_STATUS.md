@@ -2,9 +2,9 @@
 
 ## Production-Ready Implementation
 
-CoWork-OSS is a **security-first personal AI assistant platform** with multi-channel messaging support, comprehensive guardrails, and extensive test coverage.
+CoWork OS is a **security-first personal AI assistant platform** with multi-channel messaging support, comprehensive guardrails, and extensive test coverage.
 
-### What CoWork-OSS Is
+### What CoWork OS Is
 
 - **Personal AI Gateway**: Connect your AI assistant to WhatsApp, Telegram, Discord, Slack, and iMessage
 - **Security-First Design**: 390+ unit tests, configurable guardrails, approval workflows
@@ -123,7 +123,7 @@ CoWork-OSS is a **security-first personal AI assistant platform** with multi-cha
 - [x] YAML-based skill definitions
 - [x] Priority-based sorting
 - [x] Parameter input modal for skill variables
-- [x] Located: `~/Library/Application Support/cowork-oss/skills/`
+- [x] Located: `~/Library/Application Support/cowork-os/skills/`
 
 #### Personality System
 - [x] 6 personality styles (professional, friendly, concise, creative, technical, casual)
@@ -213,7 +213,7 @@ CoWork-OSS is a **security-first personal AI assistant platform** with multi-cha
 ## File Structure
 
 ```
-cowork-oss/
+cowork-os/
 ├── src/
 │   ├── electron/
 │   │   ├── main.ts
@@ -414,7 +414,7 @@ Expected behavior:
 
 ## Summary
 
-**CoWork-OSS is a production-ready, security-first personal AI assistant platform:**
+**CoWork OS is a production-ready, security-first personal AI assistant platform:**
 
 ### Core Strengths
 - **Security**: 390+ unit tests, configurable guardrails, approval workflows, brute-force protection

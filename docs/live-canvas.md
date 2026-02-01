@@ -1,6 +1,6 @@
 # Live Canvas
 
-Live Canvas is an agent-driven visual workspace that allows CoWork-OSS agents to create, display, and interact with dynamic HTML/CSS/JavaScript content in real-time.
+Live Canvas is an agent-driven visual workspace that allows CoWork OS agents to create, display, and interact with dynamic HTML/CSS/JavaScript content in real-time.
 
 ## Overview
 
@@ -431,7 +431,7 @@ Example: `canvas://abc123-def456/index.html`
 Live Canvas uses the following directory for session storage:
 
 ```
-~/Library/Application Support/cowork-oss/canvas/{sessionId}/
+~/Library/Application Support/cowork-os/canvas/{sessionId}/
 ```
 
 Sessions are automatically cleaned up when:

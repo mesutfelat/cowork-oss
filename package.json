@@ -1,20 +1,20 @@
 {
-  "name": "cowork-oss",
+  "name": "cowork-os",
   "version": "0.3.12",
-  "description": "Security-first personal AI assistant platform with multi-channel support",
+  "description": "CoWork OS - The operating system for personal AI assistants",
   "overrides": {
     "undici": "^7.0.0"
   },
   "main": "dist/electron/electron/main.js",
-  "author": "CoWork-OSS Contributors",
+  "author": "CoWork OS Contributors",
   "license": "MIT",
-  "homepage": "https://github.com/cowork-oss/cowork-oss#readme",
+  "homepage": "https://github.com/CoWork-OS/CoWork-OS#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/cowork-oss/cowork-oss.git"
+    "url": "git+https://github.com/CoWork-OS/CoWork-OS.git"
   },
   "bugs": {
-    "url": "https://github.com/cowork-oss/cowork-oss/issues"
+    "url": "https://github.com/CoWork-OS/CoWork-OS/issues"
   },
   "keywords": [
     "ai-assistant",
@@ -119,8 +119,8 @@
     "vitest": "^4.0.18"
   },
   "build": {
-    "appId": "com.cowork-oss.app",
-    "productName": "CoWork-OSS",
+    "appId": "com.cowork-os.app",
+    "productName": "CoWork OS",
     "directories": {
       "output": "release"
     },
@@ -150,8 +150,8 @@
     },
     "publish": {
       "provider": "github",
-      "owner": "cowork-oss",
-      "repo": "cowork-oss"
+      "owner": "CoWork-OS",
+      "repo": "CoWork-OS"
     }
   }
 }

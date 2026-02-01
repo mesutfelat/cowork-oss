@@ -1,6 +1,6 @@
 ---
 name: Feature Request
-about: Suggest an idea for CoWork-OSS
+about: Suggest an idea for CoWork OS
 title: '[FEATURE] '
 labels: enhancement
 assignees: ''

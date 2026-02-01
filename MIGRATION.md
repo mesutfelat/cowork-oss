@@ -1,10 +1,10 @@
-# Migrating to CoWork-OSS
+# Migrating to CoWork OS
 
-This guide helps users transition from other AI assistant platforms or set up CoWork-OSS alongside existing tools.
+This guide helps users transition from other AI assistant platforms or set up CoWork OS alongside existing tools.
 
 ## Overview
 
-CoWork-OSS is a security-first personal AI assistant that runs on your Mac. If you're coming from another multi-channel AI platform or looking to self-host your AI assistant, this guide will help you get started.
+CoWork OS is a security-first personal AI assistant that runs on your Mac. If you're coming from another multi-channel AI platform or looking to self-host your AI assistant, this guide will help you get started.
 
 ---
 
@@ -15,8 +15,8 @@ CoWork-OSS is a security-first personal AI assistant that runs on your Mac. If y
 If you're already using messaging channels with another AI platform, you can reuse most of your existing setup:
 
 #### WhatsApp
-- **Same phone**: CoWork-OSS uses Web WhatsApp (Baileys library), just like other platforms
-- **New QR scan**: You'll need to scan a new QR code in CoWork-OSS Settings
+- **Same phone**: CoWork OS uses Web WhatsApp (Baileys library), just like other platforms
+- **New QR scan**: You'll need to scan a new QR code in CoWork OS Settings
 - **Note**: WhatsApp allows multiple linked devices, so you can run both platforms during transition
 
 #### Telegram
@@ -26,24 +26,24 @@ If you're already using messaging channels with another AI platform, you can reu
 
 #### Discord
 - **Same application**: You can reuse your Discord application and bot token
-- **Guild commands**: If using guild-specific commands, update the Guild IDs in CoWork-OSS
+- **Guild commands**: If using guild-specific commands, update the Guild IDs in CoWork OS
 - **Note**: Only one client can connect with the same token at a time
 
 #### Slack
 - **Same app tokens**: You can reuse your Slack app's Bot Token and App-Level Token
-- **Socket Mode**: CoWork-OSS uses Socket Mode, same as most other platforms
+- **Socket Mode**: CoWork OS uses Socket Mode, same as most other platforms
 - **Note**: Only one connection per token is allowed
 
 #### iMessage
 - **macOS only**: iMessage integration requires macOS and the `imsg` CLI tool
 - **Setup**: Install via `brew install steipete/tap/imsg`
-- **Unique to CoWork-OSS**: Most platforms don't support iMessage
+- **Unique to CoWork OS**: Most platforms don't support iMessage
 
 ---
 
 ## What You'll Gain
 
-Moving to CoWork-OSS provides several advantages:
+Moving to CoWork OS provides several advantages:
 
 ### Security Features
 
@@ -73,8 +73,8 @@ Moving to CoWork-OSS provides several advantages:
 
 ### Architecture
 
-| Aspect | CoWork-OSS | Typical CLI Platform |
-|--------|------------|---------------------|
+| Aspect | CoWork OS | Typical CLI Platform |
+|--------|-----------|---------------------|
 | **Form factor** | Desktop app (Electron) | CLI + daemon |
 | **Primary platform** | macOS | Cross-platform |
 | **Installation** | `npm install` + `npm run dev` | `npm install -g` |
@@ -82,8 +82,8 @@ Moving to CoWork-OSS provides several advantages:
 
 ### Security Model
 
-| Aspect | CoWork-OSS |
-|--------|------------|
+| Aspect | CoWork OS |
+|--------|-----------|
 | **Default mode** | Pairing (most restrictive) |
 | **Sandbox** | Workspace boundaries (VM planned) |
 | **Approval** | GUI dialogs |
@@ -93,11 +93,11 @@ Moving to CoWork-OSS provides several advantages:
 
 ## Setup Steps
 
-### 1. Install CoWork-OSS
+### 1. Install CoWork OS
 
 ```bash
-git clone https://github.com/cowork-oss/cowork-oss.git
-cd cowork-oss
+git clone https://github.com/CoWork-OS/CoWork-OS.git
+cd CoWork-OS
 npm install
 npm run dev
 ```
@@ -161,22 +161,22 @@ During transition, you may want to run both platforms:
 
 ### Can I import my skills/prompts from another platform?
 
-CoWork-OSS uses a JSON-based skill format. If your existing platform exports skills, you may need to convert them. Skills are stored in:
+CoWork OS uses a JSON-based skill format. If your existing platform exports skills, you may need to convert them. Skills are stored in:
 ```
-~/Library/Application Support/cowork-oss/skills/
+~/Library/Application Support/cowork-os/skills/
 ```
 
 ### Do I need to re-pair users?
 
-Yes. CoWork-OSS maintains its own pairing database. Users will need to pair again using the pairing code flow.
+Yes. CoWork OS maintains its own pairing database. Users will need to pair again using the pairing code flow.
 
 ### Can I use the same API keys?
 
-Yes. Your LLM provider API keys (Anthropic, OpenAI, etc.) work with any client. Just enter them in CoWork-OSS Settings.
+Yes. Your LLM provider API keys (Anthropic, OpenAI, etc.) work with any client. Just enter them in CoWork OS Settings.
 
 ### Is my data migrated?
 
-No. Task history, conversations, and artifacts are stored locally per platform. You'll start fresh with CoWork-OSS.
+No. Task history, conversations, and artifacts are stored locally per platform. You'll start fresh with CoWork OS.
 
 ---
 
@@ -184,5 +184,5 @@ No. Task history, conversations, and artifacts are stored locally per platform. 
 
 - **Documentation**: See [README.md](README.md) for full feature documentation
 - **Security**: See [SECURITY_GUIDE.md](SECURITY_GUIDE.md) for security best practices
-- **Issues**: Report bugs at [GitHub Issues](https://github.com/cowork-oss/cowork-oss/issues)
+- **Issues**: Report bugs at [GitHub Issues](https://github.com/CoWork-OS/CoWork-OS/issues)
 - **Contributing**: See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines

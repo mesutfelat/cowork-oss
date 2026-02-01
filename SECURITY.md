@@ -11,7 +11,7 @@
 
 ## Reporting a Vulnerability
 
-We take security seriously at CoWork-OSS. If you discover a security vulnerability, please report it responsibly.
+We take security seriously at CoWork OS. If you discover a security vulnerability, please report it responsibly.
 
 ### How to Report
 
@@ -112,7 +112,7 @@ Please include as much of the following information as possible:
 ## Scope
 
 This security policy applies to:
-- The CoWork-OSS application code
+- The CoWork OS application code
 - Build and distribution processes
 - Documentation
 
@@ -123,9 +123,9 @@ Out of scope:
 
 ## Recognition
 
-We appreciate security researchers who help keep CoWork-OSS safe. Contributors who report valid security issues will be:
+We appreciate security researchers who help keep CoWork OS safe. Contributors who report valid security issues will be:
 
 - Credited in security advisories (with permission)
 - Added to our security acknowledgments (if desired)
 
-Thank you for helping keep CoWork-OSS and its users safe!
+Thank you for helping keep CoWork OS and its users safe!

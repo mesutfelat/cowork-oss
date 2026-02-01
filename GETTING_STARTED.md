@@ -1,12 +1,12 @@
-# Getting Started with CoWork-OSS
+# Getting Started with CoWork OS
 
 ## Quick Start
 
 ### Step 1: Install Dependencies
 
 ```bash
-git clone https://github.com/cowork-oss/cowork-oss.git
-cd cowork-oss
+git clone https://github.com/CoWork-OS/CoWork-OS.git
+cd CoWork-OS
 npm install
 ```
 
@@ -39,7 +39,7 @@ This will:
 
 1. **Select a Workspace**
    - Click "Select Folder"
-   - Choose a folder you want CoWork-OSS to work in
+   - Choose a folder you want CoWork OS to work in
    - This will be your workspace (e.g., `~/Documents/test-workspace`)
 
 2. **Create a Task**
@@ -236,15 +236,15 @@ src/
 
 **Main Process (Backend)**:
 - Use `console.log()` - shows in terminal
-- Check logs: `~/Library/Application Support/cowork-oss/`
+- Check logs: `~/Library/Application Support/cowork-os/`
 
 ### Database
 
-SQLite database location: `~/Library/Application Support/cowork-oss/cowork-oss.db`
+SQLite database location: `~/Library/Application Support/cowork-os/cowork-os.db`
 
 View it with any SQLite browser or:
 ```bash
-sqlite3 ~/Library/Application\ Support/cowork-oss/cowork-oss.db
+sqlite3 ~/Library/Application\ Support/cowork-os/cowork-os.db
 .tables
 SELECT * FROM tasks;
 ```
@@ -259,7 +259,7 @@ npm run build
 npm run package
 ```
 
-Output: `release/CoWork-OSS-{version}.dmg`
+Output: `release/CoWork-OS-{version}.dmg`
 
 ## Common Issues
 
@@ -334,4 +334,4 @@ Don't use system folders like `/System` or `/Applications`.
 - Check console output for errors
 - Review the task timeline for clues
 - Read error messages in the UI
-- Report issues at [GitHub Issues](https://github.com/cowork-oss/cowork-oss/issues)
+- Report issues at [GitHub Issues](https://github.com/CoWork-OS/CoWork-OS/issues)

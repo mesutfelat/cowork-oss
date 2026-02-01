@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to CoWork-OSS will be documented in this file.
+All notable changes to CoWork OS will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -196,7 +196,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ollama support for local LLM inference
 
 ### Changed
-- Updated branding to CoWork-OSS
+- Updated branding to CoWork OS
 - Improved workspace selector with terminal aesthetic
 
 ## [0.1.0] - 2025-01-24
@@ -269,10 +269,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 | 0.1.0 | 2025-01-24 | First public release with core features |
 | 0.0.1 | 2025-01-20 | Initial development setup |
 
-[Unreleased]: https://github.com/cowork-oss/cowork-oss/compare/v0.1.6...HEAD
-[0.1.6]: https://github.com/cowork-oss/cowork-oss/releases/tag/v0.1.6
-[0.1.5]: https://github.com/cowork-oss/cowork-oss/releases/tag/v0.1.5
-[0.1.4]: https://github.com/cowork-oss/cowork-oss/releases/tag/v0.1.4
-[0.1.3]: https://github.com/cowork-oss/cowork-oss/releases/tag/v0.1.3
-[0.1.0]: https://github.com/cowork-oss/cowork-oss/releases/tag/v0.1.0
-[0.0.1]: https://github.com/cowork-oss/cowork-oss/releases/tag/v0.0.1
+[Unreleased]: https://github.com/CoWork-OS/CoWork-OS/compare/v0.1.6...HEAD
+[0.1.6]: https://github.com/CoWork-OS/CoWork-OS/releases/tag/v0.1.6
+[0.1.5]: https://github.com/CoWork-OS/CoWork-OS/releases/tag/v0.1.5
+[0.1.4]: https://github.com/CoWork-OS/CoWork-OS/releases/tag/v0.1.4
+[0.1.3]: https://github.com/CoWork-OS/CoWork-OS/releases/tag/v0.1.3
+[0.1.0]: https://github.com/CoWork-OS/CoWork-OS/releases/tag/v0.1.0
+[0.0.1]: https://github.com/CoWork-OS/CoWork-OS/releases/tag/v0.0.1

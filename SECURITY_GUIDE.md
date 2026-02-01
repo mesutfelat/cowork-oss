@@ -1,10 +1,10 @@
 # Security Guide for End Users
 
-This document explains the security model, permissions, and considerations for users who clone and run CoWork-OSS on their machines.
+This document explains the security model, permissions, and considerations for users who clone and run CoWork OS on their machines.
 
 ## Overview
 
-CoWork-OSS is an AI-powered task automation tool that can execute actions on your behalf. By design, it has capabilities that require careful consideration:
+CoWork OS is an AI-powered task automation tool that can execute actions on your behalf. By design, it has capabilities that require careful consideration:
 
 - Execute shell commands
 - Read and write files
@@ -42,7 +42,7 @@ You can approve or deny each request individually.
 
 ### Configurable Guardrails
 
-CoWork-OSS includes configurable guardrails in **Settings > Guardrails** to limit what the agent can do:
+CoWork OS includes configurable guardrails in **Settings > Guardrails** to limit what the agent can do:
 
 | Guardrail | Description | Default |
 |-----------|-------------|---------|
@@ -124,7 +124,7 @@ The app includes Playwright for web automation:
 | Execute JavaScript | Within page context only |
 | Mode | Headless by default |
 
-**User agent**: `CoWork-OSS Browser Automation`
+**User agent**: `CoWork OS Browser Automation`
 
 ---
 
@@ -161,7 +161,7 @@ The app connects to these services based on your configuration:
 
 ### No Telemetry
 
-CoWork-OSS does **not**:
+CoWork OS does **not**:
 - Send usage analytics
 - Track user behavior
 - Phone home to any server
@@ -178,9 +178,9 @@ Your data stays on your machine and only goes to the LLM provider you explicitly
 | Data | Location | Encryption |
 |------|----------|------------|
 | API Keys | OS Keychain via Electron safeStorage | AES-256 |
-| Database | `~/.config/CoWork-OSS/cowork-oss.db` | None (local only) |
-| LLM Settings | `~/.config/CoWork-OSS/llm-settings.json` | Keys encrypted |
-| Search Settings | `~/.config/CoWork-OSS/search-settings.json` | Keys encrypted |
+| Database | `~/.config/CoWork-OS/cowork-os.db` | None (local only) |
+| LLM Settings | `~/.config/CoWork-OS/llm-settings.json` | Keys encrypted |
+| Search Settings | `~/.config/CoWork-OS/search-settings.json` | Keys encrypted |
 
 ### What's Stored in the Database
 
@@ -316,7 +316,7 @@ git diff HEAD..origin/main
 
 ## Threat Model
 
-### What CoWork-OSS Protects Against
+### What CoWork OS Protects Against
 
 | Threat | Protection |
 |--------|------------|
@@ -384,7 +384,7 @@ See [SECURITY.md](SECURITY.md) for full details.
 
 ## Advanced Security Framework (v0.3.8.7+)
 
-CoWork-OSS includes a comprehensive security framework inspired by formal verification techniques.
+CoWork OS includes a comprehensive security framework inspired by formal verification techniques.
 
 ### Tool Groups & Risk Levels
 
@@ -505,7 +505,7 @@ Test files:
 
 ## Summary
 
-CoWork-OSS is designed with security in mind:
+CoWork OS is designed with security in mind:
 
 | Aspect | Status |
 |--------|--------|
@@ -526,5 +526,5 @@ CoWork-OSS is designed with security in mind:
 ### Guardrails Settings Location
 
 All guardrail settings can be configured at:
-- **Settings file**: `~/.config/CoWork-OSS/guardrail-settings.json`
+- **Settings file**: `~/.config/CoWork-OS/guardrail-settings.json`
 - **UI**: Settings (gear icon) → Guardrails tab

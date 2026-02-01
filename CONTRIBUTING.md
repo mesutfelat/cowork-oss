@@ -1,6 +1,6 @@
-# Contributing to CoWork-OSS
+# Contributing to CoWork OS
 
-Thank you for your interest in contributing to CoWork-OSS! This document provides guidelines and instructions for contributing.
+Thank you for your interest in contributing to CoWork OS! This document provides guidelines and instructions for contributing.
 
 > **Note:** This entire codebase was AI-generated using Claude Code and OpenAI Codex — no code was written manually. You may encounter AI-typical patterns, inconsistencies, or areas that could use refactoring. Fresh eyes and improvements are very welcome!
 
@@ -40,8 +40,8 @@ Please read and follow our [Code of Conduct](CODE_OF_CONDUCT.md) to keep our com
 
 ```bash
 # Clone your fork
-git clone https://github.com/YOUR_USERNAME/cowork-oss.git
-cd cowork-oss
+git clone https://github.com/YOUR_USERNAME/CoWork-OS.git
+cd CoWork-OS
 
 # Install dependencies
 npm install
@@ -65,7 +65,7 @@ npm run dev
 
 ## Releasing (Maintainers Only)
 
-CoWork-OSS is published to npm for easy global installation. To release a new version:
+CoWork OS is published to npm for easy global installation. To release a new version:
 
 ### Release Workflow
 
@@ -256,8 +256,8 @@ docs(readme): update installation instructions for M1 Macs
 ## Questions?
 
 Feel free to:
-- Open a [Discussion](https://github.com/cowork-oss/cowork-oss/discussions) for questions
+- Open a [Discussion](https://github.com/CoWork-OS/CoWork-OS/discussions) for questions
 - Reach out on X/Twitter: [@MesutGenAI](https://x.com/MesutGenAI)
 - Tag maintainers in issues for guidance
 
-Thank you for contributing to CoWork-OSS!
+Thank you for contributing to CoWork OS!

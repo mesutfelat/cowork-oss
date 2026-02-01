@@ -13,7 +13,7 @@ Wait for explicit user approval before releasing.
 
 ## npm Publishing Reminder
 
-CoWork-OSS is published on npm (`npm install -g cowork-oss`). When the user creates a new release:
+CoWork OS is published on npm (`npm install -g cowork-oss`). When the user creates a new release:
 
 1. **Remind them** to also publish to npm after pushing to GitHub
 2. **Release workflow**:
@@ -26,7 +26,7 @@ CoWork-OSS is published on npm (`npm install -g cowork-oss`). When the user crea
 
 ## Project Overview
 
-CoWork-OSS is an Electron-based agentic task automation app for macOS.
+CoWork OS is an Electron-based agentic task automation app for macOS.
 
 ### Key Directories
 - `src/electron/` - Main process (Node.js/Electron)
@@ -39,4 +39,4 @@ CoWork-OSS is an Electron-based agentic task automation app for macOS.
 - `npm run type-check` - TypeScript validation
 
 ### Skills
-Custom skills are stored in `~/Library/Application Support/cowork-oss/skills/` as JSON files.
+Custom skills are stored in `~/Library/Application Support/cowork-os/skills/` as JSON files.

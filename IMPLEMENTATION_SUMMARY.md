@@ -1,4 +1,4 @@
-# CoWork-OSS Implementation Summary
+# CoWork OS Implementation Summary
 
 ## What You Have Now
 
@@ -290,7 +290,7 @@ Full MCP support for extensibility:
 
 User-defined reusable workflows:
 
-- Skills stored as YAML in `~/Library/Application Support/cowork-oss/skills/`
+- Skills stored as YAML in `~/Library/Application Support/cowork-os/skills/`
 - Custom prompts and tool configurations
 - Priority-based sorting
 - Parameter input modal for skills with variables
@@ -388,7 +388,7 @@ Run multiple tasks concurrently:
 ## File Structure
 
 ```
-cowork-oss/
+cowork-os/
 ├── package.json
 ├── tsconfig.json
 ├── tsconfig.electron.json
@@ -523,8 +523,8 @@ cowork-oss/
 
 ```bash
 # Clone and install
-git clone https://github.com/cowork-oss/cowork-oss.git
-cd cowork-oss
+git clone https://github.com/CoWork-OS/CoWork-OS.git
+cd CoWork-OS
 npm install
 
 # Run in development mode
@@ -665,7 +665,7 @@ npm run type-check       # Check TypeScript types
 
 ## Summary
 
-CoWork-OSS is a production-ready agentic task automation app with:
+CoWork OS is a production-ready agentic task automation app with:
 
 - **5 LLM providers** (cloud and local)
 - **4 search providers** with fallback
