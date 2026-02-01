@@ -170,7 +170,7 @@ CoWork OS is **free and open source**. To run tasks, configure your own model cr
 - **Telegram**: Bot commands, streaming responses, workspace selection
 - **Discord**: Slash commands, DM support, guild integration
 - **Slack**: Socket Mode, channel mentions, file uploads
-- **Microsoft Teams**: Incoming webhooks, channel/chat messages, card formatting
+- **Microsoft Teams**: Bot Framework SDK, DM/channel mentions, adaptive cards
 - **iMessage**: macOS native integration, pairing codes
 - **Signal**: End-to-end encrypted messaging via signal-cli
 - **Mattermost**: WebSocket real-time, REST API, team/channel support
@@ -327,12 +327,37 @@ Customize agent behavior via Settings or conversation:
 
 ---
 
+## System Requirements
+
+| Requirement | Minimum | Recommended |
+|-------------|---------|-------------|
+| **macOS** | 12 (Monterey) | 13+ (Ventura or later) |
+| **RAM** | 4 GB | 8 GB+ |
+| **CPU** | 2 cores | 4+ cores |
+| **Architecture** | Intel (x64) or Apple Silicon (arm64) | Apple Silicon |
+
+### Supported macOS Versions
+
+- macOS 12 Monterey
+- macOS 13 Ventura
+- macOS 14 Sonoma
+- macOS 15 Sequoia
+
+### Resource Usage Notes
+
+- **Base memory**: ~300-500 MB (Electron + React UI)
+- **Per bot integration**: ~50-100 MB additional (WhatsApp, Telegram, etc.)
+- **Playwright automation**: ~200-500 MB when active
+- **CPU**: Mostly idle; spikes during AI API calls (network I/O bound)
+
+---
+
 ## Setup
 
 ### Prerequisites
 
 - Node.js 18+ and npm
-- macOS (for Electron native features)
+- macOS 12 (Monterey) or later
 - One of: Anthropic API key, Google Gemini API key, OpenRouter API key, OpenAI API key, AWS Bedrock access, or Ollama installed locally
 
 ### Installation
@@ -608,35 +633,54 @@ Run tasks via Slack using Socket Mode.
 
 ## Microsoft Teams Bot Integration
 
-Run tasks via Microsoft Teams using Incoming Webhooks.
+Run tasks via Microsoft Teams using the Bot Framework SDK for full bi-directional messaging.
 
 ### Prerequisites
 
-- Microsoft Teams workspace with webhook permissions
-- Incoming Webhook connector configured in a channel
+- Azure account with Bot Services access
+- Microsoft Teams workspace where you can add apps
+- Public webhook URL (use ngrok for local development)
 
 ### Setting Up Teams
 
-1. **Create an Incoming Webhook**:
-   - Open Microsoft Teams and go to the channel where you want the bot
-   - Click the **...** menu > **Connectors** (or **Workflows** in new Teams)
-   - Search for **Incoming Webhook** and click **Configure**
-   - Give your webhook a name (e.g., "CoWork OS Bot")
-   - Optionally upload a custom icon
-   - Click **Create** and copy the webhook URL
+1. **Create an Azure Bot**:
+   - Go to [Azure Portal - Create Bot](https://portal.azure.com/#create/Microsoft.AzureBot)
+   - Choose **Multi-tenant** or **Single-tenant** type
+   - Create or select a resource group
+   - Click **Create**
 
-2. **Configure in CoWork OS**:
+2. **Get Bot Credentials**:
+   - In the Bot resource, go to **Configuration**
+   - Copy the **Microsoft App ID**
+   - Click **Manage Password** to go to App Registration
+   - Under **Certificates & secrets**, create a new client secret
+   - Copy the secret value (shown only once)
+
+3. **Add Teams Channel**:
+   - In the Bot resource, go to **Channels**
+   - Click **Microsoft Teams** and enable the channel
+
+4. **Set Up Webhook (for local development)**:
+   ```bash
+   ngrok http 3978
+   ```
+   - Copy the HTTPS URL from ngrok
+   - In Azure Bot **Configuration**, set Messaging endpoint to: `https://your-ngrok-url/api/messages`
+
+5. **Configure in CoWork OS**:
    - Open **Settings** > **Teams** tab
-   - Enter your Webhook URL
-   - Optionally set a channel name for display
-   - Click **Connect Teams**
+   - Enter your Microsoft App ID
+   - Enter your App Password (client secret)
+   - Optionally enter Tenant ID (for single-tenant apps)
+   - Set webhook port (default: 3978)
+   - Click **Add Teams Bot**
 
 ### Security Modes
 
 | Mode | Description |
 |------|-------------|
 | **Pairing** (default) | Users must enter a pairing code to interact |
-| **Allowlist** | Only pre-approved users can message |
+| **Allowlist** | Only pre-approved Teams users can message |
 | **Open** | Anyone can message (not recommended) |
 
 ### Bot Commands
@@ -652,15 +696,19 @@ Run tasks via Microsoft Teams using Incoming Webhooks.
 
 ### Message Features
 
+- **Direct Messages**: Chat directly with the bot
+- **Channel Mentions**: @mention the bot in any channel it's added to
 - **Adaptive Cards**: Rich card formatting for responses
 - **Markdown Support**: Basic markdown in messages
-- **Action Buttons**: Interactive buttons in cards (coming soon)
+- **File Attachments**: Send documents and images
+- **Message Editing**: Edit and delete messages
 
 ### Important Notes
 
-- **Webhook-Only**: Current implementation uses Incoming Webhooks for sending messages
-- **No Incoming Messages**: Webhooks are outbound-only; use scheduled tasks or other channels for triggers
-- **Rate Limits**: Teams has rate limits on webhook messages (4 messages/second)
+- **Webhook Required**: A public endpoint is needed to receive messages from Teams
+- **ngrok for Development**: Use ngrok or similar to expose local port 3978
+- **Rate Limits**: Teams has rate limits (50 requests/second per bot)
+- **Auto-Reconnect**: Built-in reconnection with exponential backoff
 
 ---
 
