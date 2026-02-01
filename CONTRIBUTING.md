@@ -61,8 +61,59 @@ npm run dev
 - `npm run package` - Package the Electron app
 - `npm run lint` - Run ESLint
 - `npm run type-check` - Run TypeScript type checking
+- `npm test` - Run tests
+
+## Releasing (Maintainers Only)
+
+CoWork-OSS is published to npm for easy global installation. To release a new version:
+
+### Release Workflow
+
+```bash
+# 1. Ensure all changes are committed and tests pass
+npm test
+npm run type-check
+
+# 2. Bump version (choose one)
+npm version patch   # 0.3.10 → 0.3.11 (bug fixes)
+npm version minor   # 0.3.10 → 0.4.0  (new features)
+npm version major   # 0.3.10 → 1.0.0  (breaking changes)
+
+# 3. Publish to npm
+npm publish
+
+# 4. Push version commit and tag to GitHub
+git push && git push --tags
+```
+
+### Version Guidelines
+
+- **Patch** (0.0.x): Bug fixes, minor improvements
+- **Minor** (0.x.0): New features, non-breaking changes
+- **Major** (x.0.0): Breaking changes, major rewrites
+
+### Pre-release Checklist
+
+- [ ] All tests passing
+- [ ] Type checking passes
+- [ ] CHANGELOG.md updated
+- [ ] README.md reflects any new features
+- [ ] No sensitive data in committed files
 
 ## How to Contribute
+
+### AI-Assisted PRs Welcome!
+
+Built with Claude Code, Codex, Cursor, or other AI tools? **Awesome — we embrace it!**
+
+This entire codebase was AI-generated, so AI-assisted contributions are first-class citizens here. Just be transparent:
+
+- [ ] Mark as AI-assisted in your PR title or description
+- [ ] Note your testing level (untested / lightly tested / fully tested)
+- [ ] Confirm you understand what the code does
+- [ ] Include prompts or session logs if helpful for reviewers
+
+We just want transparency so reviewers know what to look for. Don't be shy about using AI — it's how this project was built!
 
 ### Reporting Bugs
 

@@ -1,9 +1,15 @@
 <p align="center">
-  <img src="screenshots/cowork-oss-logo.png" alt="CoWork-OSS Logo" width="120">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="screenshots/cowork-oss-logo.png">
+    <source media="(prefers-color-scheme: light)" srcset="screenshots/cowork-oss-logo.png">
+    <img src="screenshots/cowork-oss-logo.png" alt="CoWork-OSS Logo" width="120">
+  </picture>
 </p>
 
 # CoWork-OSS
 
+[![npm version](https://img.shields.io/npm/v/cowork-oss.svg)](https://www.npmjs.com/package/cowork-oss)
+[![npm downloads](https://img.shields.io/npm/dm/cowork-oss.svg)](https://www.npmjs.com/package/cowork-oss)
 [![CI](https://github.com/mesutfelat/cowork-oss/actions/workflows/ci.yml/badge.svg)](https://github.com/mesutfelat/cowork-oss/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![macOS](https://img.shields.io/badge/platform-macOS-blue.svg)](https://www.apple.com/macos/)
@@ -264,6 +270,20 @@ CoWork-OSS is **free and open source**. To run tasks, you must configure your ow
 
 ### Installation
 
+#### Option 1: Install via npm (Recommended)
+
+```bash
+# Install globally
+npm install -g cowork-oss
+
+# Run the app
+cowork-oss
+# or simply:
+cowork
+```
+
+#### Option 2: Install from Source (Development)
+
 ```bash
 # Clone the repository
 git clone https://github.com/mesutfelat/cowork-oss.git
@@ -274,11 +294,32 @@ npm install
 
 # Run in development mode
 npm run dev
+```
 
-# Configure your API credentials in Settings (gear icon)
+After launching, configure your API credentials in Settings (gear icon).
+
+### Updating
+
+```bash
+# Check for updates
+npm outdated -g cowork-oss
+
+# Update to latest version
+npm update -g cowork-oss
+
+# Or reinstall to force latest
+npm install -g cowork-oss@latest
+```
+
+### Uninstalling
+
+```bash
+npm uninstall -g cowork-oss
 ```
 
 ### Building for Production
+
+For contributors building distributable packages:
 
 ```bash
 npm run build
@@ -2665,6 +2706,18 @@ Areas where help is especially needed:
 - **X/Twitter**: [@MesutGenAI](https://x.com/MesutGenAI)
 - **GitHub Issues**: [Report bugs or request features](https://github.com/mesutfelat/cowork-oss/issues)
 - **Discussions**: [Ask questions or share ideas](https://github.com/mesutfelat/cowork-oss/discussions)
+
+---
+
+## Star History
+
+<a href="https://star-history.com/#mesutfelat/cowork-oss&Date">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=mesutfelat/cowork-oss&type=Date&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=mesutfelat/cowork-oss&type=Date" />
+   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=mesutfelat/cowork-oss&type=Date" />
+ </picture>
+</a>
 
 ---
 
