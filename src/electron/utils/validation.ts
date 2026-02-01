@@ -219,6 +219,8 @@ export const AddWhatsAppChannelSchema = z.object({
 
 export const DmPolicySchema = z.enum(['open', 'allowlist', 'pairing', 'disabled']);
 export const GroupPolicySchema = z.enum(['open', 'allowlist', 'disabled']);
+export const SignalModeSchema = z.enum(['native', 'daemon']);
+export const SignalTrustModeSchema = z.enum(['tofu', 'always', 'manual']);
 
 export const AddImessageChannelSchema = z.object({
   type: z.literal('imessage'),
@@ -232,12 +234,27 @@ export const AddImessageChannelSchema = z.object({
   responsePrefix: z.string().max(20).optional(),
 });
 
+export const AddSignalChannelSchema = z.object({
+  type: z.literal('signal'),
+  name: z.string().min(1).max(MAX_TITLE_LENGTH),
+  phoneNumber: z.string().min(1).max(20),
+  dataDir: z.string().max(MAX_PATH_LENGTH).optional(),
+  securityMode: SecurityModeSchema.optional(),
+  mode: SignalModeSchema.optional(),
+  trustMode: SignalTrustModeSchema.optional(),
+  dmPolicy: DmPolicySchema.optional(),
+  groupPolicy: GroupPolicySchema.optional(),
+  sendReadReceipts: z.boolean().optional(),
+  sendTypingIndicators: z.boolean().optional(),
+});
+
 export const AddChannelSchema = z.discriminatedUnion('type', [
   AddTelegramChannelSchema,
   AddDiscordChannelSchema,
   AddSlackChannelSchema,
   AddWhatsAppChannelSchema,
   AddImessageChannelSchema,
+  AddSignalChannelSchema,
 ]);
 
 export const ChannelConfigSchema = z.object({
@@ -350,7 +367,7 @@ export const MCPRegistrySearchSchema = z.object({
 
 // ============ Hooks (Webhooks) Schemas ============
 
-export const HookMappingChannelSchema = z.enum(['telegram', 'discord', 'slack', 'whatsapp', 'imessage', 'last']);
+export const HookMappingChannelSchema = z.enum(['telegram', 'discord', 'slack', 'whatsapp', 'imessage', 'signal', 'last']);
 
 export const HookMappingSchema = z.object({
   id: z.string().max(100).optional(),

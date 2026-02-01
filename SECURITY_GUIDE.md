@@ -158,6 +158,7 @@ The app connects to these services based on your configuration:
 | `api.github.com` | Update checks |
 | `api.telegram.org` | Telegram bot (if configured) |
 | Discord API | Discord bot (if configured) |
+| Signal (via signal-cli) | Signal bot (if configured, local process) |
 
 ### No Telemetry
 
@@ -236,9 +237,9 @@ form-action 'self';
 
 ---
 
-## Telegram/Discord Bot Security
+## Messaging Channel Security
 
-If you use the gateway feature to connect Telegram or Discord bots:
+If you use the gateway feature to connect messaging bots (Telegram, Discord, Slack, WhatsApp, iMessage, Signal):
 
 ### Security Modes
 
@@ -298,12 +299,13 @@ git diff HEAD..origin/main
 4. **Keep updated** - security fixes come through updates
 5. **Protect your API keys** - don't share configuration files
 
-### For Telegram/Discord Bots
+### For Messaging Bots (Telegram/Discord/Slack/WhatsApp/iMessage/Signal)
 
 1. **Never use "open" mode** for public bots
 2. **Use pairing codes** for secure user onboarding
 3. **Regularly audit** connected users
 4. **Revoke access** when no longer needed
+5. **For Signal**: Use a dedicated phone number (registration deactivates other Signal instances)
 
 ### For Development
 
@@ -411,7 +413,7 @@ Security policies are evaluated across multiple layers in order:
 
 ### Context-Aware Tool Isolation
 
-When tasks originate from gateway bots (WhatsApp/Telegram/Discord/Slack), tools are restricted based on context:
+When tasks originate from gateway bots (WhatsApp/Telegram/Discord/Slack/iMessage/Signal), tools are restricted based on context:
 
 | Context | Restrictions |
 |---------|-------------|

@@ -22,12 +22,12 @@
 
 **The operating system for personal AI assistants**
 
-Your AI needs a secure home. CoWork OS provides the runtime, security layers, and I/O channels to run AI agents across WhatsApp, Telegram, Discord, Slack, and iMessage — with the control you expect from an operating system.
+Your AI needs a secure home. CoWork OS provides the runtime, security layers, and I/O channels to run AI agents across WhatsApp, Telegram, Discord, Slack, iMessage, and Signal — with the control you expect from an operating system.
 
 | | |
 |---|---|
 | **6 AI Providers** | Claude, GPT-4, Gemini, Bedrock, OpenRouter, Ollama (free/local) |
-| **5 Messaging Channels** | WhatsApp, Telegram, Discord, Slack, iMessage |
+| **6 Messaging Channels** | WhatsApp, Telegram, Discord, Slack, iMessage, Signal |
 | **Security-First** | 390+ unit tests, configurable guardrails, approval workflows |
 | **Local-First** | Your data stays on your machine. BYOK (Bring Your Own Key) |
 
@@ -62,7 +62,7 @@ Your AI needs a secure home. CoWork OS provides the runtime, security layers, an
 
 ### Connect from Anywhere
 
-- Message your AI from WhatsApp, Telegram, Discord, Slack, or iMessage
+- Message your AI from WhatsApp, Telegram, Discord, Slack, iMessage, or Signal
 - Schedule recurring tasks with cron expressions
 - Secure remote access via Tailscale or SSH tunnels
 - WebSocket API for custom integrations
@@ -127,6 +127,7 @@ CoWork OS is **free and open source**. To run tasks, configure your own model cr
 - **Discord**: Slash commands, DM support, guild integration
 - **Slack**: Socket Mode, channel mentions, file uploads
 - **iMessage**: macOS native integration, pairing codes
+- **Signal**: End-to-end encrypted messaging via signal-cli
 
 All channels support:
 - Security modes (pairing, allowlist, open)
@@ -414,7 +415,7 @@ Schedule recurring tasks with cron expressions and optional channel delivery.
 
 - **Cron Expressions**: Standard cron syntax (minute, hour, day, month, weekday)
 - **Workspace Binding**: Each job runs in a specific workspace
-- **Channel Delivery**: Send results to Telegram, Discord, Slack, WhatsApp, or iMessage
+- **Channel Delivery**: Send results to Telegram, Discord, Slack, WhatsApp, iMessage, or Signal
 - **Run History**: View execution history with status and duration
 - **Enable/Disable**: Toggle jobs without deleting them
 
@@ -545,6 +546,85 @@ Run tasks via iMessage using the `imsg` CLI tool.
 Messages from your own Apple ID are filtered. To use the bot:
 - Use a **dedicated Apple ID** for the bot Mac
 - Message the bot from your personal devices
+
+---
+
+## Signal Bot Integration
+
+Run tasks via Signal with end-to-end encryption using `signal-cli`.
+
+### Prerequisites
+
+- **signal-cli**: Install via Homebrew or from [GitHub](https://github.com/AsamK/signal-cli)
+  ```bash
+  brew install signal-cli
+  ```
+- **Dedicated phone number**: Signal allows only one registration per phone number. Using the bot will deregister your existing Signal app on that number.
+- **Java Runtime**: signal-cli requires Java 17+
+
+### Registration Options
+
+| Option | Description | Best For |
+|--------|-------------|----------|
+| **Dedicated Number** | Register with a separate phone number | Production use |
+| **Link as Device** | Link signal-cli as secondary device to existing account | Testing (limited functionality) |
+
+### Setting Up Signal
+
+1. **Register your phone number** (if using dedicated number):
+   ```bash
+   signal-cli -a +1234567890 register
+   # Enter verification code when received
+   signal-cli -a +1234567890 verify CODE
+   ```
+
+2. **Configure in CoWork OS**:
+   - Open **Settings** > **Signal** tab
+   - Enter your phone number
+   - Select data directory (default: `~/.local/share/signal-cli`)
+   - Click **Add Signal Channel**
+
+3. **Check registration status** using the "Check Registration" button
+
+### Security Modes
+
+| Mode | Description |
+|------|-------------|
+| **Pairing** (default) | Users must enter a pairing code to interact |
+| **Allowlist** | Only pre-approved phone numbers can message |
+| **Open** | Anyone can message (not recommended) |
+
+### Trust Modes
+
+| Mode | Description |
+|------|-------------|
+| **TOFU** (Trust On First Use) | Auto-trust new identity keys on first contact |
+| **Always** | Always trust identity keys (less secure) |
+| **Manual** | Require manual verification of identity keys |
+
+### Operating Modes
+
+| Mode | Description |
+|------|-------------|
+| **Native** | Direct signal-cli command execution |
+| **Daemon** | Connect to signal-cli JSON-RPC daemon (advanced) |
+
+### Bot Commands
+
+| Command | Description |
+|---------|-------------|
+| `/workspaces` | List available workspaces |
+| `/workspace <n>` | Select workspace by number |
+| `/newtask` | Start fresh conversation |
+| `/status` | Check bot status |
+| `/cancel` | Cancel running task |
+| `/pair <code>` | Pair with code |
+
+### Important Notes
+
+- **Single Registration Limitation**: Signal only allows one active registration per phone number. Registering signal-cli will deregister any existing Signal app using that number.
+- **Verification Codes**: You'll need access to receive SMS or voice calls on the phone number for verification.
+- **Identity Keys**: Signal uses identity keys for end-to-end encryption. The trust mode determines how new keys are handled.
 
 ---
 
@@ -794,7 +874,7 @@ Users must comply with their model provider's terms:
 ### Completed
 
 - [x] Multi-provider LLM support (6 providers)
-- [x] Multi-channel messaging (5 channels)
+- [x] Multi-channel messaging (6 channels)
 - [x] Configurable guardrails and security
 - [x] Browser automation with Playwright
 - [x] Code tools (glob, grep, edit_file)

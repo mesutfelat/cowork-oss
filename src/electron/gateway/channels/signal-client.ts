@@ -181,8 +181,8 @@ export interface SignalClientOptions {
   /** signal-cli data directory */
   dataDir?: string;
   /** Communication mode */
-  mode?: 'native' | 'json-rpc' | 'dbus';
-  /** JSON-RPC socket path */
+  mode?: 'native' | 'daemon';
+  /** Daemon socket path */
   socketPath?: string;
   /** Enable verbose logging */
   verbose?: boolean;
@@ -250,13 +250,28 @@ export class SignalClient extends EventEmitter {
    */
   async checkRegistration(): Promise<{ registered: boolean; error?: string }> {
     try {
-      const accountPath = path.join(this.options.dataDir, 'data', this.options.phoneNumber);
-      if (!fs.existsSync(accountPath)) {
+      // Check accounts.json which maps phone numbers to account data paths
+      const accountsFile = path.join(this.options.dataDir, 'data', 'accounts.json');
+      if (!fs.existsSync(accountsFile)) {
         return {
           registered: false,
           error: `Account not registered. Run: signal-cli -a ${this.options.phoneNumber} register`,
         };
       }
+
+      // Parse accounts.json and look for our phone number
+      const accountsData = JSON.parse(fs.readFileSync(accountsFile, 'utf-8'));
+      const account = accountsData.accounts?.find(
+        (acc: { number: string }) => acc.number === this.options.phoneNumber
+      );
+
+      if (!account) {
+        return {
+          registered: false,
+          error: `Account not registered. Run: signal-cli -a ${this.options.phoneNumber} register`,
+        };
+      }
+
       return { registered: true };
     } catch (error) {
       return {
@@ -274,8 +289,8 @@ export class SignalClient extends EventEmitter {
       return;
     }
 
-    if (this.options.mode === 'json-rpc') {
-      await this.startJsonRpcReceiving();
+    if (this.options.mode === 'daemon') {
+      await this.startDaemonReceiving();
     } else {
       await this.startNativeReceiving();
     }
@@ -345,7 +360,7 @@ export class SignalClient extends EventEmitter {
   /**
    * Start JSON-RPC mode receiving
    */
-  private async startJsonRpcReceiving(): Promise<void> {
+  private async startDaemonReceiving(): Promise<void> {
     return new Promise((resolve, reject) => {
       this.jsonRpcSocket = net.createConnection(this.options.socketPath, () => {
         this.connected = true;

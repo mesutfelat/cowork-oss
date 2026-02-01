@@ -77,7 +77,7 @@ export class SignalAdapter implements ChannelAdapter {
       sendTypingIndicators: true,
       maxAttachmentMb: 100,
       pollInterval: 1000,
-      trustMode: 'on-first-use',
+      trustMode: 'tofu',
       ...config,
     };
 

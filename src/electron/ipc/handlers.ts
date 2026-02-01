@@ -1188,6 +1188,37 @@ export async function setupIpcHandlers(
       };
     }
 
+    if (validated.type === 'signal') {
+      const channel = await gateway.addSignalChannel(
+        validated.name,
+        validated.phoneNumber,
+        validated.dataDir,
+        validated.securityMode || 'pairing',
+        validated.mode || 'native',
+        validated.trustMode || 'tofu',
+        validated.dmPolicy || 'pairing',
+        validated.groupPolicy || 'allowlist',
+        validated.sendReadReceipts ?? true,
+        validated.sendTypingIndicators ?? true
+      );
+
+      // Automatically enable and connect Signal
+      gateway.enableChannel(channel.id).catch((err) => {
+        console.error('Failed to enable Signal channel:', err);
+      });
+
+      return {
+        id: channel.id,
+        type: channel.type,
+        name: channel.name,
+        enabled: channel.enabled,
+        status: 'connecting', // Indicate we're connecting
+        securityMode: channel.securityConfig.mode,
+        createdAt: channel.createdAt,
+        config: channel.config,
+      };
+    }
+
     // TypeScript exhaustiveness check - should never reach here due to discriminated union
     throw new Error(`Unsupported channel type`);
   });
@@ -2266,14 +2297,15 @@ function setupMemoryHandlers(): void {
   console.log('[Migration] Handlers initialized');
 
   // === Extension / Plugin Handlers ===
-  const { getPluginRegistry } = await import('../extensions/registry');
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { getPluginRegistry } = require('../extensions/registry');
 
   // List all extensions
   ipcMain.handle(IPC_CHANNELS.EXTENSIONS_LIST, async () => {
     try {
       const registry = getPluginRegistry();
       const plugins = registry.getPlugins();
-      return plugins.map(p => ({
+      return plugins.map((p: any) => ({
         name: p.manifest.name,
         displayName: p.manifest.displayName,
         version: p.manifest.version,
@@ -2384,7 +2416,7 @@ function setupMemoryHandlers(): void {
       const registry = getPluginRegistry();
       await registry.initialize();
       const plugins = registry.getPlugins();
-      return plugins.map(p => ({
+      return plugins.map((p: any) => ({
         name: p.manifest.name,
         displayName: p.manifest.displayName,
         version: p.manifest.version,

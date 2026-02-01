@@ -7,8 +7,8 @@ interface SignalSettingsProps {
 
 type DmPolicy = 'open' | 'allowlist' | 'pairing' | 'disabled';
 type GroupPolicy = 'open' | 'allowlist' | 'disabled';
-type TrustMode = 'always' | 'on-first-use' | 'never';
-type SignalMode = 'native' | 'json-rpc' | 'dbus';
+type TrustMode = 'tofu' | 'always' | 'manual';
+type SignalMode = 'native' | 'daemon';
 
 export function SignalSettings({ onStatusChange }: SignalSettingsProps) {
   const [channel, setChannel] = useState<ChannelData | null>(null);
@@ -25,7 +25,7 @@ export function SignalSettings({ onStatusChange }: SignalSettingsProps) {
   const [cliPath, setCliPath] = useState('');
   const [dataDir, setDataDir] = useState('');
   const [mode, setMode] = useState<SignalMode>('native');
-  const [trustMode, setTrustMode] = useState<TrustMode>('on-first-use');
+  const [trustMode, setTrustMode] = useState<TrustMode>('tofu');
   const [dmPolicy, setDmPolicy] = useState<DmPolicy>('pairing');
   const [groupPolicy, setGroupPolicy] = useState<GroupPolicy>('allowlist');
   const [allowedNumbers, setAllowedNumbers] = useState('');
@@ -57,7 +57,7 @@ export function SignalSettings({ onStatusChange }: SignalSettingsProps) {
           setCliPath(signalChannel.config.cliPath as string || '');
           setDataDir(signalChannel.config.dataDir as string || '');
           setMode(signalChannel.config.mode as SignalMode || 'native');
-          setTrustMode(signalChannel.config.trustMode as TrustMode || 'on-first-use');
+          setTrustMode(signalChannel.config.trustMode as TrustMode || 'tofu');
           setDmPolicy(signalChannel.config.dmPolicy as DmPolicy || 'pairing');
           setGroupPolicy(signalChannel.config.groupPolicy as GroupPolicy || 'allowlist');
           setSendReadReceipts(signalChannel.config.sendReadReceipts as boolean ?? true);
@@ -368,9 +368,9 @@ export function SignalSettings({ onStatusChange }: SignalSettingsProps) {
               value={trustMode}
               onChange={(e) => setTrustMode(e.target.value as TrustMode)}
             >
-              <option value="on-first-use">Trust on first use (default)</option>
+              <option value="tofu">Trust on first use (default)</option>
               <option value="always">Always trust</option>
-              <option value="never">Never trust (manual verification)</option>
+              <option value="manual">Manual verification</option>
             </select>
             <p className="settings-hint">
               How to handle new contact identity keys
@@ -385,8 +385,7 @@ export function SignalSettings({ onStatusChange }: SignalSettingsProps) {
               onChange={(e) => setMode(e.target.value as SignalMode)}
             >
               <option value="native">Native (default)</option>
-              <option value="json-rpc">JSON-RPC</option>
-              <option value="dbus">D-Bus</option>
+              <option value="daemon">Daemon (JSON-RPC)</option>
             </select>
             <p className="settings-hint">
               How to communicate with signal-cli
@@ -611,9 +610,9 @@ export function SignalSettings({ onStatusChange }: SignalSettingsProps) {
             value={trustMode}
             onChange={(e) => setTrustMode(e.target.value as TrustMode)}
           >
-            <option value="on-first-use">Trust on first use</option>
+            <option value="tofu">Trust on first use</option>
             <option value="always">Always trust</option>
-            <option value="never">Never trust (manual verification)</option>
+            <option value="manual">Manual verification</option>
           </select>
         </div>
 

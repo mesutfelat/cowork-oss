@@ -425,6 +425,55 @@ export class ChannelGateway {
   }
 
   /**
+   * Add a new Signal channel
+   */
+  async addSignalChannel(
+    name: string,
+    phoneNumber: string,
+    dataDir?: string,
+    securityMode: 'open' | 'allowlist' | 'pairing' = 'pairing',
+    mode: 'native' | 'daemon' = 'native',
+    trustMode: 'tofu' | 'always' | 'manual' = 'tofu',
+    dmPolicy: 'open' | 'allowlist' | 'pairing' | 'disabled' = 'pairing',
+    groupPolicy: 'open' | 'allowlist' | 'disabled' = 'allowlist',
+    sendReadReceipts: boolean = true,
+    sendTypingIndicators: boolean = true
+  ): Promise<Channel> {
+    // Check if Signal channel already exists
+    const existing = this.channelRepo.findByType('signal');
+    if (existing) {
+      throw new Error('Signal channel already configured. Update or remove it first.');
+    }
+
+    // Create channel record
+    const channel = this.channelRepo.create({
+      type: 'signal',
+      name,
+      enabled: false, // Don't enable until connected
+      config: {
+        phoneNumber,
+        dataDir,
+        mode,
+        trustMode,
+        dmPolicy,
+        groupPolicy,
+        sendReadReceipts,
+        sendTypingIndicators,
+      },
+      securityConfig: {
+        mode: securityMode,
+        allowedUsers: [],
+        pairingCodeTTL: 300, // 5 minutes
+        maxPairingAttempts: 5,
+        rateLimitPerMinute: 30,
+      },
+      status: 'disconnected',
+    });
+
+    return channel;
+  }
+
+  /**
    * Update a channel configuration
    */
   updateChannel(channelId: string, updates: Partial<Channel>): void {
@@ -812,9 +861,9 @@ export class ChannelGateway {
           phoneNumber: channel.config.phoneNumber as string,
           cliPath: channel.config.cliPath as string | undefined,
           dataDir: channel.config.dataDir as string | undefined,
-          mode: channel.config.mode as 'native' | 'json-rpc' | 'dbus' | undefined,
+          mode: channel.config.mode as 'native' | 'daemon' | undefined,
           socketPath: channel.config.socketPath as string | undefined,
-          trustMode: channel.config.trustMode as 'always' | 'on-first-use' | 'never' | undefined,
+          trustMode: channel.config.trustMode as 'tofu' | 'always' | 'manual' | undefined,
           dmPolicy: channel.config.dmPolicy as 'open' | 'allowlist' | 'pairing' | 'disabled' | undefined,
           groupPolicy: channel.config.groupPolicy as 'open' | 'allowlist' | 'disabled' | undefined,
           allowedNumbers: channel.config.allowedNumbers as string[] | undefined,

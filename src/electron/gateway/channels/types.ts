@@ -234,11 +234,11 @@ export interface SignalConfig extends ChannelConfig {
   /** signal-cli data directory (default: ~/.local/share/signal-cli) */
   dataDir?: string;
   /** Configuration mode */
-  mode?: 'native' | 'json-rpc' | 'dbus';
-  /** JSON-RPC socket path (for json-rpc mode) */
+  mode?: 'native' | 'daemon';
+  /** JSON-RPC socket path (for daemon mode) */
   socketPath?: string;
   /** Trust mode for new contacts */
-  trustMode?: 'always' | 'on-first-use' | 'never';
+  trustMode?: 'tofu' | 'always' | 'manual';
   /** DM access policy (default: "pairing") */
   dmPolicy?: 'open' | 'allowlist' | 'pairing' | 'disabled';
   /** Group access policy (default: "allowlist") */
