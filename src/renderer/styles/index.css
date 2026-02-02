@@ -677,6 +677,30 @@
   border-color: rgba(0, 0, 0, 0.06);
 }
 
+.theme-light .voice-input-btn {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.15);
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.theme-light .voice-input-btn:hover:not(:disabled) {
+  background: var(--color-accent-subtle);
+  border-color: var(--color-accent);
+  color: var(--color-accent-dark);
+}
+
+.theme-light .voice-input-btn.recording {
+  background: rgba(248, 113, 113, 0.15);
+  border-color: #ef4444;
+  color: #dc2626;
+}
+
+.theme-light .voice-input-btn.processing {
+  background: var(--color-accent-subtle);
+  border-color: var(--color-accent);
+  color: var(--color-accent-dark);
+}
+
 html, body {
   height: 100%;
 }
@@ -2112,15 +2136,21 @@ a,
   width: 36px;
   height: 36px;
   border-radius: var(--radius-sm);
-  background: transparent;
+  background: var(--color-bg-secondary);
   border: 1px solid var(--color-border);
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.2s ease;
   overflow: hidden;
+}
+
+.voice-input-btn svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
 }
 
 .voice-input-btn:hover:not(:disabled) {
