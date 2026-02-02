@@ -2312,7 +2312,10 @@ Format your plan as a JSON object with this structure:
       console.log(`[Task ${this.task.id}] LLM response received in ${Date.now() - startTime}ms`);
     } catch (llmError: any) {
       console.error(`[Task ${this.task.id}] LLM API call failed:`, llmError);
-      this.daemon.logEvent(this.task.id, 'error', {
+      // Note: Don't log 'error' event here - just re-throw. The error will be caught
+      // by execute()'s catch block which logs the final error notification.
+      // Logging 'error' here would cause duplicate notifications.
+      this.daemon.logEvent(this.task.id, 'llm_error', {
         message: `LLM API error: ${llmError.message}`,
         details: llmError.status ? `Status: ${llmError.status}` : undefined,
       });
@@ -2998,7 +3001,28 @@ SCHEDULING & REMINDERS:
               const truncatedResult = truncateToolResult(resultStr);
 
               // Sanitize tool results to prevent injection via external content
-              const sanitizedResult = OutputFilter.sanitizeToolResult(content.name, truncatedResult);
+              let sanitizedResult = OutputFilter.sanitizeToolResult(content.name, truncatedResult);
+
+              // Add context prefix for run_command termination reasons to help agent decide next steps
+              if (content.name === 'run_command' && result && result.terminationReason) {
+                let contextPrefix = '';
+                switch (result.terminationReason) {
+                  case 'user_stopped':
+                    contextPrefix = '[USER STOPPED] The user intentionally interrupted this command. ' +
+                      'Do not retry automatically. Ask the user if they want you to continue or try a different approach.\n\n';
+                    break;
+                  case 'timeout':
+                    contextPrefix = '[TIMEOUT] Command exceeded time limit. ' +
+                      'Consider: 1) Breaking into smaller steps, 2) Using a longer timeout if available, 3) Asking the user to run this manually.\n\n';
+                    break;
+                  case 'error':
+                    contextPrefix = '[EXECUTION ERROR] The command could not be spawned or executed properly.\n\n';
+                    break;
+                }
+                if (contextPrefix) {
+                  sanitizedResult = contextPrefix + sanitizedResult;
+                }
+              }
 
               this.daemon.logEvent(this.task.id, 'tool_result', {
                 tool: content.name,
@@ -3090,9 +3114,11 @@ SCHEDULING & REMINDERS:
       step.status = 'failed';
       step.error = error.message;
       step.completedAt = Date.now();
-      this.daemon.logEvent(this.task.id, 'error', {
-        step: step.id,
-        error: error.message,
+      // Note: Don't log 'error' event here - the error will bubble up to execute()
+      // which logs the final error. Logging here would cause duplicate notifications.
+      this.daemon.logEvent(this.task.id, 'step_failed', {
+        step,
+        reason: error.message,
       });
       throw error;
     }
@@ -3638,15 +3664,16 @@ SCHEDULING & REMINDERS:
       console.error('sendMessage failed:', error);
       // Save conversation snapshot even on failure for potential recovery
       this.saveConversationSnapshot();
+      this.daemon.updateTaskStatus(this.task.id, 'failed');
+      // Emit single 'error' event for UI notification (don't emit twice!)
       this.daemon.logEvent(this.task.id, 'error', {
         message: error.message,
       });
-      this.daemon.updateTaskStatus(this.task.id, 'failed');
-      // Emit follow_up_failed event for the gateway
+      // Emit follow_up_failed event for the gateway (this doesn't trigger toast)
       this.daemon.logEvent(this.task.id, 'follow_up_failed', {
         error: error.message,
       });
-      throw error;
+      // Note: Don't re-throw - we've fully handled the error above (status updated, events emitted)
     }
   }
 
