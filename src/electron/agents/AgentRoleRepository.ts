@@ -6,6 +6,9 @@ import {
   UpdateAgentRoleRequest,
   AgentCapability,
   AgentToolRestrictions,
+  AgentAutonomyLevel,
+  HeartbeatStatus,
+  HeartbeatConfig,
   DEFAULT_AGENT_ROLES,
 } from '../../shared/types';
 
@@ -51,6 +54,13 @@ export class AgentRoleRepository {
       sortOrder: 100,
       createdAt: now,
       updatedAt: now,
+      // Mission Control fields
+      autonomyLevel: request.autonomyLevel || 'specialist',
+      soul: request.soul,
+      heartbeatEnabled: request.heartbeatEnabled || false,
+      heartbeatIntervalMinutes: request.heartbeatIntervalMinutes || 15,
+      heartbeatStaggerOffset: request.heartbeatStaggerOffset || 0,
+      heartbeatStatus: 'idle',
     };
 
     const stmt = this.db.prepare(`
@@ -58,8 +68,10 @@ export class AgentRoleRepository {
         id, name, display_name, description, icon, color,
         personality_id, model_key, provider_type, system_prompt,
         capabilities, tool_restrictions, is_system, is_active,
-        sort_order, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        sort_order, created_at, updated_at,
+        autonomy_level, soul, heartbeat_enabled, heartbeat_interval_minutes,
+        heartbeat_stagger_offset, heartbeat_status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     stmt.run(
@@ -79,7 +91,13 @@ export class AgentRoleRepository {
       role.isActive ? 1 : 0,
       role.sortOrder,
       role.createdAt,
-      role.updatedAt
+      role.updatedAt,
+      role.autonomyLevel,
+      role.soul || null,
+      role.heartbeatEnabled ? 1 : 0,
+      role.heartbeatIntervalMinutes,
+      role.heartbeatStaggerOffset,
+      role.heartbeatStatus
     );
 
     return role;
@@ -186,6 +204,27 @@ export class AgentRoleRepository {
       fields.push('sort_order = ?');
       values.push(request.sortOrder);
     }
+    // Mission Control fields
+    if (request.autonomyLevel !== undefined) {
+      fields.push('autonomy_level = ?');
+      values.push(request.autonomyLevel);
+    }
+    if (request.soul !== undefined) {
+      fields.push('soul = ?');
+      values.push(request.soul);
+    }
+    if (request.heartbeatEnabled !== undefined) {
+      fields.push('heartbeat_enabled = ?');
+      values.push(request.heartbeatEnabled ? 1 : 0);
+    }
+    if (request.heartbeatIntervalMinutes !== undefined) {
+      fields.push('heartbeat_interval_minutes = ?');
+      values.push(request.heartbeatIntervalMinutes);
+    }
+    if (request.heartbeatStaggerOffset !== undefined) {
+      fields.push('heartbeat_stagger_offset = ?');
+      values.push(request.heartbeatStaggerOffset);
+    }
 
     if (fields.length === 0) {
       return existing;
@@ -237,6 +276,11 @@ export class AgentRoleRepository {
         ...defaultRole,
         createdAt: now,
         updatedAt: now,
+        // Ensure Mission Control fields have defaults
+        heartbeatEnabled: false,
+        heartbeatIntervalMinutes: 15,
+        heartbeatStaggerOffset: 0,
+        heartbeatStatus: 'idle',
       };
 
       const stmt = this.db.prepare(`
@@ -244,8 +288,10 @@ export class AgentRoleRepository {
           id, name, display_name, description, icon, color,
           personality_id, model_key, provider_type, system_prompt,
           capabilities, tool_restrictions, is_system, is_active,
-          sort_order, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          sort_order, created_at, updated_at,
+          autonomy_level, heartbeat_enabled, heartbeat_interval_minutes,
+          heartbeat_stagger_offset, heartbeat_status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
       stmt.run(
@@ -265,7 +311,12 @@ export class AgentRoleRepository {
         role.isActive ? 1 : 0,
         role.sortOrder,
         role.createdAt,
-        role.updatedAt
+        role.updatedAt,
+        role.autonomyLevel || 'specialist',
+        role.heartbeatEnabled ? 1 : 0,
+        role.heartbeatIntervalMinutes,
+        role.heartbeatStaggerOffset,
+        role.heartbeatStatus
       );
 
       seeded.push(role);
@@ -281,6 +332,80 @@ export class AgentRoleRepository {
     const stmt = this.db.prepare('SELECT COUNT(*) as count FROM agent_roles');
     const result = stmt.get() as { count: number };
     return result.count > 0;
+  }
+
+  /**
+   * Sync new default agents to existing workspace
+   * This adds any missing default agents without overwriting existing ones
+   */
+  syncNewDefaults(): AgentRole[] {
+    const existing = this.findAll(true);
+    const existingNames = new Set(existing.map(a => a.name));
+    const added: AgentRole[] = [];
+    const now = Date.now();
+
+    for (const defaultRole of DEFAULT_AGENT_ROLES) {
+      // Skip if already exists
+      if (existingNames.has(defaultRole.name)) {
+        continue;
+      }
+
+      const role: AgentRole = {
+        id: uuidv4(),
+        ...defaultRole,
+        createdAt: now,
+        updatedAt: now,
+        heartbeatEnabled: false,
+        heartbeatIntervalMinutes: 15,
+        heartbeatStaggerOffset: 0,
+        heartbeatStatus: 'idle',
+      };
+
+      const stmt = this.db.prepare(`
+        INSERT INTO agent_roles (
+          id, name, display_name, description, icon, color,
+          personality_id, model_key, provider_type, system_prompt,
+          capabilities, tool_restrictions, is_system, is_active,
+          sort_order, created_at, updated_at,
+          autonomy_level, heartbeat_enabled, heartbeat_interval_minutes,
+          heartbeat_stagger_offset, heartbeat_status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+
+      stmt.run(
+        role.id,
+        role.name,
+        role.displayName,
+        role.description || null,
+        role.icon,
+        role.color,
+        role.personalityId || null,
+        role.modelKey || null,
+        role.providerType || null,
+        role.systemPrompt || null,
+        JSON.stringify(role.capabilities),
+        role.toolRestrictions ? JSON.stringify(role.toolRestrictions) : null,
+        role.isSystem ? 1 : 0,
+        role.isActive ? 1 : 0,
+        role.sortOrder,
+        role.createdAt,
+        role.updatedAt,
+        role.autonomyLevel || 'specialist',
+        role.heartbeatEnabled ? 1 : 0,
+        role.heartbeatIntervalMinutes,
+        role.heartbeatStaggerOffset,
+        role.heartbeatStatus
+      );
+
+      added.push(role);
+      console.log(`[AgentRoleRepository] Added new default agent: ${role.displayName}`);
+    }
+
+    if (added.length > 0) {
+      console.log(`[AgentRoleRepository] Synced ${added.length} new default agent(s)`);
+    }
+
+    return added;
   }
 
   /**
@@ -305,6 +430,128 @@ export class AgentRoleRepository {
       sortOrder: row.sort_order || 100,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
+      // Mission Control fields
+      autonomyLevel: (row.autonomy_level as AgentAutonomyLevel) || 'specialist',
+      soul: row.soul || undefined,
+      heartbeatEnabled: row.heartbeat_enabled === 1,
+      heartbeatIntervalMinutes: row.heartbeat_interval_minutes || 15,
+      heartbeatStaggerOffset: row.heartbeat_stagger_offset || 0,
+      lastHeartbeatAt: row.last_heartbeat_at || undefined,
+      heartbeatStatus: (row.heartbeat_status as HeartbeatStatus) || 'idle',
     };
+  }
+
+  // ============ Mission Control Methods ============
+
+  /**
+   * Find all agents with heartbeat enabled
+   */
+  findHeartbeatEnabled(): AgentRole[] {
+    const stmt = this.db.prepare(
+      'SELECT * FROM agent_roles WHERE heartbeat_enabled = 1 AND is_active = 1 ORDER BY sort_order ASC'
+    );
+    const rows = stmt.all() as any[];
+    return rows.map(row => this.mapRowToAgentRole(row));
+  }
+
+  /**
+   * Update heartbeat configuration for an agent
+   */
+  updateHeartbeatConfig(id: string, config: HeartbeatConfig): AgentRole | undefined {
+    const existing = this.findById(id);
+    if (!existing) {
+      return undefined;
+    }
+
+    const fields: string[] = [];
+    const values: any[] = [];
+
+    if (config.heartbeatEnabled !== undefined) {
+      fields.push('heartbeat_enabled = ?');
+      values.push(config.heartbeatEnabled ? 1 : 0);
+    }
+    if (config.heartbeatIntervalMinutes !== undefined) {
+      fields.push('heartbeat_interval_minutes = ?');
+      values.push(config.heartbeatIntervalMinutes);
+    }
+    if (config.heartbeatStaggerOffset !== undefined) {
+      fields.push('heartbeat_stagger_offset = ?');
+      values.push(config.heartbeatStaggerOffset);
+    }
+
+    if (fields.length === 0) {
+      return existing;
+    }
+
+    fields.push('updated_at = ?');
+    values.push(Date.now());
+    values.push(id);
+
+    const sql = `UPDATE agent_roles SET ${fields.join(', ')} WHERE id = ?`;
+    this.db.prepare(sql).run(...values);
+
+    return this.findById(id);
+  }
+
+  /**
+   * Update heartbeat status for an agent
+   */
+  updateHeartbeatStatus(id: string, status: HeartbeatStatus, lastHeartbeatAt?: number): void {
+    const fields = ['heartbeat_status = ?'];
+    const values: any[] = [status];
+
+    if (lastHeartbeatAt !== undefined) {
+      fields.push('last_heartbeat_at = ?');
+      values.push(lastHeartbeatAt);
+    }
+
+    values.push(id);
+    const sql = `UPDATE agent_roles SET ${fields.join(', ')} WHERE id = ?`;
+    this.db.prepare(sql).run(...values);
+  }
+
+  /**
+   * Update soul (extended personality) for an agent
+   */
+  updateSoul(id: string, soul: string): AgentRole | undefined {
+    const existing = this.findById(id);
+    if (!existing) {
+      return undefined;
+    }
+
+    const stmt = this.db.prepare(
+      'UPDATE agent_roles SET soul = ?, updated_at = ? WHERE id = ?'
+    );
+    stmt.run(soul, Date.now(), id);
+
+    return this.findById(id);
+  }
+
+  /**
+   * Update autonomy level for an agent
+   */
+  updateAutonomyLevel(id: string, level: AgentAutonomyLevel): AgentRole | undefined {
+    const existing = this.findById(id);
+    if (!existing) {
+      return undefined;
+    }
+
+    const stmt = this.db.prepare(
+      'UPDATE agent_roles SET autonomy_level = ?, updated_at = ? WHERE id = ?'
+    );
+    stmt.run(level, Date.now(), id);
+
+    return this.findById(id);
+  }
+
+  /**
+   * Get agents by autonomy level
+   */
+  findByAutonomyLevel(level: AgentAutonomyLevel): AgentRole[] {
+    const stmt = this.db.prepare(
+      'SELECT * FROM agent_roles WHERE autonomy_level = ? AND is_active = 1 ORDER BY sort_order ASC'
+    );
+    const rows = stmt.all(level) as any[];
+    return rows.map(row => this.mapRowToAgentRole(row));
   }
 }

@@ -39,6 +39,21 @@ const PRESET_ICONS = [
   '📊', '🛠️', '⚡', '🚀', '🔧', '💡', '🎯', '🧠',
 ];
 
+const AUTONOMY_LEVELS = [
+  { value: 'intern', label: 'Intern', description: 'Requires approval for most actions' },
+  { value: 'specialist', label: 'Specialist', description: 'Works independently on assigned tasks' },
+  { value: 'lead', label: 'Lead', description: 'Can delegate tasks to other agents' },
+] as const;
+
+const HEARTBEAT_INTERVALS = [
+  { value: 5, label: '5 minutes' },
+  { value: 15, label: '15 minutes' },
+  { value: 30, label: '30 minutes' },
+  { value: 60, label: '1 hour' },
+  { value: 120, label: '2 hours' },
+  { value: 240, label: '4 hours' },
+];
+
 export function AgentRoleEditor({
   role,
   isCreating,
@@ -49,7 +64,7 @@ export function AgentRoleEditor({
   const [editedRole, setEditedRole] = useState<AgentRole>(role);
   const [showIconPicker, setShowIconPicker] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
-  const [activeTab, setActiveTab] = useState<'basic' | 'capabilities' | 'advanced'>('basic');
+  const [activeTab, setActiveTab] = useState<'basic' | 'capabilities' | 'mission' | 'advanced'>('basic');
 
   const handleChange = <K extends keyof AgentRole>(key: K, value: AgentRole[K]) => {
     setEditedRole((prev) => ({ ...prev, [key]: value }));
@@ -101,6 +116,13 @@ export function AgentRoleEditor({
             onClick={() => setActiveTab('capabilities')}
           >
             Capabilities
+          </button>
+          <button
+            type="button"
+            className={`editor-tab ${activeTab === 'mission' ? 'active' : ''}`}
+            onClick={() => setActiveTab('mission')}
+          >
+            Mission Control
           </button>
           <button
             type="button"
@@ -243,6 +265,104 @@ export function AgentRoleEditor({
                     </div>
                   </label>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'mission' && (
+            <div className="editor-section">
+              <p className="section-description">
+                Configure how this agent operates within the Mission Control system.
+              </p>
+
+              <div className="form-row">
+                <label>Autonomy Level</label>
+                <div className="autonomy-options">
+                  {AUTONOMY_LEVELS.map((level) => (
+                    <label
+                      key={level.value}
+                      className={`autonomy-option ${editedRole.autonomyLevel === level.value ? 'selected' : ''}`}
+                    >
+                      <input
+                        type="radio"
+                        name="autonomyLevel"
+                        value={level.value}
+                        checked={editedRole.autonomyLevel === level.value}
+                        onChange={(e) => handleChange('autonomyLevel', e.target.value as 'intern' | 'specialist' | 'lead')}
+                      />
+                      <span className="autonomy-label">{level.label}</span>
+                      <span className="autonomy-description">{level.description}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="form-row">
+                <label>Soul (Extended Personality)</label>
+                <textarea
+                  value={editedRole.soul || ''}
+                  onChange={(e) => handleChange('soul', e.target.value || undefined)}
+                  placeholder={`{
+  "communicationStyle": "concise and technical",
+  "focusAreas": ["performance", "architecture"],
+  "preferences": {
+    "codeStyle": "functional",
+    "testingApproach": "TDD"
+  },
+  "avoids": ["over-engineering", "premature optimization"]
+}`}
+                  rows={8}
+                  className="code-textarea"
+                />
+                <span className="form-hint">JSON object defining extended personality traits, communication style, and preferences</span>
+              </div>
+
+              <div className="heartbeat-section">
+                <div className="section-header">
+                  <h4>Heartbeat System</h4>
+                  <label className="toggle-switch">
+                    <input
+                      type="checkbox"
+                      checked={editedRole.heartbeatEnabled || false}
+                      onChange={(e) => handleChange('heartbeatEnabled', e.target.checked)}
+                    />
+                    <span className="toggle-slider"></span>
+                  </label>
+                </div>
+                <p className="section-description">
+                  When enabled, this agent will periodically wake up to check for pending @mentions, assigned tasks, and relevant activity.
+                </p>
+
+                {editedRole.heartbeatEnabled && (
+                  <div className="heartbeat-options">
+                    <div className="form-row">
+                      <label>Check Interval</label>
+                      <select
+                        value={editedRole.heartbeatIntervalMinutes || 15}
+                        onChange={(e) => handleChange('heartbeatIntervalMinutes', parseInt(e.target.value))}
+                      >
+                        {HEARTBEAT_INTERVALS.map((interval) => (
+                          <option key={interval.value} value={interval.value}>
+                            {interval.label}
+                          </option>
+                        ))}
+                      </select>
+                      <span className="form-hint">How often the agent checks for new work</span>
+                    </div>
+
+                    <div className="form-row">
+                      <label>Stagger Offset (minutes)</label>
+                      <input
+                        type="number"
+                        value={editedRole.heartbeatStaggerOffset || 0}
+                        onChange={(e) => handleChange('heartbeatStaggerOffset', parseInt(e.target.value) || 0)}
+                        min={0}
+                        max={60}
+                      />
+                      <span className="form-hint">Offset to stagger heartbeats across multiple agents (0-60 minutes)</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -553,6 +673,131 @@ export function AgentRoleEditor({
           font-size: 11px;
           color: var(--text-secondary);
           margin-top: 2px;
+        }
+
+        /* Mission Control Styles */
+        .autonomy-options {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        .autonomy-option {
+          display: flex;
+          flex-direction: column;
+          padding: 12px 16px;
+          background: var(--bg-primary);
+          border: 2px solid var(--border-color);
+          border-radius: 8px;
+          cursor: pointer;
+          transition: all 0.15s ease;
+        }
+
+        .autonomy-option:hover {
+          border-color: var(--text-tertiary);
+        }
+
+        .autonomy-option.selected {
+          border-color: var(--accent-color);
+          background: var(--bg-tertiary);
+        }
+
+        .autonomy-option input {
+          display: none;
+        }
+
+        .autonomy-label {
+          font-weight: 600;
+          font-size: 14px;
+          color: var(--text-primary);
+        }
+
+        .autonomy-description {
+          font-size: 12px;
+          color: var(--text-secondary);
+          margin-top: 4px;
+        }
+
+        .code-textarea {
+          font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+          font-size: 12px;
+          line-height: 1.5;
+        }
+
+        .heartbeat-section {
+          background: var(--bg-primary);
+          border: 1px solid var(--border-color);
+          border-radius: 8px;
+          padding: 16px;
+          margin-top: 8px;
+        }
+
+        .section-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 8px;
+        }
+
+        .section-header h4 {
+          margin: 0;
+          font-size: 14px;
+          font-weight: 600;
+          color: var(--text-primary);
+        }
+
+        .toggle-switch {
+          position: relative;
+          width: 44px;
+          height: 24px;
+          cursor: pointer;
+        }
+
+        .toggle-switch input {
+          opacity: 0;
+          width: 0;
+          height: 0;
+        }
+
+        .toggle-slider {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-color: var(--bg-tertiary);
+          border-radius: 24px;
+          transition: 0.2s;
+        }
+
+        .toggle-slider:before {
+          position: absolute;
+          content: "";
+          height: 18px;
+          width: 18px;
+          left: 3px;
+          bottom: 3px;
+          background-color: var(--text-secondary);
+          border-radius: 50%;
+          transition: 0.2s;
+        }
+
+        .toggle-switch input:checked + .toggle-slider {
+          background-color: var(--accent-color);
+        }
+
+        .toggle-switch input:checked + .toggle-slider:before {
+          transform: translateX(20px);
+          background-color: white;
+        }
+
+        .heartbeat-options {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          margin-top: 16px;
+          padding-top: 16px;
+          border-top: 1px solid var(--border-color);
         }
       `}</style>
     </div>
