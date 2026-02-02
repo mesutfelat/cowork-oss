@@ -30,7 +30,7 @@ export class WebFetchTools {
       {
         name: 'web_fetch',
         description:
-          'Fetch and read content from a SPECIFIC URL. Returns the page content as readable text/markdown. ' +
+          'Fetch and read content from a SPECIFIC URL. PREFERRED for reading a known page. Returns the page content as readable text/markdown. ' +
           'Use this when you have an exact URL to read (from search results, user-provided, or known documentation). ' +
           'For RESEARCH/DISCOVERY tasks (finding information on a topic), use web_search FIRST instead. ' +
           'Much faster than browser tools. Use browser_navigate only for interactive pages or JavaScript-heavy content.',

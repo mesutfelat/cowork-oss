@@ -2058,7 +2058,7 @@ export interface FileViewerResult {
   data?: {
     path: string;
     fileName: string;
-    fileType: 'markdown' | 'code' | 'text' | 'docx' | 'pdf' | 'image' | 'pptx' | 'unsupported';
+    fileType: 'markdown' | 'code' | 'text' | 'docx' | 'pdf' | 'image' | 'pptx' | 'html' | 'unsupported';
     content: string | null;
     htmlContent?: string;
     size: number;
@@ -2307,7 +2307,7 @@ export interface ElectronAPI {
     customPrompt?: string;
     customName?: string;
     agentName?: string;
-    activePersona?: 'none' | 'jarvis' | 'friday' | 'hal' | 'computer' | 'alfred' | 'intern' | 'sensei' | 'pirate' | 'noir';
+    activePersona?: 'none' | 'jarvis' | 'friday' | 'hal' | 'computer' | 'alfred' | 'intern' | 'sensei' | 'pirate' | 'noir' | 'companion';
     responseStyle?: {
       emojiUsage: 'none' | 'minimal' | 'moderate' | 'expressive';
       responseLength: 'terse' | 'balanced' | 'detailed';
@@ -2333,7 +2333,7 @@ export interface ElectronAPI {
     customPrompt?: string;
     customName?: string;
     agentName?: string;
-    activePersona?: 'none' | 'jarvis' | 'friday' | 'hal' | 'computer' | 'alfred' | 'intern' | 'sensei' | 'pirate' | 'noir';
+    activePersona?: 'none' | 'jarvis' | 'friday' | 'hal' | 'computer' | 'alfred' | 'intern' | 'sensei' | 'pirate' | 'noir' | 'companion';
     responseStyle?: {
       emojiUsage?: 'none' | 'minimal' | 'moderate' | 'expressive';
       responseLength?: 'terse' | 'balanced' | 'detailed';
@@ -2363,7 +2363,7 @@ export interface ElectronAPI {
     promptTemplate: string;
   }>>;
   getPersonaDefinitions: () => Promise<Array<{
-    id: 'none' | 'jarvis' | 'friday' | 'hal' | 'computer' | 'alfred' | 'intern' | 'sensei' | 'pirate' | 'noir';
+    id: 'none' | 'jarvis' | 'friday' | 'hal' | 'computer' | 'alfred' | 'intern' | 'sensei' | 'pirate' | 'noir' | 'companion';
     name: string;
     description: string;
     icon: string;

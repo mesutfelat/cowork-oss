@@ -312,6 +312,13 @@ app.whenReady().then(async () => {
   try {
     const db = dbManager.getDatabase();
     const agentRoleRepo = new AgentRoleRepository(db);
+
+    // Sync any new default agents to existing workspaces
+    const addedAgents = agentRoleRepo.syncNewDefaults();
+    if (addedAgents.length > 0) {
+      console.log(`[Main] Added ${addedAgents.length} new default agent(s)`);
+    }
+
     const mentionRepo = new MentionRepository(db);
     const activityRepo = new ActivityRepository(db);
     const workingStateRepo = new WorkingStateRepository(db);

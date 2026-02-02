@@ -322,6 +322,8 @@ export class AgentDaemon extends EventEmitter {
     if (cached) {
       cached.lastAccessed = Date.now();
       cached.status = 'active';
+      this.updateTaskStatus(taskId, 'executing');
+      this.emitTaskEvent(taskId, 'task_resumed', { message: 'Task resumed' });
       await cached.executor.resume();
     }
   }
@@ -594,6 +596,13 @@ export class AgentDaemon extends EventEmitter {
    */
   updateTaskStatus(taskId: string, status: Task['status']): void {
     this.taskRepo.update(taskId, { status });
+  }
+
+  /**
+   * Get task by ID
+   */
+  getTask(taskId: string): Task | undefined {
+    return this.taskRepo.findById(taskId);
   }
 
   /**
