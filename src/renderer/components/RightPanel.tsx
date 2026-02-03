@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Task, Workspace, TaskEvent, PlanStep, QueueStatus } from '../../shared/types';
 import { FileViewer } from './FileViewer';
+import { useAgentContext } from '../hooks/useAgentContext';
 
 // Clickable file path component - opens file viewer on click, shows in Finder on right-click
 function ClickableFilePath({
@@ -89,6 +90,7 @@ export function RightPanel({ task, workspace, events, tasks = [], queueStatus, o
     context: true,
   });
   const [viewerFilePath, setViewerFilePath] = useState<string | null>(null);
+  const agentContext = useAgentContext();
 
   // Queue data
   const runningTasks = useMemo(() =>
@@ -230,7 +232,7 @@ export function RightPanel({ task, workspace, events, tasks = [], queueStatus, o
       <div className="right-panel-section cli-section">
         <div className="cli-section-header" onClick={() => toggleSection('progress')}>
           <span className="cli-section-prompt">&gt;</span>
-          <span className="cli-section-title">OUR PROGRESS</span>
+          <span className="cli-section-title">{agentContext.getUiCopy('rightProgressTitle')}</span>
           <span className="cli-section-toggle">{expandedSections.progress ? '[-]' : '[+]'}</span>
         </div>
         {expandedSections.progress && (
@@ -254,7 +256,7 @@ export function RightPanel({ task, workspace, events, tasks = [], queueStatus, o
                   │   {task?.status === 'executing' ? '◉ WORKING...' : task?.status === 'paused' ? '⏸ PAUSED' : task?.status === 'blocked' ? '! BLOCKED' : task?.status === 'completed' ? '✓ ALL DONE' : '○ READY'}{'     '}│
                   └─────────────────────┘
                 </div>
-                <p className="cli-hint"># standing by...</p>
+                <p className="cli-hint">{agentContext.getUiCopy('rightProgressEmptyHint')}</p>
               </div>
             )}
           </div>
@@ -266,7 +268,7 @@ export function RightPanel({ task, workspace, events, tasks = [], queueStatus, o
         <div className="right-panel-section cli-section">
           <div className="cli-section-header" onClick={() => toggleSection('queue')}>
             <span className="cli-section-prompt">&gt;</span>
-            <span className="cli-section-title">LINEUP</span>
+            <span className="cli-section-title">{agentContext.getUiCopy('rightQueueTitle')}</span>
             <span className="cli-queue-badge">{queueStatus?.runningCount}/{queueStatus?.maxConcurrent}{queueStatus && queueStatus.queuedCount > 0 && ` +${queueStatus.queuedCount}`}</span>
             <span className="cli-section-toggle">{expandedSections.queue ? '[-]' : '[+]'}</span>
           </div>
@@ -274,7 +276,7 @@ export function RightPanel({ task, workspace, events, tasks = [], queueStatus, o
             <div className="cli-section-content">
               {runningTasks.length > 0 && (
                 <div className="cli-queue-group">
-                  <div className="cli-context-label"># active:</div>
+                  <div className="cli-context-label">{agentContext.getUiCopy('rightQueueActiveLabel')}</div>
                   {runningTasks.map(t => (
                     <div key={t.id} className="cli-queue-item running">
                       <span className="cli-queue-status">[~]</span>
@@ -288,7 +290,7 @@ export function RightPanel({ task, workspace, events, tasks = [], queueStatus, o
               )}
               {queuedTasks.length > 0 && (
                 <div className="cli-queue-group">
-                  <div className="cli-context-label"># next up:</div>
+                  <div className="cli-context-label">{agentContext.getUiCopy('rightQueueNextLabel')}</div>
                   {queuedTasks.map((t, i) => (
                     <div key={t.id} className="cli-queue-item queued">
                       <span className="cli-queue-status">[{i + 1}]</span>
@@ -309,7 +311,7 @@ export function RightPanel({ task, workspace, events, tasks = [], queueStatus, o
       <div className="right-panel-section cli-section">
         <div className="cli-section-header" onClick={() => toggleSection('folder')}>
           <span className="cli-section-prompt">&gt;</span>
-          <span className="cli-section-title">FILES</span>
+          <span className="cli-section-title">{agentContext.getUiCopy('rightFilesTitle')}</span>
           <span className="cli-section-toggle">{expandedSections.folder ? '[-]' : '[+]'}</span>
         </div>
         {expandedSections.folder && (
@@ -329,7 +331,7 @@ export function RightPanel({ task, workspace, events, tasks = [], queueStatus, o
 {`├── (empty)
 └── ...`}
                 </pre>
-                <p className="cli-hint"># no file changes yet</p>
+                <p className="cli-hint">{agentContext.getUiCopy('rightFilesEmptyHint')}</p>
               </div>
             )}
             {workspace && (
@@ -346,7 +348,7 @@ export function RightPanel({ task, workspace, events, tasks = [], queueStatus, o
       <div className="right-panel-section cli-section">
         <div className="cli-section-header" onClick={() => toggleSection('context')}>
           <span className="cli-section-prompt">&gt;</span>
-          <span className="cli-section-title">CONTEXT</span>
+          <span className="cli-section-title">{agentContext.getUiCopy('rightContextTitle')}</span>
           <span className="cli-section-toggle">{expandedSections.context ? '[-]' : '[+]'}</span>
         </div>
         {expandedSections.context && (
@@ -382,7 +384,7 @@ export function RightPanel({ task, workspace, events, tasks = [], queueStatus, o
                   tools: 0
                   files: 0
                 </div>
-                <p className="cli-hint"># no context loaded</p>
+                <p className="cli-hint">{agentContext.getUiCopy('rightContextEmptyHint')}</p>
               </div>
             )}
           </div>
@@ -395,7 +397,7 @@ export function RightPanel({ task, workspace, events, tasks = [], queueStatus, o
       {/* Footer note */}
       <div className="cli-panel-footer">
         <span className="cli-footer-prompt">$</span>
-        <span className="cli-footer-text">local execution only</span>
+        <span className="cli-footer-text">{agentContext.getUiCopy('rightFooterText')}</span>
       </div>
 
       {/* File Viewer Modal */}

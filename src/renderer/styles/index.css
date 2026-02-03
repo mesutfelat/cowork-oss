@@ -3885,6 +3885,17 @@ button {
   position: relative;
 }
 
+.mention-autocomplete-wrapper {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.mention-autocomplete-wrapper:focus-within ~ .cli-cursor {
+  opacity: 1;
+}
+
 .cli-input-prompt {
   color: var(--color-accent);
   font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
@@ -3897,6 +3908,69 @@ button {
   flex: 1;
   padding: 0 !important;
   font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace !important;
+}
+
+.mention-autocomplete-dropdown {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  min-width: 260px;
+  max-width: 360px;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: 6px;
+  z-index: 1000;
+  animation: dropdownFadeIn 0.15s ease;
+}
+
+.mention-autocomplete-item {
+  width: 100%;
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  color: var(--color-text);
+  font-size: 13px;
+  transition: background 0.12s ease;
+}
+
+.mention-autocomplete-item:hover,
+.mention-autocomplete-item.selected {
+  background: var(--color-bg-hover);
+}
+
+.mention-autocomplete-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.mention-autocomplete-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mention-autocomplete-name {
+  font-weight: 600;
+}
+
+.mention-autocomplete-desc {
+  font-size: 11px;
+  color: var(--color-text-secondary);
 }
 
 .cli-cursor {
@@ -7503,6 +7577,41 @@ button {
 
 .settings-section-header h3 {
   margin: 0;
+}
+
+.settings-title-with-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.x-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-glass);
+  color: var(--color-text-secondary);
+}
+
+.x-status-badge.connected {
+  color: var(--color-success, #22c55e);
+  border-color: rgba(34, 197, 94, 0.35);
+  background: rgba(34, 197, 94, 0.08);
+}
+
+.x-status-badge.installed {
+  color: var(--color-text-secondary);
+  border-color: var(--color-border);
+}
+
+.x-status-badge.missing {
+  color: var(--color-error, #ef4444);
+  border-color: rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.08);
 }
 
 .settings-toggle {
@@ -11292,6 +11401,14 @@ button {
   background: var(--color-bg-hover);
   color: var(--color-text);
   border-color: var(--color-border);
+}
+
+.canvas-action-btn.disabled,
+.canvas-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: transparent;
+  border-color: transparent;
 }
 
 .canvas-close-btn {

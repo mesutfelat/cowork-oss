@@ -3,6 +3,7 @@ import {
   AgentWorkingStateData,
   WorkingStateType,
 } from '../../electron/preload';
+import { useAgentContext } from '../hooks/useAgentContext';
 
 interface WorkingStateHistoryProps {
   agentRoleId: string;
@@ -57,6 +58,7 @@ export function WorkingStateHistory({
   const [restoring, setRestoring] = useState<string | null>(null);
   const [filterType, setFilterType] = useState<WorkingStateType | ''>('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const agentContext = useAgentContext();
 
   const loadHistory = useCallback(async () => {
     try {
@@ -93,7 +95,7 @@ export function WorkingStateHistory({
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this history entry?')) return;
+    if (!confirm(agentContext.getUiCopy('workingStateHistoryDeleteConfirm'))) return;
 
     try {
       await window.electronAPI.deleteWorkingState(id);
@@ -121,7 +123,7 @@ export function WorkingStateHistory({
     return (
       <div className="history-overlay" onClick={onClose}>
         <div className="history-panel" onClick={(e) => e.stopPropagation()}>
-          <div className="history-loading">Loading history...</div>
+          <div className="history-loading">{agentContext.getUiCopy('workingStateHistoryLoading')}</div>
         </div>
       </div>
     );
@@ -131,7 +133,7 @@ export function WorkingStateHistory({
     <div className="history-overlay" onClick={onClose}>
       <div className="history-panel" onClick={(e) => e.stopPropagation()}>
         <div className="history-header">
-          <h3>Working State History</h3>
+          <h3>{agentContext.getUiCopy('workingStateHistoryTitle')}</h3>
           <button className="close-btn" onClick={onClose}>
             ✕
           </button>
@@ -142,19 +144,21 @@ export function WorkingStateHistory({
             value={filterType}
             onChange={(e) => setFilterType(e.target.value as WorkingStateType | '')}
           >
-            <option value="">All Types</option>
+            <option value="">{agentContext.getUiCopy('workingStateHistoryAllTypes')}</option>
             <option value="context">Context</option>
             <option value="progress">Progress</option>
             <option value="notes">Notes</option>
             <option value="plan">Plan</option>
           </select>
-          <span className="history-count">{filteredHistory.length} entries</span>
+          <span className="history-count">
+            {agentContext.getUiCopy('workingStateHistoryEntries', { count: filteredHistory.length })}
+          </span>
         </div>
 
         <div className="history-list">
           {filteredHistory.length === 0 ? (
             <div className="history-empty">
-              <p>No history entries found.</p>
+              <p>{agentContext.getUiCopy('workingStateHistoryEmpty')}</p>
             </div>
           ) : (
             Object.entries(groupedHistory).map(([dateKey, items]) => (
@@ -186,7 +190,7 @@ export function WorkingStateHistory({
                             {formatDate(item.updatedAt)}
                           </span>
                           {item.isCurrent && (
-                            <span className="current-badge">Current</span>
+                            <span className="current-badge">{agentContext.getUiCopy('workingStateHistoryCurrent')}</span>
                           )}
                         </div>
                         <span className="expand-icon">
@@ -203,7 +207,7 @@ export function WorkingStateHistory({
                           </div>
                           {item.fileReferences && item.fileReferences.length > 0 && (
                             <div className="file-refs">
-                              <span className="refs-label">Files:</span>
+                              <span className="refs-label">{agentContext.getUiCopy('workingStateHistoryFilesLabel')}</span>
                               {item.fileReferences.map((file, idx) => (
                                 <span key={idx} className="file-ref">
                                   {file}
@@ -219,15 +223,15 @@ export function WorkingStateHistory({
                                 disabled={restoring === item.id}
                               >
                                 {restoring === item.id
-                                  ? 'Restoring...'
-                                  : 'Restore'}
+                                  ? agentContext.getUiCopy('workingStateHistoryRestoring')
+                                  : agentContext.getUiCopy('workingStateHistoryRestore')}
                               </button>
                             )}
                             <button
                               className="delete-btn"
                               onClick={() => handleDelete(item.id)}
                             >
-                              Delete
+                              {agentContext.getUiCopy('workingStateHistoryDelete')}
                             </button>
                           </div>
                         </div>

@@ -1,10 +1,24 @@
-import { TaskEvent } from '../../shared/types';
+import { TaskEvent, DEFAULT_QUIRKS } from '../../shared/types';
+import type { AgentContext } from '../hooks/useAgentContext';
+import { getUiCopy, type UiCopyKey } from '../utils/agentMessages';
 
 interface TaskTimelineProps {
   events: TaskEvent[];
+  agentContext?: AgentContext;
 }
 
-export function TaskTimeline({ events }: TaskTimelineProps) {
+export function TaskTimeline({ events, agentContext }: TaskTimelineProps) {
+  const fallbackContext = {
+    agentName: 'CoWork',
+    userName: undefined,
+    personality: 'professional' as const,
+    persona: undefined,
+    emojiUsage: 'minimal' as const,
+    quirks: DEFAULT_QUIRKS,
+  };
+  const uiCopy = (key: UiCopyKey) =>
+    agentContext?.getUiCopy ? agentContext.getUiCopy(key) : getUiCopy(key, fallbackContext);
+  const isCompanion = agentContext?.persona === 'companion';
   // Filter out internal events that don't provide value to end users
   const internalEventTypes = [
     'tool_blocked',        // deduplication blocks
@@ -69,9 +83,9 @@ export function TaskTimeline({ events }: TaskTimelineProps) {
   const getEventTitle = (event: TaskEvent) => {
     switch (event.type) {
       case 'task_created':
-        return '🚀 Session Started';
+        return isCompanion ? "Session started - I'm here." : '🚀 Session Started';
       case 'plan_created':
-        return 'Here\'s our approach';
+        return isCompanion ? "Here's the path I'm taking" : "Here's our approach";
       case 'step_started':
         return `Working on: ${event.payload.step?.description || 'Getting started'}`;
       case 'step_completed':
@@ -87,23 +101,25 @@ export function TaskTimeline({ events }: TaskTimelineProps) {
       case 'file_deleted':
         return `Removed: ${event.payload.path}`;
       case 'error':
-        return 'Hit a snag';
+        return isCompanion ? 'I ran into a snag' : 'Hit a snag';
       case 'task_cancelled':
         return 'Session stopped';
       case 'approval_requested':
-        return `Need your input: ${event.payload.approval?.description}`;
+        return isCompanion
+          ? `I need your input: ${event.payload.approval?.description}`
+          : `Need your input: ${event.payload.approval?.description}`;
       case 'approval_granted':
         return 'Approval granted';
       case 'approval_denied':
         return 'Approval denied';
       case 'task_paused':
-        return event.payload.message || 'Paused - waiting for input';
+        return event.payload.message || (isCompanion ? 'Paused - waiting on your cue' : 'Paused - waiting for input');
       case 'task_resumed':
         return 'Resumed';
       case 'executing':
         return event.payload.message || 'Working on it';
       case 'task_completed':
-        return '✅ All done!';
+        return isCompanion ? 'All done.' : '✅ All done!';
       case 'follow_up_completed':
         return '✅ All done!';
       case 'log':
@@ -160,14 +176,14 @@ export function TaskTimeline({ events }: TaskTimelineProps) {
   if (visibleEvents.length === 0 && blockedEvents.length === 0) {
     return (
       <div className="timeline-empty">
-        <p>Nothing happening yet</p>
+        <p>{uiCopy('timelineEmpty')}</p>
       </div>
     );
   }
 
   return (
     <div className="timeline">
-      <h3>What We've Done</h3>
+      <h3>{uiCopy('timelineTitle')}</h3>
       <div className="timeline-events">
         {visibleEvents.map(event => (
           <div key={event.id} className="timeline-event">

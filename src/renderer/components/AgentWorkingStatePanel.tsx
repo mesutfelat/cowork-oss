@@ -4,6 +4,7 @@ import {
   WorkingStateType,
   AgentRoleData,
 } from '../../electron/preload';
+import { useAgentContext } from '../hooks/useAgentContext';
 
 interface AgentWorkingStatePanelProps {
   agentRoleId: string;
@@ -56,6 +57,7 @@ export function AgentWorkingStatePanel({
   const [agent, setAgent] = useState<AgentRoleData | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedType, setExpandedType] = useState<WorkingStateType | null>(null);
+  const agentContext = useAgentContext();
 
   const loadData = useCallback(async () => {
     try {
@@ -100,7 +102,7 @@ export function AgentWorkingStatePanel({
   if (loading) {
     return (
       <div className="working-state-panel loading">
-        <p>Loading working state...</p>
+        <p>{agentContext.getUiCopy('workingStateLoading')}</p>
       </div>
     );
   }
@@ -118,7 +120,7 @@ export function AgentWorkingStatePanel({
             </span>
             <div className="agent-details">
               <span className="agent-name">{agent.displayName}</span>
-              <span className="agent-context">Working State</span>
+              <span className="agent-context">{agentContext.getUiCopy('workingStateTitle')}</span>
             </div>
           </div>
         )}
@@ -172,7 +174,9 @@ export function AgentWorkingStatePanel({
                         }
                       }}
                     >
-                      {state ? 'Edit' : 'Add'}
+                      {state
+                        ? agentContext.getUiCopy('workingStateEdit')
+                        : agentContext.getUiCopy('workingStateAdd')}
                     </button>
                   )}
                   <span className="expand-icon">{isExpanded ? '▼' : '▶'}</span>
@@ -186,7 +190,7 @@ export function AgentWorkingStatePanel({
                       <div className="content-text">{state.content}</div>
                       {state.fileReferences && state.fileReferences.length > 0 && (
                         <div className="file-references">
-                          <span className="ref-label">Referenced files:</span>
+                          <span className="ref-label">{agentContext.getUiCopy('workingStateReferencedFiles')}</span>
                           {state.fileReferences.map((file, idx) => (
                             <span key={idx} className="file-ref">
                               {file}
@@ -198,7 +202,9 @@ export function AgentWorkingStatePanel({
                   ) : (
                     <div className="empty-state">
                       <p>{config.description}</p>
-                      <p className="hint">No {config.label.toLowerCase()} recorded yet.</p>
+                      <p className="hint">
+                        {agentContext.getUiCopy('workingStateEmptyHint', { label: config.label.toLowerCase() })}
+                      </p>
                     </div>
                   )}
                 </div>

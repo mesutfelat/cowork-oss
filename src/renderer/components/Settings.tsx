@@ -14,6 +14,7 @@ import { BlueBubblesSettings } from './BlueBubblesSettings';
 import { EmailSettings } from './EmailSettings';
 import { TeamsSettings } from './TeamsSettings';
 import { GoogleChatSettings } from './GoogleChatSettings';
+import { XSettings } from './XSettings';
 import { SearchSettings } from './SearchSettings';
 import { UpdateSettings } from './UpdateSettings';
 import { GuardrailSettings } from './GuardrailSettings';
@@ -36,7 +37,7 @@ import { MissionControlPanel } from './MissionControlPanel';
 type SettingsTab = 'appearance' | 'personality' | 'missioncontrol' | 'tray' | 'voice' | 'llm' | 'search' | 'telegram' | 'slack' | 'whatsapp' | 'teams' | 'morechannels' | 'updates' | 'guardrails' | 'queue' | 'skills' | 'skillhub' | 'mcp' | 'tools' | 'scheduled' | 'hooks' | 'controlplane' | 'nodes' | 'extensions';
 
 // Secondary channels shown inside "More Channels" tab
-type SecondaryChannel = 'discord' | 'imessage' | 'signal' | 'mattermost' | 'matrix' | 'twitch' | 'line' | 'bluebubbles' | 'email' | 'googlechat';
+type SecondaryChannel = 'discord' | 'imessage' | 'signal' | 'mattermost' | 'matrix' | 'twitch' | 'line' | 'bluebubbles' | 'email' | 'googlechat' | 'x';
 
 interface SettingsProps {
   onBack: () => void;
@@ -272,6 +273,7 @@ const secondaryChannelItems: Array<{ key: SecondaryChannel; label: string; icon:
   { key: 'matrix', label: 'Matrix', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="2" /><path d="M7 7h10M7 12h10M7 17h10" /></svg> },
   { key: 'twitch', label: 'Twitch', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 2H3v16h5v4l4-4h5l4-4V2zM11 11V7M16 11V7" /></svg> },
   { key: 'bluebubbles', label: 'BlueBubbles', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><path d="M8 14s1.5 2 4 2 4-2 4-2" /><line x1="9" y1="9" x2="9.01" y2="9" /><line x1="15" y1="9" x2="15.01" y2="9" /></svg> },
+  { key: 'x', label: 'X (Twitter)', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 4l14 16" /><path d="M19 4L5 20" /></svg> },
 ];
 
 export function Settings({ onBack, onSettingsChanged, themeMode, accentColor, onThemeChange, onAccentChange, initialTab = 'appearance', onShowOnboarding, onboardingCompletedAt }: SettingsProps) {
@@ -841,6 +843,7 @@ export function Settings({ onBack, onSettingsChanged, themeMode, accentColor, on
                 {activeSecondaryChannel === 'bluebubbles' && <BlueBubblesSettings />}
                 {activeSecondaryChannel === 'email' && <EmailSettings />}
                 {activeSecondaryChannel === 'googlechat' && <GoogleChatSettings />}
+                {activeSecondaryChannel === 'x' && <XSettings />}
               </div>
             </div>
           ) : activeTab === 'search' ? (

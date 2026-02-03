@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { MCPRegistryBrowser } from './MCPRegistryBrowser';
+import { useAgentContext } from '../hooks/useAgentContext';
 
 // Types (matching preload types)
 type MCPTransportType = 'stdio' | 'sse' | 'websocket';
@@ -78,6 +79,7 @@ export function MCPSettings() {
 
   // Test result
   const [testingServer, setTestingServer] = useState<string | null>(null);
+  const agentContext = useAgentContext();
   const [testResult, setTestResult] = useState<{ serverId: string; success: boolean; error?: string; tools?: number } | null>(null);
 
   // Connecting/disconnecting state
@@ -548,9 +550,9 @@ export function MCPSettings() {
 
             {serverStatuses.length === 0 && !showAddForm ? (
               <div className="mcp-empty-state">
-                <p>No MCP servers configured.</p>
+                <p>{agentContext.getUiCopy('mcpEmptyTitle')}</p>
                 <p className="settings-hint">
-                  Click "Add Server" to connect to an MCP server and extend CoWork's capabilities.
+                  {agentContext.getUiCopy('mcpEmptyHint')}
                 </p>
               </div>
             ) : (

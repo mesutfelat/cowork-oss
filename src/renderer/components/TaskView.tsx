@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Task, TaskEvent } from '../../shared/types';
 import { TaskTimeline } from './TaskTimeline';
 import { ApprovalDialog } from './ApprovalDialog';
+import { useAgentContext } from '../hooks/useAgentContext';
 
 interface TaskViewProps {
   task: Task | undefined;
@@ -11,6 +12,7 @@ export function TaskView({ task }: TaskViewProps) {
   const [events, setEvents] = useState<TaskEvent[]>([]);
   const [pendingApproval, setPendingApproval] = useState<any>(null);
   const [resuming, setResuming] = useState(false);
+  const agentContext = useAgentContext();
 
   useEffect(() => {
     if (!task) {
@@ -86,8 +88,8 @@ export function TaskView({ task }: TaskViewProps) {
               <rect x="9" y="3" width="6" height="4" rx="1" />
             </svg>
           </div>
-          <h2>No session selected</h2>
-          <p>Pick a session from the sidebar or start a new one to work together</p>
+          <h2>{agentContext.getUiCopy('taskViewEmptyTitle')}</h2>
+          <p>{agentContext.getUiCopy('taskViewEmptyBody')}</p>
         </div>
       </div>
     );
@@ -116,22 +118,24 @@ export function TaskView({ task }: TaskViewProps) {
         </div>
 
         <div className="task-prompt">
-          <h3>What We're Working On</h3>
+          <h3>{agentContext.getUiCopy('taskPromptTitle')}</h3>
           <p>{task.prompt}</p>
         </div>
 
-        <TaskTimeline events={events} />
+        <TaskTimeline events={events} agentContext={agentContext} />
 
         {task.status === 'paused' && (
           <div className="task-status-banner task-status-banner-paused">
             <div className="task-status-banner-content">
-              <strong>Paused — waiting on your input</strong>
+              <strong>{agentContext.getUiCopy('taskStatusPausedTitle')}</strong>
               {latestPauseEvent?.payload?.message && (
                 <span className="task-status-banner-detail">{latestPauseEvent.payload.message}</span>
               )}
             </div>
             <button className="btn-secondary" onClick={handleResume} disabled={resuming}>
-              {resuming ? 'Resuming...' : 'Resume'}
+              {resuming
+                ? agentContext.getUiCopy('taskStatusResuming')
+                : agentContext.getUiCopy('taskStatusResume')}
             </button>
           </div>
         )}
@@ -139,8 +143,8 @@ export function TaskView({ task }: TaskViewProps) {
         {task.status === 'blocked' && (
           <div className="task-status-banner task-status-banner-blocked">
             <div className="task-status-banner-content">
-              <strong>Blocked — needs approval</strong>
-              <span className="task-status-banner-detail">Approve the pending request to continue.</span>
+              <strong>{agentContext.getUiCopy('taskStatusBlockedTitle')}</strong>
+              <span className="task-status-banner-detail">{agentContext.getUiCopy('taskStatusBlockedDetail')}</span>
             </div>
           </div>
         )}

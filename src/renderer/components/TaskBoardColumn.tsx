@@ -5,6 +5,7 @@ import {
   AgentRoleData,
 } from '../../electron/preload';
 import { TaskBoardCard } from './TaskBoardCard';
+import { useAgentContext } from '../hooks/useAgentContext';
 
 interface Task {
   id: string;
@@ -51,6 +52,7 @@ export function TaskBoardColumn({
   color,
 }: TaskBoardColumnProps) {
   const [isDragOver, setIsDragOver] = useState(false);
+  const agentContext = useAgentContext();
 
   const limit = COLUMN_LIMITS[column];
   const isOverLimit = limit !== null && tasks.length > limit;
@@ -112,8 +114,8 @@ export function TaskBoardColumn({
         ))}
         {tasks.length === 0 && (
           <div className="column-empty">
-            <p>No tasks</p>
-            <p className="hint">Drag tasks here</p>
+            <p>{agentContext.getUiCopy('taskBoardEmptyTitle')}</p>
+            <p className="hint">{agentContext.getUiCopy('taskBoardEmptyHint')}</p>
           </div>
         )}
       </div>

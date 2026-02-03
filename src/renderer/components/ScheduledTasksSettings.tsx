@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useAgentContext } from '../hooks/useAgentContext';
 
 // Types from preload (duplicated for renderer use)
 type CronSchedule =
@@ -876,6 +877,7 @@ interface JobModalProps {
 
 function JobModal({ job, workspaces, onClose, onSave }: JobModalProps) {
   const isEditing = job !== null;
+  const agentContext = useAgentContext();
 
   const [name, setName] = useState(job?.name || '');
   const [description, setDescription] = useState(job?.description || '');
@@ -1161,7 +1163,9 @@ function JobModal({ job, workspaces, onClose, onSave }: JobModalProps) {
             onChange={(e) => setWorkspaceId(e.target.value)}
             style={modalStyles.select}
           >
-            {workspaces.length === 0 && <option value="">No workspaces available</option>}
+            {workspaces.length === 0 && (
+              <option value="">{agentContext.getUiCopy('scheduledNoWorkspaces')}</option>
+            )}
             {workspaces.map((w) => (
               <option key={w.id} value={w.id}>
                 {w.name}

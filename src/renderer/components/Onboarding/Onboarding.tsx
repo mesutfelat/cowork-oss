@@ -139,7 +139,7 @@ export function Onboarding({ onComplete }: OnboardingProps) {
   const renderPersonaButtons = () => (
     <div className="onboarding-actions">
       <button
-        className="onboarding-btn onboarding-btn-secondary"
+        className="onboarding-btn onboarding-btn-primary"
         onClick={() => onboarding.submitPersona('companion')}
       >
         Warm companion
@@ -150,6 +150,34 @@ export function Onboarding({ onComplete }: OnboardingProps) {
       >
         Neutral assistant
       </button>
+    </div>
+  );
+
+  const renderVoiceOptions = () => (
+    <div className="onboarding-actions">
+      <button
+        className="onboarding-btn onboarding-btn-primary"
+        onClick={() => onboarding.submitVoicePreference(true)}
+      >
+        Enable voice
+      </button>
+      <button
+        className="onboarding-btn onboarding-btn-secondary"
+        onClick={() => onboarding.submitVoicePreference(false)}
+      >
+        Not now
+      </button>
+      <div
+        style={{
+          marginTop: 12,
+          color: 'var(--onboarding-warm-white)',
+          opacity: 0.7,
+          fontSize: '0.9rem',
+          textAlign: 'center',
+        }}
+      >
+        You can change this later in Settings {'>'} Voice.
+      </div>
     </div>
   );
 
@@ -370,6 +398,7 @@ export function Onboarding({ onComplete }: OnboardingProps) {
             showCursor={
               onboarding.state !== 'ask_name' &&
               onboarding.state !== 'ask_persona' &&
+              onboarding.state !== 'ask_voice' &&
               onboarding.state !== 'ask_work_style' &&
               onboarding.state !== 'llm_setup' &&
               onboarding.state !== 'llm_api_key'
@@ -382,6 +411,9 @@ export function Onboarding({ onComplete }: OnboardingProps) {
 
         {/* Persona selection */}
         {onboarding.showPersonaOptions && onboarding.state === 'ask_persona' && renderPersonaButtons()}
+
+        {/* Voice suggestion */}
+        {onboarding.showVoiceOptions && onboarding.state === 'ask_voice' && renderVoiceOptions()}
 
         {/* Work style buttons */}
         {onboarding.showInput && onboarding.state === 'ask_work_style' && renderWorkStyleButtons()}

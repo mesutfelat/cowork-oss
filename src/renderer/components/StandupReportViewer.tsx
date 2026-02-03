@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { StandupReport } from '../../electron/preload';
+import { useAgentContext } from '../hooks/useAgentContext';
 
 interface Task {
   id: string;
@@ -18,6 +19,7 @@ export function StandupReportViewer({ workspaceId, onClose }: StandupReportViewe
   const [taskMap, setTaskMap] = useState<Map<string, Task>>(new Map());
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const agentContext = useAgentContext();
 
   useEffect(() => {
     loadReports();
@@ -115,7 +117,7 @@ export function StandupReportViewer({ workspaceId, onClose }: StandupReportViewe
   if (loading) {
     return (
       <div className="standup-viewer">
-        <div className="loading-state">Loading standup reports...</div>
+        <div className="loading-state">{agentContext.getUiCopy('standupLoading')}</div>
         <style>{styles}</style>
       </div>
     );
@@ -125,13 +127,15 @@ export function StandupReportViewer({ workspaceId, onClose }: StandupReportViewe
     <div className="standup-viewer">
       <div className="viewer-header">
         <div className="header-content">
-          <h2>Daily Standup Reports</h2>
+          <h2>{agentContext.getUiCopy('standupTitle')}</h2>
           <button
             className="btn-generate"
             onClick={handleGenerateReport}
             disabled={generating}
           >
-            {generating ? 'Generating...' : 'Generate Report'}
+            {generating
+              ? agentContext.getUiCopy('standupGenerating')
+              : agentContext.getUiCopy('standupGenerate')}
           </button>
         </div>
         {onClose && (
@@ -145,11 +149,11 @@ export function StandupReportViewer({ workspaceId, onClose }: StandupReportViewe
 
       <div className="viewer-content">
         <div className="report-sidebar">
-          <h3>Report History</h3>
+          <h3>{agentContext.getUiCopy('standupHistoryTitle')}</h3>
           <div className="report-list">
             {reports.length === 0 ? (
               <div className="empty-state">
-                No reports yet. Generate your first report to get started.
+                {agentContext.getUiCopy('standupEmpty')}
               </div>
             ) : (
               reports.map((report) => (
@@ -175,7 +179,7 @@ export function StandupReportViewer({ workspaceId, onClose }: StandupReportViewe
               <div className="report-header">
                 <h3>{formatDate(selectedReport.reportDate)}</h3>
                 <span className="report-time">
-                  Generated at {formatCreatedAt(selectedReport.createdAt)}
+                  {agentContext.getUiCopy('standupGeneratedAt', { time: formatCreatedAt(selectedReport.createdAt) })}
                 </span>
               </div>
 
@@ -184,11 +188,11 @@ export function StandupReportViewer({ workspaceId, onClose }: StandupReportViewe
                 <div className="report-section completed">
                   <div className="section-header">
                     <span className="section-icon">✅</span>
-                    <h4>Completed</h4>
+                    <h4>{agentContext.getUiCopy('standupCompletedTitle')}</h4>
                     <span className="section-count">{selectedReport.completedTaskIds.length}</span>
                   </div>
                   {selectedReport.completedTaskIds.length === 0 ? (
-                    <div className="section-empty">No tasks completed</div>
+                    <div className="section-empty">{agentContext.getUiCopy('standupCompletedEmpty')}</div>
                   ) : (
                     <ul className="task-list">
                       {selectedReport.completedTaskIds.map((taskId) => {
@@ -207,11 +211,11 @@ export function StandupReportViewer({ workspaceId, onClose }: StandupReportViewe
                 <div className="report-section in-progress">
                   <div className="section-header">
                     <span className="section-icon">🔄</span>
-                    <h4>In Progress</h4>
+                    <h4>{agentContext.getUiCopy('standupInProgressTitle')}</h4>
                     <span className="section-count">{selectedReport.inProgressTaskIds.length}</span>
                   </div>
                   {selectedReport.inProgressTaskIds.length === 0 ? (
-                    <div className="section-empty">No tasks in progress</div>
+                    <div className="section-empty">{agentContext.getUiCopy('standupInProgressEmpty')}</div>
                   ) : (
                     <ul className="task-list">
                       {selectedReport.inProgressTaskIds.map((taskId) => {
@@ -230,11 +234,11 @@ export function StandupReportViewer({ workspaceId, onClose }: StandupReportViewe
                 <div className="report-section blocked">
                   <div className="section-header">
                     <span className="section-icon">🚫</span>
-                    <h4>Blocked</h4>
+                    <h4>{agentContext.getUiCopy('standupBlockedTitle')}</h4>
                     <span className="section-count">{selectedReport.blockedTaskIds.length}</span>
                   </div>
                   {selectedReport.blockedTaskIds.length === 0 ? (
-                    <div className="section-empty">No blocked tasks</div>
+                    <div className="section-empty">{agentContext.getUiCopy('standupBlockedEmpty')}</div>
                   ) : (
                     <ul className="task-list">
                       {selectedReport.blockedTaskIds.map((taskId) => {

@@ -10,6 +10,8 @@ export type OnboardingState =
   | 'confirm_name'
   | 'ask_persona'
   | 'confirm_persona'
+  | 'ask_voice'
+  | 'confirm_voice'
   | 'ask_work_style'
   | 'reflect_style'
   | 'transition_setup'
@@ -33,8 +35,11 @@ const SCRIPT = {
       ? `${name}. That feels right. I'll remember that.`
       : "I'll go by CoWork then. Simple and ready.",
   ask_persona: "How should I show up for you?",
-  confirm_persona_companion: "Then I'll be warm, curious, and present as we work.",
+  confirm_persona_companion: "Then I'll be warm, curious, and present as we work together.",
   confirm_persona_neutral: "Understood. I'll keep things focused and understated.",
+  ask_voice: "Want me to speak responses out loud when it helps?",
+  confirm_voice_on: "Okay. I'll use voice when I respond.",
+  confirm_voice_off: "All good. We can keep it text-only for now.",
   ask_work_style:
     "I want to work the way you do. Do you like having a clear plan, or do you prefer staying flexible?",
   reflect_style_planner:
@@ -82,6 +87,7 @@ interface UseOnboardingOptions {
 interface OnboardingData {
   assistantName: string;
   persona: PersonaId;
+  voiceEnabled: boolean | null;
   workStyle: 'planner' | 'flexible' | null;
   selectedProvider: LLMProviderType | null;
   apiKey: string;
@@ -97,6 +103,7 @@ export function useOnboardingFlow({ onComplete }: UseOnboardingOptions) {
   const [showApiInput, setShowApiInput] = useState(false);
   const [showStyleImplications, setShowStyleImplications] = useState(false);
   const [showPersonaOptions, setShowPersonaOptions] = useState(false);
+  const [showVoiceOptions, setShowVoiceOptions] = useState(false);
   const [styleCountdown, setStyleCountdown] = useState(0);
   const [testResult, setTestResult] = useState<{
     success: boolean;
@@ -105,7 +112,8 @@ export function useOnboardingFlow({ onComplete }: UseOnboardingOptions) {
 
   const [data, setData] = useState<OnboardingData>({
     assistantName: '',
-    persona: 'none',
+    persona: 'companion',
+    voiceEnabled: null,
     workStyle: null,
     selectedProvider: null,
     apiKey: '',
@@ -176,6 +184,14 @@ export function useOnboardingFlow({ onComplete }: UseOnboardingOptions) {
         break;
 
       case 'confirm_persona':
+        timeoutRef.current = setTimeout(() => {
+          setState('ask_voice');
+          setCurrentText(SCRIPT.ask_voice);
+          setShowVoiceOptions(true);
+        }, 1200);
+        break;
+
+      case 'confirm_voice':
         timeoutRef.current = setTimeout(() => {
           setState('ask_work_style');
           setCurrentText(SCRIPT.ask_work_style);
@@ -261,6 +277,25 @@ export function useOnboardingFlow({ onComplete }: UseOnboardingOptions) {
       void window.electronAPI.setActivePersona(persona).catch((error) => {
         console.error('Failed to set persona during onboarding:', error);
       });
+    }
+  }, []);
+
+  // Handle voice preference selection
+  const submitVoicePreference = useCallback(async (enabled: boolean) => {
+    setShowVoiceOptions(false);
+    setData((d) => ({ ...d, voiceEnabled: enabled }));
+    setState('confirm_voice');
+    setCurrentText(enabled ? SCRIPT.confirm_voice_on : SCRIPT.confirm_voice_off);
+
+    if (enabled && window.electronAPI?.saveVoiceSettings) {
+      try {
+        await window.electronAPI.saveVoiceSettings({
+          enabled: true,
+          responseMode: 'auto',
+        });
+      } catch (error) {
+        console.error('Failed to enable voice during onboarding:', error);
+      }
     }
   }, []);
 
@@ -485,6 +520,7 @@ export function useOnboardingFlow({ onComplete }: UseOnboardingOptions) {
     showApiInput,
     showStyleImplications,
     showPersonaOptions,
+    showVoiceOptions,
     styleCountdown,
     testResult,
     data,
@@ -495,6 +531,7 @@ export function useOnboardingFlow({ onComplete }: UseOnboardingOptions) {
     onTextComplete,
     submitName,
     submitPersona,
+    submitVoicePreference,
     submitWorkStyle,
     changeWorkStyle,
     selectProvider,

@@ -6,6 +6,7 @@ import {
   ActivityEvent,
 } from '../../electron/preload';
 import { ActivityFeedItem } from './ActivityFeedItem';
+import { useAgentContext } from '../hooks/useAgentContext';
 
 interface ActivityFeedProps {
   workspaceId: string;
@@ -20,6 +21,9 @@ const ACTIVITY_TYPE_LABELS: Partial<Record<ActivityType, string>> = {
   task_started: 'Task Started',
   task_completed: 'Task Completed',
   task_failed: 'Task Failed',
+  task_paused: 'Task Paused',
+  task_resumed: 'Task Resumed',
+  comment: 'Comment',
   file_created: 'File Created',
   file_modified: 'File Modified',
   command_executed: 'Command',
@@ -43,6 +47,7 @@ export function ActivityFeed({
   const [filterType, setFilterType] = useState<ActivityType | ''>('');
   const [filterActor, setFilterActor] = useState<ActivityActorType | ''>('');
   const [showUnreadOnly, setShowUnreadOnly] = useState(false);
+  const agentContext = useAgentContext();
 
   const loadActivities = useCallback(async () => {
     try {
@@ -159,7 +164,7 @@ export function ActivityFeed({
   const regularActivities = activities.filter((a) => !a.isPinned);
 
   if (loading && activities.length === 0) {
-    return <div className="activity-loading">Loading activities...</div>;
+    return <div className="activity-loading">{agentContext.getUiCopy('activityLoading')}</div>;
   }
 
   return (
@@ -167,7 +172,7 @@ export function ActivityFeed({
       {showFilters && (
         <div className="activity-feed-header">
           <div className="activity-feed-title">
-            <h4>Activity</h4>
+            <h4>{agentContext.getUiCopy('activityTitle')}</h4>
             {unreadCount > 0 && (
               <span className="unread-badge">{unreadCount}</span>
             )}
@@ -178,7 +183,7 @@ export function ActivityFeed({
                 className="btn-text"
                 onClick={handleMarkAllRead}
               >
-                Mark all read
+                {agentContext.getUiCopy('activityMarkAllRead')}
               </button>
             )}
           </div>
@@ -191,7 +196,7 @@ export function ActivityFeed({
             value={filterType}
             onChange={(e) => setFilterType(e.target.value as ActivityType | '')}
           >
-            <option value="">All Types</option>
+            <option value="">{agentContext.getUiCopy('activityAllTypes')}</option>
             {Object.entries(ACTIVITY_TYPE_LABELS).map(([type, label]) => (
               <option key={type} value={type}>
                 {label}
@@ -203,10 +208,10 @@ export function ActivityFeed({
             value={filterActor}
             onChange={(e) => setFilterActor(e.target.value as ActivityActorType | '')}
           >
-            <option value="">All Actors</option>
-            <option value="agent">Agent</option>
-            <option value="user">User</option>
-            <option value="system">System</option>
+            <option value="">{agentContext.getUiCopy('activityAllActors')}</option>
+            <option value="agent">{agentContext.getUiCopy('activityActorAgent')}</option>
+            <option value="user">{agentContext.getUiCopy('activityActorUser')}</option>
+            <option value="system">{agentContext.getUiCopy('activityActorSystem')}</option>
           </select>
 
           <label className="filter-checkbox">
@@ -215,7 +220,7 @@ export function ActivityFeed({
               checked={showUnreadOnly}
               onChange={(e) => setShowUnreadOnly(e.target.checked)}
             />
-            Unread only
+            {agentContext.getUiCopy('activityUnreadOnly')}
           </label>
         </div>
       )}
@@ -225,7 +230,7 @@ export function ActivityFeed({
       <div className="activity-list">
         {pinnedActivities.length > 0 && (
           <div className="activity-group">
-            <div className="activity-group-title">Pinned</div>
+            <div className="activity-group-title">{agentContext.getUiCopy('activityPinned')}</div>
             {pinnedActivities.map((activity) => (
               <ActivityFeedItem
                 key={activity.id}
@@ -242,7 +247,7 @@ export function ActivityFeed({
         {regularActivities.length > 0 ? (
           <div className="activity-group">
             {pinnedActivities.length > 0 && (
-              <div className="activity-group-title">Recent</div>
+              <div className="activity-group-title">{agentContext.getUiCopy('activityRecent')}</div>
             )}
             {regularActivities.map((activity) => (
               <ActivityFeedItem
@@ -258,9 +263,9 @@ export function ActivityFeed({
         ) : (
           pinnedActivities.length === 0 && (
             <div className="activity-empty">
-              <p>No activities yet</p>
+              <p>{agentContext.getUiCopy('activityEmptyTitle')}</p>
               <p className="activity-empty-hint">
-                Activities will appear here as you work on tasks
+                {agentContext.getUiCopy('activityEmptyHint')}
               </p>
             </div>
           )

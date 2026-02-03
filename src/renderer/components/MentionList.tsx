@@ -6,6 +6,7 @@ import {
   MentionStatus,
   AgentRoleData,
 } from '../../electron/preload';
+import { useAgentContext } from '../hooks/useAgentContext';
 
 interface MentionListProps {
   workspaceId?: string;
@@ -52,6 +53,7 @@ export function MentionList({
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<MentionStatus | ''>('');
   const [filterType, setFilterType] = useState<MentionType | ''>('');
+  const agentContext = useAgentContext();
 
   // Load agents for display names
   useEffect(() => {
@@ -157,8 +159,8 @@ export function MentionList({
   };
 
   const getAgentName = (agentId: string | undefined): string => {
-    if (!agentId) return 'User';
-    return agents[agentId]?.displayName || 'Unknown Agent';
+    if (!agentId) return agentContext.getUiCopy('mentionUser');
+    return agents[agentId]?.displayName || agentContext.getUiCopy('mentionUnknownAgent');
   };
 
   const getAgentIcon = (agentId: string | undefined): { icon: string; color: string } => {
@@ -168,7 +170,7 @@ export function MentionList({
   };
 
   if (loading) {
-    return <div className="mention-loading">Loading mentions...</div>;
+    return <div className="mention-loading">{agentContext.getUiCopy('mentionLoading')}</div>;
   }
 
   return (
@@ -179,29 +181,29 @@ export function MentionList({
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value as MentionStatus | '')}
           >
-            <option value="">All Statuses</option>
-            <option value="pending">Pending</option>
-            <option value="acknowledged">Acknowledged</option>
-            <option value="completed">Completed</option>
-            <option value="dismissed">Dismissed</option>
+            <option value="">{agentContext.getUiCopy('mentionAllStatuses')}</option>
+            <option value="pending">{agentContext.getUiCopy('mentionStatusPending')}</option>
+            <option value="acknowledged">{agentContext.getUiCopy('mentionStatusAcknowledged')}</option>
+            <option value="completed">{agentContext.getUiCopy('mentionStatusCompleted')}</option>
+            <option value="dismissed">{agentContext.getUiCopy('mentionStatusDismissed')}</option>
           </select>
 
           <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value as MentionType | '')}
           >
-            <option value="">All Types</option>
-            <option value="request">Request</option>
-            <option value="handoff">Handoff</option>
-            <option value="review">Review</option>
-            <option value="fyi">FYI</option>
+            <option value="">{agentContext.getUiCopy('mentionAllTypes')}</option>
+            <option value="request">{agentContext.getUiCopy('mentionTypeRequest')}</option>
+            <option value="handoff">{agentContext.getUiCopy('mentionTypeHandoff')}</option>
+            <option value="review">{agentContext.getUiCopy('mentionTypeReview')}</option>
+            <option value="fyi">{agentContext.getUiCopy('mentionTypeFyi')}</option>
           </select>
         </div>
       )}
 
       {mentions.length === 0 ? (
         <div className="mention-empty">
-          <p>No mentions yet</p>
+          <p>{agentContext.getUiCopy('mentionEmpty')}</p>
         </div>
       ) : (
         <div className="mention-items">

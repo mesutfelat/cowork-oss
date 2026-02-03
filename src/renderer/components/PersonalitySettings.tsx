@@ -26,7 +26,7 @@ export function PersonalitySettings({ onSettingsChanged }: PersonalitySettingsPr
     customPrompt: '',
     customName: 'Custom Assistant',
     agentName: 'CoWork',
-    activePersona: 'none',
+    activePersona: 'companion',
     responseStyle: DEFAULT_RESPONSE_STYLE,
     quirks: DEFAULT_QUIRKS,
     relationship: DEFAULT_RELATIONSHIP,

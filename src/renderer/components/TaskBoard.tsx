@@ -8,6 +8,7 @@ import {
 import { TaskBoardColumn } from './TaskBoardColumn';
 import { TaskLabelManager } from './TaskLabelManager';
 import { TaskQuickActions } from './TaskQuickActions';
+import { useAgentContext } from '../hooks/useAgentContext';
 
 interface Task {
   id: string;
@@ -45,6 +46,7 @@ export function TaskBoard({ workspaceId, onTaskSelect }: TaskBoardProps) {
   const [filterAgent, setFilterAgent] = useState<string>('');
   const [filterLabel, setFilterLabel] = useState<string>('');
   const [filterPriority, setFilterPriority] = useState<string>('');
+  const agentContext = useAgentContext();
 
   // Load all data
   const loadData = useCallback(async () => {
@@ -277,7 +279,7 @@ export function TaskBoard({ workspaceId, onTaskSelect }: TaskBoardProps) {
   if (loading) {
     return (
       <div className="task-board-loading">
-        <p>Loading task board...</p>
+        <p>{agentContext.getUiCopy('taskBoardLoading')}</p>
       </div>
     );
   }
@@ -288,8 +290,10 @@ export function TaskBoard({ workspaceId, onTaskSelect }: TaskBoardProps) {
     <div className="task-board">
       <div className="board-header">
         <div className="board-title">
-          <h2>Task Board</h2>
-          <span className="task-count">{tasks.length} tasks</span>
+          <h2>{agentContext.getUiCopy('taskBoardTitle')}</h2>
+          <span className="task-count">
+            {agentContext.getUiCopy('taskBoardCount', { count: tasks.length })}
+          </span>
         </div>
 
         <div className="board-filters">
@@ -297,7 +301,7 @@ export function TaskBoard({ workspaceId, onTaskSelect }: TaskBoardProps) {
             value={filterAgent}
             onChange={(e) => setFilterAgent(e.target.value)}
           >
-            <option value="">All Agents</option>
+            <option value="">{agentContext.getUiCopy('taskBoardAllAgents')}</option>
             {agentList.map((agent) => (
               <option key={agent.id} value={agent.id}>
                 {agent.icon} {agent.displayName}
@@ -309,7 +313,7 @@ export function TaskBoard({ workspaceId, onTaskSelect }: TaskBoardProps) {
             value={filterLabel}
             onChange={(e) => setFilterLabel(e.target.value)}
           >
-            <option value="">All Labels</option>
+            <option value="">{agentContext.getUiCopy('taskBoardAllLabels')}</option>
             {labels.map((label) => (
               <option key={label.id} value={label.id}>
                 {label.name}
@@ -321,7 +325,7 @@ export function TaskBoard({ workspaceId, onTaskSelect }: TaskBoardProps) {
             value={filterPriority}
             onChange={(e) => setFilterPriority(e.target.value)}
           >
-            <option value="">All Priorities</option>
+            <option value="">{agentContext.getUiCopy('taskBoardAllPriorities')}</option>
             <option value="4">Urgent</option>
             <option value="3">High</option>
             <option value="2">Medium</option>
@@ -333,7 +337,7 @@ export function TaskBoard({ workspaceId, onTaskSelect }: TaskBoardProps) {
             className="manage-labels-btn"
             onClick={() => setShowLabelManager(true)}
           >
-            Manage Labels
+            {agentContext.getUiCopy('taskBoardManageLabels')}
           </button>
         </div>
       </div>

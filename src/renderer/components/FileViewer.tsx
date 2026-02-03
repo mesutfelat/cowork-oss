@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { FileViewerResult } from '../../electron/preload';
+import { useAgentContext } from '../hooks/useAgentContext';
 
 interface FileViewerProps {
   filePath: string;
@@ -14,6 +15,7 @@ export function FileViewer({ filePath, workspacePath, onClose }: FileViewerProps
   const [loading, setLoading] = useState(true);
   const [fileData, setFileData] = useState<FileViewerResult['data'] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const agentContext = useAgentContext();
 
   // Load file on mount
   useEffect(() => {
@@ -199,7 +201,7 @@ export function FileViewer({ filePath, workspacePath, onClose }: FileViewerProps
           {loading && (
             <div className="file-viewer-loading">
               <div className="file-viewer-spinner"></div>
-              <span>Loading file...</span>
+              <span>{agentContext.getUiCopy('fileLoading')}</span>
             </div>
           )}
 
