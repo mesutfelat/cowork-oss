@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="screenshots/cowork-os-logo.png" alt="CoWork OS Logo" width="120">
+  <img src="screenshots/cowork-oss-logo-new.png" alt="CoWork OS Logo" width="80">
 </p>
 
 <div align="center">
