@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { LLMSettingsData, ThemeMode, AccentColor } from '../../shared/types';
+import { LLMSettingsData, ThemeMode, AccentColor, type LLMProviderType, type CustomProviderConfig } from '../../shared/types';
+import { CUSTOM_PROVIDER_MAP } from '../../shared/llm-provider-catalog';
 import { TelegramSettings } from './TelegramSettings';
 import { DiscordSettings } from './DiscordSettings';
 import { SlackSettings } from './SlackSettings';
@@ -15,6 +16,12 @@ import { EmailSettings } from './EmailSettings';
 import { TeamsSettings } from './TeamsSettings';
 import { GoogleChatSettings } from './GoogleChatSettings';
 import { XSettings } from './XSettings';
+import { NotionSettings } from './NotionSettings';
+import { BoxSettings } from './BoxSettings';
+import { OneDriveSettings } from './OneDriveSettings';
+import { GoogleDriveSettings } from './GoogleDriveSettings';
+import { DropboxSettings } from './DropboxSettings';
+import { SharePointSettings } from './SharePointSettings';
 import { SearchSettings } from './SearchSettings';
 import { UpdateSettings } from './UpdateSettings';
 import { GuardrailSettings } from './GuardrailSettings';
@@ -23,6 +30,7 @@ import { QueueSettings } from './QueueSettings';
 import { SkillsSettings } from './SkillsSettings';
 import { SkillHubBrowser } from './SkillHubBrowser';
 import { MCPSettings } from './MCPSettings';
+import { ConnectorsSettings } from './ConnectorsSettings';
 import { BuiltinToolsSettings } from './BuiltinToolsSettings';
 import { TraySettings } from './TraySettings';
 import { ScheduledTasksSettings } from './ScheduledTasksSettings';
@@ -34,10 +42,13 @@ import { ExtensionsSettings } from './ExtensionsSettings';
 import { VoiceSettings } from './VoiceSettings';
 import { MissionControlPanel } from './MissionControlPanel';
 
-type SettingsTab = 'appearance' | 'personality' | 'missioncontrol' | 'tray' | 'voice' | 'llm' | 'search' | 'telegram' | 'slack' | 'whatsapp' | 'teams' | 'morechannels' | 'updates' | 'guardrails' | 'queue' | 'skills' | 'skillhub' | 'mcp' | 'tools' | 'scheduled' | 'hooks' | 'controlplane' | 'nodes' | 'extensions';
+type SettingsTab = 'appearance' | 'personality' | 'missioncontrol' | 'tray' | 'voice' | 'llm' | 'search' | 'telegram' | 'slack' | 'whatsapp' | 'teams' | 'x' | 'morechannels' | 'integrations' | 'updates' | 'guardrails' | 'queue' | 'skills' | 'skillhub' | 'connectors' | 'mcp' | 'tools' | 'scheduled' | 'hooks' | 'controlplane' | 'nodes' | 'extensions';
 
 // Secondary channels shown inside "More Channels" tab
-type SecondaryChannel = 'discord' | 'imessage' | 'signal' | 'mattermost' | 'matrix' | 'twitch' | 'line' | 'bluebubbles' | 'email' | 'googlechat' | 'x';
+type SecondaryChannel = 'discord' | 'imessage' | 'signal' | 'mattermost' | 'matrix' | 'twitch' | 'line' | 'bluebubbles' | 'email' | 'googlechat';
+
+// App integrations shown inside "Integrations" tab
+type IntegrationChannel = 'notion' | 'box' | 'onedrive' | 'googledrive' | 'dropbox' | 'sharepoint';
 
 interface SettingsProps {
   onBack: () => void;
@@ -246,12 +257,15 @@ const sidebarItems: Array<{ tab: SettingsTab; label: string; icon: React.ReactNo
   { tab: 'telegram', label: 'Telegram', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" /></svg> },
   { tab: 'slack', label: 'Slack', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14.5 10c-.83 0-1.5-.67-1.5-1.5v-5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5z" /><path d="M20.5 10H19V8.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z" /><path d="M9.5 14c.83 0 1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5S8 21.33 8 20.5v-5c0-.83.67-1.5 1.5-1.5z" /><path d="M3.5 14H5v1.5c0 .83-.67 1.5-1.5 1.5S2 16.33 2 15.5 2.67 14 3.5 14z" /><path d="M14 14.5c0-.83.67-1.5 1.5-1.5h5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5h-5c-.83 0-1.5-.67-1.5-1.5z" /><path d="M15.5 19H14v1.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5-.67-1.5-1.5-1.5z" /><path d="M10 9.5C10 8.67 9.33 8 8.5 8h-5C2.67 8 2 8.67 2 9.5S2.67 11 3.5 11h5c.83 0 1.5-.67 1.5-1.5z" /><path d="M8.5 5H10V3.5C10 2.67 9.33 2 8.5 2S7 2.67 7 3.5 7.67 5 8.5 5z" /></svg> },
   { tab: 'teams', label: 'Teams', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg> },
+  { tab: 'x', label: 'X (Twitter)', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 4l14 16" /><path d="M19 4L5 20" /></svg> },
   { tab: 'morechannels', label: 'More Channels', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /><circle cx="5" cy="12" r="1" /></svg> },
+  { tab: 'integrations', label: 'Integrations', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v4" /><path d="M12 18v4" /><path d="M4.93 4.93l2.83 2.83" /><path d="M16.24 16.24l2.83 2.83" /><path d="M2 12h4" /><path d="M18 12h4" /><path d="M4.93 19.07l2.83-2.83" /><path d="M16.24 7.76l2.83-2.83" /><circle cx="12" cy="12" r="3" /></svg> },
   { tab: 'guardrails', label: 'Guardrails', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg> },
   { tab: 'queue', label: 'Task Queue', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="4" rx="1" /><rect x="3" y="10" width="18" height="4" rx="1" /><rect x="3" y="16" width="18" height="4" rx="1" /></svg> },
   { tab: 'skills', label: 'Custom Skills', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" /></svg> },
   { tab: 'skillhub', label: 'SkillHub', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /><path d="M8 12h8" /></svg> },
   { tab: 'scheduled', label: 'Scheduled Tasks', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg> },
+  { tab: 'connectors', label: 'Connectors', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="7" height="7" rx="1" /><rect x="14" y="4" width="7" height="7" rx="1" /><rect x="3" y="13" width="7" height="7" rx="1" /><rect x="14" y="13" width="7" height="7" rx="1" /></svg> },
   { tab: 'mcp', label: 'MCP Servers', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8" /><path d="M12 17v4" /><path d="M7 8h2M15 8h2" /><path d="M9 12h6" /></svg> },
   { tab: 'tools', label: 'Built-in Tools', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" /></svg> },
   { tab: 'hooks', label: 'Webhooks', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg> },
@@ -273,12 +287,22 @@ const secondaryChannelItems: Array<{ key: SecondaryChannel; label: string; icon:
   { key: 'matrix', label: 'Matrix', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="2" /><path d="M7 7h10M7 12h10M7 17h10" /></svg> },
   { key: 'twitch', label: 'Twitch', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 2H3v16h5v4l4-4h5l4-4V2zM11 11V7M16 11V7" /></svg> },
   { key: 'bluebubbles', label: 'BlueBubbles', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><path d="M8 14s1.5 2 4 2 4-2 4-2" /><line x1="9" y1="9" x2="9.01" y2="9" /><line x1="15" y1="9" x2="15.01" y2="9" /></svg> },
-  { key: 'x', label: 'X (Twitter)', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 4l14 16" /><path d="M19 4L5 20" /></svg> },
+];
+
+// App integrations configuration for "Integrations" tab
+const integrationItems: Array<{ key: IntegrationChannel; label: string; icon: React.ReactNode }> = [
+  { key: 'notion', label: 'Notion', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M8 7h8M8 11h8M8 15h6" /></svg> },
+  { key: 'sharepoint', label: 'SharePoint', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M7 8h10M7 12h6" /></svg> },
+  { key: 'onedrive', label: 'OneDrive', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M7 18h10a4 4 0 0 0 0-8 5 5 0 0 0-9.7-1.6A4 4 0 0 0 7 18z" /></svg> },
+  { key: 'googledrive', label: 'Google Drive', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 7l4-4h8l4 4-8 14H8L4 7z" /></svg> },
+  { key: 'box', label: 'Box', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="3" /><path d="M7 8h10M7 12h10M7 16h6" /></svg> },
+  { key: 'dropbox', label: 'Dropbox', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M7 5l5 3-5 3-5-3 5-3zm10 0l5 3-5 3-5-3 5-3zM7 13l5 3-5 3-5-3 5-3zm10 0l5 3-5 3-5-3 5-3z" /></svg> },
 ];
 
 export function Settings({ onBack, onSettingsChanged, themeMode, accentColor, onThemeChange, onAccentChange, initialTab = 'appearance', onShowOnboarding, onboardingCompletedAt }: SettingsProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
   const [activeSecondaryChannel, setActiveSecondaryChannel] = useState<SecondaryChannel>('discord');
+  const [activeIntegration, setActiveIntegration] = useState<IntegrationChannel>('notion');
   const [sidebarSearch, setSidebarSearch] = useState('');
   const [settings, setSettings] = useState<LLMSettingsData>({
     providerType: 'anthropic',
@@ -314,6 +338,7 @@ export function Settings({ onBack, onSettingsChanged, themeMode, accentColor, on
 
   // OpenRouter state
   const [openrouterApiKey, setOpenrouterApiKey] = useState('');
+  const [openrouterBaseUrl, setOpenrouterBaseUrl] = useState('');
   const [openrouterModel, setOpenrouterModel] = useState('anthropic/claude-3.5-sonnet');
   const [openrouterModels, setOpenrouterModels] = useState<Array<{ id: string; name: string; context_length: number }>>([]);
   const [loadingOpenRouterModels, setLoadingOpenRouterModels] = useState(false);
@@ -327,6 +352,30 @@ export function Settings({ onBack, onSettingsChanged, themeMode, accentColor, on
   const [openaiOAuthConnected, setOpenaiOAuthConnected] = useState(false);
   const [openaiOAuthLoading, setOpenaiOAuthLoading] = useState(false);
 
+  // Groq state
+  const [groqApiKey, setGroqApiKey] = useState('');
+  const [groqBaseUrl, setGroqBaseUrl] = useState('');
+  const [groqModel, setGroqModel] = useState('llama-3.1-8b-instant');
+  const [groqModels, setGroqModels] = useState<Array<{ id: string; name: string }>>([]);
+  const [loadingGroqModels, setLoadingGroqModels] = useState(false);
+
+  // xAI state
+  const [xaiApiKey, setXaiApiKey] = useState('');
+  const [xaiBaseUrl, setXaiBaseUrl] = useState('');
+  const [xaiModel, setXaiModel] = useState('grok-4-fast-non-reasoning');
+  const [xaiModels, setXaiModels] = useState<Array<{ id: string; name: string }>>([]);
+  const [loadingXaiModels, setLoadingXaiModels] = useState(false);
+
+  // Kimi state
+  const [kimiApiKey, setKimiApiKey] = useState('');
+  const [kimiBaseUrl, setKimiBaseUrl] = useState('');
+  const [kimiModel, setKimiModel] = useState('kimi-k2.5');
+  const [kimiModels, setKimiModels] = useState<Array<{ id: string; name: string }>>([]);
+  const [loadingKimiModels, setLoadingKimiModels] = useState(false);
+
+  // Custom provider state
+  const [customProviders, setCustomProviders] = useState<Record<string, CustomProviderConfig>>({});
+
   // Bedrock state
   const [bedrockModel, setBedrockModel] = useState('');
   const [bedrockModels, setBedrockModels] = useState<Array<{ id: string; name: string; description: string }>>([]);
@@ -335,6 +384,37 @@ export function Settings({ onBack, onSettingsChanged, themeMode, accentColor, on
   useEffect(() => {
     loadConfigStatus();
   }, []);
+
+  const resolveCustomProviderId = (providerType: LLMProviderType) =>
+    providerType === 'kimi-coding' ? 'kimi-code' : providerType;
+
+  const updateCustomProvider = (providerType: LLMProviderType, updates: Partial<CustomProviderConfig>) => {
+    const resolvedType = resolveCustomProviderId(providerType);
+    setCustomProviders((prev) => ({
+      ...prev,
+      [resolvedType]: {
+        ...(prev[resolvedType] || {}),
+        ...updates,
+      },
+    }));
+  };
+
+  const sanitizeCustomProviders = (providers: Record<string, CustomProviderConfig>) => {
+    const sanitized: Record<string, CustomProviderConfig> = {};
+    Object.entries(providers).forEach(([key, value]) => {
+      const apiKey = value.apiKey?.trim();
+      const model = value.model?.trim();
+      const baseUrl = value.baseUrl?.trim();
+      if (apiKey || model || baseUrl) {
+        sanitized[key] = {
+          ...(apiKey ? { apiKey } : {}),
+          ...(model ? { model } : {}),
+          ...(baseUrl ? { baseUrl } : {}),
+        };
+      }
+    });
+    return Object.keys(sanitized).length > 0 ? sanitized : undefined;
+  };
 
   const loadConfigStatus = async () => {
     try {
@@ -349,6 +429,18 @@ export function Settings({ onBack, onSettingsChanged, themeMode, accentColor, on
       // Load full settings separately for bedrock config
       const loadedSettings = await window.electronAPI.getLLMSettings();
       setSettings(loadedSettings);
+      if (loadedSettings.customProviders) {
+        const normalized = { ...loadedSettings.customProviders };
+        if (normalized['kimi-coding'] && !normalized['kimi-code']) {
+          normalized['kimi-code'] = normalized['kimi-coding'];
+        }
+        if (normalized['kimi-coding']) {
+          delete normalized['kimi-coding'];
+        }
+        setCustomProviders(normalized);
+      } else {
+        setCustomProviders({});
+      }
 
       // Set form state from loaded settings
       if (loadedSettings.bedrock?.region) {
@@ -387,6 +479,9 @@ export function Settings({ onBack, onSettingsChanged, themeMode, accentColor, on
       if (loadedSettings.openrouter?.apiKey) {
         setOpenrouterApiKey(loadedSettings.openrouter.apiKey);
       }
+      if (loadedSettings.openrouter?.baseUrl) {
+        setOpenrouterBaseUrl(loadedSettings.openrouter.baseUrl);
+      }
       if (loadedSettings.openrouter?.model) {
         setOpenrouterModel(loadedSettings.openrouter.model);
       }
@@ -417,6 +512,39 @@ export function Settings({ onBack, onSettingsChanged, themeMode, accentColor, on
         // Legacy: accessToken present but no authMethod set
         setOpenaiOAuthConnected(true);
         setOpenaiAuthMethod('oauth');
+      }
+
+      // Set Groq form state
+      if (loadedSettings.groq?.apiKey) {
+        setGroqApiKey(loadedSettings.groq.apiKey);
+      }
+      if (loadedSettings.groq?.baseUrl) {
+        setGroqBaseUrl(loadedSettings.groq.baseUrl);
+      }
+      if (loadedSettings.groq?.model) {
+        setGroqModel(loadedSettings.groq.model);
+      }
+
+      // Set xAI form state
+      if (loadedSettings.xai?.apiKey) {
+        setXaiApiKey(loadedSettings.xai.apiKey);
+      }
+      if (loadedSettings.xai?.baseUrl) {
+        setXaiBaseUrl(loadedSettings.xai.baseUrl);
+      }
+      if (loadedSettings.xai?.model) {
+        setXaiModel(loadedSettings.xai.model);
+      }
+
+      // Set Kimi form state
+      if (loadedSettings.kimi?.apiKey) {
+        setKimiApiKey(loadedSettings.kimi.apiKey);
+      }
+      if (loadedSettings.kimi?.baseUrl) {
+        setKimiBaseUrl(loadedSettings.kimi.baseUrl);
+      }
+      if (loadedSettings.kimi?.model) {
+        setKimiModel(loadedSettings.kimi.model);
       }
 
       // Set Bedrock form state (access key and secret key are set earlier)
@@ -514,7 +642,7 @@ export function Settings({ onBack, onSettingsChanged, themeMode, accentColor, on
   const loadOpenRouterModels = async (apiKey?: string) => {
     try {
       setLoadingOpenRouterModels(true);
-      const models = await window.electronAPI.getOpenRouterModels(apiKey || openrouterApiKey);
+      const models = await window.electronAPI.getOpenRouterModels(apiKey || openrouterApiKey, openrouterBaseUrl || undefined);
       setOpenrouterModels(models || []);
       // If we got models and current model isn't in the list, select the first one
       if (models && models.length > 0 && !models.some(m => m.id === openrouterModel)) {
@@ -546,6 +674,57 @@ export function Settings({ onBack, onSettingsChanged, themeMode, accentColor, on
       setOpenaiModels([]);
     } finally {
       setLoadingOpenAIModels(false);
+    }
+  };
+
+  const loadGroqModels = async (apiKey?: string) => {
+    try {
+      setLoadingGroqModels(true);
+      const models = await window.electronAPI.getGroqModels(apiKey || groqApiKey, groqBaseUrl || undefined);
+      setGroqModels(models || []);
+      if (models && models.length > 0 && !models.some(m => m.id === groqModel)) {
+        setGroqModel(models[0].id);
+      }
+      onSettingsChanged?.();
+    } catch (error) {
+      console.error('Failed to load Groq models:', error);
+      setGroqModels([]);
+    } finally {
+      setLoadingGroqModels(false);
+    }
+  };
+
+  const loadXAIModels = async (apiKey?: string) => {
+    try {
+      setLoadingXaiModels(true);
+      const models = await window.electronAPI.getXAIModels(apiKey || xaiApiKey, xaiBaseUrl || undefined);
+      setXaiModels(models || []);
+      if (models && models.length > 0 && !models.some(m => m.id === xaiModel)) {
+        setXaiModel(models[0].id);
+      }
+      onSettingsChanged?.();
+    } catch (error) {
+      console.error('Failed to load xAI models:', error);
+      setXaiModels([]);
+    } finally {
+      setLoadingXaiModels(false);
+    }
+  };
+
+  const loadKimiModels = async (apiKey?: string) => {
+    try {
+      setLoadingKimiModels(true);
+      const models = await window.electronAPI.getKimiModels(apiKey || kimiApiKey, kimiBaseUrl || undefined);
+      setKimiModels(models || []);
+      if (models && models.length > 0 && !models.some(m => m.id === kimiModel)) {
+        setKimiModel(models[0].id);
+      }
+      onSettingsChanged?.();
+    } catch (error) {
+      console.error('Failed to load Kimi models:', error);
+      setKimiModels([]);
+    } finally {
+      setLoadingKimiModels(false);
     }
   };
 
@@ -613,6 +792,21 @@ export function Settings({ onBack, onSettingsChanged, themeMode, accentColor, on
       setSaving(true);
       setTestResult(null);
 
+      const sanitizedCustomProviders = sanitizeCustomProviders(customProviders) || {};
+      const resolvedProviderTypeForSave = resolveCustomProviderId(settings.providerType as LLMProviderType);
+      const selectedCustomEntry = CUSTOM_PROVIDER_MAP.get(resolvedProviderTypeForSave);
+      if (selectedCustomEntry) {
+        const existing = sanitizedCustomProviders[resolvedProviderTypeForSave] || {};
+        const withDefaults: CustomProviderConfig = { ...existing };
+        if (!withDefaults.model && selectedCustomEntry.defaultModel) {
+          withDefaults.model = selectedCustomEntry.defaultModel;
+        }
+        if (!withDefaults.baseUrl && selectedCustomEntry.baseUrl) {
+          withDefaults.baseUrl = selectedCustomEntry.baseUrl;
+        }
+        sanitizedCustomProviders[resolvedProviderTypeForSave] = withDefaults;
+      }
+
       // Always save settings for ALL providers to preserve API keys and model selections
       // when switching between providers
       const settingsToSave: LLMSettingsData = {
@@ -648,6 +842,7 @@ export function Settings({ onBack, onSettingsChanged, themeMode, accentColor, on
         openrouter: {
           apiKey: openrouterApiKey || undefined,
           model: openrouterModel || undefined,
+          baseUrl: openrouterBaseUrl || undefined,
         },
         // Always include openai settings
         openai: {
@@ -655,6 +850,25 @@ export function Settings({ onBack, onSettingsChanged, themeMode, accentColor, on
           model: openaiModel || undefined,
           authMethod: openaiAuthMethod,
         },
+        // Always include Groq settings
+        groq: {
+          apiKey: groqApiKey || undefined,
+          model: groqModel || undefined,
+          baseUrl: groqBaseUrl || undefined,
+        },
+        // Always include xAI settings
+        xai: {
+          apiKey: xaiApiKey || undefined,
+          model: xaiModel || undefined,
+          baseUrl: xaiBaseUrl || undefined,
+        },
+        // Always include Kimi settings
+        kimi: {
+          apiKey: kimiApiKey || undefined,
+          model: kimiModel || undefined,
+          baseUrl: kimiBaseUrl || undefined,
+        },
+        customProviders: Object.keys(sanitizedCustomProviders).length > 0 ? sanitizedCustomProviders : undefined,
       };
 
       await window.electronAPI.saveLLMSettings(settingsToSave);
@@ -671,6 +885,8 @@ export function Settings({ onBack, onSettingsChanged, themeMode, accentColor, on
     try {
       setTesting(true);
       setTestResult(null);
+
+      const sanitizedCustomProviders = sanitizeCustomProviders(customProviders) || {};
 
       const testConfig = {
         providerType: settings.providerType,
@@ -699,6 +915,7 @@ export function Settings({ onBack, onSettingsChanged, themeMode, accentColor, on
         openrouter: settings.providerType === 'openrouter' ? {
           apiKey: openrouterApiKey || undefined,
           model: openrouterModel || undefined,
+          baseUrl: openrouterBaseUrl || undefined,
         } : undefined,
         openai: settings.providerType === 'openai' ? {
           apiKey: openaiAuthMethod === 'api_key' ? (openaiApiKey || undefined) : undefined,
@@ -706,6 +923,22 @@ export function Settings({ onBack, onSettingsChanged, themeMode, accentColor, on
           authMethod: openaiAuthMethod,
           // OAuth tokens are handled by the backend from stored settings
         } : undefined,
+        groq: settings.providerType === 'groq' ? {
+          apiKey: groqApiKey || undefined,
+          model: groqModel || undefined,
+          baseUrl: groqBaseUrl || undefined,
+        } : undefined,
+        xai: settings.providerType === 'xai' ? {
+          apiKey: xaiApiKey || undefined,
+          model: xaiModel || undefined,
+          baseUrl: xaiBaseUrl || undefined,
+        } : undefined,
+        kimi: settings.providerType === 'kimi' ? {
+          apiKey: kimiApiKey || undefined,
+          model: kimiModel || undefined,
+          baseUrl: kimiBaseUrl || undefined,
+        } : undefined,
+        customProviders: Object.keys(sanitizedCustomProviders).length > 0 ? sanitizedCustomProviders : undefined,
       };
 
       const result = await window.electronAPI.testLLMProvider(testConfig);
@@ -716,6 +949,10 @@ export function Settings({ onBack, onSettingsChanged, themeMode, accentColor, on
       setTesting(false);
     }
   };
+
+  const resolvedProviderType = resolveCustomProviderId(settings.providerType as LLMProviderType);
+  const selectedCustomProvider = CUSTOM_PROVIDER_MAP.get(resolvedProviderType);
+  const selectedCustomConfig = selectedCustomProvider ? (customProviders[resolvedProviderType] || {}) : {};
 
   return (
     <div className="settings-page">
@@ -814,11 +1051,13 @@ export function Settings({ onBack, onSettingsChanged, themeMode, accentColor, on
             <WhatsAppSettings />
           ) : activeTab === 'teams' ? (
             <TeamsSettings />
+          ) : activeTab === 'x' ? (
+            <XSettings />
           ) : activeTab === 'morechannels' ? (
             <div className="more-channels-panel">
               <div className="more-channels-header">
                 <h2>More Channels</h2>
-                <p className="settings-description">Configure additional messaging platforms and integrations</p>
+                <p className="settings-description">Configure additional messaging platforms</p>
               </div>
               <div className="more-channels-tabs">
                 {secondaryChannelItems.map(item => (
@@ -843,7 +1082,33 @@ export function Settings({ onBack, onSettingsChanged, themeMode, accentColor, on
                 {activeSecondaryChannel === 'bluebubbles' && <BlueBubblesSettings />}
                 {activeSecondaryChannel === 'email' && <EmailSettings />}
                 {activeSecondaryChannel === 'googlechat' && <GoogleChatSettings />}
-                {activeSecondaryChannel === 'x' && <XSettings />}
+              </div>
+            </div>
+          ) : activeTab === 'integrations' ? (
+            <div className="integrations-panel">
+              <div className="integrations-header">
+                <h2>Integrations</h2>
+                <p className="settings-description">Connect productivity and storage tools for the agent</p>
+              </div>
+              <div className="integrations-tabs">
+                {integrationItems.map(item => (
+                  <button
+                    key={item.key}
+                    className={`integrations-tab ${activeIntegration === item.key ? 'active' : ''}`}
+                    onClick={() => setActiveIntegration(item.key)}
+                  >
+                    {item.icon}
+                    <span>{item.label}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="integrations-content">
+                {activeIntegration === 'notion' && <NotionSettings />}
+                {activeIntegration === 'box' && <BoxSettings />}
+                {activeIntegration === 'onedrive' && <OneDriveSettings />}
+                {activeIntegration === 'googledrive' && <GoogleDriveSettings />}
+                {activeIntegration === 'dropbox' && <DropboxSettings />}
+                {activeIntegration === 'sharepoint' && <SharePointSettings />}
               </div>
             </div>
           ) : activeTab === 'search' ? (
@@ -860,6 +1125,8 @@ export function Settings({ onBack, onSettingsChanged, themeMode, accentColor, on
             <SkillHubBrowser />
           ) : activeTab === 'scheduled' ? (
             <ScheduledTasksSettings />
+          ) : activeTab === 'connectors' ? (
+            <ConnectorsSettings />
           ) : activeTab === 'mcp' ? (
             <MCPSettings />
           ) : activeTab === 'tools' ? (
@@ -890,6 +1157,13 @@ export function Settings({ onBack, onSettingsChanged, themeMode, accentColor, on
                     const isGemini = provider.type === 'gemini';
                     const isOpenRouter = provider.type === 'openrouter';
                     const isOpenAI = provider.type === 'openai';
+                    const isGroq = provider.type === 'groq';
+                    const isXAI = provider.type === 'xai';
+                    const isKimi = provider.type === 'kimi';
+                    const providerType = provider.type as LLMProviderType;
+                    const resolvedCustomType = resolveCustomProviderId(providerType);
+                    const customEntry = CUSTOM_PROVIDER_MAP.get(resolvedCustomType);
+                    const isCustom = !!customEntry;
 
                     return (
                       <label
@@ -902,7 +1176,20 @@ export function Settings({ onBack, onSettingsChanged, themeMode, accentColor, on
                           value={provider.type}
                           checked={settings.providerType === provider.type}
                           onChange={() => {
-                            setSettings({ ...settings, providerType: provider.type as 'anthropic' | 'bedrock' | 'ollama' | 'gemini' | 'openrouter' | 'openai' });
+                            setSettings({ ...settings, providerType: providerType });
+                            if (customEntry) {
+                              setCustomProviders((prev) => {
+                                const existing = prev[resolvedCustomType] || {};
+                                const updated: CustomProviderConfig = { ...existing };
+                                if (!updated.model && customEntry.defaultModel) {
+                                  updated.model = customEntry.defaultModel;
+                                }
+                                if (!updated.baseUrl && customEntry.baseUrl) {
+                                  updated.baseUrl = customEntry.baseUrl;
+                                }
+                                return { ...prev, [resolvedCustomType]: updated };
+                              });
+                            }
                             // Load models when selecting provider
                             if (provider.type === 'ollama') {
                               loadOllamaModels();
@@ -912,6 +1199,12 @@ export function Settings({ onBack, onSettingsChanged, themeMode, accentColor, on
                               loadOpenRouterModels();
                             } else if (provider.type === 'openai') {
                               loadOpenAIModels();
+                            } else if (provider.type === 'groq') {
+                              loadGroqModels();
+                            } else if (provider.type === 'xai') {
+                              loadXAIModels();
+                            } else if (provider.type === 'kimi') {
+                              loadKimiModels();
                             }
                           }}
                         />
@@ -951,6 +1244,30 @@ export function Settings({ onBack, onSettingsChanged, themeMode, accentColor, on
                             )}
                             {isOpenAI && !provider.configured && (
                               <>Sign in with ChatGPT or enter API key</>
+                            )}
+                            {isGroq && provider.configured && (
+                              <>API key configured</>
+                            )}
+                            {isGroq && !provider.configured && (
+                              <>Enter your Groq API key below</>
+                            )}
+                            {isXAI && provider.configured && (
+                              <>API key configured</>
+                            )}
+                            {isXAI && !provider.configured && (
+                              <>Enter your xAI API key below</>
+                            )}
+                            {isKimi && provider.configured && (
+                              <>API key configured</>
+                            )}
+                            {isKimi && !provider.configured && (
+                              <>Enter your Kimi API key below</>
+                            )}
+                            {isCustom && provider.configured && (
+                              <>API key configured</>
+                            )}
+                            {isCustom && !provider.configured && (
+                              <>{customEntry?.description || `Configure ${provider.name} below`}</>
                             )}
                             {isBedrock && provider.configured && (
                               <>AWS credentials configured</>
@@ -1091,6 +1408,20 @@ export function Settings({ onBack, onSettingsChanged, themeMode, accentColor, on
                         {loadingOpenRouterModels ? 'Loading...' : 'Refresh Models'}
                       </button>
                     </div>
+                  </div>
+
+                  <div className="settings-section">
+                    <h3>Base URL</h3>
+                    <p className="settings-description">
+                      Optional override for the OpenRouter API endpoint.
+                    </p>
+                    <input
+                      type="text"
+                      className="settings-input"
+                      placeholder="https://openrouter.ai/api/v1"
+                      value={openrouterBaseUrl}
+                      onChange={(e) => setOpenrouterBaseUrl(e.target.value)}
+                    />
                   </div>
 
                   <div className="settings-section">
@@ -1276,6 +1607,278 @@ export function Settings({ onBack, onSettingsChanged, themeMode, accentColor, on
                         {loadingOpenAIModels ? 'Loading...' : 'Refresh Models'}
                       </button>
                     )}
+                  </div>
+                </>
+              )}
+
+              {settings.providerType === 'groq' && (
+                <>
+                  <div className="settings-section">
+                    <h3>Groq API Key</h3>
+                    <p className="settings-description">
+                      Enter your API key from{' '}
+                      <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer">
+                        Groq Console
+                      </a>
+                    </p>
+                    <div className="settings-input-group">
+                      <input
+                        type="password"
+                        className="settings-input"
+                        placeholder="gsk_..."
+                        value={groqApiKey}
+                        onChange={(e) => setGroqApiKey(e.target.value)}
+                      />
+                      <button
+                        className="button-small button-secondary"
+                        onClick={() => loadGroqModels(groqApiKey)}
+                        disabled={loadingGroqModels}
+                      >
+                        {loadingGroqModels ? 'Loading...' : 'Refresh Models'}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="settings-section">
+                    <h3>Base URL</h3>
+                    <p className="settings-description">
+                      Optional override for the Groq API endpoint.
+                    </p>
+                    <input
+                      type="text"
+                      className="settings-input"
+                      placeholder="https://api.groq.com/openai/v1"
+                      value={groqBaseUrl}
+                      onChange={(e) => setGroqBaseUrl(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="settings-section">
+                    <h3>Model</h3>
+                    <p className="settings-description">
+                      Select a Groq model. Enter your API key and click "Refresh Models" to load available models.
+                    </p>
+                    {groqModels.length > 0 ? (
+                      <SearchableSelect
+                        options={groqModels.map(model => ({
+                          value: model.id,
+                          label: model.name,
+                        }))}
+                        value={groqModel}
+                        onChange={setGroqModel}
+                        placeholder="Select a model..."
+                      />
+                    ) : (
+                      <input
+                        type="text"
+                        className="settings-input"
+                        placeholder="llama-3.1-8b-instant"
+                        value={groqModel}
+                        onChange={(e) => setGroqModel(e.target.value)}
+                      />
+                    )}
+                  </div>
+                </>
+              )}
+
+              {settings.providerType === 'xai' && (
+                <>
+                  <div className="settings-section">
+                    <h3>xAI API Key</h3>
+                    <p className="settings-description">
+                      Enter your API key from{' '}
+                      <a href="https://console.x.ai/" target="_blank" rel="noopener noreferrer">
+                        xAI Console
+                      </a>
+                    </p>
+                    <div className="settings-input-group">
+                      <input
+                        type="password"
+                        className="settings-input"
+                        placeholder="xai-..."
+                        value={xaiApiKey}
+                        onChange={(e) => setXaiApiKey(e.target.value)}
+                      />
+                      <button
+                        className="button-small button-secondary"
+                        onClick={() => loadXAIModels(xaiApiKey)}
+                        disabled={loadingXaiModels}
+                      >
+                        {loadingXaiModels ? 'Loading...' : 'Refresh Models'}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="settings-section">
+                    <h3>Base URL</h3>
+                    <p className="settings-description">
+                      Optional override for the xAI API endpoint.
+                    </p>
+                    <input
+                      type="text"
+                      className="settings-input"
+                      placeholder="https://api.x.ai/v1"
+                      value={xaiBaseUrl}
+                      onChange={(e) => setXaiBaseUrl(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="settings-section">
+                    <h3>Model</h3>
+                    <p className="settings-description">
+                      Select a Grok model. Enter your API key and click "Refresh Models" to load available models.
+                    </p>
+                    {xaiModels.length > 0 ? (
+                      <SearchableSelect
+                        options={xaiModels.map(model => ({
+                          value: model.id,
+                          label: model.name,
+                        }))}
+                        value={xaiModel}
+                        onChange={setXaiModel}
+                        placeholder="Select a model..."
+                      />
+                    ) : (
+                      <input
+                        type="text"
+                        className="settings-input"
+                        placeholder="grok-4-fast-non-reasoning"
+                        value={xaiModel}
+                        onChange={(e) => setXaiModel(e.target.value)}
+                      />
+                    )}
+                  </div>
+                </>
+              )}
+
+              {settings.providerType === 'kimi' && (
+                <>
+                  <div className="settings-section">
+                    <h3>Kimi API Key</h3>
+                    <p className="settings-description">
+                      Enter your API key from{' '}
+                      <a href="https://platform.moonshot.ai/" target="_blank" rel="noopener noreferrer">
+                        Moonshot Platform
+                      </a>
+                    </p>
+                    <div className="settings-input-group">
+                      <input
+                        type="password"
+                        className="settings-input"
+                        placeholder="sk-..."
+                        value={kimiApiKey}
+                        onChange={(e) => setKimiApiKey(e.target.value)}
+                      />
+                      <button
+                        className="button-small button-secondary"
+                        onClick={() => loadKimiModels(kimiApiKey)}
+                        disabled={loadingKimiModels}
+                      >
+                        {loadingKimiModels ? 'Loading...' : 'Refresh Models'}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="settings-section">
+                    <h3>Base URL</h3>
+                    <p className="settings-description">
+                      Optional override for the Kimi API endpoint.
+                    </p>
+                    <input
+                      type="text"
+                      className="settings-input"
+                      placeholder="https://api.moonshot.ai/v1"
+                      value={kimiBaseUrl}
+                      onChange={(e) => setKimiBaseUrl(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="settings-section">
+                    <h3>Model</h3>
+                    <p className="settings-description">
+                      Select a Kimi model. Enter your API key and click "Refresh Models" to load available models.
+                    </p>
+                    {kimiModels.length > 0 ? (
+                      <SearchableSelect
+                        options={kimiModels.map(model => ({
+                          value: model.id,
+                          label: model.name,
+                        }))}
+                        value={kimiModel}
+                        onChange={setKimiModel}
+                        placeholder="Select a model..."
+                      />
+                    ) : (
+                      <input
+                        type="text"
+                        className="settings-input"
+                        placeholder="kimi-k2.5"
+                        value={kimiModel}
+                        onChange={(e) => setKimiModel(e.target.value)}
+                      />
+                    )}
+                  </div>
+                </>
+              )}
+
+              {selectedCustomProvider && (
+                <>
+                  <div className="settings-section">
+                    <h3>{selectedCustomProvider.apiKeyLabel}</h3>
+                    {selectedCustomProvider.apiKeyUrl ? (
+                      <p className="settings-description">
+                        Enter your API key from{' '}
+                        <a href={selectedCustomProvider.apiKeyUrl} target="_blank" rel="noopener noreferrer">
+                          {selectedCustomProvider.name}
+                        </a>
+                      </p>
+                    ) : selectedCustomProvider.description ? (
+                      <p className="settings-description">
+                        {selectedCustomProvider.description}
+                      </p>
+                    ) : null}
+                    <input
+                      type="password"
+                      className="settings-input"
+                      placeholder={selectedCustomProvider.apiKeyPlaceholder || 'sk-...'}
+                      value={selectedCustomConfig.apiKey || ''}
+                      onChange={(e) => updateCustomProvider(resolvedProviderType, { apiKey: e.target.value })}
+                    />
+                    {selectedCustomProvider.apiKeyOptional && (
+                      <p className="settings-hint">API key is optional for this provider.</p>
+                    )}
+                  </div>
+
+                  {(selectedCustomProvider.requiresBaseUrl || selectedCustomProvider.baseUrl) && (
+                    <div className="settings-section">
+                      <h3>Base URL</h3>
+                      <p className="settings-description">
+                        {selectedCustomProvider.requiresBaseUrl
+                          ? 'Base URL is required for this provider.'
+                          : 'Override the default base URL if needed.'}
+                      </p>
+                      <input
+                        type="text"
+                        className="settings-input"
+                        placeholder={selectedCustomProvider.baseUrl || 'https://...'}
+                        value={selectedCustomConfig.baseUrl || ''}
+                        onChange={(e) => updateCustomProvider(resolvedProviderType, { baseUrl: e.target.value })}
+                      />
+                    </div>
+                  )}
+
+                  <div className="settings-section">
+                    <h3>Model</h3>
+                    <p className="settings-description">
+                      Enter the model ID to use for {selectedCustomProvider.name}.
+                    </p>
+                    <input
+                      type="text"
+                      className="settings-input"
+                      placeholder={selectedCustomProvider.defaultModel || 'model-id'}
+                      value={selectedCustomConfig.model || ''}
+                      onChange={(e) => updateCustomProvider(resolvedProviderType, { model: e.target.value })}
+                    />
                   </div>
                 </>
               )}

@@ -6,6 +6,7 @@ interface CanvasPreviewProps {
   session: CanvasSession;
   onClose?: () => void;
   forceSnapshot?: boolean;
+  onOpenBrowser?: (url?: string) => void;
 }
 
 interface SnapshotHistoryEntry {
@@ -132,7 +133,7 @@ const CanvasImage = memo(function CanvasImage({
   );
 });
 
-export function CanvasPreview({ session, onClose, forceSnapshot = false }: CanvasPreviewProps) {
+export function CanvasPreview({ session, onClose, forceSnapshot = false, onOpenBrowser }: CanvasPreviewProps) {
   const isBrowserCanvas = session.mode === 'browser';
   const agentContext = useAgentContext();
   const [imageData, setImageData] = useState<string | null>(null);
@@ -158,8 +159,11 @@ export function CanvasPreview({ session, onClose, forceSnapshot = false }: Canva
   const [showConsole, setShowConsole] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [isInteractiveMode, setIsInteractiveMode] = useState(!isBrowserCanvas && !forceSnapshot);
+  const [showBrowserUrlInput, setShowBrowserUrlInput] = useState(false);
+  const [browserUrl, setBrowserUrl] = useState('');
 
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const browserInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const retryCountRef = useRef(0);
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -593,6 +597,27 @@ export function CanvasPreview({ session, onClose, forceSnapshot = false }: Canva
     }
   }, [session.id]);
 
+  // Open a remote web page inside the canvas window
+  const handleOpenBrowserCanvas = useCallback(() => {
+    setShowExportMenu(false);
+    if (!onOpenBrowser) {
+      setCopyFeedback('Browser view unavailable');
+      setTimeout(() => setCopyFeedback(null), 2000);
+      return;
+    }
+    onOpenBrowser(session.url || '');
+  }, [onOpenBrowser, session.url]);
+
+  // Submit URL from browser input
+  const handleSubmitBrowserUrl = useCallback(() => {
+    if (!browserUrl.trim()) return;
+    setShowBrowserUrlInput(false);
+    if (onOpenBrowser) {
+      onOpenBrowser(browserUrl.trim());
+    }
+    setBrowserUrl('');
+  }, [browserUrl, onOpenBrowser]);
+
   // Open session folder in Finder
   const handleOpenFolder = useCallback(async () => {
     setShowExportMenu(false);
@@ -1021,6 +1046,18 @@ export function CanvasPreview({ session, onClose, forceSnapshot = false }: Canva
               <line x1="10" y1="14" x2="21" y2="3" />
             </svg>
           </button>
+          {/* Open web page in canvas */}
+          <button
+            className="canvas-action-btn"
+            onClick={handleOpenBrowserCanvas}
+            title="Open in browser view"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="2" y1="12" x2="22" y2="12" />
+              <path d="M12 2a15.3 15.3 0 0 1 0 20a15.3 15.3 0 0 1 0-20" />
+            </svg>
+          </button>
           {/* Minimize */}
           <button
             className="canvas-action-btn"
@@ -1048,6 +1085,36 @@ export function CanvasPreview({ session, onClose, forceSnapshot = false }: Canva
           </button>
         </div>
       </div>
+      {showBrowserUrlInput && (
+        <div className="canvas-browser-input-row">
+          <input
+            ref={browserInputRef}
+            className="canvas-browser-input"
+            type="text"
+            value={browserUrl}
+            onChange={(e) => setBrowserUrl(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleSubmitBrowserUrl();
+              } else if (e.key === 'Escape') {
+                e.preventDefault();
+                setShowBrowserUrlInput(false);
+              }
+            }}
+            placeholder="https://example.com"
+          />
+          <button className="canvas-browser-btn" onClick={handleSubmitBrowserUrl}>
+            Open
+          </button>
+          <button
+            className="canvas-browser-btn ghost"
+            onClick={() => setShowBrowserUrlInput(false)}
+          >
+            Cancel
+          </button>
+        </div>
+      )}
       {!isMinimized && (
         <>
           <div className="canvas-preview-content">

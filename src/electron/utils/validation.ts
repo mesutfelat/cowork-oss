@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod';
+import { LLM_PROVIDER_TYPES } from '../../shared/types';
 
 // Common validation patterns
 const MAX_STRING_LENGTH = 10000;
@@ -63,6 +64,14 @@ export const TaskMessageSchema = z.object({
   message: z.string().min(1).max(MAX_PROMPT_LENGTH),
 });
 
+export const FileImportSchema = z.object({
+  workspaceId: z.string().refine(
+    (val) => val === TEMP_WORKSPACE_ID || z.string().uuid().safeParse(val).success,
+    { message: 'Must be a valid UUID or temp workspace ID' }
+  ),
+  files: z.array(z.string().min(1).max(MAX_PATH_LENGTH)).min(1).max(20),
+});
+
 // ============ Approval Schemas ============
 
 export const ApprovalResponseSchema = z.object({
@@ -72,7 +81,7 @@ export const ApprovalResponseSchema = z.object({
 
 // ============ LLM Settings Schemas ============
 
-export const LLMProviderTypeSchema = z.enum(['anthropic', 'bedrock', 'ollama', 'gemini', 'openrouter', 'openai']);
+export const LLMProviderTypeSchema = z.enum(LLM_PROVIDER_TYPES);
 
 export const AnthropicSettingsSchema = z.object({
   apiKey: z.string().max(500).optional(),
@@ -102,6 +111,7 @@ export const GeminiSettingsSchema = z.object({
 export const OpenRouterSettingsSchema = z.object({
   apiKey: z.string().max(500).optional(),
   model: z.string().max(200).optional(),
+  baseUrl: z.string().max(500).optional(),
 }).optional();
 
 export const OpenAISettingsSchema = z.object({
@@ -114,6 +124,32 @@ export const OpenAISettingsSchema = z.object({
   authMethod: z.enum(['api_key', 'oauth']).optional(),
 }).optional();
 
+export const GroqSettingsSchema = z.object({
+  apiKey: z.string().max(500).optional(),
+  model: z.string().max(200).optional(),
+  baseUrl: z.string().max(500).optional(),
+}).optional();
+
+export const XAISettingsSchema = z.object({
+  apiKey: z.string().max(500).optional(),
+  model: z.string().max(200).optional(),
+  baseUrl: z.string().max(500).optional(),
+}).optional();
+
+export const KimiSettingsSchema = z.object({
+  apiKey: z.string().max(500).optional(),
+  model: z.string().max(200).optional(),
+  baseUrl: z.string().max(500).optional(),
+}).optional();
+
+export const CustomProviderConfigSchema = z.object({
+  apiKey: z.string().max(500).optional(),
+  model: z.string().max(200).optional(),
+  baseUrl: z.string().max(500).optional(),
+});
+
+export const CustomProvidersSchema = z.record(z.string(), CustomProviderConfigSchema).optional();
+
 export const LLMSettingsSchema = z.object({
   providerType: LLMProviderTypeSchema,
   modelKey: z.string().max(200),
@@ -123,6 +159,10 @@ export const LLMSettingsSchema = z.object({
   gemini: GeminiSettingsSchema,
   openrouter: OpenRouterSettingsSchema,
   openai: OpenAISettingsSchema,
+  groq: GroqSettingsSchema,
+  xai: XAISettingsSchema,
+  kimi: KimiSettingsSchema,
+  customProviders: CustomProvidersSchema,
 });
 
 // ============ Search Settings Schemas ============
@@ -161,6 +201,58 @@ export const XSettingsSchema = z.object({
   timeoutMs: z.number().int().min(1000).max(120000).optional(),
   cookieTimeoutMs: z.number().int().min(1000).max(120000).optional(),
   quoteDepth: z.number().int().min(0).max(5).optional(),
+});
+
+// ============ Notion Settings Schema ============
+
+export const NotionSettingsSchema = z.object({
+  enabled: z.boolean().default(false),
+  apiKey: z.string().max(2000).optional(),
+  notionVersion: z.string().max(50).optional(),
+  timeoutMs: z.number().int().min(1000).max(120000).optional(),
+});
+
+// ============ Box Settings Schema ============
+
+export const BoxSettingsSchema = z.object({
+  enabled: z.boolean().default(false),
+  accessToken: z.string().max(4000).optional(),
+  timeoutMs: z.number().int().min(1000).max(120000).optional(),
+});
+
+// ============ OneDrive Settings Schema ============
+
+export const OneDriveSettingsSchema = z.object({
+  enabled: z.boolean().default(false),
+  accessToken: z.string().max(4000).optional(),
+  driveId: z.string().max(200).optional(),
+  timeoutMs: z.number().int().min(1000).max(120000).optional(),
+});
+
+// ============ Google Drive Settings Schema ============
+
+export const GoogleDriveSettingsSchema = z.object({
+  enabled: z.boolean().default(false),
+  accessToken: z.string().max(4000).optional(),
+  timeoutMs: z.number().int().min(1000).max(120000).optional(),
+});
+
+// ============ Dropbox Settings Schema ============
+
+export const DropboxSettingsSchema = z.object({
+  enabled: z.boolean().default(false),
+  accessToken: z.string().max(4000).optional(),
+  timeoutMs: z.number().int().min(1000).max(120000).optional(),
+});
+
+// ============ SharePoint Settings Schema ============
+
+export const SharePointSettingsSchema = z.object({
+  enabled: z.boolean().default(false),
+  accessToken: z.string().max(4000).optional(),
+  siteId: z.string().max(500).optional(),
+  driveId: z.string().max(500).optional(),
+  timeoutMs: z.number().int().min(1000).max(120000).optional(),
 });
 
 // ============ Guardrail Settings Schema ============
@@ -449,6 +541,15 @@ export const MCPRegistrySearchSchema = z.object({
   tags: z.array(z.string().max(50)).max(20).optional(),
   limit: z.number().int().min(1).max(100).default(50),
   offset: z.number().int().min(0).default(0),
+});
+
+export const MCPConnectorOAuthSchema = z.object({
+  provider: z.enum(['salesforce', 'jira', 'hubspot', 'zendesk']),
+  clientId: z.string().min(1).max(500),
+  clientSecret: z.string().max(500).optional(),
+  scopes: z.array(z.string().max(200)).max(50).optional(),
+  loginUrl: z.string().url().max(500).optional(),
+  subdomain: z.string().max(200).optional(),
 });
 
 // ============ Hooks (Webhooks) Schemas ============

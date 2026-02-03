@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
+import type { LLMProviderType } from '../shared/types';
 
 // IPC Channel names - inlined to avoid require() issues in sandboxed preload
 const IPC_CHANNELS = {
@@ -35,6 +36,9 @@ const IPC_CHANNELS = {
   LLM_GET_GEMINI_MODELS: 'llm:getGeminiModels',
   LLM_GET_OPENROUTER_MODELS: 'llm:getOpenRouterModels',
   LLM_GET_OPENAI_MODELS: 'llm:getOpenAIModels',
+  LLM_GET_GROQ_MODELS: 'llm:getGroqModels',
+  LLM_GET_XAI_MODELS: 'llm:getXAIModels',
+  LLM_GET_KIMI_MODELS: 'llm:getKimiModels',
   LLM_OPENAI_OAUTH_START: 'llm:openaiOAuthStart',
   LLM_OPENAI_OAUTH_LOGOUT: 'llm:openaiOAuthLogout',
   LLM_GET_BEDROCK_MODELS: 'llm:getBedrockModels',
@@ -60,6 +64,36 @@ const IPC_CHANNELS = {
   X_SAVE_SETTINGS: 'x:saveSettings',
   X_TEST_CONNECTION: 'x:testConnection',
   X_GET_STATUS: 'x:getStatus',
+  // Notion Settings
+  NOTION_GET_SETTINGS: 'notion:getSettings',
+  NOTION_SAVE_SETTINGS: 'notion:saveSettings',
+  NOTION_TEST_CONNECTION: 'notion:testConnection',
+  NOTION_GET_STATUS: 'notion:getStatus',
+  // Box Settings
+  BOX_GET_SETTINGS: 'box:getSettings',
+  BOX_SAVE_SETTINGS: 'box:saveSettings',
+  BOX_TEST_CONNECTION: 'box:testConnection',
+  BOX_GET_STATUS: 'box:getStatus',
+  // OneDrive Settings
+  ONEDRIVE_GET_SETTINGS: 'onedrive:getSettings',
+  ONEDRIVE_SAVE_SETTINGS: 'onedrive:saveSettings',
+  ONEDRIVE_TEST_CONNECTION: 'onedrive:testConnection',
+  ONEDRIVE_GET_STATUS: 'onedrive:getStatus',
+  // Google Drive Settings
+  GOOGLE_DRIVE_GET_SETTINGS: 'googleDrive:getSettings',
+  GOOGLE_DRIVE_SAVE_SETTINGS: 'googleDrive:saveSettings',
+  GOOGLE_DRIVE_TEST_CONNECTION: 'googleDrive:testConnection',
+  GOOGLE_DRIVE_GET_STATUS: 'googleDrive:getStatus',
+  // Dropbox Settings
+  DROPBOX_GET_SETTINGS: 'dropbox:getSettings',
+  DROPBOX_SAVE_SETTINGS: 'dropbox:saveSettings',
+  DROPBOX_TEST_CONNECTION: 'dropbox:testConnection',
+  DROPBOX_GET_STATUS: 'dropbox:getStatus',
+  // SharePoint Settings
+  SHAREPOINT_GET_SETTINGS: 'sharepoint:getSettings',
+  SHAREPOINT_SAVE_SETTINGS: 'sharepoint:saveSettings',
+  SHAREPOINT_TEST_CONNECTION: 'sharepoint:testConnection',
+  SHAREPOINT_GET_STATUS: 'sharepoint:getStatus',
   // App Updates
   APP_CHECK_UPDATES: 'app:checkUpdates',
   APP_DOWNLOAD_UPDATE: 'app:downloadUpdate',
@@ -127,6 +161,7 @@ const IPC_CHANNELS = {
   MCP_GET_SERVER_TOOLS: 'mcp:getServerTools',
   MCP_TEST_SERVER: 'mcp:testServer',
   MCP_SERVER_STATUS_CHANGE: 'mcp:serverStatusChange',
+  MCP_CONNECTOR_OAUTH_START: 'mcp:connectorOAuthStart',
   // MCP Registry
   MCP_REGISTRY_FETCH: 'mcp:registryFetch',
   MCP_REGISTRY_SEARCH: 'mcp:registrySearch',
@@ -228,6 +263,7 @@ const IPC_CHANNELS = {
   CANVAS_EXPORT_HTML: 'canvas:exportHTML',
   CANVAS_EXPORT_TO_FOLDER: 'canvas:exportToFolder',
   CANVAS_OPEN_IN_BROWSER: 'canvas:openInBrowser',
+  CANVAS_OPEN_URL: 'canvas:openUrl',
   CANVAS_GET_SESSION_DIR: 'canvas:getSessionDir',
   // Mobile Companion Nodes
   NODE_LIST: 'node:list',
@@ -606,6 +642,8 @@ interface BuiltinToolsSettings {
     image: ToolCategoryConfig;
   };
   toolOverrides: Record<string, { enabled: boolean; priority?: 'high' | 'normal' | 'low' }>;
+  toolTimeouts: Record<string, number>;
+  toolAutoApprove: Record<string, boolean>;
   version: string;
 }
 
@@ -1388,11 +1426,13 @@ interface UpdateContextPolicyOptions {
 contextBridge.exposeInMainWorld('electronAPI', {
   // Dialog APIs
   selectFolder: () => ipcRenderer.invoke('dialog:selectFolder'),
+  selectFiles: () => ipcRenderer.invoke('dialog:selectFiles'),
 
   // File APIs
   openFile: (filePath: string, workspacePath?: string) => ipcRenderer.invoke('file:open', filePath, workspacePath),
   showInFinder: (filePath: string, workspacePath?: string) => ipcRenderer.invoke('file:showInFinder', filePath, workspacePath),
   readFileForViewer: (filePath: string, workspacePath?: string) => ipcRenderer.invoke('file:readForViewer', { filePath, workspacePath }),
+  importFilesToWorkspace: (data: { workspaceId: string; files: string[] }) => ipcRenderer.invoke('file:importToWorkspace', data),
 
   // Shell APIs
   openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url),
@@ -1451,8 +1491,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setLLMModel: (modelKey: string) => ipcRenderer.invoke(IPC_CHANNELS.LLM_SET_MODEL, modelKey),
   getOllamaModels: (baseUrl?: string) => ipcRenderer.invoke(IPC_CHANNELS.LLM_GET_OLLAMA_MODELS, baseUrl),
   getGeminiModels: (apiKey?: string) => ipcRenderer.invoke(IPC_CHANNELS.LLM_GET_GEMINI_MODELS, apiKey),
-  getOpenRouterModels: (apiKey?: string) => ipcRenderer.invoke(IPC_CHANNELS.LLM_GET_OPENROUTER_MODELS, apiKey),
+  getOpenRouterModels: (apiKey?: string, baseUrl?: string) => ipcRenderer.invoke(IPC_CHANNELS.LLM_GET_OPENROUTER_MODELS, apiKey, baseUrl),
   getOpenAIModels: (apiKey?: string) => ipcRenderer.invoke(IPC_CHANNELS.LLM_GET_OPENAI_MODELS, apiKey),
+  getGroqModels: (apiKey?: string, baseUrl?: string) => ipcRenderer.invoke(IPC_CHANNELS.LLM_GET_GROQ_MODELS, apiKey, baseUrl),
+  getXAIModels: (apiKey?: string, baseUrl?: string) => ipcRenderer.invoke(IPC_CHANNELS.LLM_GET_XAI_MODELS, apiKey, baseUrl),
+  getKimiModels: (apiKey?: string, baseUrl?: string) => ipcRenderer.invoke(IPC_CHANNELS.LLM_GET_KIMI_MODELS, apiKey, baseUrl),
   openaiOAuthStart: () => ipcRenderer.invoke(IPC_CHANNELS.LLM_OPENAI_OAUTH_START),
   openaiOAuthLogout: () => ipcRenderer.invoke(IPC_CHANNELS.LLM_OPENAI_OAUTH_LOGOUT),
   getBedrockModels: (config?: { region?: string; accessKeyId?: string; secretAccessKey?: string; profile?: string }) =>
@@ -1507,6 +1550,42 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveXSettings: (settings: any) => ipcRenderer.invoke(IPC_CHANNELS.X_SAVE_SETTINGS, settings),
   testXConnection: () => ipcRenderer.invoke(IPC_CHANNELS.X_TEST_CONNECTION),
   getXStatus: () => ipcRenderer.invoke(IPC_CHANNELS.X_GET_STATUS),
+
+  // Notion Settings APIs
+  getNotionSettings: () => ipcRenderer.invoke(IPC_CHANNELS.NOTION_GET_SETTINGS),
+  saveNotionSettings: (settings: any) => ipcRenderer.invoke(IPC_CHANNELS.NOTION_SAVE_SETTINGS, settings),
+  testNotionConnection: () => ipcRenderer.invoke(IPC_CHANNELS.NOTION_TEST_CONNECTION),
+  getNotionStatus: () => ipcRenderer.invoke(IPC_CHANNELS.NOTION_GET_STATUS),
+
+  // Box Settings APIs
+  getBoxSettings: () => ipcRenderer.invoke(IPC_CHANNELS.BOX_GET_SETTINGS),
+  saveBoxSettings: (settings: any) => ipcRenderer.invoke(IPC_CHANNELS.BOX_SAVE_SETTINGS, settings),
+  testBoxConnection: () => ipcRenderer.invoke(IPC_CHANNELS.BOX_TEST_CONNECTION),
+  getBoxStatus: () => ipcRenderer.invoke(IPC_CHANNELS.BOX_GET_STATUS),
+
+  // OneDrive Settings APIs
+  getOneDriveSettings: () => ipcRenderer.invoke(IPC_CHANNELS.ONEDRIVE_GET_SETTINGS),
+  saveOneDriveSettings: (settings: any) => ipcRenderer.invoke(IPC_CHANNELS.ONEDRIVE_SAVE_SETTINGS, settings),
+  testOneDriveConnection: () => ipcRenderer.invoke(IPC_CHANNELS.ONEDRIVE_TEST_CONNECTION),
+  getOneDriveStatus: () => ipcRenderer.invoke(IPC_CHANNELS.ONEDRIVE_GET_STATUS),
+
+  // Google Drive Settings APIs
+  getGoogleDriveSettings: () => ipcRenderer.invoke(IPC_CHANNELS.GOOGLE_DRIVE_GET_SETTINGS),
+  saveGoogleDriveSettings: (settings: any) => ipcRenderer.invoke(IPC_CHANNELS.GOOGLE_DRIVE_SAVE_SETTINGS, settings),
+  testGoogleDriveConnection: () => ipcRenderer.invoke(IPC_CHANNELS.GOOGLE_DRIVE_TEST_CONNECTION),
+  getGoogleDriveStatus: () => ipcRenderer.invoke(IPC_CHANNELS.GOOGLE_DRIVE_GET_STATUS),
+
+  // Dropbox Settings APIs
+  getDropboxSettings: () => ipcRenderer.invoke(IPC_CHANNELS.DROPBOX_GET_SETTINGS),
+  saveDropboxSettings: (settings: any) => ipcRenderer.invoke(IPC_CHANNELS.DROPBOX_SAVE_SETTINGS, settings),
+  testDropboxConnection: () => ipcRenderer.invoke(IPC_CHANNELS.DROPBOX_TEST_CONNECTION),
+  getDropboxStatus: () => ipcRenderer.invoke(IPC_CHANNELS.DROPBOX_GET_STATUS),
+
+  // SharePoint Settings APIs
+  getSharePointSettings: () => ipcRenderer.invoke(IPC_CHANNELS.SHAREPOINT_GET_SETTINGS),
+  saveSharePointSettings: (settings: any) => ipcRenderer.invoke(IPC_CHANNELS.SHAREPOINT_SAVE_SETTINGS, settings),
+  testSharePointConnection: () => ipcRenderer.invoke(IPC_CHANNELS.SHAREPOINT_TEST_CONNECTION),
+  getSharePointStatus: () => ipcRenderer.invoke(IPC_CHANNELS.SHAREPOINT_GET_STATUS),
 
   // App Update APIs
   getAppVersion: () => ipcRenderer.invoke(IPC_CHANNELS.APP_GET_VERSION),
@@ -1608,6 +1687,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getMCPAllTools: () => ipcRenderer.invoke(IPC_CHANNELS.MCP_GET_ALL_TOOLS),
   getMCPServerTools: (serverId: string) => ipcRenderer.invoke(IPC_CHANNELS.MCP_GET_SERVER_TOOLS, serverId),
   testMCPServer: (serverId: string) => ipcRenderer.invoke(IPC_CHANNELS.MCP_TEST_SERVER, serverId),
+
+  // MCP Connector OAuth
+  startConnectorOAuth: (payload: { provider: 'salesforce' | 'jira' | 'hubspot' | 'zendesk'; clientId: string; clientSecret?: string; scopes?: string[]; loginUrl?: string; subdomain?: string }) =>
+    ipcRenderer.invoke(IPC_CHANNELS.MCP_CONNECTOR_OAUTH_START, payload),
 
   // MCP Status change event listener
   onMCPStatusChange: (callback: (status: any[]) => void) => {
@@ -1791,6 +1874,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke(IPC_CHANNELS.CANVAS_EXPORT_TO_FOLDER, data),
   canvasOpenInBrowser: (sessionId: string) =>
     ipcRenderer.invoke(IPC_CHANNELS.CANVAS_OPEN_IN_BROWSER, sessionId),
+  canvasOpenUrl: (data: { sessionId: string; url: string; show?: boolean }) =>
+    ipcRenderer.invoke(IPC_CHANNELS.CANVAS_OPEN_URL, data),
   canvasGetSessionDir: (sessionId: string) =>
     ipcRenderer.invoke(IPC_CHANNELS.CANVAS_GET_SESSION_DIR, sessionId),
   onCanvasEvent: (callback: (event: CanvasEvent) => void) => {
@@ -2149,9 +2234,11 @@ export type {
 
 export interface ElectronAPI {
   selectFolder: () => Promise<string | null>;
+  selectFiles: () => Promise<Array<{ path: string; name: string; size: number; mimeType?: string }>>;
   openFile: (filePath: string, workspacePath?: string) => Promise<string>;
   showInFinder: (filePath: string, workspacePath?: string) => Promise<void>;
   readFileForViewer: (filePath: string, workspacePath?: string) => Promise<FileViewerResult>;
+  importFilesToWorkspace: (data: { workspaceId: string; files: string[] }) => Promise<Array<{ relativePath: string; fileName: string; size: number; mimeType?: string }>>;
   openExternal: (url: string) => Promise<void>;
   createTask: (data: any) => Promise<any>;
   getTask: (id: string) => Promise<any>;
@@ -2182,16 +2269,24 @@ export interface ElectronAPI {
   testLLMProvider: (config: any) => Promise<{ success: boolean; error?: string }>;
   getLLMModels: () => Promise<Array<{ key: string; displayName: string; description: string }>>;
   getLLMConfigStatus: () => Promise<{
-    currentProvider: 'anthropic' | 'bedrock' | 'ollama';
+    currentProvider: LLMProviderType;
     currentModel: string;
-    providers: Array<{ type: 'anthropic' | 'bedrock' | 'ollama'; name: string; configured: boolean; source?: string }>;
+    providers: Array<{
+      type: LLMProviderType;
+      name: string;
+      configured: boolean;
+      source?: string;
+    }>;
     models: Array<{ key: string; displayName: string; description: string }>;
   }>;
   setLLMModel: (modelKey: string) => Promise<{ success: boolean }>;
   getOllamaModels: (baseUrl?: string) => Promise<Array<{ name: string; size: number; modified: string }>>;
   getGeminiModels: (apiKey?: string) => Promise<Array<{ name: string; displayName: string; description: string }>>;
-  getOpenRouterModels: (apiKey?: string) => Promise<Array<{ id: string; name: string; context_length: number }>>;
+  getOpenRouterModels: (apiKey?: string, baseUrl?: string) => Promise<Array<{ id: string; name: string; context_length: number }>>;
   getOpenAIModels: (apiKey?: string) => Promise<Array<{ id: string; name: string; description: string }>>;
+  getGroqModels: (apiKey?: string, baseUrl?: string) => Promise<Array<{ id: string; name: string }>>;
+  getXAIModels: (apiKey?: string, baseUrl?: string) => Promise<Array<{ id: string; name: string }>>;
+  getKimiModels: (apiKey?: string, baseUrl?: string) => Promise<Array<{ id: string; name: string }>>;
   openaiOAuthStart: () => Promise<{ success: boolean; error?: string }>;
   openaiOAuthLogout: () => Promise<{ success: boolean }>;
   getBedrockModels: (config?: { region?: string; accessKeyId?: string; secretAccessKey?: string; profile?: string }) => Promise<Array<{ id: string; name: string; provider: string; description: string }>>;
@@ -2250,6 +2345,64 @@ export interface ElectronAPI {
   saveXSettings: (settings: any) => Promise<{ success: boolean }>;
   testXConnection: () => Promise<{ success: boolean; error?: string; username?: string; userId?: string }>;
   getXStatus: () => Promise<{ installed: boolean; connected: boolean; username?: string; error?: string }>;
+  // Notion Settings
+  getNotionSettings: () => Promise<{
+    enabled: boolean;
+    apiKey?: string;
+    notionVersion?: string;
+    timeoutMs?: number;
+  }>;
+  saveNotionSettings: (settings: any) => Promise<{ success: boolean }>;
+  testNotionConnection: () => Promise<{ success: boolean; error?: string; name?: string; userId?: string }>;
+  getNotionStatus: () => Promise<{ configured: boolean; connected: boolean; name?: string; error?: string }>;
+  // Box Settings
+  getBoxSettings: () => Promise<{
+    enabled: boolean;
+    accessToken?: string;
+    timeoutMs?: number;
+  }>;
+  saveBoxSettings: (settings: any) => Promise<{ success: boolean }>;
+  testBoxConnection: () => Promise<{ success: boolean; error?: string; name?: string; userId?: string }>;
+  getBoxStatus: () => Promise<{ configured: boolean; connected: boolean; name?: string; error?: string }>;
+  // OneDrive Settings
+  getOneDriveSettings: () => Promise<{
+    enabled: boolean;
+    accessToken?: string;
+    driveId?: string;
+    timeoutMs?: number;
+  }>;
+  saveOneDriveSettings: (settings: any) => Promise<{ success: boolean }>;
+  testOneDriveConnection: () => Promise<{ success: boolean; error?: string; name?: string; userId?: string; driveId?: string }>;
+  getOneDriveStatus: () => Promise<{ configured: boolean; connected: boolean; name?: string; error?: string }>;
+  // Google Drive Settings
+  getGoogleDriveSettings: () => Promise<{
+    enabled: boolean;
+    accessToken?: string;
+    timeoutMs?: number;
+  }>;
+  saveGoogleDriveSettings: (settings: any) => Promise<{ success: boolean }>;
+  testGoogleDriveConnection: () => Promise<{ success: boolean; error?: string; name?: string; userId?: string; email?: string }>;
+  getGoogleDriveStatus: () => Promise<{ configured: boolean; connected: boolean; name?: string; error?: string }>;
+  // Dropbox Settings
+  getDropboxSettings: () => Promise<{
+    enabled: boolean;
+    accessToken?: string;
+    timeoutMs?: number;
+  }>;
+  saveDropboxSettings: (settings: any) => Promise<{ success: boolean }>;
+  testDropboxConnection: () => Promise<{ success: boolean; error?: string; name?: string; userId?: string; email?: string }>;
+  getDropboxStatus: () => Promise<{ configured: boolean; connected: boolean; name?: string; error?: string }>;
+  // SharePoint Settings
+  getSharePointSettings: () => Promise<{
+    enabled: boolean;
+    accessToken?: string;
+    siteId?: string;
+    driveId?: string;
+    timeoutMs?: number;
+  }>;
+  saveSharePointSettings: (settings: any) => Promise<{ success: boolean }>;
+  testSharePointConnection: () => Promise<{ success: boolean; error?: string; name?: string; userId?: string }>;
+  getSharePointStatus: () => Promise<{ configured: boolean; connected: boolean; name?: string; error?: string }>;
   // App Updates
   getAppVersion: () => Promise<{
     version: string;
@@ -2466,6 +2619,15 @@ export interface ElectronAPI {
   getMCPAllTools: () => Promise<MCPTool[]>;
   getMCPServerTools: (serverId: string) => Promise<MCPTool[]>;
   testMCPServer: (serverId: string) => Promise<{ success: boolean; error?: string; tools?: number }>;
+  startConnectorOAuth: (payload: { provider: 'salesforce' | 'jira' | 'hubspot' | 'zendesk'; clientId: string; clientSecret?: string; scopes?: string[]; loginUrl?: string; subdomain?: string }) => Promise<{
+    provider: 'salesforce' | 'jira' | 'hubspot' | 'zendesk';
+    accessToken: string;
+    refreshToken?: string;
+    expiresIn?: number;
+    tokenType?: string;
+    instanceUrl?: string;
+    resources?: Array<{ id: string; name: string; url: string; scopes?: string[] }>;
+  }>;
   onMCPStatusChange: (callback: (status: MCPServerStatus[]) => void) => () => void;
   // MCP Registry
   fetchMCPRegistry: () => Promise<MCPRegistry>;
@@ -2579,6 +2741,7 @@ export interface ElectronAPI {
   canvasExportHTML: (sessionId: string) => Promise<{ content: string; filename: string }>;
   canvasExportToFolder: (data: { sessionId: string; targetDir: string }) => Promise<{ files: string[]; targetDir: string }>;
   canvasOpenInBrowser: (sessionId: string) => Promise<{ success: boolean; path: string }>;
+  canvasOpenUrl: (data: { sessionId: string; url: string; show?: boolean }) => Promise<{ success: boolean; url: string }>;
   canvasGetSessionDir: (sessionId: string) => Promise<string | null>;
   onCanvasEvent: (callback: (event: CanvasEvent) => void) => () => void;
 

@@ -17,6 +17,8 @@ interface BuiltinToolsSettingsData {
     image: ToolCategoryConfig;
   };
   toolOverrides: Record<string, { enabled: boolean; priority?: 'high' | 'normal' | 'low' }>;
+  toolTimeouts: Record<string, number>;
+  toolAutoApprove: Record<string, boolean>;
   version: string;
 }
 
@@ -182,6 +184,62 @@ export function BuiltinToolsSettings() {
     }
   };
 
+  const handleRunCommandAutoApprove = async (enabled: boolean) => {
+    if (!settings) return;
+
+    const nextAutoApprove = { ...(settings.toolAutoApprove || {}) };
+    if (enabled) {
+      nextAutoApprove.run_command = true;
+    } else {
+      delete nextAutoApprove.run_command;
+    }
+
+    const newSettings = {
+      ...settings,
+      toolAutoApprove: nextAutoApprove,
+    };
+
+    setSettings(newSettings);
+
+    try {
+      setSaving(true);
+      await window.electronAPI.saveBuiltinToolsSettings(newSettings);
+    } catch (error) {
+      console.error('Failed to save settings:', error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRunCommandTimeout = async (value: string) => {
+    if (!settings) return;
+
+    const parsed = Number(value);
+    const nextTimeouts = { ...(settings.toolTimeouts || {}) };
+
+    if (!value || !Number.isFinite(parsed) || parsed <= 0) {
+      delete nextTimeouts.run_command;
+    } else {
+      nextTimeouts.run_command = Math.round(parsed);
+    }
+
+    const newSettings = {
+      ...settings,
+      toolTimeouts: nextTimeouts,
+    };
+
+    setSettings(newSettings);
+
+    try {
+      setSaving(true);
+      await window.electronAPI.saveBuiltinToolsSettings(newSettings);
+    } catch (error) {
+      console.error('Failed to save settings:', error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) {
     return <div className="settings-loading">Loading settings...</div>;
   }
@@ -205,6 +263,12 @@ export function BuiltinToolsSettings() {
           const info = CATEGORY_INFO[category];
           const config = settings.categories[category];
           const tools = categories[category] || [];
+          const runCommandAutoApprove = category === 'shell'
+            ? Boolean(settings.toolAutoApprove?.run_command)
+            : false;
+          const runCommandTimeout = category === 'shell'
+            ? (settings.toolTimeouts?.run_command ?? '')
+            : '';
 
           return (
             <div
@@ -266,6 +330,47 @@ export function BuiltinToolsSettings() {
                   </button>
                 </div>
               </div>
+
+              {category === 'shell' && expandedCategory === category && (
+                <div className="builtin-tool-advanced">
+                  <div className="builtin-tool-advanced-row">
+                    <div className="builtin-tool-advanced-text">
+                      <div className="builtin-tool-advanced-label">Auto-approve safe commands</div>
+                      <div className="builtin-tool-advanced-hint">
+                        Skips approval prompts for non-destructive commands.
+                      </div>
+                    </div>
+                    <label className="builtin-tool-toggle">
+                      <input
+                        type="checkbox"
+                        checked={runCommandAutoApprove}
+                        onChange={(e) => handleRunCommandAutoApprove(e.target.checked)}
+                        disabled={!config.enabled}
+                      />
+                      <span className="builtin-tool-toggle-slider"></span>
+                    </label>
+                  </div>
+
+                  <div className="builtin-tool-advanced-row">
+                    <div className="builtin-tool-advanced-text">
+                      <div className="builtin-tool-advanced-label">run_command timeout (ms)</div>
+                      <div className="builtin-tool-advanced-hint">
+                        Used when the command doesn't set its own timeout.
+                      </div>
+                    </div>
+                    <input
+                      className="builtin-tool-timeout-input"
+                      type="number"
+                      min={1000}
+                      step={1000}
+                      value={runCommandTimeout}
+                      onChange={(e) => handleRunCommandTimeout(e.target.value)}
+                      disabled={!config.enabled}
+                      placeholder="30000"
+                    />
+                  </div>
+                </div>
+              )}
 
               {expandedCategory === category && tools.length > 0 && (
                 <div className="builtin-tool-list">

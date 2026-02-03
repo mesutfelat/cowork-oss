@@ -43,6 +43,7 @@ import { PersonalityManager } from '../settings/personality-manager';
 import {
   getChannelMessage,
   getCompletionMessage,
+  getChannelUiCopy,
   DEFAULT_CHANNEL_CONTEXT,
   type ChannelMessageContext,
 } from '../../shared/channelMessages';
@@ -152,6 +153,7 @@ export class MessageRouter {
           agentName: settings.agentName || 'CoWork',
           userName: settings.relationship?.userName,
           personality: settings.activePersonality || 'professional',
+          persona: settings.activePersona,
           emojiUsage: settings.responseStyle?.emojiUsage || 'minimal',
           quirks: settings.quirks || DEFAULT_QUIRKS,
         };
@@ -160,6 +162,13 @@ export class MessageRouter {
       console.error('[MessageRouter] Failed to load personality settings:', error);
     }
     return DEFAULT_CHANNEL_CONTEXT;
+  }
+
+  private getUiCopy(
+    key: Parameters<typeof getChannelUiCopy>[0],
+    replacements?: Record<string, string | number>
+  ): string {
+    return getChannelUiCopy(key, this.getMessageContext(), replacements);
   }
 
   /**
@@ -598,9 +607,9 @@ export class MessageRouter {
     let responseText: string;
 
     if (securityResult.pairingRequired) {
-      responseText = this.config.pairingRequiredMessage!;
+      responseText = this.getUiCopy('pairingRequired');
     } else {
-      responseText = this.config.unauthorizedMessage!;
+      responseText = this.getUiCopy('unauthorized');
     }
 
     try {
@@ -647,9 +656,11 @@ export class MessageRouter {
         if (!isNaN(num) && num > 0 && num <= workspaces.length) {
           const workspace = workspaces[num - 1];
           this.sessionManager.setSessionWorkspace(sessionId, workspace.id);
+          const selectedText = this.getUiCopy('workspaceSelected', { workspaceName: workspace.name });
+          const exampleText = this.getUiCopy('workspaceSelectedExample');
           await adapter.sendMessage({
             chatId: message.chatId,
-            text: `✅ *${workspace.name}* selected!\n\nYou can now send me tasks.\n\nExample: "Create a new React component called Button"`,
+            text: `${selectedText}\n\n${exampleText}`,
             parseMode: 'markdown',
           });
           return;
@@ -662,9 +673,11 @@ export class MessageRouter {
         );
         if (matchedWorkspace) {
           this.sessionManager.setSessionWorkspace(sessionId, matchedWorkspace.id);
+          const selectedText = this.getUiCopy('workspaceSelected', { workspaceName: matchedWorkspace.name });
+          const exampleText = this.getUiCopy('workspaceSelectedExample');
           await adapter.sendMessage({
             chatId: message.chatId,
-            text: `✅ *${matchedWorkspace.name}* selected!\n\nYou can now send me tasks.\n\nExample: "Create a new React component called Button"`,
+            text: `${selectedText}\n\n${exampleText}`,
             parseMode: 'markdown',
           });
           return;
@@ -746,7 +759,7 @@ export class MessageRouter {
         if (args.length === 0) {
           await adapter.sendMessage({
             chatId: message.chatId,
-            text: '🔐 Please provide a pairing code.\n\nUsage: `/pair <code>`',
+            text: this.getUiCopy('pairingPrompt'),
             parseMode: 'markdown',
           });
         } else {
@@ -814,7 +827,7 @@ export class MessageRouter {
       default:
         await adapter.sendMessage({
           chatId: message.chatId,
-          text: `Unknown command: ${command}\n\nUse /help to see available commands.`,
+          text: this.getUiCopy('unknownCommand', { command }),
           replyTo: message.messageId,
         });
     }
@@ -829,22 +842,25 @@ export class MessageRouter {
     sessionId: string
   ): Promise<void> {
     const session = this.sessionRepo.findById(sessionId);
-    let statusText = '✅ Bot is online and ready.\n\n';
+    let statusText = `✅ ${this.getUiCopy('statusHeader')}\n\n`;
 
     if (session?.workspaceId) {
       const workspace = this.workspaceRepo.findById(session.workspaceId);
       if (workspace) {
-        statusText += `📁 Current workspace: ${workspace.name}\n`;
-        statusText += `   Path: ${workspace.path}\n`;
+        statusText += this.getUiCopy('workspaceCurrent', {
+          workspaceName: workspace.name,
+          workspacePath: workspace.path,
+        });
+        statusText += '\n';
       }
     } else {
-      statusText += '⚠️ No workspace selected. Use /workspaces to see available workspaces.';
+      statusText += this.getUiCopy('statusNoWorkspace');
     }
 
     if (session?.taskId) {
       const task = this.taskRepo.findById(session.taskId);
       if (task) {
-        statusText += `\n🔄 Active task: ${task.title} (${task.status})`;
+        statusText += `\n${this.getUiCopy('statusActiveTask', { taskTitle: task.title, status: task.status })}`;
       }
     }
 
@@ -866,7 +882,7 @@ export class MessageRouter {
     if (workspaces.length === 0) {
       await adapter.sendMessage({
         chatId: message.chatId,
-        text: '📁 No workspaces configured yet.\n\nAdd a workspace in the CoWork desktop app first, or use:\n`/addworkspace /path/to/your/project`',
+        text: this.getUiCopy('workspacesNone'),
         parseMode: 'markdown',
       });
       return;
@@ -874,13 +890,12 @@ export class MessageRouter {
 
     // WhatsApp and iMessage don't support inline keyboards - use text-based selection
     if (adapter.type === 'whatsapp' || adapter.type === 'imessage') {
-      let text = '📁 *Available Workspaces*\n\n';
+      let text = `${this.getUiCopy('workspacesHeader')}\n\n`;
       workspaces.forEach((ws, index) => {
         text += `${index + 1}. *${ws.name}*\n   \`${ws.path}\`\n\n`;
       });
       text += '━━━━━━━━━━━━━━━\n';
-      text += 'Reply with the number or name to select.\n';
-      text += 'Example: `1` or `myproject`';
+      text += this.getUiCopy('workspacesFooter');
 
       await adapter.sendMessage({
         chatId: message.chatId,
@@ -900,7 +915,7 @@ export class MessageRouter {
       }]);
     }
 
-    let text = '📁 *Available Workspaces*\n\nTap a workspace to select it:';
+    let text = `${this.getUiCopy('workspacesHeader')}\n\n${this.getUiCopy('workspacesSelectPrompt')}`;
 
     await adapter.sendMessage({
       chatId: message.chatId,
@@ -938,7 +953,10 @@ export class MessageRouter {
           const displayName = isTempWorkspace ? 'Temporary Workspace (work in a folder for persistence)' : workspace.name;
           await adapter.sendMessage({
             chatId: message.chatId,
-            text: `📁 Current workspace: *${displayName}*\n\`${workspace.path}\`\n\nUse \`/workspaces\` to see available workspaces.`,
+            text: this.getUiCopy('workspaceCurrent', {
+              workspaceName: displayName,
+              workspacePath: workspace.path,
+            }),
             parseMode: 'markdown',
           });
           return;
@@ -946,7 +964,7 @@ export class MessageRouter {
       }
       await adapter.sendMessage({
         chatId: message.chatId,
-        text: 'No workspace selected. Use `/workspaces` to see available workspaces.',
+        text: this.getUiCopy('workspaceNoneSelected'),
         parseMode: 'markdown',
       });
       return;
@@ -970,7 +988,7 @@ export class MessageRouter {
     if (!workspace) {
       await adapter.sendMessage({
         chatId: message.chatId,
-        text: `❌ Workspace not found: "${selector}"\n\nUse /workspaces to see available workspaces.`,
+        text: this.getUiCopy('workspaceNotFound', { selector }),
       });
       return;
     }
@@ -980,7 +998,10 @@ export class MessageRouter {
 
     await adapter.sendMessage({
       chatId: message.chatId,
-      text: `✅ Workspace set to: *${workspace.name}*\n\`${workspace.path}\`\n\nYou can now send messages to create tasks in this workspace.`,
+      text: this.getUiCopy('workspaceSet', {
+        workspaceName: workspace.name,
+        workspacePath: workspace.path,
+      }),
       parseMode: 'markdown',
     });
   }
@@ -997,7 +1018,7 @@ export class MessageRouter {
     if (args.length === 0) {
       await adapter.sendMessage({
         chatId: message.chatId,
-        text: '📁 *Add Workspace*\n\nUsage: `/addworkspace <path>`\n\nExample:\n`/addworkspace /Users/john/projects/myapp`\n`/addworkspace ~/Documents`',
+        text: this.getUiCopy('workspaceAddUsage'),
         parseMode: 'markdown',
       });
       return;
@@ -1021,7 +1042,7 @@ export class MessageRouter {
       if (!stats.isDirectory()) {
         await adapter.sendMessage({
           chatId: message.chatId,
-          text: `❌ Path is not a directory: \`${workspacePath}\``,
+          text: this.getUiCopy('workspacePathNotDir', { workspacePath }),
           parseMode: 'markdown',
         });
         return;
@@ -1029,7 +1050,7 @@ export class MessageRouter {
     } catch {
       await adapter.sendMessage({
         chatId: message.chatId,
-        text: `❌ Directory not found: \`${workspacePath}\``,
+        text: this.getUiCopy('workspacePathNotFound', { workspacePath }),
         parseMode: 'markdown',
       });
       return;
@@ -1043,7 +1064,10 @@ export class MessageRouter {
       this.sessionManager.setSessionWorkspace(sessionId, existing.id);
       await adapter.sendMessage({
         chatId: message.chatId,
-        text: `📁 Workspace already exists!\n\n✅ Selected: *${existing.name}*\n\`${existing.path}\``,
+        text: this.getUiCopy('workspaceAlreadyExists', {
+          workspaceName: existing.name,
+          workspacePath: existing.path,
+        }),
         parseMode: 'markdown',
       });
       return;
@@ -1080,7 +1104,10 @@ export class MessageRouter {
 
     await adapter.sendMessage({
       chatId: message.chatId,
-      text: `✅ Workspace added and selected!\n\n📁 *${workspace.name}*\n\`${workspace.path}\`\n\nYou can now send messages to create tasks in this workspace.`,
+      text: this.getUiCopy('workspaceAdded', {
+        workspaceName: workspace.name,
+        workspacePath: workspace.path,
+      }),
       parseMode: 'markdown',
     });
   }
@@ -1581,7 +1608,7 @@ export class MessageRouter {
     if (!workspace) {
       await adapter.sendMessage({
         chatId: message.chatId,
-        text: '❌ Workspace not found.',
+        text: this.getUiCopy('workspaceNotFoundForShell'),
       });
       return;
     }
@@ -1607,7 +1634,7 @@ export class MessageRouter {
     } else {
       await adapter.sendMessage({
         chatId: message.chatId,
-        text: '❌ Invalid option. Use `/shell on` or `/shell off`',
+        text: this.getUiCopy('shellInvalidOption'),
         parseMode: 'markdown',
       });
       return;
@@ -1743,7 +1770,7 @@ export class MessageRouter {
     if (result.success) {
       await adapter.sendMessage({
         chatId: message.chatId,
-        text: '✅ Pairing successful! You can now use the bot.',
+        text: this.getUiCopy('pairingSuccess'),
         replyTo: message.messageId,
       });
 
@@ -1756,7 +1783,9 @@ export class MessageRouter {
     } else {
       await adapter.sendMessage({
         chatId: message.chatId,
-        text: `❌ ${result.error || 'Invalid pairing code. Please try again.'}`,
+        text: this.getUiCopy('pairingFailed', {
+          error: result.error || 'Invalid pairing code. Please try again.',
+        }),
         replyTo: message.messageId,
       });
     }
@@ -1793,8 +1822,8 @@ export class MessageRouter {
           if (this.agentDaemon) {
             try {
               const statusMsg = isActive
-                ? '💬 Sending follow-up message...'
-                : '💬 Continuing conversation...';
+                ? '💬 Got it — adding that to the current task...'
+                : '💬 Picking up where we left off...';
               await adapter.sendMessage({
                 chatId: message.chatId,
                 text: statusMsg,
@@ -1809,13 +1838,13 @@ export class MessageRouter {
               });
 
               await this.agentDaemon.sendMessage(session!.taskId!, message.text);
-            } catch (error) {
-              console.error('Error sending follow-up message:', error);
-              await adapter.sendMessage({
-                chatId: message.chatId,
-                text: '❌ Failed to send message. Use /newtask to start a new task.',
-              });
-            }
+              } catch (error) {
+                console.error('Error sending follow-up message:', error);
+                await adapter.sendMessage({
+                  chatId: message.chatId,
+                  text: this.getUiCopy('taskContinueFailed'),
+                });
+              }
           }
           return;
         }
@@ -1828,7 +1857,7 @@ export class MessageRouter {
     if (!this.agentDaemon) {
       await adapter.sendMessage({
         chatId: message.chatId,
-        text: '❌ Agent not available. Please try again later.',
+        text: this.getUiCopy('agentUnavailable'),
         replyTo: message.messageId,
       });
       return;
@@ -1839,7 +1868,7 @@ export class MessageRouter {
     if (!workspace) {
       await adapter.sendMessage({
         chatId: message.chatId,
-        text: '❌ Workspace not found. Please select a workspace with /workspace.',
+        text: this.getUiCopy('workspaceMissingForTask'),
         replyTo: message.messageId,
       });
       return;
@@ -1875,8 +1904,8 @@ export class MessageRouter {
 
     // Send acknowledgment - concise for WhatsApp and iMessage
     const ackMessage = (adapter.type === 'whatsapp' || adapter.type === 'imessage')
-      ? `⏳ Working on it...`
-      : `🚀 Task Started: "${taskTitle}"\n\nI'll notify you when it's complete or if I need your input.`;
+      ? this.getUiCopy('taskStartAckSimple')
+      : this.getUiCopy('taskStartAck', { taskTitle });
     await adapter.sendMessage({
       chatId: message.chatId,
       text: ackMessage,
@@ -1907,7 +1936,9 @@ export class MessageRouter {
       console.error('Error starting task:', error);
       await adapter.sendMessage({
         chatId: message.chatId,
-        text: `❌ Failed to start task: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        text: this.getUiCopy('taskStartFailed', {
+          error: error instanceof Error ? error.message : 'Unknown error',
+        }),
       });
 
       // Cleanup
@@ -2119,7 +2150,7 @@ export class MessageRouter {
     });
 
     // Format approval message
-    let message = `🔐 *Approval Required*\n\n`;
+    let message = `🔐 *${this.getUiCopy('approvalRequiredTitle')}*\n\n`;
     message += `**${approval.description}**\n\n`;
 
     if (approval.type === 'run_command' && approval.details?.command) {
@@ -2147,8 +2178,8 @@ export class MessageRouter {
       // Create inline keyboard with Approve/Deny buttons for Telegram/Discord
       const keyboard: InlineKeyboardButton[][] = [
         [
-          { text: '✅ Approve', callbackData: 'approve:' + approval.id },
-          { text: '❌ Deny', callbackData: 'deny:' + approval.id },
+          { text: this.getUiCopy('approvalButtonApprove'), callbackData: 'approve:' + approval.id },
+          { text: this.getUiCopy('approvalButtonDeny'), callbackData: 'deny:' + approval.id },
         ],
       ];
 
@@ -2180,7 +2211,7 @@ export class MessageRouter {
     if (!approvalEntry) {
       await adapter.sendMessage({
         chatId: message.chatId,
-        text: '❌ No pending approval request.',
+        text: this.getUiCopy('approvalNone'),
       });
       return;
     }
@@ -2192,13 +2223,13 @@ export class MessageRouter {
       await this.agentDaemon?.respondToApproval(approvalId, true);
       await adapter.sendMessage({
         chatId: message.chatId,
-        text: '✅ Approved! Executing...',
+        text: this.getUiCopy('approvalApproved'),
       });
     } catch (error) {
       console.error('Error responding to approval:', error);
       await adapter.sendMessage({
         chatId: message.chatId,
-        text: '❌ Failed to process approval.',
+        text: this.getUiCopy('approvalFailed'),
       });
     }
   }
@@ -2218,7 +2249,7 @@ export class MessageRouter {
     if (!approvalEntry) {
       await adapter.sendMessage({
         chatId: message.chatId,
-        text: '❌ No pending approval request.',
+        text: this.getUiCopy('approvalNone'),
       });
       return;
     }
@@ -2230,13 +2261,13 @@ export class MessageRouter {
       await this.agentDaemon?.respondToApproval(approvalId, false);
       await adapter.sendMessage({
         chatId: message.chatId,
-        text: '🛑 Denied. Action cancelled.',
+        text: this.getUiCopy('approvalDenied'),
       });
     } catch (error) {
       console.error('Error responding to denial:', error);
       await adapter.sendMessage({
         chatId: message.chatId,
-        text: '❌ Failed to process denial.',
+        text: this.getUiCopy('approvalFailed'),
       });
     }
   }
@@ -2252,7 +2283,7 @@ export class MessageRouter {
     if (!this.agentDaemon) {
       await adapter.sendMessage({
         chatId: message.chatId,
-        text: '❌ Agent daemon not available.',
+        text: this.getUiCopy('agentUnavailable'),
       });
       return;
     }
@@ -2264,7 +2295,10 @@ export class MessageRouter {
       const result = await this.agentDaemon.clearStuckTasks();
       await adapter.sendMessage({
         chatId: message.chatId,
-        text: `✅ Queue cleared!\n\n• Running tasks cancelled: ${result.clearedRunning}\n• Queued tasks removed: ${result.clearedQueued}\n\nBrowser sessions and other resources have been cleaned up. You can now start new tasks.`,
+        text: this.getUiCopy('queueCleared', {
+          running: result.clearedRunning,
+          queued: result.clearedQueued,
+        }),
       });
     } else {
       // Show queue status
@@ -2283,7 +2317,7 @@ ${status.queuedCount > 0 ? `Queued task IDs: ${status.queuedTaskIds.join(', ')}`
 
       await adapter.sendMessage({
         chatId: message.chatId,
-        text: statusText,
+        text: this.getUiCopy('queueStatus', { statusText }),
         parseMode: 'markdown',
       });
     }
@@ -2348,12 +2382,12 @@ ${status.queuedCount > 0 ? `Queued task IDs: ${status.queuedTaskIds.join(', ')}`
 
       await adapter.sendMessage({
         chatId: message.chatId,
-        text: '🛑 Task cancelled.',
+        text: this.getUiCopy('cancelled'),
       });
     } else {
       await adapter.sendMessage({
         chatId: message.chatId,
-        text: 'No active task to cancel.',
+        text: this.getUiCopy('cancelNoActive'),
       });
     }
   }
@@ -2376,7 +2410,7 @@ ${status.queuedCount > 0 ? `Queued task IDs: ${status.queuedTaskIds.join(', ')}`
 
     await adapter.sendMessage({
       chatId: message.chatId,
-      text: '🆕 Ready for a new task!\n\nSend me a message describing what you want to do.',
+      text: this.getUiCopy('newTaskReady'),
     });
   }
 
@@ -2392,7 +2426,7 @@ ${status.queuedCount > 0 ? `Queued task IDs: ${status.queuedTaskIds.join(', ')}`
     if (args.length === 0) {
       await adapter.sendMessage({
         chatId: message.chatId,
-        text: '❌ Please specify a workspace name to remove.\n\nUsage: `/removeworkspace <name>`',
+        text: this.getUiCopy('workspaceRemoveUsage'),
         parseMode: 'markdown',
       });
       return;
@@ -2407,7 +2441,7 @@ ${status.queuedCount > 0 ? `Queued task IDs: ${status.queuedTaskIds.join(', ')}`
     if (!workspace) {
       await adapter.sendMessage({
         chatId: message.chatId,
-        text: `❌ Workspace "${workspaceName}" not found.\n\nUse /workspaces to see available workspaces.`,
+        text: this.getUiCopy('workspaceNotFound', { selector: workspaceName }),
       });
       return;
     }
@@ -2424,7 +2458,7 @@ ${status.queuedCount > 0 ? `Queued task IDs: ${status.queuedTaskIds.join(', ')}`
 
     await adapter.sendMessage({
       chatId: message.chatId,
-      text: `✅ Workspace "${workspace.name}" removed successfully.`,
+      text: this.getUiCopy('workspaceRemoved', { workspaceName: workspace.name }),
     });
   }
 
@@ -2454,7 +2488,7 @@ ${status.queuedCount > 0 ? `Queued task IDs: ${status.queuedTaskIds.join(', ')}`
     if (!lastFailedTask) {
       await adapter.sendMessage({
         chatId: message.chatId,
-        text: '❌ No failed task found to retry.\n\nStart a new task by sending a message.',
+        text: this.getUiCopy('retryNone'),
       });
       return;
     }
@@ -2462,7 +2496,7 @@ ${status.queuedCount > 0 ? `Queued task IDs: ${status.queuedTaskIds.join(', ')}`
     // Re-submit the task by sending the original prompt as a new message
     await adapter.sendMessage({
       chatId: message.chatId,
-      text: `🔄 Retrying task...\n\nOriginal prompt: "${lastFailedTask.title}"`,
+      text: this.getUiCopy('retrying', { taskTitle: lastFailedTask.title }),
     });
 
     // Create a synthetic message with the original prompt
@@ -2500,7 +2534,7 @@ ${status.queuedCount > 0 ? `Queued task IDs: ${status.queuedTaskIds.join(', ')}`
     if (recentTasks.length === 0) {
       await adapter.sendMessage({
         chatId: message.chatId,
-        text: '📋 No task history found.\n\nStart a new task by sending a message.',
+        text: this.getUiCopy('historyNone'),
       });
       return;
     }
@@ -2524,7 +2558,7 @@ ${status.queuedCount > 0 ? `Queued task IDs: ${status.queuedTaskIds.join(', ')}`
 
     await adapter.sendMessage({
       chatId: message.chatId,
-      text: `📋 *Recent Tasks*\n\n${historyText}`,
+      text: this.getUiCopy('historyHeader', { history: historyText }),
       parseMode: 'markdown',
     });
   }
@@ -2545,7 +2579,7 @@ ${status.queuedCount > 0 ? `Queued task IDs: ${status.queuedTaskIds.join(', ')}`
       if (skills.length === 0) {
         await adapter.sendMessage({
           chatId: message.chatId,
-          text: '📚 No skills available.\n\nSkills are stored in:\n`~/Library/Application Support/cowork-os/skills/`',
+          text: this.getUiCopy('skillsNone'),
           parseMode: 'markdown',
         });
         return;
@@ -2582,7 +2616,7 @@ ${status.queuedCount > 0 ? `Queued task IDs: ${status.queuedTaskIds.join(', ')}`
     } catch (error) {
       await adapter.sendMessage({
         chatId: message.chatId,
-        text: '❌ Failed to load skills.',
+        text: this.getUiCopy('skillsLoadFailed'),
       });
     }
   }
@@ -2599,7 +2633,7 @@ ${status.queuedCount > 0 ? `Queued task IDs: ${status.queuedTaskIds.join(', ')}`
     if (args.length === 0) {
       await adapter.sendMessage({
         chatId: message.chatId,
-        text: '❌ Please specify a skill ID.\n\nUsage: `/skill <id>`\n\nUse /skills to see available skills.',
+        text: this.getUiCopy('skillSpecify'),
         parseMode: 'markdown',
       });
       return;
@@ -2614,7 +2648,7 @@ ${status.queuedCount > 0 ? `Queued task IDs: ${status.queuedTaskIds.join(', ')}`
       if (!skill) {
         await adapter.sendMessage({
           chatId: message.chatId,
-          text: `❌ Skill "${skillId}" not found.\n\nUse /skills to see available skills.`,
+          text: this.getUiCopy('skillNotFound', { skillId }),
         });
         return;
       }
@@ -2626,13 +2660,17 @@ ${status.queuedCount > 0 ? `Queued task IDs: ${status.queuedTaskIds.join(', ')}`
       const statusText = newState ? '✅ enabled' : '❌ disabled';
       await adapter.sendMessage({
         chatId: message.chatId,
-        text: `${skill.icon || '⚡'} *${skill.name}* is now ${statusText}`,
+        text: this.getUiCopy('skillToggle', {
+          emoji: skill.icon || '⚡',
+          skillName: skill.name,
+          statusText,
+        }),
         parseMode: 'markdown',
       });
     } catch (error) {
       await adapter.sendMessage({
         chatId: message.chatId,
-        text: '❌ Failed to toggle skill.',
+        text: this.getUiCopy('skillsLoadFailed'),
       });
     }
   }
@@ -2777,7 +2815,7 @@ ${status.queuedCount > 0 ? `Queued task IDs: ${status.queuedTaskIds.join(', ')}`
     const statusText = newDebug ? '✅ enabled' : '❌ disabled';
     await adapter.sendMessage({
       chatId: message.chatId,
-      text: `🐛 Debug mode is now ${statusText}`,
+      text: this.getUiCopy('debugStatus', { statusText }),
     });
   }
 
@@ -2827,13 +2865,13 @@ Node.js: \`${nodeVersion}\`
         const workspace = this.workspaceRepo.findById(session.workspaceId);
         await adapter.sendMessage({
           chatId: message.chatId,
-          text: `👋 *Welcome back!*\n\nWorkspace: *${workspace?.name || 'Unknown'}*\n\nJust send me what you'd like me to do.\n\nType /help for commands.`,
+          text: this.getUiCopy('welcomeBack', { workspaceName: workspace?.name || 'Unknown' }),
           parseMode: 'markdown',
         });
       } else if (workspaces.length === 0) {
         await adapter.sendMessage({
           chatId: message.chatId,
-          text: `👋 *Welcome to CoWork!*\n\nI'm your AI coding assistant.\n\nFirst, add a workspace:\n\`/addworkspace /path/to/project\`\n\nOr add one from the desktop app.`,
+          text: this.getUiCopy('welcomeNoWorkspace'),
           parseMode: 'markdown',
         });
       } else if (workspaces.length === 1) {
@@ -2842,16 +2880,15 @@ Node.js: \`${nodeVersion}\`
         this.sessionManager.setSessionWorkspace(sessionId, workspace.id);
         await adapter.sendMessage({
           chatId: message.chatId,
-          text: `👋 *Welcome to CoWork!*\n\n✅ Workspace: *${workspace.name}*\n\nJust tell me what you'd like me to do!\n\nExamples:\n• "Add dark mode support"\n• "Fix the login bug"\n• "Create a new API endpoint"`,
+          text: this.getUiCopy('welcomeSingleWorkspace', { workspaceName: workspace.name }),
           parseMode: 'markdown',
         });
       } else {
         // Multiple workspaces - show selection
-        let text = `👋 *Welcome to CoWork!*\n\nSelect a workspace to start:\n\n`;
-        workspaces.forEach((ws, index) => {
-          text += `${index + 1}. *${ws.name}*\n`;
-        });
-        text += `\nReply with a number (e.g., \`1\`)`;
+        const workspaceList = workspaces
+          .map((ws, index) => `${index + 1}. *${ws.name}*`)
+          .join('\n');
+        const text = this.getUiCopy('welcomeSelectWorkspace', { workspaceList });
 
         await adapter.sendMessage({
           chatId: message.chatId,
@@ -2865,7 +2902,7 @@ Node.js: \`${nodeVersion}\`
     // Standard welcome for Telegram/Discord
     await adapter.sendMessage({
       chatId: message.chatId,
-      text: this.config.welcomeMessage!,
+      text: this.getUiCopy('welcomeStandard'),
     });
 
     // Show workspaces if none selected
@@ -2880,71 +2917,11 @@ Node.js: \`${nodeVersion}\`
   private getHelpText(channelType?: ChannelType): string {
     // Compact help for WhatsApp (mobile-friendly)
     if (channelType === 'whatsapp') {
-      return `📚 *Commands*
-
-*Basics*
-/workspaces - Select workspace
-/status - Current status
-/newtask - Fresh start
-
-*Tasks*
-/cancel - Stop task
-/approve or /yes - Approve action
-/deny or /no - Reject action
-
-*Settings*
-/shell on|off - Shell access
-/models - Change AI model
-
-━━━━━━━━━━━━━━━
-💡 Just send your task directly!
-Example: "Add a login form"`;
+      return this.getUiCopy('helpCompact');
     }
 
     // Full help for other channels
-    return `📚 *Available Commands*
-
-*Core*
-/start - Start the bot
-/help - Show this help message
-/status - Check bot status and workspace
-/version - Show version information
-
-*Workspaces*
-/workspaces - List available workspaces
-/workspace <name> - Select a workspace
-/addworkspace <path> - Add a new workspace
-/removeworkspace <name> - Remove a workspace
-
-*Tasks*
-/newtask - Start a fresh task/conversation
-/cancel - Cancel current task
-/retry - Retry the last failed task
-/history - Show recent task history
-/approve - Approve pending action (or /yes, /y)
-/deny - Reject pending action (or /no, /n)
-/queue - View/clear task queue
-
-*Models*
-/providers - List available AI providers
-/provider <name> - Show or change provider
-/models - List available AI models
-/model <name> - Show or change model
-
-*Skills*
-/skills - List available skills
-/skill <name> - Toggle a skill on/off
-
-*Settings*
-/settings - View current settings
-/shell - Enable/disable shell commands
-/debug - Toggle debug mode
-
-💬 *Quick Start*
-1. \`/workspaces\` → \`/workspace <name>\`
-2. \`/shell on\` (if needed)
-3. Send your task message
-4. \`/newtask\` to start fresh`;
+    return this.getUiCopy('helpFull');
   }
 
   /**
@@ -3023,7 +3000,7 @@ Example: "Add a login form"`;
     if (!workspace) {
       await adapter.sendMessage({
         chatId: query.chatId,
-        text: '❌ Workspace not found.',
+        text: this.getUiCopy('workspaceNotFoundShort'),
       });
       return;
     }
@@ -3036,12 +3013,18 @@ Example: "Add a login form"`;
       await adapter.editMessageWithKeyboard(
         query.chatId,
         query.messageId,
-        `✅ Workspace selected: *${workspace.name}*\n\`${workspace.path}\`\n\nYou can now send messages to create tasks.`
+        this.getUiCopy('workspaceSet', {
+          workspaceName: workspace.name,
+          workspacePath: workspace.path,
+        })
       );
     } else {
       await adapter.sendMessage({
         chatId: query.chatId,
-        text: `✅ Workspace set to: *${workspace.name}*\n\`${workspace.path}\``,
+        text: this.getUiCopy('workspaceSet', {
+          workspaceName: workspace.name,
+          workspacePath: workspace.path,
+        }),
         parseMode: 'markdown',
       });
     }
@@ -3157,7 +3140,7 @@ Example: "Add a login form"`;
         await adapter.editMessageWithKeyboard(
           query.chatId,
           query.messageId,
-          '❌ No pending approval request (may have expired).'
+          this.getUiCopy('approvalNone')
         );
       }
       return;
@@ -3169,7 +3152,9 @@ Example: "Add a login form"`;
     try {
       await this.agentDaemon?.respondToApproval(approvalId, approved);
 
-      const statusText = approved ? '✅ Approved! Executing...' : '🛑 Denied. Action cancelled.';
+      const statusText = approved
+        ? this.getUiCopy('approvalApproved')
+        : this.getUiCopy('approvalDenied');
       if (adapter.editMessageWithKeyboard) {
         await adapter.editMessageWithKeyboard(
           query.chatId,
@@ -3186,7 +3171,7 @@ Example: "Add a login form"`;
       console.error('Error responding to approval:', error);
       await adapter.sendMessage({
         chatId: query.chatId,
-        text: '❌ Failed to process response.',
+        text: this.getUiCopy('responseFailed'),
       });
     }
   }

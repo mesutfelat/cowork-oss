@@ -2,6 +2,7 @@ import { spawn, ChildProcess, execSync } from 'child_process';
 import { Workspace, CommandTerminationReason } from '../../../shared/types';
 import { AgentDaemon } from '../daemon';
 import { GuardrailManager } from '../../guardrails/guardrail-manager';
+import { BuiltinToolsSettingsManager } from './builtin-settings';
 
 // Limits to prevent runaway commands
 const MAX_TIMEOUT = 5 * 60 * 1000; // 5 minutes max
@@ -345,9 +346,9 @@ export class ShellTools {
   }
 
   /**
-   * Execute a shell command (requires user approval)
+   * Execute a shell command (requires user approval unless auto-approve is enabled)
    * Note: We don't check workspace.permissions.shell here because
-   * shell commands always require explicit user approval via requestApproval()
+   * shell commands are gated by approval flow (or auto-approve/trust settings)
    */
   async runCommand(
     command: string,
@@ -376,9 +377,16 @@ export class ShellTools {
 
     // Check if command is trusted (auto-approve without user confirmation)
     const trustCheck = GuardrailManager.isCommandTrusted(command);
+    const autoApproveEnabled = BuiltinToolsSettingsManager.getToolAutoApprove('run_command');
     let approved = false;
 
-    if (trustCheck.trusted) {
+    if (autoApproveEnabled && this.isAutoApprovalSafe(command)) {
+      approved = true;
+      this.daemon.logEvent(this.taskId, 'log', {
+        message: 'Auto-approved command (user setting enabled)',
+        command,
+      });
+    } else if (trustCheck.trusted) {
       // Auto-approve trusted commands
       approved = true;
       this.daemon.logEvent(this.taskId, 'log', {

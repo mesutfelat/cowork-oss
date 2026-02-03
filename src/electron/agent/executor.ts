@@ -9,6 +9,7 @@ import {
   LLMProviderFactory,
   LLMMessage,
   LLMToolResult,
+  LLMToolUse,
 } from './llm';
 import {
   ContextManager,
@@ -21,6 +22,7 @@ import { calculateCost, formatCost } from './llm/pricing';
 import { getCustomSkillLoader } from './custom-skill-loader';
 import { MemoryService } from '../memory/MemoryService';
 import { InputSanitizer, OutputFilter } from './security';
+import { BuiltinToolsSettingsManager } from './tools/builtin-settings';
 
 class AwaitingUserInputError extends Error {
   constructor(message: string) {
@@ -35,7 +37,7 @@ const LLM_TIMEOUT_MS = 2 * 60 * 1000;
 // Per-step timeout (5 minutes max per step)
 const STEP_TIMEOUT_MS = 5 * 60 * 1000;
 
-// Per-tool execution timeout (45 seconds - balance responsiveness with heavier tools)
+// Default per-tool execution timeout (overrideable per tool)
 const TOOL_TIMEOUT_MS = 30 * 1000;
 
 // Maximum consecutive failures for the same tool before giving up
@@ -1014,6 +1016,7 @@ export class TaskExecutor {
   private modelKey: string;
   private conversationHistory: LLMMessage[] = [];
   private systemPrompt: string = '';
+  private lastUserMessage: string;
 
   // Plan revision tracking to prevent infinite revision loops
   private planRevisionCount: number = 0;
@@ -1040,6 +1043,7 @@ export class TaskExecutor {
     private workspace: Workspace,
     private daemon: AgentDaemon
   ) {
+    this.lastUserMessage = task.prompt;
     this.requiresTestRun = this.detectTestRequirement(`${task.title}\n${task.prompt}`);
     // Get base settings
     const settings = LLMProviderFactory.loadSettings();
@@ -1062,7 +1066,11 @@ export class TaskExecutor {
       settings.ollama?.model,
       settings.gemini?.model,
       settings.openrouter?.model,
-      settings.openai?.model
+      settings.openai?.model,
+      settings.groq?.model,
+      settings.xai?.model,
+      settings.kimi?.model,
+      settings.customProviders
     );
     this.modelKey = effectiveModelKey;
 
@@ -1218,6 +1226,23 @@ export class TaskExecutor {
     this.totalCost += calculateCost(this.modelId, inputTokens, outputTokens);
     this.iterationCount++;
     this.globalTurnCount++; // Track global turns across all steps
+  }
+
+  private getToolTimeoutMs(toolName: string, input: unknown): number {
+    const settingsTimeout = BuiltinToolsSettingsManager.getToolTimeoutMs(toolName);
+    const normalizedSettingsTimeout = settingsTimeout && settingsTimeout > 0 ? settingsTimeout : null;
+
+    if (toolName === 'run_command') {
+      const inputTimeout = typeof (input as { timeout?: unknown })?.timeout === 'number'
+        ? (input as { timeout?: number }).timeout
+        : undefined;
+      if (typeof inputTimeout === 'number' && Number.isFinite(inputTimeout) && inputTimeout > 0) {
+        return Math.round(inputTimeout);
+      }
+      return normalizedSettingsTimeout ?? TOOL_TIMEOUT_MS;
+    }
+
+    return normalizedSettingsTimeout ?? TOOL_TIMEOUT_MS;
   }
 
   /**
@@ -1459,6 +1484,37 @@ export class TaskExecutor {
     }
 
     return { input, modified: false };
+  }
+
+  private async handleCanvasPushFallback(content: LLMToolUse, assistantText: string): Promise<void> {
+    if (content.name !== 'canvas_push') {
+      return;
+    }
+
+    const inputContent = content.input?.content;
+    const hasContent = typeof inputContent === 'string' && inputContent.trim().length > 0;
+    const filename = content.input?.filename;
+    const isHtmlTarget = !filename || filename === 'index.html';
+    if (hasContent || !isHtmlTarget) {
+      return;
+    }
+
+    const extracted = this.extractHtmlFromText(assistantText);
+    const generated = extracted || await this.generateCanvasHtml(this.lastUserMessage || this.task.prompt);
+    if (!generated) {
+      return;
+    }
+
+    content.input = {
+      ...(content.input || {}),
+      content: generated,
+    };
+    this.daemon.logEvent(this.task.id, 'parameter_inference', {
+      tool: content.name,
+      inference: extracted
+        ? 'Recovered HTML from assistant text'
+        : 'Auto-generated HTML from latest user request',
+    });
   }
 
   /**
@@ -2954,6 +3010,8 @@ SCHEDULING & REMINDERS:
         // Compact messages if context is getting too large
         messages = this.contextManager.compactMessages(messages, systemPromptTokens);
 
+        const availableTools = this.getAvailableTools();
+
         // Use retry wrapper for resilient API calls
         const response = await this.callLLMWithRetry(
           () => withTimeout(
@@ -2961,7 +3019,7 @@ SCHEDULING & REMINDERS:
               model: this.modelId,
               maxTokens: 4096,
               system: this.systemPrompt,
-              tools: this.getAvailableTools(),
+              tools: availableTools,
               messages,
               signal: this.abortController.signal,
             }),
@@ -2984,6 +3042,10 @@ SCHEDULING & REMINDERS:
 
         // Log any text responses from the assistant and check if asking a question
         let assistantAskedQuestion = false;
+        const assistantText = (response.content || [])
+          .filter((item: any) => item.type === 'text' && item.text)
+          .map((item: any) => item.text)
+          .join('\n');
         if (response.content) {
           for (const content of response.content) {
             if (content.type === 'text' && content.text) {
@@ -3031,6 +3093,8 @@ SCHEDULING & REMINDERS:
         const toolResults: LLMToolResult[] = [];
         let hasDisabledToolAttempt = false;
         let hasDuplicateToolAttempt = false;
+        let hasUnavailableToolAttempt = false;
+        const availableToolNames = new Set(availableTools.map(tool => tool.name));
 
         for (const content of response.content || []) {
           if (content.type === 'tool_use') {
@@ -3055,6 +3119,40 @@ SCHEDULING & REMINDERS:
               hasDisabledToolAttempt = true;
               continue;
             }
+
+            // Validate tool availability before attempting any inference
+            if (!availableToolNames.has(content.name)) {
+              console.log(`[TaskExecutor] Tool not available in this context: ${content.name}`);
+              this.daemon.logEvent(this.task.id, 'tool_error', {
+                tool: content.name,
+                error: 'Tool not available in current context or permissions',
+                blocked: true,
+              });
+              toolResults.push({
+                type: 'tool_result',
+                tool_use_id: content.id,
+                content: JSON.stringify({
+                  error: `Tool "${content.name}" is not available in this context. Please choose a different tool or check permissions/integrations.`,
+                  unavailable: true,
+                }),
+                is_error: true,
+              });
+              hasUnavailableToolAttempt = true;
+              continue;
+            }
+
+            // Infer missing parameters for weaker models (normalize inputs before deduplication)
+            const inference = this.inferMissingParameters(content.name, content.input);
+            if (inference.modified) {
+              content.input = inference.input;
+              this.daemon.logEvent(this.task.id, 'parameter_inference', {
+                tool: content.name,
+                inference: inference.inference,
+              });
+            }
+
+            // If canvas_push is missing content, try extracting HTML from assistant text or auto-generate
+            await this.handleCanvasPushFallback(content, assistantText);
 
             // Check for duplicate tool calls (prevents stuck loops)
             const duplicateCheck = this.toolCallDeduplicator.checkDuplicate(content.name, content.input);
@@ -3129,16 +3227,6 @@ SCHEDULING & REMINDERS:
               continue;
             }
 
-            // Infer missing parameters for weaker models
-            const inference = this.inferMissingParameters(content.name, content.input);
-            if (inference.modified) {
-              content.input = inference.input;
-              this.daemon.logEvent(this.task.id, 'parameter_inference', {
-                tool: content.name,
-                inference: inference.inference,
-              });
-            }
-
             this.daemon.logEvent(this.task.id, 'tool_call', {
               tool: content.name,
               input: content.input,
@@ -3146,12 +3234,13 @@ SCHEDULING & REMINDERS:
 
             try {
               // Execute tool with timeout to prevent hanging
+              const toolTimeoutMs = this.getToolTimeoutMs(content.name, content.input);
               const result = await withTimeout(
                 this.toolRegistry.executeTool(
                   content.name,
                   content.input as any
                 ),
-                TOOL_TIMEOUT_MS,
+                toolTimeoutMs,
                 `Tool ${content.name}`
               );
 
@@ -3266,7 +3355,7 @@ SCHEDULING & REMINDERS:
           // If all tool attempts were for disabled or duplicate tools, don't continue looping
           // This prevents infinite retry loops
           const allToolsFailed = toolResults.every(r => r.is_error);
-          if ((hasDisabledToolAttempt || hasDuplicateToolAttempt) && allToolsFailed) {
+          if ((hasDisabledToolAttempt || hasDuplicateToolAttempt || hasUnavailableToolAttempt) && allToolsFailed) {
             console.log('[TaskExecutor] All tool calls failed, were disabled, or duplicates - stopping iteration');
             if (hasDuplicateToolAttempt) {
               // Duplicate detection triggered - step is likely complete
@@ -3383,6 +3472,60 @@ SCHEDULING & REMINDERS:
     }
   }
 
+  private extractHtmlFromText(text: string): string | null {
+    if (!text) return null;
+    const fenceMatch = text.match(/```html([\s\S]*?)```/i);
+    const raw = fenceMatch ? fenceMatch[1].trim() : text;
+    const doctypeIndex = raw.indexOf('<!DOCTYPE html');
+    if (doctypeIndex >= 0) {
+      const endIndex = raw.lastIndexOf('</html>');
+      if (endIndex > doctypeIndex) {
+        return raw.slice(doctypeIndex, endIndex + '</html>'.length).trim();
+      }
+    }
+    const htmlIndex = raw.indexOf('<html');
+    if (htmlIndex >= 0) {
+      const endIndex = raw.lastIndexOf('</html>');
+      if (endIndex > htmlIndex) {
+        return raw.slice(htmlIndex, endIndex + '</html>'.length).trim();
+      }
+    }
+    return null;
+  }
+
+  private async generateCanvasHtml(prompt: string): Promise<string | null> {
+    const system = [
+      'You generate a single self-contained HTML document for an in-app canvas.',
+      'Output ONLY the HTML document (no markdown, no commentary).',
+      'Use inline CSS and JS. Do not reference external assets or remote URLs.',
+      'Keep it reasonably compact and interactive where appropriate.',
+    ].join(' ');
+
+    try {
+      const response = await this.provider.createMessage({
+        model: this.modelId,
+        maxTokens: 1800,
+        system,
+        messages: [
+          {
+            role: 'user',
+            content: `Build an interactive HTML demo for this request:\n${prompt}`,
+          },
+        ],
+      });
+
+      const text = (response.content || [])
+        .filter((c) => c.type === 'text')
+        .map((c) => c.text)
+        .join('\n');
+
+      return this.extractHtmlFromText(text);
+    } catch (error) {
+      console.error('[TaskExecutor] Failed to auto-generate canvas HTML:', error);
+      return null;
+    }
+  }
+
   /**
    * Send a follow-up message to continue the conversation
    */
@@ -3393,6 +3536,7 @@ SCHEDULING & REMINDERS:
     let resumeAttempted = false;
     this.waitingForUserInput = false;
     this.paused = false;
+    this.lastUserMessage = message;
     this.toolRegistry.setCanvasSessionCutoff(shouldStartNewCanvasSession ? Date.now() : null);
     this.daemon.updateTaskStatus(this.task.id, 'executing');
     this.daemon.logEvent(this.task.id, 'executing', { message: 'Processing follow-up message' });
@@ -3602,6 +3746,9 @@ SCHEDULING & REMINDERS:
         // Compact messages if context is getting too large
         messages = this.contextManager.compactMessages(messages, systemPromptTokens);
 
+        const availableTools = this.getAvailableTools();
+        const availableToolNames = new Set(availableTools.map(tool => tool.name));
+
         // Use retry wrapper for resilient API calls
         const response = await this.callLLMWithRetry(
           () => withTimeout(
@@ -3609,7 +3756,7 @@ SCHEDULING & REMINDERS:
               model: this.modelId,
               maxTokens: 4096,
               system: this.systemPrompt,
-              tools: this.getAvailableTools(),
+              tools: availableTools,
               messages,
               signal: this.abortController.signal,
             }),
@@ -3630,6 +3777,10 @@ SCHEDULING & REMINDERS:
         // Log any text responses from the assistant and check if asking a question
         let assistantAskedQuestion = false;
         let hasTextInThisResponse = false;
+        const assistantText = (response.content || [])
+          .filter((item: any) => item.type === 'text' && item.text)
+          .map((item: any) => item.text)
+          .join('\n');
         if (response.content) {
           for (const content of response.content) {
             if (content.type === 'text' && content.text && content.text.trim().length > 0) {
@@ -3679,6 +3830,7 @@ SCHEDULING & REMINDERS:
         const toolResults: LLMToolResult[] = [];
         let hasDisabledToolAttempt = false;
         let hasDuplicateToolAttempt = false;
+        let hasUnavailableToolAttempt = false;
 
         for (const content of response.content || []) {
           if (content.type === 'tool_use') {
@@ -3703,6 +3855,40 @@ SCHEDULING & REMINDERS:
               hasDisabledToolAttempt = true;
               continue;
             }
+
+            // Validate tool availability before attempting any inference
+            if (!availableToolNames.has(content.name)) {
+              console.log(`[TaskExecutor] Tool not available in this context: ${content.name}`);
+              this.daemon.logEvent(this.task.id, 'tool_error', {
+                tool: content.name,
+                error: 'Tool not available in current context or permissions',
+                blocked: true,
+              });
+              toolResults.push({
+                type: 'tool_result',
+                tool_use_id: content.id,
+                content: JSON.stringify({
+                  error: `Tool "${content.name}" is not available in this context. Please choose a different tool or check permissions/integrations.`,
+                  unavailable: true,
+                }),
+                is_error: true,
+              });
+              hasUnavailableToolAttempt = true;
+              continue;
+            }
+
+            // Infer missing parameters for weaker models (normalize inputs before deduplication)
+            const inference = this.inferMissingParameters(content.name, content.input);
+            if (inference.modified) {
+              content.input = inference.input;
+              this.daemon.logEvent(this.task.id, 'parameter_inference', {
+                tool: content.name,
+                inference: inference.inference,
+              });
+            }
+
+            // If canvas_push is missing content, try extracting HTML from assistant text or auto-generate
+            await this.handleCanvasPushFallback(content, assistantText);
 
             // Check for duplicate tool calls (prevents stuck loops)
             const duplicateCheck = this.toolCallDeduplicator.checkDuplicate(content.name, content.input);
@@ -3775,16 +3961,6 @@ SCHEDULING & REMINDERS:
               continue;
             }
 
-            // Infer missing parameters for weaker models
-            const inference = this.inferMissingParameters(content.name, content.input);
-            if (inference.modified) {
-              content.input = inference.input;
-              this.daemon.logEvent(this.task.id, 'parameter_inference', {
-                tool: content.name,
-                inference: inference.inference,
-              });
-            }
-
             this.daemon.logEvent(this.task.id, 'tool_call', {
               tool: content.name,
               input: content.input,
@@ -3792,12 +3968,13 @@ SCHEDULING & REMINDERS:
 
             try {
               // Execute tool with timeout to prevent hanging
+              const toolTimeoutMs = this.getToolTimeoutMs(content.name, content.input);
               const result = await withTimeout(
                 this.toolRegistry.executeTool(
                   content.name,
                   content.input as any
                 ),
-                TOOL_TIMEOUT_MS,
+                toolTimeoutMs,
                 `Tool ${content.name}`
               );
 
@@ -3873,7 +4050,7 @@ SCHEDULING & REMINDERS:
 
           // If all tool attempts were for disabled or duplicate tools, don't continue looping
           const allToolsFailed = toolResults.every(r => r.is_error);
-          if ((hasDisabledToolAttempt || hasDuplicateToolAttempt) && allToolsFailed) {
+          if ((hasDisabledToolAttempt || hasDuplicateToolAttempt || hasUnavailableToolAttempt) && allToolsFailed) {
             console.log('[TaskExecutor] All tool calls failed, were disabled, or duplicates - stopping iteration');
             continueLoop = false;
           } else {

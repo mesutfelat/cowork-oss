@@ -119,7 +119,7 @@ export class XTools {
   async executeAction(input: XActionInput): Promise<any> {
     const settings = XSettingsManager.loadSettings();
     if (!settings.enabled) {
-      throw new Error('X integration is disabled. Enable it in Settings > More Channels > X.');
+      throw new Error('X integration is disabled. Enable it in Settings > X (Twitter).');
     }
 
     const action = input.action;

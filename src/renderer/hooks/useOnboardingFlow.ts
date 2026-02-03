@@ -69,6 +69,9 @@ const SCRIPT = {
       ollama: "Local with Ollama. I like the privacy.",
       openrouter: "OpenRouter. Lots of options to explore.",
       bedrock: "AWS Bedrock. Enterprise-ready.",
+      groq: "Groq. Speedy and efficient.",
+      xai: "Grok. Let's put xAI to work.",
+      kimi: "Kimi. Solid choice.",
     };
     return responses[provider] || "Good choice.";
   },
@@ -344,6 +347,12 @@ export function useOnboardingFlow({ onComplete }: UseOnboardingOptions) {
         return 'anthropic/claude-3.5-sonnet';
       case 'bedrock':
         return 'sonnet-4-5';
+      case 'groq':
+        return 'llama-3.1-8b-instant';
+      case 'xai':
+        return 'grok-4-fast-non-reasoning';
+      case 'kimi':
+        return 'kimi-k2.5';
       default:
         return 'sonnet-4';
     }
@@ -366,6 +375,12 @@ export function useOnboardingFlow({ onComplete }: UseOnboardingOptions) {
         testConfig.openrouter = { apiKey };
       } else if (provider === 'ollama') {
         testConfig.ollama = { baseUrl: data.ollamaUrl };
+      } else if (provider === 'groq') {
+        testConfig.groq = { apiKey };
+      } else if (provider === 'xai') {
+        testConfig.xai = { apiKey };
+      } else if (provider === 'kimi') {
+        testConfig.kimi = { apiKey };
       }
 
       return testConfig;
@@ -393,6 +408,12 @@ export function useOnboardingFlow({ onComplete }: UseOnboardingOptions) {
         settings.ollama = { baseUrl: data.ollamaUrl, model: 'llama3.2' };
       } else if (provider === 'bedrock') {
         settings.bedrock = { region: 'us-east-1', useDefaultCredentials: true };
+      } else if (provider === 'groq') {
+        settings.groq = { apiKey, model: 'llama-3.1-8b-instant' };
+      } else if (provider === 'xai') {
+        settings.xai = { apiKey, model: 'grok-4-fast-non-reasoning' };
+      } else if (provider === 'kimi') {
+        settings.kimi = { apiKey, model: 'kimi-k2.5' };
       }
 
       return settings;

@@ -354,7 +354,11 @@ export class MemoryService {
         settings.ollama?.model,
         settings.gemini?.model,
         settings.openrouter?.model,
-        settings.openai?.model
+        settings.openai?.model,
+        settings.groq?.model,
+        settings.xai?.model,
+        settings.kimi?.model,
+        settings.customProviders
       );
 
       const response = await provider.createMessage({

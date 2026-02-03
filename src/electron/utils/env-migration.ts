@@ -137,6 +137,28 @@ export async function migrateEnvToSettings(): Promise<MigrationResult> {
       llmChanged = true;
     }
 
+    // Migrate Groq API key
+    if (env.GROQ_API_KEY && !llmSettings.groq?.apiKey) {
+      llmSettings.groq = { ...llmSettings.groq, apiKey: env.GROQ_API_KEY };
+      migratedKeys.push('Groq API Key');
+      llmChanged = true;
+    }
+
+    // Migrate xAI API key
+    if (env.XAI_API_KEY && !llmSettings.xai?.apiKey) {
+      llmSettings.xai = { ...llmSettings.xai, apiKey: env.XAI_API_KEY };
+      migratedKeys.push('xAI API Key');
+      llmChanged = true;
+    }
+
+    // Migrate Kimi API key (Moonshot)
+    const kimiApiKey = env.KIMI_API_KEY || env.MOONSHOT_API_KEY;
+    if (kimiApiKey && !llmSettings.kimi?.apiKey) {
+      llmSettings.kimi = { ...llmSettings.kimi, apiKey: kimiApiKey };
+      migratedKeys.push('Kimi API Key');
+      llmChanged = true;
+    }
+
     // Migrate Ollama settings
     if (env.OLLAMA_BASE_URL && !llmSettings.ollama?.baseUrl) {
       llmSettings.ollama = {

@@ -127,6 +127,16 @@ export function setupCanvasHandlers(
     return manager.openInBrowser(sessionId);
   });
 
+  // Open a remote URL inside the canvas window
+  ipcMain.handle(IPC_CHANNELS.CANVAS_OPEN_URL, async (_, data: {
+    sessionId: string;
+    url: string;
+    show?: boolean;
+  }): Promise<{ success: boolean; url: string }> => {
+    const normalizedUrl = await manager.openUrl(data.sessionId, data.url, { show: data.show });
+    return { success: true, url: normalizedUrl };
+  });
+
   // Get session directory
   ipcMain.handle(IPC_CHANNELS.CANVAS_GET_SESSION_DIR, async (_, sessionId: string): Promise<string | null> => {
     return manager.getSessionDir(sessionId);

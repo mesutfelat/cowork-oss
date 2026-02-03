@@ -5,6 +5,7 @@ import { RightPanel } from './components/RightPanel';
 import { Settings } from './components/Settings';
 import { DisclaimerModal } from './components/DisclaimerModal';
 import { Onboarding } from './components/Onboarding';
+import { BrowserView } from './components/BrowserView';
 // TaskQueuePanel moved to RightPanel
 import { ToastContainer } from './components/Toast';
 import { QuickTaskFAB } from './components/QuickTaskFAB';
@@ -20,14 +21,15 @@ function getEffectiveTheme(themeMode: ThemeMode): 'light' | 'dark' {
   return themeMode;
 }
 
-type AppView = 'main' | 'settings';
+type AppView = 'main' | 'settings' | 'browser';
 
 export function App() {
   const [currentWorkspace, setCurrentWorkspace] = useState<Workspace | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [currentView, setCurrentView] = useState<AppView>('main');
-  const [settingsTab, setSettingsTab] = useState<'appearance' | 'llm' | 'search' | 'telegram' | 'slack' | 'whatsapp' | 'teams' | 'morechannels' | 'updates' | 'guardrails' | 'queue' | 'skills' | 'scheduled' | 'voice'>('appearance');
+  const [browserUrl, setBrowserUrl] = useState<string>('');
+  const [settingsTab, setSettingsTab] = useState<'appearance' | 'llm' | 'search' | 'telegram' | 'slack' | 'whatsapp' | 'teams' | 'x' | 'morechannels' | 'integrations' | 'updates' | 'guardrails' | 'queue' | 'skills' | 'scheduled' | 'voice' | 'missioncontrol'>('appearance');
   const [events, setEvents] = useState<TaskEvent[]>([]);
 
   // Model selection state
@@ -80,6 +82,11 @@ export function App() {
     setOnboardingCompletedAt(timestamp);
     // Refresh LLM config after onboarding (user may have configured a provider)
     loadLLMConfig();
+  };
+
+  const handleOpenBrowserView = (url?: string) => {
+    setBrowserUrl(url || '');
+    setCurrentView('browser');
   };
 
   const handleShowOnboarding = () => {
@@ -710,6 +717,10 @@ export function App() {
                 selectedTaskId={selectedTaskId}
                 onSelectTask={setSelectedTaskId}
                 onOpenSettings={() => setCurrentView('settings')}
+                onOpenMissionControl={() => {
+                  setSettingsTab('missioncontrol');
+                  setCurrentView('settings');
+                }}
                 onTasksChanged={loadTasks}
               />
             )}
@@ -727,6 +738,7 @@ export function App() {
                 setCurrentView('settings');
               }}
               onStopTask={handleCancelTask}
+              onOpenBrowserView={handleOpenBrowserView}
               selectedModel={selectedModel}
               availableModels={availableModels}
               onModelChange={handleModelChange}
@@ -768,6 +780,12 @@ export function App() {
           initialTab={settingsTab}
           onShowOnboarding={handleShowOnboarding}
           onboardingCompletedAt={onboardingCompletedAt}
+        />
+      )}
+      {currentView === 'browser' && (
+        <BrowserView
+          initialUrl={browserUrl}
+          onBack={() => setCurrentView('main')}
         />
       )}
     </div>

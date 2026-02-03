@@ -44,6 +44,10 @@ export interface BuiltinToolsSettings {
   };
   // Individual tool overrides (tool name -> override)
   toolOverrides: Record<string, ToolOverride>;
+  // Per-tool timeout overrides in milliseconds (tool name -> timeout)
+  toolTimeouts: Record<string, number>;
+  // Per-tool auto-approval overrides (tool name -> enabled)
+  toolAutoApprove: Record<string, boolean>;
   // Version for migrations
   version: string;
 }
@@ -100,6 +104,8 @@ const DEFAULT_SETTINGS: BuiltinToolsSettings = {
     },
   },
   toolOverrides: {},
+  toolTimeouts: {},
+  toolAutoApprove: {},
   version: '1.0.0',
 };
 
@@ -113,6 +119,12 @@ const TOOL_CATEGORIES: Record<string, keyof BuiltinToolsSettings['categories']> 
   edit_file: 'code',
   // Web fetch tools (high priority)
   web_fetch: 'webfetch',
+  notion_action: 'webfetch',
+  box_action: 'webfetch',
+  onedrive_action: 'webfetch',
+  google_drive_action: 'webfetch',
+  dropbox_action: 'webfetch',
+  sharepoint_action: 'webfetch',
   // Browser tools
   browser_navigate: 'browser',
   browser_screenshot: 'browser',
@@ -301,6 +313,8 @@ export class BuiltinToolsSettingsManager {
         ...settings.categories,
       },
       toolOverrides: settings.toolOverrides || {},
+      toolTimeouts: settings.toolTimeouts || {},
+      toolAutoApprove: settings.toolAutoApprove || {},
       version: settings.version || defaults.version,
     };
   }
@@ -351,6 +365,26 @@ export class BuiltinToolsSettingsManager {
    */
   static getToolCategory(toolName: string): string | null {
     return TOOL_CATEGORIES[toolName] || null;
+  }
+
+  /**
+   * Get per-tool timeout override (ms), if configured
+   */
+  static getToolTimeoutMs(toolName: string): number | null {
+    const settings = this.loadSettings();
+    const timeout = settings.toolTimeouts?.[toolName];
+    if (typeof timeout !== 'number' || !Number.isFinite(timeout) || timeout <= 0) {
+      return null;
+    }
+    return Math.round(timeout);
+  }
+
+  /**
+   * Check if a tool should be auto-approved
+   */
+  static getToolAutoApprove(toolName: string): boolean {
+    const settings = this.loadSettings();
+    return Boolean(settings.toolAutoApprove?.[toolName]);
   }
 
   /**

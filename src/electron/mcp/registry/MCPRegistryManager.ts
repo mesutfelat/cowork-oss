@@ -11,6 +11,9 @@
 import { v4 as uuidv4 } from 'uuid';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { app } from 'electron';
+import * as path from 'path';
+import * as fs from 'fs';
 import {
   MCPRegistry,
   MCPRegistryEntry,
@@ -28,10 +31,7 @@ const REGISTRY_CACHE_DURATION = 15 * 60 * 1000;
 // Built-in registry of common MCP servers
 // This is used as a fallback when the remote registry is unavailable
 // Package versions verified against npm registry as of 2026-01
-const BUILTIN_REGISTRY: MCPRegistry = {
-  version: '1.1.0',
-  lastUpdated: new Date().toISOString(),
-  servers: [
+const BASE_BUILTIN_SERVERS: MCPRegistryEntry[] = [
     {
       id: 'filesystem',
       name: 'Filesystem',
@@ -229,8 +229,333 @@ const BUILTIN_REGISTRY: MCPRegistry = {
       category: 'testing',
       verified: true,
     },
-  ],
-};
+];
+
+const LOCAL_CONNECTOR_VERSION = '0.1.0';
+
+function getConnectorScriptPath(connectorName: string): string {
+  const baseDir = app.isPackaged
+    ? path.join(process.resourcesPath, 'connectors')
+    : path.join(process.cwd(), 'connectors');
+  return path.join(baseDir, connectorName, 'dist', 'index.js');
+}
+
+function getConnectorCommandArgs(connectorName: string): { command: string; args: string[] } {
+  const scriptPath = getConnectorScriptPath(connectorName);
+  return {
+    // Use Electron's bundled Node runtime when possible
+    command: process.execPath,
+    args: ['--runAsNode', scriptPath],
+  };
+}
+
+function getConnectorEntries(): MCPRegistryEntry[] {
+  const salesforceCommand = getConnectorCommandArgs('salesforce-mcp');
+  const jiraCommand = getConnectorCommandArgs('jira-mcp');
+  const hubspotCommand = getConnectorCommandArgs('hubspot-mcp');
+  const zendeskCommand = getConnectorCommandArgs('zendesk-mcp');
+  const servicenowCommand = getConnectorCommandArgs('servicenow-mcp');
+  const linearCommand = getConnectorCommandArgs('linear-mcp');
+  const asanaCommand = getConnectorCommandArgs('asana-mcp');
+  const oktaCommand = getConnectorCommandArgs('okta-mcp');
+
+  return [
+    {
+      id: 'salesforce',
+      name: 'Salesforce',
+      description: 'Salesforce CRM connector for CoWork OS. Requires SALESFORCE_INSTANCE_URL and an access token.',
+      version: LOCAL_CONNECTOR_VERSION,
+      author: 'CoWork OS',
+      homepage: 'https://github.com/CoWork-OS/CoWork-OS',
+      repository: 'https://github.com/CoWork-OS/CoWork-OS',
+      license: 'MIT',
+      installMethod: 'manual',
+      transport: 'stdio',
+      defaultCommand: salesforceCommand.command,
+      defaultArgs: salesforceCommand.args,
+      defaultEnv: {
+        SALESFORCE_INSTANCE_URL: '',
+        SALESFORCE_ACCESS_TOKEN: '',
+        SALESFORCE_CLIENT_ID: '',
+        SALESFORCE_CLIENT_SECRET: '',
+        SALESFORCE_REFRESH_TOKEN: '',
+        SALESFORCE_LOGIN_URL: 'https://login.salesforce.com',
+        SALESFORCE_API_VERSION: '60.0',
+      },
+      tools: [
+        { name: 'salesforce.health', description: 'Check connector health and auth status' },
+        { name: 'salesforce.list_objects', description: 'List available Salesforce objects' },
+        { name: 'salesforce.describe_object', description: 'Describe an object and its fields' },
+        { name: 'salesforce.get_record', description: 'Fetch a record by id' },
+        { name: 'salesforce.search_records', description: 'Run a SOQL query' },
+        { name: 'salesforce.create_record', description: 'Create a record' },
+        { name: 'salesforce.update_record', description: 'Update a record' },
+      ],
+      tags: ['salesforce', 'crm', 'enterprise', 'connector'],
+      category: 'enterprise',
+      verified: true,
+      featured: true,
+    },
+    {
+      id: 'jira',
+      name: 'Jira',
+      description: 'Jira Cloud connector for CoWork OS. Requires JIRA_BASE_URL and auth (token or API token).',
+      version: LOCAL_CONNECTOR_VERSION,
+      author: 'CoWork OS',
+      homepage: 'https://github.com/CoWork-OS/CoWork-OS',
+      repository: 'https://github.com/CoWork-OS/CoWork-OS',
+      license: 'MIT',
+      installMethod: 'manual',
+      transport: 'stdio',
+      defaultCommand: jiraCommand.command,
+      defaultArgs: jiraCommand.args,
+      defaultEnv: {
+        JIRA_BASE_URL: '',
+        JIRA_ACCESS_TOKEN: '',
+        JIRA_EMAIL: '',
+        JIRA_API_TOKEN: '',
+        JIRA_CLIENT_ID: '',
+        JIRA_CLIENT_SECRET: '',
+        JIRA_REFRESH_TOKEN: '',
+        JIRA_API_VERSION: '3',
+      },
+      tools: [
+        { name: 'jira.health', description: 'Check connector health and auth status' },
+        { name: 'jira.list_projects', description: 'List Jira projects' },
+        { name: 'jira.get_issue', description: 'Fetch an issue by id or key' },
+        { name: 'jira.search_issues', description: 'Run a JQL query' },
+        { name: 'jira.create_issue', description: 'Create an issue' },
+        { name: 'jira.update_issue', description: 'Update an issue' },
+      ],
+      tags: ['jira', 'issue-tracking', 'enterprise', 'connector'],
+      category: 'enterprise',
+      verified: true,
+      featured: true,
+    },
+    {
+      id: 'hubspot',
+      name: 'HubSpot',
+      description: 'HubSpot CRM connector for CoWork OS. Requires HUBSPOT_ACCESS_TOKEN.',
+      version: LOCAL_CONNECTOR_VERSION,
+      author: 'CoWork OS',
+      homepage: 'https://github.com/CoWork-OS/CoWork-OS',
+      repository: 'https://github.com/CoWork-OS/CoWork-OS',
+      license: 'MIT',
+      installMethod: 'manual',
+      transport: 'stdio',
+      defaultCommand: hubspotCommand.command,
+      defaultArgs: hubspotCommand.args,
+      defaultEnv: {
+        HUBSPOT_ACCESS_TOKEN: '',
+        HUBSPOT_CLIENT_ID: '',
+        HUBSPOT_CLIENT_SECRET: '',
+        HUBSPOT_REFRESH_TOKEN: '',
+        HUBSPOT_BASE_URL: 'https://api.hubapi.com',
+      },
+      tools: [
+        { name: 'hubspot.health', description: 'Check connector health and auth status' },
+        { name: 'hubspot.search_objects', description: 'Search CRM objects' },
+        { name: 'hubspot.get_object', description: 'Fetch a CRM object by id' },
+        { name: 'hubspot.create_object', description: 'Create a CRM object' },
+        { name: 'hubspot.update_object', description: 'Update a CRM object' },
+      ],
+      tags: ['hubspot', 'crm', 'enterprise', 'connector'],
+      category: 'enterprise',
+      verified: true,
+    },
+    {
+      id: 'zendesk',
+      name: 'Zendesk',
+      description: 'Zendesk Support connector for CoWork OS. Requires ZENDESK credentials.',
+      version: LOCAL_CONNECTOR_VERSION,
+      author: 'CoWork OS',
+      homepage: 'https://github.com/CoWork-OS/CoWork-OS',
+      repository: 'https://github.com/CoWork-OS/CoWork-OS',
+      license: 'MIT',
+      installMethod: 'manual',
+      transport: 'stdio',
+      defaultCommand: zendeskCommand.command,
+      defaultArgs: zendeskCommand.args,
+      defaultEnv: {
+        ZENDESK_SUBDOMAIN: '',
+        ZENDESK_EMAIL: '',
+        ZENDESK_API_TOKEN: '',
+        ZENDESK_ACCESS_TOKEN: '',
+        ZENDESK_CLIENT_ID: '',
+        ZENDESK_CLIENT_SECRET: '',
+        ZENDESK_REFRESH_TOKEN: '',
+      },
+      tools: [
+        { name: 'zendesk.health', description: 'Check connector health and auth status' },
+        { name: 'zendesk.search_tickets', description: 'Search Zendesk tickets' },
+        { name: 'zendesk.get_ticket', description: 'Fetch a ticket by id' },
+        { name: 'zendesk.create_ticket', description: 'Create a ticket' },
+        { name: 'zendesk.update_ticket', description: 'Update a ticket' },
+      ],
+      tags: ['zendesk', 'support', 'enterprise', 'connector'],
+      category: 'enterprise',
+      verified: true,
+    },
+    {
+      id: 'servicenow',
+      name: 'ServiceNow',
+      description: 'ServiceNow connector for CoWork OS. Requires instance URL and credentials.',
+      version: LOCAL_CONNECTOR_VERSION,
+      author: 'CoWork OS',
+      homepage: 'https://github.com/CoWork-OS/CoWork-OS',
+      repository: 'https://github.com/CoWork-OS/CoWork-OS',
+      license: 'MIT',
+      installMethod: 'manual',
+      transport: 'stdio',
+      defaultCommand: servicenowCommand.command,
+      defaultArgs: servicenowCommand.args,
+      defaultEnv: {
+        SERVICENOW_INSTANCE_URL: '',
+        SERVICENOW_INSTANCE: '',
+        SERVICENOW_USERNAME: '',
+        SERVICENOW_PASSWORD: '',
+        SERVICENOW_ACCESS_TOKEN: '',
+      },
+      tools: [
+        { name: 'servicenow.health', description: 'Check connector health and auth status' },
+        { name: 'servicenow.list_records', description: 'List records from a table' },
+        { name: 'servicenow.get_record', description: 'Fetch a record by sys_id' },
+        { name: 'servicenow.create_record', description: 'Create a record in a table' },
+        { name: 'servicenow.update_record', description: 'Update a record in a table' },
+      ],
+      tags: ['servicenow', 'itsm', 'enterprise', 'connector'],
+      category: 'enterprise',
+      verified: true,
+    },
+    {
+      id: 'linear',
+      name: 'Linear',
+      description: 'Linear GraphQL connector for CoWork OS. Requires LINEAR_API_KEY.',
+      version: LOCAL_CONNECTOR_VERSION,
+      author: 'CoWork OS',
+      homepage: 'https://github.com/CoWork-OS/CoWork-OS',
+      repository: 'https://github.com/CoWork-OS/CoWork-OS',
+      license: 'MIT',
+      installMethod: 'manual',
+      transport: 'stdio',
+      defaultCommand: linearCommand.command,
+      defaultArgs: linearCommand.args,
+      defaultEnv: {
+        LINEAR_API_KEY: '',
+      },
+      tools: [
+        { name: 'linear.health', description: 'Check connector health and auth status' },
+        { name: 'linear.list_projects', description: 'List Linear projects' },
+        { name: 'linear.search_issues', description: 'Search issues by title' },
+        { name: 'linear.get_issue', description: 'Fetch an issue by id' },
+      ],
+      tags: ['linear', 'project', 'enterprise', 'connector'],
+      category: 'enterprise',
+      verified: true,
+    },
+    {
+      id: 'asana',
+      name: 'Asana',
+      description: 'Asana connector for CoWork OS. Requires ASANA_ACCESS_TOKEN.',
+      version: LOCAL_CONNECTOR_VERSION,
+      author: 'CoWork OS',
+      homepage: 'https://github.com/CoWork-OS/CoWork-OS',
+      repository: 'https://github.com/CoWork-OS/CoWork-OS',
+      license: 'MIT',
+      installMethod: 'manual',
+      transport: 'stdio',
+      defaultCommand: asanaCommand.command,
+      defaultArgs: asanaCommand.args,
+      defaultEnv: {
+        ASANA_ACCESS_TOKEN: '',
+      },
+      tools: [
+        { name: 'asana.health', description: 'Check connector health and auth status' },
+        { name: 'asana.list_projects', description: 'List projects in a workspace' },
+        { name: 'asana.get_task', description: 'Fetch a task by id' },
+        { name: 'asana.search_tasks', description: 'Search tasks in a workspace' },
+        { name: 'asana.create_task', description: 'Create a task' },
+        { name: 'asana.update_task', description: 'Update a task' },
+      ],
+      tags: ['asana', 'project', 'enterprise', 'connector'],
+      category: 'enterprise',
+      verified: true,
+    },
+    {
+      id: 'okta',
+      name: 'Okta',
+      description: 'Okta connector for CoWork OS. Requires OKTA_BASE_URL and OKTA_API_TOKEN.',
+      version: LOCAL_CONNECTOR_VERSION,
+      author: 'CoWork OS',
+      homepage: 'https://github.com/CoWork-OS/CoWork-OS',
+      repository: 'https://github.com/CoWork-OS/CoWork-OS',
+      license: 'MIT',
+      installMethod: 'manual',
+      transport: 'stdio',
+      defaultCommand: oktaCommand.command,
+      defaultArgs: oktaCommand.args,
+      defaultEnv: {
+        OKTA_BASE_URL: '',
+        OKTA_API_TOKEN: '',
+      },
+      tools: [
+        { name: 'okta.health', description: 'Check connector health and auth status' },
+        { name: 'okta.list_users', description: 'List users' },
+        { name: 'okta.get_user', description: 'Fetch a user by id' },
+        { name: 'okta.create_user', description: 'Create a user' },
+        { name: 'okta.update_user', description: 'Update a user' },
+      ],
+      tags: ['okta', 'identity', 'enterprise', 'connector'],
+      category: 'enterprise',
+      verified: true,
+    },
+  ];
+}
+
+function getBuiltinRegistry(): MCPRegistry {
+  return {
+    version: '1.1.0',
+    lastUpdated: new Date().toISOString(),
+    servers: [...BASE_BUILTIN_SERVERS, ...getConnectorEntries()],
+  };
+}
+
+function mergeLocalConnectors(registry: MCPRegistry): MCPRegistry {
+  const localConnectors = getConnectorEntries();
+  const existingIds = new Set(registry.servers.map((s) => s.id));
+  const existingNames = new Set(registry.servers.map((s) => s.name.toLowerCase()));
+  const mergedServers = [...registry.servers];
+
+  for (const connector of localConnectors) {
+    if (existingIds.has(connector.id) || existingNames.has(connector.name.toLowerCase())) {
+      continue;
+    }
+    mergedServers.push(connector);
+  }
+
+  return {
+    ...registry,
+    servers: mergedServers,
+  };
+}
+
+function validateManualEntry(entry: MCPRegistryEntry): void {
+  if (entry.installMethod !== 'manual') return;
+
+  const command = entry.defaultCommand || entry.installCommand;
+  if (!command) {
+    throw new Error(`Manual server ${entry.name} is missing a command`);
+  }
+
+  const args = entry.defaultArgs || [];
+  const scriptPath = args.find((arg) => /\.(c|m)?js$/i.test(arg));
+  if (scriptPath && !fs.existsSync(scriptPath)) {
+    throw new Error(
+      `Connector script not found at ${scriptPath}. ` +
+      `Build connectors first (npm run build:connectors) or reinstall.`
+    );
+  }
+}
 
 export class MCPRegistryManager {
   private static registryCache: MCPRegistry | null = null;
@@ -249,7 +574,7 @@ export class MCPRegistryManager {
 
     if (!settings.registryEnabled) {
       console.log('[MCPRegistryManager] Registry disabled, using built-in registry');
-      return BUILTIN_REGISTRY;
+      return getBuiltinRegistry();
     }
 
     try {
@@ -273,21 +598,24 @@ export class MCPRegistryManager {
         throw new Error('Invalid registry format');
       }
 
+      // Merge local connectors into remote registry
+      const mergedRegistry = mergeLocalConnectors(registry);
+
       // Update cache
-      this.registryCache = registry;
+      this.registryCache = mergedRegistry;
       this.cacheTimestamp = Date.now();
 
-      console.log(`[MCPRegistryManager] Fetched ${registry.servers.length} servers from registry`);
-      return registry;
+      console.log(`[MCPRegistryManager] Fetched ${mergedRegistry.servers.length} servers from registry (with local connectors)`);
+      return mergedRegistry;
     } catch (error: any) {
       // Only log on first failure or after cache expires
       if (!this.registryCache) {
         console.warn('[MCPRegistryManager] Failed to fetch registry, using built-in:', error.message);
       }
       // Cache the built-in registry to prevent repeated fetch attempts
-      this.registryCache = BUILTIN_REGISTRY;
+      this.registryCache = getBuiltinRegistry();
       this.cacheTimestamp = Date.now();
-      return BUILTIN_REGISTRY;
+      return this.registryCache;
     }
   }
 
@@ -390,6 +718,9 @@ export class MCPRegistryManager {
     if (existingIndex !== -1) {
       throw new Error(`Server ${entry.name} is already installed`);
     }
+
+    // Validate manual entries (local connectors)
+    validateManualEntry(entry);
 
     // Verify the npm package exists before installing
     if (entry.packageName && entry.installMethod === 'npm') {

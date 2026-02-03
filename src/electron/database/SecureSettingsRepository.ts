@@ -49,7 +49,13 @@ export type SettingsCategory =
   | 'claude-auth'
   | 'queue'
   | 'tray'
-  | 'x';
+  | 'x'
+  | 'notion'
+  | 'box'
+  | 'onedrive'
+  | 'google-drive'
+  | 'dropbox'
+  | 'sharepoint';
 
 interface SecureSettingsRow {
   id: string;

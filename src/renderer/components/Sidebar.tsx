@@ -7,6 +7,7 @@ interface SidebarProps {
   selectedTaskId: string | null;
   onSelectTask: (id: string | null) => void;
   onOpenSettings: () => void;
+  onOpenMissionControl: () => void;
   onTasksChanged: () => void;
 }
 
@@ -22,6 +23,7 @@ export function Sidebar({
   selectedTaskId,
   onSelectTask,
   onOpenSettings,
+  onOpenMissionControl,
   onTasksChanged,
 }: SidebarProps) {
   const [menuOpenTaskId, setMenuOpenTaskId] = useState<string | null>(null);
@@ -302,12 +304,24 @@ export function Sidebar({
     <div className="sidebar cli-sidebar">
       {/* New Session Button */}
       <div className="sidebar-header">
-        <button className="new-task-btn cli-new-task-btn" onClick={handleNewTask}>
-          <span className="cli-btn-bracket">[</span>
-          <span className="cli-btn-plus">+</span>
-          <span className="cli-btn-bracket">]</span>
-          <span className="cli-btn-text">new_session</span>
-        </button>
+        <div className="cli-header-actions">
+          <button
+            className="cli-action-btn cli-mission-control-btn"
+            onClick={onOpenMissionControl}
+            title="Mission Control"
+          >
+            <span className="cli-btn-bracket">[</span>
+            <span className="cli-btn-accent">MC</span>
+            <span className="cli-btn-bracket">]</span>
+            <span className="cli-btn-text">mission_control</span>
+          </button>
+          <button className="new-task-btn cli-new-task-btn cli-action-btn" onClick={handleNewTask}>
+            <span className="cli-btn-bracket">[</span>
+            <span className="cli-btn-plus">+</span>
+            <span className="cli-btn-bracket">]</span>
+            <span className="cli-btn-text">new_session</span>
+          </button>
+        </div>
       </div>
 
       {/* Sessions List */}
@@ -335,9 +349,11 @@ export function Sidebar({
           <span className="cli-footer-label">SYS:</span>
           <span className="cli-footer-value">CoWork OS</span>
         </div>
-        <button className="settings-btn cli-settings-btn" onClick={onOpenSettings} title="Settings">
-          [cfg]
-        </button>
+        <div className="cli-footer-actions">
+          <button className="settings-btn cli-settings-btn" onClick={onOpenSettings} title="Settings">
+            [cfg]
+          </button>
+        </div>
       </div>
     </div>
   );

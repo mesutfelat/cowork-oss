@@ -141,6 +141,18 @@ export type ToolType =
   | 'browser_close'
   // X/Twitter
   | 'x_action'
+  // Notion
+  | 'notion_action'
+  // Box
+  | 'box_action'
+  // OneDrive
+  | 'onedrive_action'
+  // Google Drive
+  | 'google_drive_action'
+  // Dropbox
+  | 'dropbox_action'
+  // SharePoint
+  | 'sharepoint_action'
   // Meta tools
   | 'revise_plan';
 
@@ -204,6 +216,12 @@ export const TOOL_GROUPS = {
   'group:network': [
     'web_search',
     'x_action',
+    'notion_action',
+    'box_action',
+    'onedrive_action',
+    'google_drive_action',
+    'dropbox_action',
+    'sharepoint_action',
     'browser_navigate',
     'browser_screenshot',
     'browser_get_content',
@@ -289,6 +307,12 @@ export const TOOL_RISK_LEVELS: Record<ToolType, ToolRiskLevel> = {
   browser_save_pdf: 'network',
   browser_close: 'network',
   x_action: 'network',
+  notion_action: 'network',
+  box_action: 'network',
+  onedrive_action: 'network',
+  google_drive_action: 'network',
+  dropbox_action: 'network',
+  sharepoint_action: 'network',
   // Meta
   revise_plan: 'read',
 };
@@ -1308,6 +1332,9 @@ export const IPC_CHANNELS = {
   LLM_GET_GEMINI_MODELS: 'llm:getGeminiModels',
   LLM_GET_OPENROUTER_MODELS: 'llm:getOpenRouterModels',
   LLM_GET_OPENAI_MODELS: 'llm:getOpenAIModels',
+  LLM_GET_GROQ_MODELS: 'llm:getGroqModels',
+  LLM_GET_XAI_MODELS: 'llm:getXAIModels',
+  LLM_GET_KIMI_MODELS: 'llm:getKimiModels',
   LLM_OPENAI_OAUTH_START: 'llm:openaiOAuthStart',
   LLM_OPENAI_OAUTH_LOGOUT: 'llm:openaiOAuthLogout',
   LLM_GET_BEDROCK_MODELS: 'llm:getBedrockModels',
@@ -1336,6 +1363,42 @@ export const IPC_CHANNELS = {
   X_SAVE_SETTINGS: 'x:saveSettings',
   X_TEST_CONNECTION: 'x:testConnection',
   X_GET_STATUS: 'x:getStatus',
+
+  // Notion Settings
+  NOTION_GET_SETTINGS: 'notion:getSettings',
+  NOTION_SAVE_SETTINGS: 'notion:saveSettings',
+  NOTION_TEST_CONNECTION: 'notion:testConnection',
+  NOTION_GET_STATUS: 'notion:getStatus',
+
+  // Box Settings
+  BOX_GET_SETTINGS: 'box:getSettings',
+  BOX_SAVE_SETTINGS: 'box:saveSettings',
+  BOX_TEST_CONNECTION: 'box:testConnection',
+  BOX_GET_STATUS: 'box:getStatus',
+
+  // OneDrive Settings
+  ONEDRIVE_GET_SETTINGS: 'onedrive:getSettings',
+  ONEDRIVE_SAVE_SETTINGS: 'onedrive:saveSettings',
+  ONEDRIVE_TEST_CONNECTION: 'onedrive:testConnection',
+  ONEDRIVE_GET_STATUS: 'onedrive:getStatus',
+
+  // Google Drive Settings
+  GOOGLE_DRIVE_GET_SETTINGS: 'googleDrive:getSettings',
+  GOOGLE_DRIVE_SAVE_SETTINGS: 'googleDrive:saveSettings',
+  GOOGLE_DRIVE_TEST_CONNECTION: 'googleDrive:testConnection',
+  GOOGLE_DRIVE_GET_STATUS: 'googleDrive:getStatus',
+
+  // Dropbox Settings
+  DROPBOX_GET_SETTINGS: 'dropbox:getSettings',
+  DROPBOX_SAVE_SETTINGS: 'dropbox:saveSettings',
+  DROPBOX_TEST_CONNECTION: 'dropbox:testConnection',
+  DROPBOX_GET_STATUS: 'dropbox:getStatus',
+
+  // SharePoint Settings
+  SHAREPOINT_GET_SETTINGS: 'sharepoint:getSettings',
+  SHAREPOINT_SAVE_SETTINGS: 'sharepoint:saveSettings',
+  SHAREPOINT_TEST_CONNECTION: 'sharepoint:testConnection',
+  SHAREPOINT_GET_STATUS: 'sharepoint:getStatus',
 
   // App Updates
   APP_CHECK_UPDATES: 'app:checkUpdates',
@@ -1394,6 +1457,9 @@ export const IPC_CHANNELS = {
   MCP_REGISTRY_UNINSTALL: 'mcp:registryUninstall',
   MCP_REGISTRY_CHECK_UPDATES: 'mcp:registryCheckUpdates',
   MCP_REGISTRY_UPDATE_SERVER: 'mcp:registryUpdateServer',
+
+  // MCP Connector OAuth
+  MCP_CONNECTOR_OAUTH_START: 'mcp:connectorOAuthStart',
 
   // MCP Host
   MCP_HOST_START: 'mcp:hostStart',
@@ -1498,6 +1564,7 @@ export const IPC_CHANNELS = {
   CANVAS_EXPORT_HTML: 'canvas:exportHTML',
   CANVAS_EXPORT_TO_FOLDER: 'canvas:exportToFolder',
   CANVAS_OPEN_IN_BROWSER: 'canvas:openInBrowser',
+  CANVAS_OPEN_URL: 'canvas:openUrl',
   CANVAS_GET_SESSION_DIR: 'canvas:getSessionDir',
 
   // Mobile Companion Nodes
@@ -1553,7 +1620,48 @@ export const IPC_CHANNELS = {
 } as const;
 
 // LLM Provider types
-export type LLMProviderType = 'anthropic' | 'bedrock' | 'ollama' | 'gemini' | 'openrouter' | 'openai';
+export const BUILTIN_LLM_PROVIDER_TYPES = [
+  'anthropic',
+  'bedrock',
+  'ollama',
+  'gemini',
+  'openrouter',
+  'openai',
+  'groq',
+  'xai',
+  'kimi',
+] as const;
+
+export const CUSTOM_LLM_PROVIDER_TYPES = [
+  'moonshot',
+  'opencode',
+  'google-vertex',
+  'google-antigravity',
+  'google-gemini-cli',
+  'zai',
+  'glm',
+  'vercel-ai-gateway',
+  'cerebras',
+  'mistral',
+  'github-copilot',
+  'qwen-portal',
+  'minimax',
+  'minimax-portal',
+  'xiaomi',
+  'venice',
+  'synthetic',
+  'kimi-code',
+  'kimi-coding',
+  'openai-compatible',
+  'anthropic-compatible',
+] as const;
+
+export const LLM_PROVIDER_TYPES = [
+  ...BUILTIN_LLM_PROVIDER_TYPES,
+  ...CUSTOM_LLM_PROVIDER_TYPES,
+] as const;
+
+export type LLMProviderType = typeof LLM_PROVIDER_TYPES[number];
 
 export interface CachedModelInfo {
   key: string;
@@ -1561,6 +1669,12 @@ export interface CachedModelInfo {
   description: string;
   contextLength?: number;  // For OpenRouter models
   size?: number;           // For Ollama models (in bytes)
+}
+
+export interface CustomProviderConfig {
+  apiKey?: string;
+  model?: string;
+  baseUrl?: string;
 }
 
 export interface LLMSettingsData {
@@ -1590,6 +1704,7 @@ export interface LLMSettingsData {
   openrouter?: {
     apiKey?: string;
     model?: string;
+    baseUrl?: string;
   };
   openai?: {
     apiKey?: string;
@@ -1600,12 +1715,31 @@ export interface LLMSettingsData {
     tokenExpiresAt?: number;
     authMethod?: 'api_key' | 'oauth';
   };
+  groq?: {
+    apiKey?: string;
+    model?: string;
+    baseUrl?: string;
+  };
+  xai?: {
+    apiKey?: string;
+    model?: string;
+    baseUrl?: string;
+  };
+  kimi?: {
+    apiKey?: string;
+    model?: string;
+    baseUrl?: string;
+  };
   // Cached models from API (populated when user refreshes)
   cachedGeminiModels?: CachedModelInfo[];
   cachedOpenRouterModels?: CachedModelInfo[];
   cachedOllamaModels?: CachedModelInfo[];
   cachedBedrockModels?: CachedModelInfo[];
   cachedOpenAIModels?: CachedModelInfo[];
+  cachedGroqModels?: CachedModelInfo[];
+  cachedXaiModels?: CachedModelInfo[];
+  cachedKimiModels?: CachedModelInfo[];
+  customProviders?: Record<string, CustomProviderConfig>;
 }
 
 export interface LLMProviderInfo {
@@ -1895,6 +2029,97 @@ export interface XConnectionTestResult {
   success: boolean;
   error?: string;
   username?: string;
+  userId?: string;
+}
+
+// Notion integration settings
+export interface NotionSettingsData {
+  enabled: boolean;
+  apiKey?: string;
+  notionVersion?: string;
+  timeoutMs?: number;
+}
+
+export interface NotionConnectionTestResult {
+  success: boolean;
+  error?: string;
+  name?: string;
+  userId?: string;
+}
+
+// Box integration settings
+export interface BoxSettingsData {
+  enabled: boolean;
+  accessToken?: string;
+  timeoutMs?: number;
+}
+
+export interface BoxConnectionTestResult {
+  success: boolean;
+  error?: string;
+  name?: string;
+  userId?: string;
+}
+
+// OneDrive integration settings
+export interface OneDriveSettingsData {
+  enabled: boolean;
+  accessToken?: string;
+  driveId?: string;
+  timeoutMs?: number;
+}
+
+export interface OneDriveConnectionTestResult {
+  success: boolean;
+  error?: string;
+  name?: string;
+  userId?: string;
+  driveId?: string;
+}
+
+// Google Drive integration settings
+export interface GoogleDriveSettingsData {
+  enabled: boolean;
+  accessToken?: string;
+  timeoutMs?: number;
+}
+
+export interface GoogleDriveConnectionTestResult {
+  success: boolean;
+  error?: string;
+  name?: string;
+  userId?: string;
+  email?: string;
+}
+
+// Dropbox integration settings
+export interface DropboxSettingsData {
+  enabled: boolean;
+  accessToken?: string;
+  timeoutMs?: number;
+}
+
+export interface DropboxConnectionTestResult {
+  success: boolean;
+  error?: string;
+  name?: string;
+  userId?: string;
+  email?: string;
+}
+
+// SharePoint integration settings
+export interface SharePointSettingsData {
+  enabled: boolean;
+  accessToken?: string;
+  siteId?: string;
+  driveId?: string;
+  timeoutMs?: number;
+}
+
+export interface SharePointConnectionTestResult {
+  success: boolean;
+  error?: string;
+  name?: string;
   userId?: string;
 }
 

@@ -12,7 +12,16 @@ interface OnboardingModalProps {
 type OnboardingStep = 'welcome' | 'llm' | 'channels';
 
 // LLM Provider types for the simplified setup
-type LLMProviderType = 'anthropic' | 'openai' | 'gemini' | 'ollama' | 'openrouter' | 'bedrock';
+type LLMProviderType =
+  | 'anthropic'
+  | 'openai'
+  | 'gemini'
+  | 'ollama'
+  | 'openrouter'
+  | 'bedrock'
+  | 'groq'
+  | 'xai'
+  | 'kimi';
 
 interface ProviderOption {
   type: LLMProviderType;
@@ -104,6 +113,48 @@ const PROVIDER_OPTIONS: ProviderOption[] = [
     requiresApiKey: true,
     apiKeyPlaceholder: 'sk-or-...',
     apiKeyLink: 'https://openrouter.ai/keys',
+  },
+  {
+    type: 'groq',
+    name: 'Groq',
+    description: 'Fast, low-latency models',
+    icon: (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M4 12h16" />
+        <path d="M12 4v16" />
+        <circle cx="12" cy="12" r="9" />
+      </svg>
+    ),
+    requiresApiKey: true,
+    apiKeyPlaceholder: 'gsk_...',
+    apiKeyLink: 'https://console.groq.com/keys',
+  },
+  {
+    type: 'xai',
+    name: 'xAI (Grok)',
+    description: 'Grok models from xAI',
+    icon: (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M4 4l16 16" />
+        <path d="M20 4L4 20" />
+      </svg>
+    ),
+    requiresApiKey: true,
+    apiKeyPlaceholder: 'xai-...',
+    apiKeyLink: 'https://console.x.ai/',
+  },
+  {
+    type: 'kimi',
+    name: 'Kimi',
+    description: 'Kimi models via Moonshot',
+    icon: (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M12 2l3 7 7 3-7 3-3 7-3-7-7-3 7-3 3-7z" />
+      </svg>
+    ),
+    requiresApiKey: true,
+    apiKeyPlaceholder: 'sk-...',
+    apiKeyLink: 'https://platform.moonshot.ai/',
   },
   {
     type: 'bedrock',
@@ -263,6 +314,12 @@ export function OnboardingModal({
         testConfig.openrouter = { apiKey };
       } else if (selectedProvider === 'ollama') {
         testConfig.ollama = { baseUrl: ollamaUrl };
+      } else if (selectedProvider === 'groq') {
+        testConfig.groq = { apiKey };
+      } else if (selectedProvider === 'xai') {
+        testConfig.xai = { apiKey };
+      } else if (selectedProvider === 'kimi') {
+        testConfig.kimi = { apiKey };
       }
 
       const result = await window.electronAPI.testLLMProvider(testConfig);
@@ -295,6 +352,12 @@ export function OnboardingModal({
           settings.ollama = { baseUrl: ollamaUrl, model: 'llama3.2' };
         } else if (selectedProvider === 'bedrock') {
           settings.bedrock = { region: 'us-east-1', useDefaultCredentials: true };
+        } else if (selectedProvider === 'groq') {
+          settings.groq = { apiKey, model: 'llama-3.1-8b-instant' };
+        } else if (selectedProvider === 'xai') {
+          settings.xai = { apiKey, model: 'grok-4-fast-non-reasoning' };
+        } else if (selectedProvider === 'kimi') {
+          settings.kimi = { apiKey, model: 'kimi-k2.5' };
         }
 
         await window.electronAPI.saveLLMSettings(settings);
@@ -339,6 +402,12 @@ export function OnboardingModal({
         return 'anthropic/claude-3.5-sonnet';
       case 'bedrock':
         return 'sonnet-4-5';
+      case 'groq':
+        return 'llama-3.1-8b-instant';
+      case 'xai':
+        return 'grok-4-fast-non-reasoning';
+      case 'kimi':
+        return 'kimi-k2.5';
       default:
         return 'sonnet-4';
     }

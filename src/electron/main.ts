@@ -1,6 +1,8 @@
 import path from 'path';
+import * as fs from 'fs/promises';
 import { pathToFileURL } from 'url';
 import { app, BrowserWindow, ipcMain, dialog, session, shell, Notification } from 'electron';
+import mime from 'mime-types';
 import { DatabaseManager } from './database/schema';
 import { SecureSettingsRepository } from './database/SecureSettingsRepository';
 import { setupIpcHandlers, getNotificationService } from './ipc/handlers';
@@ -493,4 +495,37 @@ ipcMain.handle('dialog:selectFolder', async () => {
     return result.filePaths[0];
   }
   return null;
+});
+
+// Handle file selection (attachments)
+ipcMain.handle('dialog:selectFiles', async () => {
+  const result = await dialog.showOpenDialog({
+    properties: ['openFile', 'multiSelections'],
+    title: 'Select Files to Upload',
+  });
+
+  if (result.canceled || result.filePaths.length === 0) {
+    return [];
+  }
+
+  const entries = await Promise.all(
+    result.filePaths.map(async (filePath) => {
+      try {
+        const stats = await fs.stat(filePath);
+        if (!stats.isFile()) {
+          return null;
+        }
+        return {
+          path: filePath,
+          name: path.basename(filePath),
+          size: stats.size,
+          mimeType: (mime.lookup(filePath) || undefined) as string | undefined,
+        };
+      } catch {
+        return null;
+      }
+    })
+  );
+
+  return entries.filter((entry): entry is { path: string; name: string; size: number; mimeType: string | undefined } => Boolean(entry));
 });

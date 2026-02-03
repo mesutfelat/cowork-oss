@@ -12,6 +12,7 @@ import { getMessage } from '../utils/agentMessages';
 const VERBOSE_STEPS_KEY = 'cowork:verboseSteps';
 const TASK_TITLE_MAX_LENGTH = 50;
 const TITLE_ELLIPSIS_REGEX = /(\.\.\.|\u2026)$/u;
+const MAX_ATTACHMENTS = 10;
 
 // Important event types shown in non-verbose mode
 // These are high-level steps that represent meaningful progress
@@ -47,6 +48,46 @@ const buildTaskTitle = (text: string): string => {
     return trimmed;
   }
   return `${trimmed.slice(0, TASK_TITLE_MAX_LENGTH)}...`;
+};
+
+type SelectedFileInfo = {
+  path: string;
+  name: string;
+  size: number;
+  mimeType?: string;
+};
+
+type PendingAttachment = SelectedFileInfo & {
+  id: string;
+};
+
+type ImportedAttachment = {
+  relativePath: string;
+  fileName: string;
+  size: number;
+  mimeType?: string;
+};
+
+const formatFileSize = (size: number): string => {
+  if (size < 1024) return `${size} B`;
+  const kb = size / 1024;
+  if (kb < 1024) return `${kb.toFixed(1)} KB`;
+  const mb = kb / 1024;
+  return `${mb.toFixed(1)} MB`;
+};
+
+const buildAttachmentSummary = (attachments: ImportedAttachment[]): string => {
+  if (attachments.length === 0) return '';
+  const lines = attachments.map((attachment) => (
+    `- ${attachment.fileName} (${attachment.relativePath})`
+  ));
+  return `Attached files (relative to workspace):\n${lines.join('\n')}`;
+};
+
+const composeMessageWithAttachments = (text: string, attachments: ImportedAttachment[]): string => {
+  const base = text.trim() || 'Please review the attached files.';
+  const summary = buildAttachmentSummary(attachments);
+  return summary ? `${base}\n\n${summary}` : base;
 };
 
 type MentionOption = {
@@ -526,7 +567,7 @@ interface GoalModeOptions {
   maxAttempts?: number;
 }
 
-type SettingsTab = 'appearance' | 'llm' | 'search' | 'telegram' | 'slack' | 'whatsapp' | 'teams' | 'morechannels' | 'updates' | 'guardrails' | 'queue' | 'skills' | 'voice';
+type SettingsTab = 'appearance' | 'llm' | 'search' | 'telegram' | 'slack' | 'whatsapp' | 'teams' | 'x' | 'morechannels' | 'integrations' | 'updates' | 'guardrails' | 'queue' | 'skills' | 'voice';
 
 interface MainContentProps {
   task: Task | undefined;
@@ -539,6 +580,7 @@ interface MainContentProps {
   onSelectWorkspace?: (workspace: Workspace) => void;
   onOpenSettings?: (tab?: SettingsTab) => void;
   onStopTask?: () => void;
+  onOpenBrowserView?: (url?: string) => void;
   selectedModel: string;
   availableModels: LLMModelInfo[];
   onModelChange: (model: string) => void;
@@ -553,11 +595,15 @@ interface ActiveCommand {
   startTimestamp: number; // When the command started, for positioning in timeline
 }
 
-export function MainContent({ task, selectedTaskId, workspace, events, onSendMessage, onCreateTask, onChangeWorkspace, onSelectWorkspace, onOpenSettings, onStopTask, selectedModel, availableModels, onModelChange }: MainContentProps) {
+export function MainContent({ task, selectedTaskId, workspace, events, onSendMessage, onCreateTask, onChangeWorkspace, onSelectWorkspace, onOpenSettings, onStopTask, onOpenBrowserView, selectedModel, availableModels, onModelChange }: MainContentProps) {
   // Agent personality context for personalized messages
   const agentContext = useAgentContext();
   const [pendingApproval, setPendingApproval] = useState<ApprovalRequest | null>(null);
   const [inputValue, setInputValue] = useState('');
+  const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
+  const [isDraggingFiles, setIsDraggingFiles] = useState(false);
+  const [isUploadingAttachments, setIsUploadingAttachments] = useState(false);
   const [agentRoles, setAgentRoles] = useState<AgentRoleData[]>([]);
   const [mentionQuery, setMentionQuery] = useState('');
   const [mentionTarget, setMentionTarget] = useState<{ start: number; end: number } | null>(null);
@@ -1220,35 +1266,190 @@ export function MainContent({ task, selectedTaskId, workspace, events, onSendMes
     }
   };
 
-  const handleSend = () => {
-    if (inputValue.trim()) {
-      // Use selectedTaskId to determine if we should follow-up or create new task
-      // This fixes the bug where old tasks (beyond the 100 most recent) would create new tasks
-      // instead of sending follow-up messages
-      if (!selectedTaskId && onCreateTask) {
-        // No task selected - create new task with optional Goal Mode options
-        const trimmedInput = inputValue.trim();
-        const title = buildTaskTitle(trimmedInput);
-        const options: GoalModeOptions | undefined = goalModeEnabled && verificationCommand
-          ? {
-              successCriteria: { type: 'shell_command' as const, command: verificationCommand },
-              maxAttempts,
-            }
-          : undefined;
-        onCreateTask(title, trimmedInput, options);
-        // Reset Goal Mode state
-        setGoalModeEnabled(false);
-        setVerificationCommand('');
-        setMaxAttempts(3);
-      } else {
-        // Task is selected (even if not in current list) - send follow-up message
-        onSendMessage(inputValue.trim());
+  const reportAttachmentError = (message: string) => {
+    setAttachmentError(message);
+    window.setTimeout(() => setAttachmentError(null), 5000);
+  };
+
+  const appendPendingAttachments = (files: SelectedFileInfo[]) => {
+    if (files.length === 0) return;
+    setPendingAttachments((prev) => {
+      const existingPaths = new Set(prev.map((attachment) => attachment.path));
+      const next = [...prev];
+      for (const file of files) {
+        if (existingPaths.has(file.path)) continue;
+        if (next.length >= MAX_ATTACHMENTS) {
+          reportAttachmentError(`You can attach up to ${MAX_ATTACHMENTS} files.`);
+          break;
+        }
+        next.push({
+          ...file,
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        });
+        existingPaths.add(file.path);
       }
-      setInputValue('');
-      setMentionOpen(false);
-      setMentionQuery('');
-      setMentionTarget(null);
+      return next;
+    });
+  };
+
+  const handleAttachFiles = async () => {
+    try {
+      const files = await window.electronAPI.selectFiles();
+      if (!files || files.length === 0) return;
+      appendPendingAttachments(files);
+    } catch (error) {
+      console.error('Failed to select files:', error);
+      reportAttachmentError('Failed to add attachments. Please try again.');
     }
+  };
+
+  const handleRemoveAttachment = (id: string) => {
+    setPendingAttachments((prev) => prev.filter((attachment) => attachment.id !== id));
+  };
+
+  const isFileDrag = (event: React.DragEvent) =>
+    Array.from(event.dataTransfer.types || []).includes('Files');
+
+  const handleDragOver = (event: React.DragEvent) => {
+    if (!isFileDrag(event)) return;
+    event.preventDefault();
+    setIsDraggingFiles(true);
+  };
+
+  const handleDragLeave = (event: React.DragEvent) => {
+    if (!isFileDrag(event)) return;
+    event.preventDefault();
+    setIsDraggingFiles(false);
+  };
+
+  const handleDrop = (event: React.DragEvent) => {
+    if (!isFileDrag(event)) return;
+    event.preventDefault();
+    setIsDraggingFiles(false);
+
+    const droppedFiles = Array.from(event.dataTransfer.files || []);
+    const files: SelectedFileInfo[] = [];
+    let missingPath = false;
+
+    droppedFiles.forEach((file) => {
+      const filePath = (file as File & { path?: string }).path;
+      if (!filePath) {
+        missingPath = true;
+        return;
+      }
+      files.push({
+        path: filePath,
+        name: file.name,
+        size: file.size,
+        mimeType: file.type || undefined,
+      });
+    });
+
+    if (missingPath) {
+      reportAttachmentError('Drag-and-drop is not supported for these files. Use the attach button instead.');
+    }
+    appendPendingAttachments(files);
+  };
+
+  const renderAttachmentPanel = () => {
+    if (pendingAttachments.length === 0 && !attachmentError) return null;
+    return (
+      <div className="attachment-panel">
+        {attachmentError && <div className="attachment-error">{attachmentError}</div>}
+        {pendingAttachments.length > 0 && (
+          <div className="attachment-list">
+            {pendingAttachments.map((attachment) => (
+              <div className="attachment-chip" key={attachment.id}>
+                <span className="attachment-icon">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <path d="M14 2v6h6" />
+                  </svg>
+                </span>
+                <span className="attachment-name" title={attachment.name}>{attachment.name}</span>
+                <span className="attachment-size">{formatFileSize(attachment.size)}</span>
+                <button
+                  className="attachment-remove"
+                  onClick={() => handleRemoveAttachment(attachment.id)}
+                  title="Remove attachment"
+                  disabled={isUploadingAttachments}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M18 6L6 18M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const importAttachmentsToWorkspace = async (): Promise<ImportedAttachment[]> => {
+    if (pendingAttachments.length === 0) return [];
+    if (!workspace) {
+      throw new Error('Select a workspace before attaching files.');
+    }
+    return window.electronAPI.importFilesToWorkspace({
+      workspaceId: workspace.id,
+      files: pendingAttachments.map((attachment) => attachment.path),
+    });
+  };
+
+  const handleSend = async () => {
+    const trimmedInput = inputValue.trim();
+    const hasAttachments = pendingAttachments.length > 0;
+
+    if (!trimmedInput && !hasAttachments) return;
+
+    let importedAttachments: ImportedAttachment[] = [];
+
+    if (hasAttachments) {
+      setIsUploadingAttachments(true);
+      try {
+        importedAttachments = await importAttachmentsToWorkspace();
+      } catch (error) {
+        console.error('Failed to import attachments:', error);
+        reportAttachmentError(error instanceof Error ? error.message : 'Failed to upload attachments.');
+        setIsUploadingAttachments(false);
+        return;
+      } finally {
+        setIsUploadingAttachments(false);
+      }
+    }
+
+    const message = composeMessageWithAttachments(trimmedInput, importedAttachments);
+
+    // Use selectedTaskId to determine if we should follow-up or create new task
+    // This fixes the bug where old tasks (beyond the 100 most recent) would create new tasks
+    // instead of sending follow-up messages
+    if (!selectedTaskId && onCreateTask) {
+      // No task selected - create new task with optional Goal Mode options
+      const titleSource = trimmedInput || (pendingAttachments[0]?.name ? `Review ${pendingAttachments[0].name}` : 'New task');
+      const title = buildTaskTitle(titleSource);
+      const options: GoalModeOptions | undefined = goalModeEnabled && verificationCommand
+        ? {
+            successCriteria: { type: 'shell_command' as const, command: verificationCommand },
+            maxAttempts,
+          }
+        : undefined;
+      onCreateTask(title, message, options);
+      // Reset Goal Mode state
+      setGoalModeEnabled(false);
+      setVerificationCommand('');
+      setMaxAttempts(3);
+    } else {
+      // Task is selected (even if not in current list) - send follow-up message
+      onSendMessage(message);
+    }
+
+    setInputValue('');
+    setPendingAttachments([]);
+    setAttachmentError(null);
+    setMentionOpen(false);
+    setMentionQuery('');
+    setMentionTarget(null);
   };
 
   const handleClearQueue = () => {
@@ -1442,7 +1643,7 @@ export function MainContent({ task, selectedTaskId, workspace, events, onSendMes
 
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      void handleSend();
     }
   };
 
@@ -1550,7 +1751,13 @@ export function MainContent({ task, selectedTaskId, workspace, events, onSendMes
             </div>
 
             {/* Input Area */}
-            <div className="welcome-input-container cli-input-container">
+            <div
+              className={`welcome-input-container cli-input-container ${isDraggingFiles ? 'drag-over' : ''}`}
+              onDragOver={handleDragOver}
+              onDragEnter={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+            >
               {showVoiceNotConfigured && (
                 <div className="voice-not-configured-banner">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1599,6 +1806,8 @@ export function MainContent({ task, selectedTaskId, workspace, events, onSendMes
                 </div>
                 {!inputValue && <span className="cli-cursor" style={{ left: cursorLeft }} />}
               </div>
+
+              {renderAttachmentPanel()}
 
               {/* Goal Mode Options */}
               <div className="goal-mode-section">
@@ -1780,6 +1989,16 @@ export function MainContent({ task, selectedTaskId, workspace, events, onSendMes
                     )}
                   </div>
                   <button
+                    className="attachment-btn"
+                    onClick={handleAttachFiles}
+                    disabled={isUploadingAttachments}
+                    title="Attach files"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21.44 11.05l-8.49 8.49a5 5 0 0 1-7.07-7.07l8.49-8.49a3 3 0 0 1 4.24 4.24l-8.49 8.49a1 1 0 0 1-1.41-1.41l7.78-7.78" />
+                    </svg>
+                  </button>
+                  <button
                     className={`voice-input-btn ${voiceInput.state}`}
                     onClick={voiceInput.toggleRecording}
                     disabled={voiceInput.state === 'processing'}
@@ -1813,7 +2032,7 @@ export function MainContent({ task, selectedTaskId, workspace, events, onSendMes
                   <button
                     className="lets-go-btn lets-go-btn-sm"
                     onClick={handleSend}
-                    disabled={!inputValue.trim()}
+                    disabled={(!inputValue.trim() && pendingAttachments.length === 0) || isUploadingAttachments}
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M12 19V5M5 12l7-7 7 7" />
@@ -1925,6 +2144,7 @@ export function MainContent({ task, selectedTaskId, workspace, events, onSendMes
                       session={item.session}
                       onClose={() => handleCanvasClose(item.session.id)}
                       forceSnapshot={item.forceSnapshot}
+                      onOpenBrowser={onOpenBrowserView}
                     />
                   );
                 }
@@ -2080,7 +2300,13 @@ export function MainContent({ task, selectedTaskId, workspace, events, onSendMes
 
       {/* Footer with Input */}
       <div className="main-footer">
-        <div className="input-container">
+        <div
+          className={`input-container ${isDraggingFiles ? 'drag-over' : ''}`}
+          onDragOver={handleDragOver}
+          onDragEnter={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
           {/* Queued message display */}
           {queuedMessage && (
             <div className="queued-message-frame">
@@ -2150,6 +2376,7 @@ export function MainContent({ task, selectedTaskId, workspace, events, onSendMes
               </div>
             </div>
           )}
+          {renderAttachmentPanel()}
           <div className="input-row">
             <div className="mention-autocomplete-wrapper" ref={mentionContainerRef}>
               <textarea
@@ -2171,6 +2398,16 @@ export function MainContent({ task, selectedTaskId, workspace, events, onSendMes
                 selectedModel={selectedModel}
                 onModelChange={onModelChange}
               />
+              <button
+                className="attachment-btn"
+                onClick={handleAttachFiles}
+                disabled={isUploadingAttachments}
+                title="Attach files"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21.44 11.05l-8.49 8.49a5 5 0 0 1-7.07-7.07l8.49-8.49a3 3 0 0 1 4.24 4.24l-8.49 8.49a1 1 0 0 1-1.41-1.41l7.78-7.78" />
+                </svg>
+              </button>
               <button
                 className={`voice-input-btn ${voiceInput.state}`}
                 onClick={voiceInput.toggleRecording}
@@ -2205,7 +2442,7 @@ export function MainContent({ task, selectedTaskId, workspace, events, onSendMes
               <button
                 className="lets-go-btn lets-go-btn-sm"
                 onClick={handleSend}
-                disabled={!inputValue.trim()}
+                disabled={(!inputValue.trim() && pendingAttachments.length === 0) || isUploadingAttachments}
                 title="Send message"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

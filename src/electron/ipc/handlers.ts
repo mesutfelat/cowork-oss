@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs/promises';
 import * as fsSync from 'fs';
 import mammoth from 'mammoth';
+import mime from 'mime-types';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const pdfParseModule = require('pdf-parse');
@@ -28,10 +29,23 @@ import { MentionRepository } from '../agents/MentionRepository';
 import { TaskLabelRepository } from '../database/TaskLabelRepository';
 import { WorkingStateRepository } from '../agents/WorkingStateRepository';
 import { ContextPolicyManager } from '../gateway/context-policy';
-import { IPC_CHANNELS, LLMSettingsData, AddChannelRequest, UpdateChannelRequest, SecurityMode, UpdateInfo, TEMP_WORKSPACE_ID, TEMP_WORKSPACE_NAME, Workspace, AgentRole, Task, BoardColumn, XSettingsData } from '../../shared/types';
+import { IPC_CHANNELS, LLMSettingsData, AddChannelRequest, UpdateChannelRequest, SecurityMode, UpdateInfo, TEMP_WORKSPACE_ID, TEMP_WORKSPACE_NAME, Workspace, AgentRole, Task, BoardColumn, XSettingsData, NotionSettingsData, BoxSettingsData, OneDriveSettingsData, GoogleDriveSettingsData, DropboxSettingsData, SharePointSettingsData } from '../../shared/types';
+import { CUSTOM_PROVIDER_MAP, CUSTOM_PROVIDER_IDS } from '../../shared/llm-provider-catalog';
 import * as os from 'os';
 import { AgentDaemon } from '../agent/daemon';
-import { LLMProviderFactory, LLMProviderConfig, ModelKey, MODELS, GEMINI_MODELS, OPENROUTER_MODELS, OLLAMA_MODELS, OpenAIOAuth } from '../agent/llm';
+import {
+  LLMProviderFactory,
+  LLMProviderConfig,
+  ModelKey,
+  MODELS,
+  GEMINI_MODELS,
+  OPENROUTER_MODELS,
+  OLLAMA_MODELS,
+  GROQ_MODELS,
+  XAI_MODELS,
+  KIMI_MODELS,
+  OpenAIOAuth,
+} from '../agent/llm';
 import { SearchProviderFactory, SearchSettings, SearchProviderType } from '../agent/search';
 import { ChannelGateway } from '../gateway';
 import { updateManager } from '../updater';
@@ -42,10 +56,17 @@ import {
   TaskCreateSchema,
   TaskRenameSchema,
   TaskMessageSchema,
+  FileImportSchema,
   ApprovalResponseSchema,
   LLMSettingsSchema,
   SearchSettingsSchema,
   XSettingsSchema,
+  NotionSettingsSchema,
+  BoxSettingsSchema,
+  OneDriveSettingsSchema,
+  GoogleDriveSettingsSchema,
+  DropboxSettingsSchema,
+  SharePointSettingsSchema,
   AddChannelSchema,
   UpdateChannelSchema,
   GrantAccessSchema,
@@ -54,10 +75,24 @@ import {
   GuardrailSettingsSchema,
   UUIDSchema,
   StringIdSchema,
+  MCPConnectorOAuthSchema,
 } from '../utils/validation';
 import { GuardrailManager } from '../guardrails/guardrail-manager';
 import { AppearanceManager } from '../settings/appearance-manager';
 import { PersonalityManager } from '../settings/personality-manager';
+import { NotionSettingsManager } from '../settings/notion-manager';
+import { testNotionConnection } from '../utils/notion-api';
+import { BoxSettingsManager } from '../settings/box-manager';
+import { OneDriveSettingsManager } from '../settings/onedrive-manager';
+import { GoogleDriveSettingsManager } from '../settings/google-drive-manager';
+import { DropboxSettingsManager } from '../settings/dropbox-manager';
+import { SharePointSettingsManager } from '../settings/sharepoint-manager';
+import { testBoxConnection } from '../utils/box-api';
+import { testOneDriveConnection } from '../utils/onedrive-api';
+import { testGoogleDriveConnection } from '../utils/google-drive-api';
+import { testDropboxConnection } from '../utils/dropbox-api';
+import { testSharePointConnection } from '../utils/sharepoint-api';
+import { startConnectorOAuth } from '../mcp/oauth/connector-oauth';
 
 const normalizeMentionToken = (value: string): string =>
   value.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -124,7 +159,9 @@ const scoreAgentForTask = (role: AgentRole, text: string) => {
   return score;
 };
 
-const selectBestAgentsForTask = (text: string, roles: AgentRole[]) => {
+const MAX_AUTO_AGENTS = 4;
+
+const selectBestAgentsForTask = (text: string, roles: AgentRole[], maxAgents = MAX_AUTO_AGENTS) => {
   if (roles.length === 0) return roles;
   const scored = roles
     .map((role) => ({ role, score: scoreAgentForTask(role, text) }))
@@ -139,19 +176,19 @@ const selectBestAgentsForTask = (text: string, roles: AgentRole[]) => {
     const threshold = Math.max(1, maxScore - 2);
     const selected = withScore
       .filter((entry) => entry.score >= threshold)
-      .slice(0, 4)
+      .slice(0, maxAgents)
       .map((entry) => entry.role);
-    return selected.length > 0 ? selected : withScore.slice(0, 3).map((entry) => entry.role);
+    return selected.length > 0 ? selected : withScore.slice(0, maxAgents).map((entry) => entry.role);
   }
 
   const leads = roles
     .filter((role) => role.autonomyLevel === 'lead')
     .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
   if (leads.length > 0) {
-    return leads.slice(0, 3);
+    return leads.slice(0, maxAgents);
   }
 
-  return roles.slice(0, Math.min(3, roles.length));
+  return roles.slice(0, Math.min(maxAgents, roles.length));
 };
 
 const extractMentionedRoles = (
@@ -159,10 +196,9 @@ const extractMentionedRoles = (
   roles: AgentRole[]
 ) => {
   const normalizedText = text.toLowerCase();
-  const useSmartSelection = /\B@everybody\b/.test(normalizedText);
-  if (/\B@all\b/.test(normalizedText) || /\B@everyone\b/.test(normalizedText)) {
-    return roles;
-  }
+  const useSmartSelection = /\B@everybody\b/.test(normalizedText) ||
+    /\B@all\b/.test(normalizedText) ||
+    /\B@everyone\b/.test(normalizedText);
 
   const index = buildAgentMentionIndex(roles);
   const matches = new Map<string, AgentRole>();
@@ -180,11 +216,15 @@ const extractMentionedRoles = (
 
   if (matches.size > 0) {
     if (useSmartSelection) {
-      const selected = selectBestAgentsForTask(text, roles);
       const merged = new Map<string, AgentRole>();
-      selected.forEach((role) => merged.set(role.id, role));
       matches.forEach((role) => merged.set(role.id, role));
-      return Array.from(merged.values());
+      const selected = selectBestAgentsForTask(text, roles, MAX_AUTO_AGENTS);
+      selected.forEach((role) => {
+        if (merged.size < MAX_AUTO_AGENTS) {
+          merged.set(role.id, role);
+        }
+      });
+      return Array.from(merged.values()).slice(0, MAX_AUTO_AGENTS);
     }
     return Array.from(matches.values());
   }
@@ -200,7 +240,7 @@ const extractMentionedRoles = (
   });
 
   if (useSmartSelection) {
-    return selectBestAgentsForTask(text, roles);
+    return selectBestAgentsForTask(text, roles, MAX_AUTO_AGENTS);
   }
 
   return Array.from(matches.values());
@@ -303,6 +343,8 @@ import { getVoiceService } from '../voice/VoiceService';
 
 // Global notification service instance
 let notificationService: NotificationService | null = null;
+const resolveCustomProviderId = (providerType: string) =>
+  providerType === 'kimi-coding' ? 'kimi-code' : providerType;
 
 /**
  * Get the notification service instance
@@ -329,6 +371,9 @@ rateLimiter.configure(IPC_CHANNELS.LLM_GET_OLLAMA_MODELS, RATE_LIMIT_CONFIGS.sta
 rateLimiter.configure(IPC_CHANNELS.LLM_GET_GEMINI_MODELS, RATE_LIMIT_CONFIGS.standard);
 rateLimiter.configure(IPC_CHANNELS.LLM_GET_OPENROUTER_MODELS, RATE_LIMIT_CONFIGS.standard);
 rateLimiter.configure(IPC_CHANNELS.LLM_GET_BEDROCK_MODELS, RATE_LIMIT_CONFIGS.standard);
+rateLimiter.configure(IPC_CHANNELS.LLM_GET_GROQ_MODELS, RATE_LIMIT_CONFIGS.standard);
+rateLimiter.configure(IPC_CHANNELS.LLM_GET_XAI_MODELS, RATE_LIMIT_CONFIGS.standard);
+rateLimiter.configure(IPC_CHANNELS.LLM_GET_KIMI_MODELS, RATE_LIMIT_CONFIGS.standard);
 rateLimiter.configure(IPC_CHANNELS.SEARCH_SAVE_SETTINGS, RATE_LIMIT_CONFIGS.limited);
 rateLimiter.configure(IPC_CHANNELS.SEARCH_TEST_PROVIDER, RATE_LIMIT_CONFIGS.expensive);
 rateLimiter.configure(IPC_CHANNELS.GATEWAY_ADD_CHANNEL, RATE_LIMIT_CONFIGS.limited);
@@ -624,6 +669,92 @@ export async function setupIpcHandlers(
     }
   });
 
+  // File import handler - copy selected files into the workspace for attachment use
+  ipcMain.handle('file:importToWorkspace', async (_, data: { workspaceId: string; files: string[] }) => {
+    const validated = validateInput(FileImportSchema, data, 'file import');
+    const workspace = workspaceRepo.findById(validated.workspaceId);
+
+    if (!workspace) {
+      throw new Error(`Workspace not found: ${validated.workspaceId}`);
+    }
+
+    if (!workspace.permissions.write) {
+      throw new Error('Write permission not granted for workspace');
+    }
+
+    const sanitizeFileName = (fileName: string): string => {
+      const sanitized = fileName.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_').trim();
+      return sanitized.length > 0 ? sanitized : 'file';
+    };
+
+    const ensureUniqueName = (dir: string, baseName: string, usedNames: Set<string>): string => {
+      const ext = path.extname(baseName);
+      const stem = path.basename(baseName, ext);
+      let candidate = baseName;
+      let counter = 1;
+      while (usedNames.has(candidate) || fsSync.existsSync(path.join(dir, candidate))) {
+        candidate = `${stem}-${counter}${ext}`;
+        counter += 1;
+      }
+      usedNames.add(candidate);
+      return candidate;
+    };
+
+    let uploadRoot: string | null = null;
+    const usedNames = new Set<string>();
+
+    const ensureUploadRoot = async (): Promise<string> => {
+      if (uploadRoot) return uploadRoot;
+      uploadRoot = path.join(workspace.path, '.cowork', 'uploads', `${Date.now()}`);
+      await fs.mkdir(uploadRoot, { recursive: true });
+      return uploadRoot;
+    };
+
+    const results: Array<{ relativePath: string; fileName: string; size: number; mimeType?: string }> = [];
+
+    for (const filePath of validated.files) {
+      const absolutePath = path.isAbsolute(filePath) ? filePath : path.resolve(filePath);
+      const stats = await fs.stat(absolutePath);
+
+      if (!stats.isFile()) {
+        throw new Error(`Not a file: ${filePath}`);
+      }
+
+      const sizeCheck = GuardrailManager.isFileSizeExceeded(stats.size);
+      if (sizeCheck.exceeded) {
+        throw new Error(`File "${path.basename(filePath)}" is ${sizeCheck.sizeMB.toFixed(1)}MB and exceeds the ${sizeCheck.limitMB}MB limit.`);
+      }
+
+      const mimeType = (mime.lookup(absolutePath) || undefined) as string | undefined;
+
+      if (isPathWithinWorkspace(absolutePath, workspace.path)) {
+        results.push({
+          relativePath: path.relative(workspace.path, absolutePath),
+          fileName: path.basename(absolutePath),
+          size: stats.size,
+          mimeType,
+        });
+        continue;
+      }
+
+      const safeName = sanitizeFileName(path.basename(absolutePath));
+      const targetRoot = await ensureUploadRoot();
+      const uniqueName = ensureUniqueName(targetRoot, safeName, usedNames);
+      const destination = path.join(targetRoot, uniqueName);
+
+      await fs.copyFile(absolutePath, destination);
+
+      results.push({
+        relativePath: path.relative(workspace.path, destination),
+        fileName: uniqueName,
+        size: stats.size,
+        mimeType,
+      });
+    }
+
+    return results;
+  });
+
   // Workspace handlers
   ipcMain.handle(IPC_CHANNELS.WORKSPACE_CREATE, async (_, data) => {
     const validated = validateInput(WorkspaceCreateSchema, data, 'workspace');
@@ -702,7 +833,7 @@ export async function setupIpcHandlers(
     try {
       const activeRoles = agentRoleRepo.findAll(false).filter((role) => role.isActive);
       const mentionedRoles = extractMentionedRoles(`${title}\n${prompt}`, activeRoles);
-      const dispatchRoles = mentionedRoles.length > 0 ? mentionedRoles : activeRoles;
+      const dispatchRoles = mentionedRoles;
 
       if (dispatchRoles.length > 0) {
         const taskUpdate: Partial<Task> = {
@@ -1040,12 +1171,19 @@ export async function setupIpcHandlers(
       gemini: validated.gemini,
       openrouter: validated.openrouter,
       openai: openaiSettings,
+      groq: validated.groq,
+      xai: validated.xai,
+      kimi: validated.kimi,
+      customProviders: validated.customProviders ?? existingSettings.customProviders,
       // Preserve cached models from existing settings
       cachedGeminiModels: existingSettings.cachedGeminiModels,
       cachedOpenRouterModels: existingSettings.cachedOpenRouterModels,
       cachedOllamaModels: existingSettings.cachedOllamaModels,
       cachedBedrockModels: existingSettings.cachedBedrockModels,
       cachedOpenAIModels: existingSettings.cachedOpenAIModels,
+      cachedGroqModels: existingSettings.cachedGroqModels,
+      cachedXaiModels: existingSettings.cachedXaiModels,
+      cachedKimiModels: existingSettings.cachedKimiModels,
     });
     // Clear cache so next task uses new settings
     LLMProviderFactory.clearCache();
@@ -1062,6 +1200,8 @@ export async function setupIpcHandlers(
       openaiAccessToken = settings.openai?.accessToken;
       openaiRefreshToken = settings.openai?.refreshToken;
     }
+    const resolvedProviderType = resolveCustomProviderId(config.providerType);
+    const customProviderConfig = config.customProviders?.[resolvedProviderType] || config.customProviders?.[config.providerType];
     const providerConfig: LLMProviderConfig = {
       type: config.providerType,
       model: LLMProviderFactory.getModelId(
@@ -1070,7 +1210,11 @@ export async function setupIpcHandlers(
         config.ollama?.model,
         config.gemini?.model,
         config.openrouter?.model,
-        config.openai?.model
+        config.openai?.model,
+        config.groq?.model,
+        config.xai?.model,
+        config.kimi?.model,
+        config.customProviders
       ),
       anthropicApiKey: config.anthropic?.apiKey,
       awsRegion: config.bedrock?.region,
@@ -1082,9 +1226,18 @@ export async function setupIpcHandlers(
       ollamaApiKey: config.ollama?.apiKey,
       geminiApiKey: config.gemini?.apiKey,
       openrouterApiKey: config.openrouter?.apiKey,
+      openrouterBaseUrl: config.openrouter?.baseUrl,
       openaiApiKey: config.openai?.apiKey,
       openaiAccessToken: openaiAccessToken,
       openaiRefreshToken: openaiRefreshToken,
+      groqApiKey: config.groq?.apiKey,
+      groqBaseUrl: config.groq?.baseUrl,
+      xaiApiKey: config.xai?.apiKey,
+      xaiBaseUrl: config.xai?.baseUrl,
+      kimiApiKey: config.kimi?.apiKey,
+      kimiBaseUrl: config.kimi?.baseUrl,
+      providerApiKey: customProviderConfig?.apiKey,
+      providerBaseUrl: customProviderConfig?.baseUrl,
     };
     return LLMProviderFactory.testProvider(providerConfig);
   });
@@ -1106,134 +1259,214 @@ export async function setupIpcHandlers(
     // Get models based on the current provider type
     let models: Array<{ key: string; displayName: string; description: string }> = [];
     let currentModel = settings.modelKey;
+    const resolvedProviderType = resolveCustomProviderId(settings.providerType);
+    const customEntry = CUSTOM_PROVIDER_MAP.get(resolvedProviderType as any);
 
-    switch (settings.providerType) {
-      case 'anthropic':
-      case 'bedrock':
-        // Use Anthropic/Bedrock models from MODELS
-        models = Object.entries(MODELS).map(([key, value]) => ({
-          key,
-          displayName: value.displayName,
-          description: key.includes('opus') ? 'Most capable for complex work' :
-                       key.includes('sonnet') ? 'Balanced performance and speed' :
-                       'Fast and efficient',
-        }));
-        break;
-
-      case 'gemini': {
-        // For Gemini, use the specific model from settings (full model ID)
-        currentModel = settings.gemini?.model || 'gemini-2.0-flash';
-        // Use cached models if available, otherwise fall back to static list
-        const cachedGemini = LLMProviderFactory.getCachedModels('gemini');
-        if (cachedGemini && cachedGemini.length > 0) {
-          models = cachedGemini;
-        } else {
-          // Fall back to static models
-          models = Object.values(GEMINI_MODELS).map((value) => ({
-            key: value.id,
-            displayName: value.displayName,
-            description: value.description,
-          }));
-        }
-        // Ensure the currently selected model is in the list
-        if (currentModel && !models.some(m => m.key === currentModel)) {
-          models.unshift({
-            key: currentModel,
-            displayName: currentModel,
-            description: 'Selected model',
-          });
-        }
-        break;
-      }
-
-      case 'openrouter': {
-        // For OpenRouter, use the specific model from settings (full model ID)
-        currentModel = settings.openrouter?.model || 'anthropic/claude-3.5-sonnet';
-        // Use cached models if available, otherwise fall back to static list
-        const cachedOpenRouter = LLMProviderFactory.getCachedModels('openrouter');
-        if (cachedOpenRouter && cachedOpenRouter.length > 0) {
-          models = cachedOpenRouter;
-        } else {
-          // Fall back to static models
-          models = Object.values(OPENROUTER_MODELS).map((value) => ({
-            key: value.id,
-            displayName: value.displayName,
-            description: value.description,
-          }));
-        }
-        // Ensure the currently selected model is in the list
-        if (currentModel && !models.some(m => m.key === currentModel)) {
-          models.unshift({
-            key: currentModel,
-            displayName: currentModel,
-            description: 'Selected model',
-          });
-        }
-        break;
-      }
-
-      case 'ollama': {
-        // For Ollama, use the specific model from settings
-        currentModel = settings.ollama?.model || 'llama3.2';
-        // Use cached models if available, otherwise fall back to static list
-        const cachedOllama = LLMProviderFactory.getCachedModels('ollama');
-        if (cachedOllama && cachedOllama.length > 0) {
-          models = cachedOllama;
-        } else {
-          // Fall back to static models
-          models = Object.entries(OLLAMA_MODELS).map(([key, value]) => ({
+    if (customEntry) {
+      const customConfig = settings.customProviders?.[resolvedProviderType] || settings.customProviders?.[settings.providerType];
+      currentModel = customConfig?.model || customEntry.defaultModel;
+      models = [
+        {
+          key: currentModel,
+          displayName: currentModel,
+          description: customEntry.description || `${customEntry.name} model`,
+        },
+      ];
+    } else {
+      switch (settings.providerType) {
+        case 'anthropic':
+        case 'bedrock':
+          // Use Anthropic/Bedrock models from MODELS
+          models = Object.entries(MODELS).map(([key, value]) => ({
             key,
             displayName: value.displayName,
-            description: `${value.size} parameter model`,
+            description: key.includes('opus') ? 'Most capable for complex work' :
+                         key.includes('sonnet') ? 'Balanced performance and speed' :
+                         'Fast and efficient',
           }));
-        }
-        // Ensure the currently selected model is in the list
-        if (currentModel && !models.some(m => m.key === currentModel)) {
-          models.unshift({
-            key: currentModel,
-            displayName: currentModel,
-            description: 'Selected model',
-          });
-        }
-        break;
-      }
+          break;
 
-      case 'openai': {
-        // For OpenAI, use the specific model from settings
-        currentModel = settings.openai?.model || 'gpt-4o-mini';
-        // Use cached models if available, otherwise fall back to static list
-        const cachedOpenAI = LLMProviderFactory.getCachedModels('openai');
-        if (cachedOpenAI && cachedOpenAI.length > 0) {
-          models = cachedOpenAI;
-        } else {
-          // Fall back to static models
-          models = [
-            { key: 'gpt-4o', displayName: 'GPT-4o', description: 'Most capable model for complex tasks' },
-            { key: 'gpt-4o-mini', displayName: 'GPT-4o Mini', description: 'Fast and affordable for most tasks' },
-            { key: 'gpt-4-turbo', displayName: 'GPT-4 Turbo', description: 'Previous generation flagship' },
-            { key: 'gpt-3.5-turbo', displayName: 'GPT-3.5 Turbo', description: 'Fast and cost-effective' },
-            { key: 'o1', displayName: 'o1', description: 'Advanced reasoning model' },
-            { key: 'o1-mini', displayName: 'o1 Mini', description: 'Fast reasoning model' },
-          ];
+        case 'gemini': {
+          // For Gemini, use the specific model from settings (full model ID)
+          currentModel = settings.gemini?.model || 'gemini-2.0-flash';
+          // Use cached models if available, otherwise fall back to static list
+          const cachedGemini = LLMProviderFactory.getCachedModels('gemini');
+          if (cachedGemini && cachedGemini.length > 0) {
+            models = cachedGemini;
+          } else {
+            // Fall back to static models
+            models = Object.values(GEMINI_MODELS).map((value) => ({
+              key: value.id,
+              displayName: value.displayName,
+              description: value.description,
+            }));
+          }
+          // Ensure the currently selected model is in the list
+          if (currentModel && !models.some(m => m.key === currentModel)) {
+            models.unshift({
+              key: currentModel,
+              displayName: currentModel,
+              description: 'Selected model',
+            });
+          }
+          break;
         }
-        // Ensure the currently selected model is in the list
-        if (currentModel && !models.some(m => m.key === currentModel)) {
-          models.unshift({
-            key: currentModel,
-            displayName: currentModel,
-            description: 'Selected model',
-          });
-        }
-        break;
-      }
 
-      default:
-        // Fallback to Anthropic models
-        models = Object.entries(MODELS).map(([key, value]) => ({
-          key,
-          displayName: value.displayName,
-          description: 'Claude model',
-        }));
+        case 'openrouter': {
+          // For OpenRouter, use the specific model from settings (full model ID)
+          currentModel = settings.openrouter?.model || 'anthropic/claude-3.5-sonnet';
+          // Use cached models if available, otherwise fall back to static list
+          const cachedOpenRouter = LLMProviderFactory.getCachedModels('openrouter');
+          if (cachedOpenRouter && cachedOpenRouter.length > 0) {
+            models = cachedOpenRouter;
+          } else {
+            // Fall back to static models
+            models = Object.values(OPENROUTER_MODELS).map((value) => ({
+              key: value.id,
+              displayName: value.displayName,
+              description: value.description,
+            }));
+          }
+          // Ensure the currently selected model is in the list
+          if (currentModel && !models.some(m => m.key === currentModel)) {
+            models.unshift({
+              key: currentModel,
+              displayName: currentModel,
+              description: 'Selected model',
+            });
+          }
+          break;
+        }
+
+        case 'ollama': {
+          // For Ollama, use the specific model from settings
+          currentModel = settings.ollama?.model || 'llama3.2';
+          // Use cached models if available, otherwise fall back to static list
+          const cachedOllama = LLMProviderFactory.getCachedModels('ollama');
+          if (cachedOllama && cachedOllama.length > 0) {
+            models = cachedOllama;
+          } else {
+            // Fall back to static models
+            models = Object.entries(OLLAMA_MODELS).map(([key, value]) => ({
+              key,
+              displayName: value.displayName,
+              description: `${value.size} parameter model`,
+            }));
+          }
+          // Ensure the currently selected model is in the list
+          if (currentModel && !models.some(m => m.key === currentModel)) {
+            models.unshift({
+              key: currentModel,
+              displayName: currentModel,
+              description: 'Selected model',
+            });
+          }
+          break;
+        }
+
+        case 'openai': {
+          // For OpenAI, use the specific model from settings
+          currentModel = settings.openai?.model || 'gpt-4o-mini';
+          // Use cached models if available, otherwise fall back to static list
+          const cachedOpenAI = LLMProviderFactory.getCachedModels('openai');
+          if (cachedOpenAI && cachedOpenAI.length > 0) {
+            models = cachedOpenAI;
+          } else {
+            // Fall back to static models
+            models = [
+              { key: 'gpt-4o', displayName: 'GPT-4o', description: 'Most capable model for complex tasks' },
+              { key: 'gpt-4o-mini', displayName: 'GPT-4o Mini', description: 'Fast and affordable for most tasks' },
+              { key: 'gpt-4-turbo', displayName: 'GPT-4 Turbo', description: 'Previous generation flagship' },
+              { key: 'gpt-3.5-turbo', displayName: 'GPT-3.5 Turbo', description: 'Fast and cost-effective' },
+              { key: 'o1', displayName: 'o1', description: 'Advanced reasoning model' },
+              { key: 'o1-mini', displayName: 'o1 Mini', description: 'Fast reasoning model' },
+            ];
+          }
+          // Ensure the currently selected model is in the list
+          if (currentModel && !models.some(m => m.key === currentModel)) {
+            models.unshift({
+              key: currentModel,
+              displayName: currentModel,
+              description: 'Selected model',
+            });
+          }
+          break;
+        }
+
+        case 'groq': {
+          currentModel = settings.groq?.model || 'llama-3.1-8b-instant';
+          const cachedGroq = LLMProviderFactory.getCachedModels('groq');
+          if (cachedGroq && cachedGroq.length > 0) {
+            models = cachedGroq;
+          } else {
+            models = Object.values(GROQ_MODELS).map((value) => ({
+              key: value.id,
+              displayName: value.displayName,
+              description: value.description,
+            }));
+          }
+          if (currentModel && !models.some(m => m.key === currentModel)) {
+            models.unshift({
+              key: currentModel,
+              displayName: currentModel,
+              description: 'Selected model',
+            });
+          }
+          break;
+        }
+
+        case 'xai': {
+          currentModel = settings.xai?.model || 'grok-4-fast-non-reasoning';
+          const cachedXai = LLMProviderFactory.getCachedModels('xai');
+          if (cachedXai && cachedXai.length > 0) {
+            models = cachedXai;
+          } else {
+            models = Object.values(XAI_MODELS).map((value) => ({
+              key: value.id,
+              displayName: value.displayName,
+              description: value.description,
+            }));
+          }
+          if (currentModel && !models.some(m => m.key === currentModel)) {
+            models.unshift({
+              key: currentModel,
+              displayName: currentModel,
+              description: 'Selected model',
+            });
+          }
+          break;
+        }
+
+        case 'kimi': {
+          currentModel = settings.kimi?.model || 'kimi-k2.5';
+          const cachedKimi = LLMProviderFactory.getCachedModels('kimi');
+          if (cachedKimi && cachedKimi.length > 0) {
+            models = cachedKimi;
+          } else {
+            models = Object.values(KIMI_MODELS).map((value) => ({
+              key: value.id,
+              displayName: value.displayName,
+              description: value.description,
+            }));
+          }
+          if (currentModel && !models.some(m => m.key === currentModel)) {
+            models.unshift({
+              key: currentModel,
+              displayName: currentModel,
+              description: 'Selected model',
+            });
+          }
+          break;
+        }
+
+        default:
+          // Fallback to Anthropic models
+          models = Object.entries(MODELS).map(([key, value]) => ({
+            key,
+            displayName: value.displayName,
+            description: 'Claude model',
+          }));
+      }
     }
 
     return {
@@ -1247,27 +1480,48 @@ export async function setupIpcHandlers(
   // Set the current model (persists selection across sessions)
   ipcMain.handle(IPC_CHANNELS.LLM_SET_MODEL, async (_, modelKey: string) => {
     const settings = LLMProviderFactory.loadSettings();
+    const resolvedProviderType = resolveCustomProviderId(settings.providerType);
 
     // Update the model key based on the current provider
-    switch (settings.providerType) {
-      case 'gemini':
-        settings.gemini = { ...settings.gemini, model: modelKey };
-        break;
-      case 'openrouter':
-        settings.openrouter = { ...settings.openrouter, model: modelKey };
-        break;
-      case 'ollama':
-        settings.ollama = { ...settings.ollama, model: modelKey };
-        break;
-      case 'openai':
-        settings.openai = { ...settings.openai, model: modelKey };
-        break;
-      case 'anthropic':
-      case 'bedrock':
-      default:
-        // For Anthropic/Bedrock, use the modelKey field
-        settings.modelKey = modelKey as ModelKey;
-        break;
+    if (CUSTOM_PROVIDER_IDS.has(resolvedProviderType as any)) {
+      const existing = settings.customProviders?.[resolvedProviderType] || {};
+      settings.customProviders = {
+        ...(settings.customProviders || {}),
+        [resolvedProviderType]: {
+          ...existing,
+          model: modelKey,
+        },
+      };
+    } else {
+      switch (settings.providerType) {
+        case 'gemini':
+          settings.gemini = { ...settings.gemini, model: modelKey };
+          break;
+        case 'openrouter':
+          settings.openrouter = { ...settings.openrouter, model: modelKey };
+          break;
+        case 'ollama':
+          settings.ollama = { ...settings.ollama, model: modelKey };
+          break;
+        case 'openai':
+          settings.openai = { ...settings.openai, model: modelKey };
+          break;
+        case 'groq':
+          settings.groq = { ...settings.groq, model: modelKey };
+          break;
+        case 'xai':
+          settings.xai = { ...settings.xai, model: modelKey };
+          break;
+        case 'kimi':
+          settings.kimi = { ...settings.kimi, model: modelKey };
+          break;
+        case 'anthropic':
+        case 'bedrock':
+        default:
+          // For Anthropic/Bedrock, use the modelKey field
+          settings.modelKey = modelKey as ModelKey;
+          break;
+      }
     }
 
     LLMProviderFactory.saveSettings(settings);
@@ -1302,9 +1556,9 @@ export async function setupIpcHandlers(
     return models;
   });
 
-  ipcMain.handle(IPC_CHANNELS.LLM_GET_OPENROUTER_MODELS, async (_, apiKey?: string) => {
+  ipcMain.handle(IPC_CHANNELS.LLM_GET_OPENROUTER_MODELS, async (_, apiKey?: string, baseUrl?: string) => {
     checkRateLimit(IPC_CHANNELS.LLM_GET_OPENROUTER_MODELS);
-    const models = await LLMProviderFactory.getOpenRouterModels(apiKey);
+    const models = await LLMProviderFactory.getOpenRouterModels(apiKey, baseUrl);
     // Cache the models for use in config status
     const cachedModels = models.map(m => ({
       key: m.id,
@@ -1326,6 +1580,42 @@ export async function setupIpcHandlers(
       description: m.description,
     }));
     LLMProviderFactory.saveCachedModels('openai', cachedModels);
+    return models;
+  });
+
+  ipcMain.handle(IPC_CHANNELS.LLM_GET_GROQ_MODELS, async (_, apiKey?: string, baseUrl?: string) => {
+    checkRateLimit(IPC_CHANNELS.LLM_GET_GROQ_MODELS);
+    const models = await LLMProviderFactory.getGroqModels(apiKey, baseUrl);
+    const cachedModels = models.map(m => ({
+      key: m.id,
+      displayName: m.name,
+      description: 'Groq model',
+    }));
+    LLMProviderFactory.saveCachedModels('groq', cachedModels);
+    return models;
+  });
+
+  ipcMain.handle(IPC_CHANNELS.LLM_GET_XAI_MODELS, async (_, apiKey?: string, baseUrl?: string) => {
+    checkRateLimit(IPC_CHANNELS.LLM_GET_XAI_MODELS);
+    const models = await LLMProviderFactory.getXAIModels(apiKey, baseUrl);
+    const cachedModels = models.map(m => ({
+      key: m.id,
+      displayName: m.name,
+      description: 'xAI model',
+    }));
+    LLMProviderFactory.saveCachedModels('xai', cachedModels);
+    return models;
+  });
+
+  ipcMain.handle(IPC_CHANNELS.LLM_GET_KIMI_MODELS, async (_, apiKey?: string, baseUrl?: string) => {
+    checkRateLimit(IPC_CHANNELS.LLM_GET_KIMI_MODELS);
+    const models = await LLMProviderFactory.getKimiModels(apiKey, baseUrl);
+    const cachedModels = models.map(m => ({
+      key: m.id,
+      displayName: m.name,
+      description: 'Kimi model',
+    }));
+    LLMProviderFactory.saveCachedModels('kimi', cachedModels);
     return models;
   });
 
@@ -1460,6 +1750,228 @@ export async function setupIpcHandlers(
       installed: true,
       connected: result.success,
       username: result.username,
+      error: result.success ? undefined : result.error,
+    };
+  });
+
+  // Notion Settings handlers
+  ipcMain.handle(IPC_CHANNELS.NOTION_GET_SETTINGS, async () => {
+    return NotionSettingsManager.loadSettings();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.NOTION_SAVE_SETTINGS, async (_, settings) => {
+    checkRateLimit(IPC_CHANNELS.NOTION_SAVE_SETTINGS);
+    const validated = validateInput(NotionSettingsSchema, settings, 'notion settings') as NotionSettingsData;
+    NotionSettingsManager.saveSettings(validated);
+    NotionSettingsManager.clearCache();
+    return { success: true };
+  });
+
+  ipcMain.handle(IPC_CHANNELS.NOTION_TEST_CONNECTION, async () => {
+    checkRateLimit(IPC_CHANNELS.NOTION_TEST_CONNECTION);
+    const settings = NotionSettingsManager.loadSettings();
+    return testNotionConnection(settings);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.NOTION_GET_STATUS, async () => {
+    checkRateLimit(IPC_CHANNELS.NOTION_GET_STATUS);
+    const settings = NotionSettingsManager.loadSettings();
+    if (!settings.apiKey) {
+      return { configured: false, connected: false };
+    }
+    if (!settings.enabled) {
+      return { configured: true, connected: false };
+    }
+    const result = await testNotionConnection(settings);
+    return {
+      configured: true,
+      connected: result.success,
+      name: result.name,
+      error: result.success ? undefined : result.error,
+    };
+  });
+
+  // Box Settings handlers
+  ipcMain.handle(IPC_CHANNELS.BOX_GET_SETTINGS, async () => {
+    return BoxSettingsManager.loadSettings();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.BOX_SAVE_SETTINGS, async (_, settings) => {
+    checkRateLimit(IPC_CHANNELS.BOX_SAVE_SETTINGS);
+    const validated = validateInput(BoxSettingsSchema, settings, 'box settings') as BoxSettingsData;
+    BoxSettingsManager.saveSettings(validated);
+    BoxSettingsManager.clearCache();
+    return { success: true };
+  });
+
+  ipcMain.handle(IPC_CHANNELS.BOX_TEST_CONNECTION, async () => {
+    checkRateLimit(IPC_CHANNELS.BOX_TEST_CONNECTION);
+    const settings = BoxSettingsManager.loadSettings();
+    return testBoxConnection(settings);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.BOX_GET_STATUS, async () => {
+    checkRateLimit(IPC_CHANNELS.BOX_GET_STATUS);
+    const settings = BoxSettingsManager.loadSettings();
+    if (!settings.accessToken) {
+      return { configured: false, connected: false };
+    }
+    if (!settings.enabled) {
+      return { configured: true, connected: false };
+    }
+    const result = await testBoxConnection(settings);
+    return {
+      configured: true,
+      connected: result.success,
+      name: result.name,
+      error: result.success ? undefined : result.error,
+    };
+  });
+
+  // OneDrive Settings handlers
+  ipcMain.handle(IPC_CHANNELS.ONEDRIVE_GET_SETTINGS, async () => {
+    return OneDriveSettingsManager.loadSettings();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.ONEDRIVE_SAVE_SETTINGS, async (_, settings) => {
+    checkRateLimit(IPC_CHANNELS.ONEDRIVE_SAVE_SETTINGS);
+    const validated = validateInput(OneDriveSettingsSchema, settings, 'onedrive settings') as OneDriveSettingsData;
+    OneDriveSettingsManager.saveSettings(validated);
+    OneDriveSettingsManager.clearCache();
+    return { success: true };
+  });
+
+  ipcMain.handle(IPC_CHANNELS.ONEDRIVE_TEST_CONNECTION, async () => {
+    checkRateLimit(IPC_CHANNELS.ONEDRIVE_TEST_CONNECTION);
+    const settings = OneDriveSettingsManager.loadSettings();
+    return testOneDriveConnection(settings);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.ONEDRIVE_GET_STATUS, async () => {
+    checkRateLimit(IPC_CHANNELS.ONEDRIVE_GET_STATUS);
+    const settings = OneDriveSettingsManager.loadSettings();
+    if (!settings.accessToken) {
+      return { configured: false, connected: false };
+    }
+    if (!settings.enabled) {
+      return { configured: true, connected: false };
+    }
+    const result = await testOneDriveConnection(settings);
+    return {
+      configured: true,
+      connected: result.success,
+      name: result.name,
+      error: result.success ? undefined : result.error,
+    };
+  });
+
+  // Google Drive Settings handlers
+  ipcMain.handle(IPC_CHANNELS.GOOGLE_DRIVE_GET_SETTINGS, async () => {
+    return GoogleDriveSettingsManager.loadSettings();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.GOOGLE_DRIVE_SAVE_SETTINGS, async (_, settings) => {
+    checkRateLimit(IPC_CHANNELS.GOOGLE_DRIVE_SAVE_SETTINGS);
+    const validated = validateInput(GoogleDriveSettingsSchema, settings, 'google drive settings') as GoogleDriveSettingsData;
+    GoogleDriveSettingsManager.saveSettings(validated);
+    GoogleDriveSettingsManager.clearCache();
+    return { success: true };
+  });
+
+  ipcMain.handle(IPC_CHANNELS.GOOGLE_DRIVE_TEST_CONNECTION, async () => {
+    checkRateLimit(IPC_CHANNELS.GOOGLE_DRIVE_TEST_CONNECTION);
+    const settings = GoogleDriveSettingsManager.loadSettings();
+    return testGoogleDriveConnection(settings);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.GOOGLE_DRIVE_GET_STATUS, async () => {
+    checkRateLimit(IPC_CHANNELS.GOOGLE_DRIVE_GET_STATUS);
+    const settings = GoogleDriveSettingsManager.loadSettings();
+    if (!settings.accessToken) {
+      return { configured: false, connected: false };
+    }
+    if (!settings.enabled) {
+      return { configured: true, connected: false };
+    }
+    const result = await testGoogleDriveConnection(settings);
+    return {
+      configured: true,
+      connected: result.success,
+      name: result.name,
+      error: result.success ? undefined : result.error,
+    };
+  });
+
+  // Dropbox Settings handlers
+  ipcMain.handle(IPC_CHANNELS.DROPBOX_GET_SETTINGS, async () => {
+    return DropboxSettingsManager.loadSettings();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.DROPBOX_SAVE_SETTINGS, async (_, settings) => {
+    checkRateLimit(IPC_CHANNELS.DROPBOX_SAVE_SETTINGS);
+    const validated = validateInput(DropboxSettingsSchema, settings, 'dropbox settings') as DropboxSettingsData;
+    DropboxSettingsManager.saveSettings(validated);
+    DropboxSettingsManager.clearCache();
+    return { success: true };
+  });
+
+  ipcMain.handle(IPC_CHANNELS.DROPBOX_TEST_CONNECTION, async () => {
+    checkRateLimit(IPC_CHANNELS.DROPBOX_TEST_CONNECTION);
+    const settings = DropboxSettingsManager.loadSettings();
+    return testDropboxConnection(settings);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.DROPBOX_GET_STATUS, async () => {
+    checkRateLimit(IPC_CHANNELS.DROPBOX_GET_STATUS);
+    const settings = DropboxSettingsManager.loadSettings();
+    if (!settings.accessToken) {
+      return { configured: false, connected: false };
+    }
+    if (!settings.enabled) {
+      return { configured: true, connected: false };
+    }
+    const result = await testDropboxConnection(settings);
+    return {
+      configured: true,
+      connected: result.success,
+      name: result.name,
+      error: result.success ? undefined : result.error,
+    };
+  });
+
+  // SharePoint Settings handlers
+  ipcMain.handle(IPC_CHANNELS.SHAREPOINT_GET_SETTINGS, async () => {
+    return SharePointSettingsManager.loadSettings();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.SHAREPOINT_SAVE_SETTINGS, async (_, settings) => {
+    checkRateLimit(IPC_CHANNELS.SHAREPOINT_SAVE_SETTINGS);
+    const validated = validateInput(SharePointSettingsSchema, settings, 'sharepoint settings') as SharePointSettingsData;
+    SharePointSettingsManager.saveSettings(validated);
+    SharePointSettingsManager.clearCache();
+    return { success: true };
+  });
+
+  ipcMain.handle(IPC_CHANNELS.SHAREPOINT_TEST_CONNECTION, async () => {
+    checkRateLimit(IPC_CHANNELS.SHAREPOINT_TEST_CONNECTION);
+    const settings = SharePointSettingsManager.loadSettings();
+    return testSharePointConnection(settings);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.SHAREPOINT_GET_STATUS, async () => {
+    checkRateLimit(IPC_CHANNELS.SHAREPOINT_GET_STATUS);
+    const settings = SharePointSettingsManager.loadSettings();
+    if (!settings.accessToken) {
+      return { configured: false, connected: false };
+    }
+    if (!settings.enabled) {
+      return { configured: true, connected: false };
+    }
+    const result = await testSharePointConnection(settings);
+    return {
+      configured: true,
+      connected: result.success,
+      name: result.name,
       error: result.success ? undefined : result.error,
     };
   });
@@ -2426,6 +2938,7 @@ function setupMCPHandlers(): void {
   rateLimiter.configure(IPC_CHANNELS.MCP_CONNECT_SERVER, RATE_LIMIT_CONFIGS.expensive);
   rateLimiter.configure(IPC_CHANNELS.MCP_TEST_SERVER, RATE_LIMIT_CONFIGS.expensive);
   rateLimiter.configure(IPC_CHANNELS.MCP_REGISTRY_INSTALL, RATE_LIMIT_CONFIGS.expensive);
+  rateLimiter.configure(IPC_CHANNELS.MCP_CONNECTOR_OAUTH_START, RATE_LIMIT_CONFIGS.expensive);
 
   // Initialize MCP settings manager
   MCPSettingsManager.initialize();
@@ -2551,6 +3064,13 @@ function setupMCPHandlers(): void {
   ipcMain.handle(IPC_CHANNELS.MCP_REGISTRY_UPDATE_SERVER, async (_, serverId: string) => {
     const validatedId = validateInput(UUIDSchema, serverId, 'server ID');
     return MCPRegistryManager.updateServer(validatedId);
+  });
+
+  // MCP Connector OAuth (Salesforce/Jira)
+  ipcMain.handle(IPC_CHANNELS.MCP_CONNECTOR_OAUTH_START, async (_, payload) => {
+    checkRateLimit(IPC_CHANNELS.MCP_CONNECTOR_OAUTH_START);
+    const validated = validateInput(MCPConnectorOAuthSchema, payload, 'connector oauth');
+    return startConnectorOAuth(validated);
   });
 
   // MCP Host handlers

@@ -20,6 +20,9 @@ const PROVIDERS: {
   { id: 'gemini', name: 'Gemini', requiresKey: true },
   { id: 'ollama', name: 'Ollama', requiresKey: false },
   { id: 'openrouter', name: 'OpenRouter', requiresKey: true },
+  { id: 'groq', name: 'Groq', requiresKey: true },
+  { id: 'xai', name: 'Grok', requiresKey: true },
+  { id: 'kimi', name: 'Kimi', requiresKey: true },
   { id: 'bedrock', name: 'AWS Bedrock', requiresKey: false },
 ];
 
@@ -29,6 +32,9 @@ const PROVIDER_URLS: Record<string, string> = {
   openai: 'https://platform.openai.com/api-keys',
   gemini: 'https://aistudio.google.com/app/apikey',
   openrouter: 'https://openrouter.ai/keys',
+  groq: 'https://console.groq.com/keys',
+  xai: 'https://console.x.ai/',
+  kimi: 'https://platform.moonshot.ai/',
 };
 
 export function Onboarding({ onComplete }: OnboardingProps) {
@@ -252,7 +258,13 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                   ? 'OpenAI'
                   : provider === 'gemini'
                     ? 'Google AI Studio'
-                    : 'OpenRouter'}
+                    : provider === 'openrouter'
+                      ? 'OpenRouter'
+                      : provider === 'groq'
+                        ? 'Groq Console'
+                        : provider === 'xai'
+                          ? 'xAI Console'
+                          : 'Moonshot Platform'}
             </a>
           </p>
         )}

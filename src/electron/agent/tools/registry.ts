@@ -18,6 +18,12 @@ import { CronTools } from './cron-tools';
 import { CanvasTools } from './canvas-tools';
 import { MentionTools } from './mention-tools';
 import { XTools } from './x-tools';
+import { NotionTools } from './notion-tools';
+import { BoxTools } from './box-tools';
+import { OneDriveTools } from './onedrive-tools';
+import { GoogleDriveTools } from './google-drive-tools';
+import { DropboxTools } from './dropbox-tools';
+import { SharePointTools } from './sharepoint-tools';
 import { LLMTool } from '../llm/types';
 import { SearchProviderFactory } from '../search';
 import { MCPClientManager } from '../../mcp/client/MCPClientManager';
@@ -48,6 +54,12 @@ export class ToolRegistry {
   private canvasTools: CanvasTools;
   private mentionTools: MentionTools;
   private xTools: XTools;
+  private notionTools: NotionTools;
+  private boxTools: BoxTools;
+  private oneDriveTools: OneDriveTools;
+  private googleDriveTools: GoogleDriveTools;
+  private dropboxTools: DropboxTools;
+  private sharePointTools: SharePointTools;
   private gatewayContext?: GatewayContextType;
   private shadowedToolsLogged = false;
 
@@ -72,6 +84,12 @@ export class ToolRegistry {
     this.canvasTools = new CanvasTools(workspace, daemon, taskId);
     this.mentionTools = new MentionTools(workspace.id, taskId, daemon);
     this.xTools = new XTools(workspace, daemon, taskId);
+    this.notionTools = new NotionTools(workspace, daemon, taskId);
+    this.boxTools = new BoxTools(workspace, daemon, taskId);
+    this.oneDriveTools = new OneDriveTools(workspace, daemon, taskId);
+    this.googleDriveTools = new GoogleDriveTools(workspace, daemon, taskId);
+    this.dropboxTools = new DropboxTools(workspace, daemon, taskId);
+    this.sharePointTools = new SharePointTools(workspace, daemon, taskId);
     this.gatewayContext = gatewayContext;
   }
 
@@ -102,6 +120,12 @@ export class ToolRegistry {
     this.cronTools.setWorkspace(workspace);
     this.canvasTools.setWorkspace(workspace);
     this.xTools.setWorkspace(workspace);
+    this.notionTools.setWorkspace(workspace);
+    this.boxTools.setWorkspace(workspace);
+    this.oneDriveTools.setWorkspace(workspace);
+    this.googleDriveTools.setWorkspace(workspace);
+    this.dropboxTools.setWorkspace(workspace);
+    this.sharePointTools.setWorkspace(workspace);
   }
 
   /**
@@ -173,6 +197,36 @@ export class ToolRegistry {
     // Only add X/Twitter tool if integration is enabled
     if (XTools.isEnabled()) {
       allTools.push(...this.getXToolDefinitions());
+    }
+
+    // Only add Notion tool if integration is enabled
+    if (NotionTools.isEnabled()) {
+      allTools.push(...this.getNotionToolDefinitions());
+    }
+
+    // Only add Box tool if integration is enabled
+    if (BoxTools.isEnabled()) {
+      allTools.push(...this.getBoxToolDefinitions());
+    }
+
+    // Only add OneDrive tool if integration is enabled
+    if (OneDriveTools.isEnabled()) {
+      allTools.push(...this.getOneDriveToolDefinitions());
+    }
+
+    // Only add Google Drive tool if integration is enabled
+    if (GoogleDriveTools.isEnabled()) {
+      allTools.push(...this.getGoogleDriveToolDefinitions());
+    }
+
+    // Only add Dropbox tool if integration is enabled
+    if (DropboxTools.isEnabled()) {
+      allTools.push(...this.getDropboxToolDefinitions());
+    }
+
+    // Only add SharePoint tool if integration is enabled
+    if (SharePointTools.isEnabled()) {
+      allTools.push(...this.getSharePointToolDefinitions());
     }
 
     // Only add shell tool if workspace has shell permission
@@ -624,6 +678,24 @@ ${skillDescriptions}`;
 
     // X/Twitter tools
     if (name === 'x_action') return await this.xTools.executeAction(input);
+
+    // Notion tools
+    if (name === 'notion_action') return await this.notionTools.executeAction(input);
+
+    // Box tools
+    if (name === 'box_action') return await this.boxTools.executeAction(input);
+
+    // OneDrive tools
+    if (name === 'onedrive_action') return await this.oneDriveTools.executeAction(input);
+
+    // Google Drive tools
+    if (name === 'google_drive_action') return await this.googleDriveTools.executeAction(input);
+
+    // Dropbox tools
+    if (name === 'dropbox_action') return await this.dropboxTools.executeAction(input);
+
+    // SharePoint tools
+    if (name === 'sharepoint_action') return await this.sharePointTools.executeAction(input);
 
     // Shell tools
     if (name === 'run_command') return await this.shellTools.runCommand(input.command, input);
@@ -2027,6 +2099,499 @@ ${skillDescriptions}`;
             alt: {
               type: 'string',
               description: 'Alt text for media (single string)',
+            },
+          },
+          required: ['action'],
+        },
+      },
+    ];
+  }
+
+  /**
+   * Define Notion tools
+   */
+  private getNotionToolDefinitions(): LLMTool[] {
+    return [
+      {
+        name: 'notion_action',
+        description:
+          'Use the connected Notion account to search, read, and update pages/data sources. ' +
+          'Write actions (create/update/append) require user approval.',
+        input_schema: {
+          type: 'object',
+          properties: {
+            action: {
+              type: 'string',
+              enum: [
+                'search',
+                'list_users',
+                'get_user',
+                'get_page',
+                'get_page_property',
+                'get_database',
+                'get_block',
+                'get_block_children',
+                'update_block',
+                'delete_block',
+                'create_page',
+                'update_page',
+                'append_blocks',
+                'query_data_source',
+                'get_data_source',
+                'create_data_source',
+                'update_data_source',
+              ],
+              description: 'Action to perform',
+            },
+            query: {
+              type: 'string',
+              description: 'Search query (for search)',
+            },
+            user_id: {
+              type: 'string',
+              description: 'User ID (for get_user)',
+            },
+            page_id: {
+              type: 'string',
+              description: 'Page ID (for get_page/update_page)',
+            },
+            property_id: {
+              type: 'string',
+              description: 'Property ID (for get_page_property)',
+            },
+            block_id: {
+              type: 'string',
+              description: 'Block ID (for get_block/get_block_children/append_blocks/update_block/delete_block)',
+            },
+            block_type: {
+              type: 'string',
+              description: 'Block type key for update_block (e.g., "paragraph")',
+            },
+            block: {
+              type: 'object',
+              description: 'Block payload for update_block (e.g., { rich_text: [...] })',
+            },
+            data_source_id: {
+              type: 'string',
+              description: 'Data source ID (for query_data_source/get_data_source)',
+            },
+            database_id: {
+              type: 'string',
+              description: 'Database ID (for create_page/get_database)',
+            },
+            parent_page_id: {
+              type: 'string',
+              description: 'Parent page ID (for create_page or create_data_source)',
+            },
+            properties: {
+              type: 'object',
+              description: 'Notion properties payload for create/update',
+            },
+            children: {
+              type: 'array',
+              description: 'Block children payload for append_blocks',
+              items: { type: 'object' },
+            },
+            filter: {
+              type: 'object',
+              description: 'Filter object for search/query',
+            },
+            sort: {
+              type: 'object',
+              description: 'Sort object for search',
+            },
+            sorts: {
+              type: 'array',
+              description: 'Sorts array for search/query',
+              items: { type: 'object' },
+            },
+            start_cursor: {
+              type: 'string',
+              description: 'Pagination cursor',
+            },
+            page_size: {
+              type: 'number',
+              description: 'Pagination page size',
+            },
+            archived: {
+              type: 'boolean',
+              description: 'Archive/unarchive page (for update_page)',
+            },
+            icon: {
+              type: 'object',
+              description: 'Icon payload (for create/update)',
+            },
+            cover: {
+              type: 'object',
+              description: 'Cover payload (for create/update)',
+            },
+            title: {
+              type: 'string',
+              description: 'Title for create_data_source/update_data_source',
+            },
+            is_inline: {
+              type: 'boolean',
+              description: 'Create inline data source (for create_data_source)',
+            },
+            payload: {
+              type: 'object',
+              description: 'Raw request body to send directly (advanced use)',
+            },
+          },
+          required: ['action'],
+        },
+      },
+    ];
+  }
+
+  /**
+   * Define Box tools
+   */
+  private getBoxToolDefinitions(): LLMTool[] {
+    return [
+      {
+        name: 'box_action',
+        description:
+          'Use the connected Box account to search, read, and manage files/folders. ' +
+          'Write actions (create/upload/delete) require user approval.',
+        input_schema: {
+          type: 'object',
+          properties: {
+            action: {
+              type: 'string',
+              enum: [
+                'get_current_user',
+                'search',
+                'get_file',
+                'get_folder',
+                'list_folder_items',
+                'create_folder',
+                'delete_file',
+                'delete_folder',
+                'upload_file',
+              ],
+              description: 'Action to perform',
+            },
+            query: {
+              type: 'string',
+              description: 'Search query (for search)',
+            },
+            limit: {
+              type: 'number',
+              description: 'Max results (for search/list_folder_items)',
+            },
+            offset: {
+              type: 'number',
+              description: 'Offset for pagination (for search/list_folder_items)',
+            },
+            fields: {
+              type: 'string',
+              description: 'Comma-separated fields to return',
+            },
+            type: {
+              type: 'string',
+              enum: ['file', 'folder', 'web_link'],
+              description: 'Filter search results by type',
+            },
+            ancestor_folder_ids: {
+              type: 'string',
+              description: 'Comma-separated ancestor folder IDs for search',
+            },
+            file_extensions: {
+              type: 'string',
+              description: 'Comma-separated file extensions for search',
+            },
+            content_types: {
+              type: 'string',
+              description: 'Comma-separated content types for search',
+            },
+            scope: {
+              type: 'string',
+              description: 'Search scope (e.g., user_content)',
+            },
+            folder_id: {
+              type: 'string',
+              description: 'Folder ID (for get_folder/list_folder_items/delete_folder)',
+            },
+            file_id: {
+              type: 'string',
+              description: 'File ID (for get_file/delete_file)',
+            },
+            parent_id: {
+              type: 'string',
+              description: 'Parent folder ID (for create_folder/upload_file). Defaults to root.',
+            },
+            name: {
+              type: 'string',
+              description: 'Name for create_folder/upload_file',
+            },
+            file_path: {
+              type: 'string',
+              description: 'Workspace-relative path to upload (for upload_file)',
+            },
+          },
+          required: ['action'],
+        },
+      },
+    ];
+  }
+
+  /**
+   * Define OneDrive tools
+   */
+  private getOneDriveToolDefinitions(): LLMTool[] {
+    return [
+      {
+        name: 'onedrive_action',
+        description:
+          'Use the connected OneDrive account to search, read, and manage files/folders. ' +
+          'Write actions (create/upload/delete) require user approval.',
+        input_schema: {
+          type: 'object',
+          properties: {
+            action: {
+              type: 'string',
+              enum: [
+                'get_drive',
+                'search',
+                'list_children',
+                'get_item',
+                'create_folder',
+                'upload_file',
+                'delete_item',
+              ],
+              description: 'Action to perform',
+            },
+            drive_id: {
+              type: 'string',
+              description: 'Drive ID override (optional)',
+            },
+            item_id: {
+              type: 'string',
+              description: 'Item ID (for get_item/list_children/delete_item)',
+            },
+            query: {
+              type: 'string',
+              description: 'Search query (for search)',
+            },
+            parent_id: {
+              type: 'string',
+              description: 'Parent folder ID (for create_folder/upload_file)',
+            },
+            name: {
+              type: 'string',
+              description: 'Name for create_folder or uploaded file',
+            },
+            conflict_behavior: {
+              type: 'string',
+              enum: ['rename', 'fail', 'replace'],
+              description: 'Conflict behavior for create_folder',
+            },
+            file_path: {
+              type: 'string',
+              description: 'Workspace-relative path to upload (for upload_file)',
+            },
+            remote_path: {
+              type: 'string',
+              description: 'Remote path (for upload_file, relative to root)',
+            },
+          },
+          required: ['action'],
+        },
+      },
+    ];
+  }
+
+  /**
+   * Define Google Drive tools
+   */
+  private getGoogleDriveToolDefinitions(): LLMTool[] {
+    return [
+      {
+        name: 'google_drive_action',
+        description:
+          'Use the connected Google Drive account to search, read, and manage files/folders. ' +
+          'Write actions (create/upload/delete) require user approval.',
+        input_schema: {
+          type: 'object',
+          properties: {
+            action: {
+              type: 'string',
+              enum: [
+                'get_current_user',
+                'list_files',
+                'get_file',
+                'create_folder',
+                'upload_file',
+                'delete_file',
+              ],
+              description: 'Action to perform',
+            },
+            query: {
+              type: 'string',
+              description: 'Search query (Drive query syntax) for list_files',
+            },
+            page_size: {
+              type: 'number',
+              description: 'Max results (for list_files)',
+            },
+            page_token: {
+              type: 'string',
+              description: 'Pagination token (for list_files)',
+            },
+            fields: {
+              type: 'string',
+              description: 'Fields selector (for list_files/get_file)',
+            },
+            file_id: {
+              type: 'string',
+              description: 'File ID (for get_file/delete_file)',
+            },
+            parent_id: {
+              type: 'string',
+              description: 'Parent folder ID (for create_folder/upload_file)',
+            },
+            name: {
+              type: 'string',
+              description: 'Name for create_folder/upload_file',
+            },
+            file_path: {
+              type: 'string',
+              description: 'Workspace-relative path to upload (for upload_file)',
+            },
+          },
+          required: ['action'],
+        },
+      },
+    ];
+  }
+
+  /**
+   * Define Dropbox tools
+   */
+  private getDropboxToolDefinitions(): LLMTool[] {
+    return [
+      {
+        name: 'dropbox_action',
+        description:
+          'Use the connected Dropbox account to search, read, and manage files/folders. ' +
+          'Write actions (create/upload/delete) require user approval.',
+        input_schema: {
+          type: 'object',
+          properties: {
+            action: {
+              type: 'string',
+              enum: [
+                'get_current_user',
+                'list_folder',
+                'list_folder_continue',
+                'search',
+                'get_metadata',
+                'create_folder',
+                'delete_item',
+                'upload_file',
+              ],
+              description: 'Action to perform',
+            },
+            path: {
+              type: 'string',
+              description: 'Dropbox path (for list_folder/get_metadata/create_folder/delete_item/upload_file)',
+            },
+            query: {
+              type: 'string',
+              description: 'Search query (for search)',
+            },
+            limit: {
+              type: 'number',
+              description: 'Max results (for list/search)',
+            },
+            cursor: {
+              type: 'string',
+              description: 'Pagination cursor (for list_folder_continue)',
+            },
+            name: {
+              type: 'string',
+              description: 'Name for upload_file',
+            },
+            parent_path: {
+              type: 'string',
+              description: 'Parent folder path (for upload_file when path not provided)',
+            },
+            file_path: {
+              type: 'string',
+              description: 'Workspace-relative path to upload (for upload_file)',
+            },
+          },
+          required: ['action'],
+        },
+      },
+    ];
+  }
+
+  /**
+   * Define SharePoint tools
+   */
+  private getSharePointToolDefinitions(): LLMTool[] {
+    return [
+      {
+        name: 'sharepoint_action',
+        description:
+          'Use the connected SharePoint account to search sites and manage drive items. ' +
+          'Write actions (create/upload/delete) require user approval.',
+        input_schema: {
+          type: 'object',
+          properties: {
+            action: {
+              type: 'string',
+              enum: [
+                'get_current_user',
+                'search_sites',
+                'get_site',
+                'list_site_drives',
+                'list_drive_items',
+                'get_item',
+                'create_folder',
+                'upload_file',
+                'delete_item',
+              ],
+              description: 'Action to perform',
+            },
+            site_id: {
+              type: 'string',
+              description: 'Site ID (for get_site/list_site_drives)',
+            },
+            drive_id: {
+              type: 'string',
+              description: 'Drive ID (for list/get/create/upload/delete)',
+            },
+            item_id: {
+              type: 'string',
+              description: 'Item ID (for list_drive_items/get_item/delete_item)',
+            },
+            query: {
+              type: 'string',
+              description: 'Search query (for search_sites)',
+            },
+            parent_id: {
+              type: 'string',
+              description: 'Parent folder ID (for create_folder/upload_file)',
+            },
+            name: {
+              type: 'string',
+              description: 'Name for create_folder/upload_file',
+            },
+            conflict_behavior: {
+              type: 'string',
+              enum: ['rename', 'fail', 'replace'],
+              description: 'Conflict behavior for create_folder',
+            },
+            file_path: {
+              type: 'string',
+              description: 'Workspace-relative path to upload (for upload_file)',
+            },
+            remote_path: {
+              type: 'string',
+              description: 'Remote path (for upload_file, relative to root)',
             },
           },
           required: ['action'],

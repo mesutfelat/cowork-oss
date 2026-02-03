@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { MCPRegistryBrowser } from './MCPRegistryBrowser';
+import { ConnectorSetupModal, ConnectorProvider } from './ConnectorSetupModal';
 import { useAgentContext } from '../hooks/useAgentContext';
 
 // Types (matching preload types)
@@ -92,6 +93,14 @@ export function MCPSettings() {
   const [availableUpdates, setAvailableUpdates] = useState<MCPUpdateInfo[]>([]);
   const [checkingUpdates, setCheckingUpdates] = useState(false);
   const [updatingServer, setUpdatingServer] = useState<string | null>(null);
+
+  // Connector setup modal state
+  const [connectorSetup, setConnectorSetup] = useState<{
+    provider: ConnectorProvider;
+    serverId: string;
+    serverName: string;
+    env?: Record<string, string>;
+  } | null>(null);
 
   // Edit server modal state
   const [editingServer, setEditingServer] = useState<string | null>(null);
@@ -379,6 +388,25 @@ export function MCPSettings() {
     }
   };
 
+  const getConnectorProvider = (name?: string): ConnectorProvider | null => {
+    if (!name) return null;
+    const normalized = name.toLowerCase();
+    if (normalized.includes('salesforce')) return 'salesforce';
+    if (normalized.includes('jira')) return 'jira';
+    if (normalized.includes('hubspot')) return 'hubspot';
+    if (normalized.includes('zendesk')) return 'zendesk';
+    return null;
+  };
+
+  const handleOpenConnectorSetup = (
+    provider: ConnectorProvider,
+    serverId: string,
+    serverName: string,
+    env?: Record<string, string>
+  ) => {
+    setConnectorSetup({ provider, serverId, serverName, env });
+  };
+
   const handleCheckUpdates = async () => {
     try {
       setCheckingUpdates(true);
@@ -563,6 +591,7 @@ export function MCPSettings() {
                   const isTesting = testingServer === serverStatus.id;
                   const updateInfo = getUpdateInfo(serverStatus.id);
                   const isUpdating = updatingServer === serverStatus.id;
+                  const connectorProvider = getConnectorProvider(serverStatus.name);
 
                   return (
                     <div key={serverStatus.id} className="mcp-server-card">
@@ -640,6 +669,22 @@ export function MCPSettings() {
                             disabled={isConnecting || !config?.enabled}
                           >
                             {isConnecting ? 'Connecting...' : 'Connect'}
+                          </button>
+                        )}
+
+                        {connectorProvider && (
+                          <button
+                            className="button-small button-primary"
+                            onClick={() =>
+                              handleOpenConnectorSetup(
+                                connectorProvider,
+                                serverStatus.id,
+                                serverStatus.name,
+                                config?.env
+                              )
+                            }
+                          >
+                            Setup
                           </button>
                         )}
 
@@ -937,6 +982,17 @@ export function MCPSettings() {
             </div>
           </div>
         </div>
+      )}
+
+      {connectorSetup && (
+        <ConnectorSetupModal
+          provider={connectorSetup.provider}
+          serverId={connectorSetup.serverId}
+          serverName={connectorSetup.serverName}
+          initialEnv={connectorSetup.env}
+          onClose={() => setConnectorSetup(null)}
+          onSaved={loadData}
+        />
       )}
     </div>
   );

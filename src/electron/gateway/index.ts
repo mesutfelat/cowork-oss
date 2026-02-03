@@ -116,6 +116,7 @@ export class ChannelGateway {
           agentName: settings.agentName || 'CoWork',
           userName: settings.relationship?.userName,
           personality: settings.activePersonality || 'professional',
+          persona: settings.activePersona,
           emojiUsage: settings.responseStyle?.emojiUsage || 'minimal',
           quirks: settings.quirks || DEFAULT_QUIRKS,
         };

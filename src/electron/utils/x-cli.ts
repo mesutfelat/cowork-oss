@@ -46,7 +46,7 @@ function buildGlobalArgs(settings: XSettingsData, json: boolean): string[] {
 
   if (settings.authMethod === 'manual') {
     if (!settings.authToken || !settings.ct0) {
-      throw new Error('Missing auth_token or ct0. Add them in Settings > More Channels > X.');
+      throw new Error('Missing auth_token or ct0. Add them in Settings > X (Twitter).');
     }
     args.push('--auth-token', settings.authToken, '--ct0', settings.ct0);
   } else {
