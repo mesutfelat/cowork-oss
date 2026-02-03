@@ -28,6 +28,8 @@ Your AI needs a secure home. CoWork OS provides the runtime, security layers, an
 |---|---|
 | **20+ AI Providers** | Claude, OpenAI, Gemini, Bedrock, OpenRouter, Ollama (free/local), Groq, xAI, Kimi, Mistral, Cerebras, MiniMax, Qwen, Copilot, and more |
 | **14 Messaging Channels** | WhatsApp, Telegram, Discord, Slack, Teams, Google Chat, iMessage, Signal, Mattermost, Matrix, Twitch, LINE, BlueBubbles, Email |
+| **8 Enterprise Connectors** | Salesforce, Jira, HubSpot, Zendesk, ServiceNow, Linear, Asana, Okta |
+| **6 Cloud Storage** | Notion, Box, OneDrive, Google Drive, Dropbox, SharePoint |
 | **Security-First** | 1800+ unit tests, configurable guardrails, approval workflows |
 | **Local-First** | Your data stays on your machine. BYOK (Bring Your Own Key) |
 
@@ -1764,6 +1766,47 @@ Browse and install servers from a catalog with one-click installation.
 
 ---
 
+## Enterprise MCP Connectors
+
+Pre-built MCP server connectors for enterprise integrations. Install from **Settings > MCP Servers > Browse Registry**.
+
+### Available Connectors
+
+| Connector | Type | Tools |
+|-----------|------|-------|
+| **Salesforce** | CRM | `health`, `list_objects`, `describe_object`, `get_record`, `search_records`, `create_record`, `update_record` |
+| **Jira** | Issue Tracking | `health`, `list_projects`, `get_issue`, `search_issues`, `create_issue`, `update_issue` |
+| **HubSpot** | CRM | `health`, `list_contacts`, `get_contact`, `search_contacts`, `create_contact`, `update_contact` |
+| **Zendesk** | Support | `health`, `list_tickets`, `get_ticket`, `search_tickets`, `create_ticket`, `update_ticket` |
+| **ServiceNow** | ITSM | `health`, `list_incidents`, `get_incident`, `search_incidents`, `create_incident`, `update_incident` |
+| **Linear** | Product/Issue | `health`, `list_issues`, `get_issue`, `search_issues`, `create_issue`, `update_issue` |
+| **Asana** | Work Management | `health`, `list_tasks`, `get_task`, `search_tasks`, `create_task`, `update_task` |
+| **Okta** | Identity | `health`, `list_users`, `get_user`, `search_users`, `create_user`, `update_user` |
+
+### Setup
+
+1. Go to **Settings > MCP Servers > Browse Registry**
+2. Find the connector you need (e.g., Salesforce)
+3. Click **Install**
+4. Configure credentials when prompted (API keys, OAuth tokens, etc.)
+5. The connector tools become available to the agent
+
+### Building Custom Connectors
+
+Use the connector template to build your own:
+
+```bash
+cp -r connectors/templates/mcp-connector connectors/my-connector
+cd connectors/my-connector
+npm install
+# Edit src/index.ts to implement your tools
+npm run build
+```
+
+See [docs/enterprise-connectors.md](docs/enterprise-connectors.md) for the full connector contract and conventions.
+
+---
+
 ## WebSocket Control Plane
 
 Programmatic API for external automation and mobile companion apps.
@@ -1822,7 +1865,7 @@ Users must comply with their model provider's terms:
 
 ### Completed
 
-- [x] Multi-provider LLM support (6 providers)
+- [x] Multi-provider LLM support (20+ providers including Groq, xAI, Kimi, GitHub Copilot, OpenAI/Anthropic-compatible)
 - [x] Multi-channel messaging (14 channels)
 - [x] Configurable guardrails and security
 - [x] Browser automation with Playwright
@@ -1840,6 +1883,8 @@ Users must comply with their model provider's terms:
 - [x] Persistent memory system with privacy protection
 - [x] Mobile Companions with LAN access support
 - [x] Voice Mode with ElevenLabs and OpenAI integration
+- [x] Enterprise MCP Connectors (Salesforce, Jira, HubSpot, Zendesk, ServiceNow, Linear, Asana, Okta)
+- [x] Cloud Storage Integrations (Notion, Box, OneDrive, Google Drive, Dropbox, SharePoint)
 
 ### Planned
 

@@ -245,6 +245,23 @@ Open **Settings** > **Integrations** to connect productivity and storage tools:
 - Dropbox
 - SharePoint
 
+### Enterprise MCP Connectors (Optional)
+
+Install enterprise connectors from **Settings** > **MCP Servers** > **Browse Registry**:
+
+| Connector | Type | Setup |
+|-----------|------|-------|
+| **Salesforce** | CRM | OAuth or API key |
+| **Jira** | Issue Tracking | API token + domain |
+| **HubSpot** | CRM | API key |
+| **Zendesk** | Support | API key + subdomain |
+| **ServiceNow** | ITSM | OAuth or credentials |
+| **Linear** | Product/Issue | API key |
+| **Asana** | Work Management | Personal access token |
+| **Okta** | Identity | API token + domain |
+
+Each connector provides tools like `search`, `get`, `create`, and `update` for its respective service.
+
 ### Social Integrations (Optional)
 
 #### X (Twitter)
@@ -375,8 +392,10 @@ Don't use system folders like `/System` or `/Applications`.
 5. **Goal Mode**: Define success criteria and let the agent auto-retry until verification passes
 6. **Custom Skills**: Create reusable workflows with custom prompts in Settings > Custom Skills
 7. **MCP Servers**: Connect to external tools via MCP in Settings > MCP Servers
-8. **Parallel Tasks**: Run multiple tasks concurrently (configure in Settings > Task Queue)
-9. **Guardrails**: Set token/cost budgets and blocked commands in Settings > Guardrails
+8. **Enterprise Connectors**: Install Salesforce, Jira, HubSpot, and other connectors from the MCP Registry
+9. **Cloud Storage**: Connect Notion, Box, OneDrive, Google Drive, Dropbox, or SharePoint in Settings > Integrations
+10. **Parallel Tasks**: Run multiple tasks concurrently (configure in Settings > Task Queue)
+11. **Guardrails**: Set token/cost budgets and blocked commands in Settings > Guardrails
 
 ### Learn More
 
