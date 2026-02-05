@@ -345,9 +345,10 @@ export class StdioTransport extends EventEmitter implements MCPTransport {
     this.buffer = '';
     this.stderrBuffer = '';
 
-    // Clear all pending requests
+    // Reject all pending requests so callers don't hang forever
     for (const [, pending] of this.pendingRequests) {
       clearTimeout(pending.timeout);
+      pending.reject(new Error('Transport closed'));
     }
     this.pendingRequests.clear();
 

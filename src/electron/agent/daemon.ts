@@ -230,6 +230,7 @@ export class AgentDaemon extends EventEmitter {
     title: string;
     prompt: string;
     workspaceId: string;
+    agentConfig?: AgentConfig;
     budgetTokens?: number;
     budgetCost?: number;
   }): Promise<Task> {
@@ -238,6 +239,7 @@ export class AgentDaemon extends EventEmitter {
       prompt: params.prompt,
       status: 'pending',
       workspaceId: params.workspaceId,
+      agentConfig: params.agentConfig,
       budgetTokens: params.budgetTokens,
       budgetCost: params.budgetCost,
     });

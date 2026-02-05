@@ -2900,6 +2900,9 @@ export function MainContent({ task, selectedTaskId, workspace, events, onSendMes
               </svg>
               <span>Shell {shellEnabled ? 'ON' : 'OFF'}</span>
             </button>
+            <span className="keyboard-hint">
+              <kbd>Enter</kbd> to send · <kbd>Shift+Enter</kbd> for new line
+            </span>
           </div>
         </div>
         <div className="footer-disclaimer">

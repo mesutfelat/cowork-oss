@@ -43,7 +43,7 @@ export function App() {
 
   // Theme state (loaded from main process on mount)
   const [themeMode, setThemeMode] = useState<ThemeMode>('dark');
-  const [visualTheme, setVisualTheme] = useState<VisualTheme>('terminal');
+  const [visualTheme, setVisualTheme] = useState<VisualTheme>('warm');
   const [accentColor, setAccentColor] = useState<AccentColor>('cyan');
 
   // Queue state
@@ -129,7 +129,7 @@ export function App() {
       try {
         const settings = await window.electronAPI.getAppearanceSettings();
         setThemeMode(settings.themeMode);
-        setVisualTheme(settings.visualTheme || 'terminal');
+        setVisualTheme(settings.visualTheme || 'warm');
         setAccentColor(settings.accentColor);
         setDisclaimerAccepted(settings.disclaimerAccepted ?? false);
         setOnboardingCompleted(settings.onboardingCompleted ?? false);
@@ -540,14 +540,20 @@ export function App() {
       // Check if it's an API key error and prompt user to configure settings
       const errorMessage = error instanceof Error ? error.message : 'Failed to create task';
       if (errorMessage.includes('API key') || errorMessage.includes('credentials')) {
-        const openSettings = window.confirm(
-          `${errorMessage}\n\nWould you like to open Settings to configure your LLM provider?`
-        );
-        if (openSettings) {
-          setCurrentView('settings');
-        }
+        addToast({
+          type: 'error',
+          title: 'Configuration Required',
+          message: errorMessage,
+          action: {
+            label: 'Open Settings',
+            callback: () => {
+              setSettingsTab('llm');
+              setCurrentView('settings');
+            },
+          },
+        });
       } else {
-        alert(`Error: ${errorMessage}`);
+        addToast({ type: 'error', title: 'Task Error', message: errorMessage });
       }
     }
   };
@@ -562,7 +568,7 @@ export function App() {
     } catch (error: unknown) {
       console.error('Failed to send message:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to send message';
-      alert(`Error: ${errorMessage}`);
+      addToast({ type: 'error', title: 'Error', message: errorMessage });
     }
   };
 
@@ -574,7 +580,7 @@ export function App() {
     } catch (error: unknown) {
       console.error('Failed to cancel task:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to cancel task';
-      alert(`Error: ${errorMessage}`);
+      addToast({ type: 'error', title: 'Error', message: errorMessage });
     }
   };
 
@@ -656,21 +662,7 @@ export function App() {
         <div className="title-bar-left">
           <button
             type="button"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '32px',
-              height: '32px',
-              borderRadius: '6px',
-              backgroundColor: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              position: 'relative',
-              zIndex: 1,
-              // @ts-expect-error - webkit property for Electron
-              WebkitAppRegion: 'no-drag',
-            }}
+            className="title-bar-btn"
             onClick={() => setLeftSidebarCollapsed(!leftSidebarCollapsed)}
             title={leftSidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'}
           >
@@ -683,21 +675,7 @@ export function App() {
         <div className="title-bar-actions">
           <button
             type="button"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '32px',
-              height: '32px',
-              borderRadius: '6px',
-              backgroundColor: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              position: 'relative',
-              zIndex: 1,
-              // @ts-expect-error - webkit property for Electron
-              WebkitAppRegion: 'no-drag',
-            }}
+            className="title-bar-btn"
             onClick={() => {
               const effectiveTheme = getEffectiveTheme(themeMode);
               handleThemeChange(effectiveTheme === 'dark' ? 'light' : 'dark');
@@ -742,21 +720,7 @@ export function App() {
           />
           <button
             type="button"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '32px',
-              height: '32px',
-              borderRadius: '6px',
-              backgroundColor: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              position: 'relative',
-              zIndex: 1,
-              // @ts-expect-error - webkit property for Electron
-              WebkitAppRegion: 'no-drag',
-            }}
+            className="title-bar-btn"
             onClick={() => setRightSidebarCollapsed(!rightSidebarCollapsed)}
             title={rightSidebarCollapsed ? 'Show panel' : 'Hide panel'}
           >

@@ -74,8 +74,9 @@ export class TrayManager {
   }
 
   private constructor() {
-    const userDataPath = app.getPath('userData');
-    this.legacySettingsPath = path.join(userDataPath, LEGACY_SETTINGS_FILE);
+    // Defer app.getPath() - it's not available until app is ready.
+    // legacySettingsPath will be resolved lazily in initialize().
+    this.legacySettingsPath = '';
   }
 
   /**
@@ -92,6 +93,9 @@ export class TrayManager {
     this.gateway = gateway;
     this.dbManager = dbManager;
     this.agentDaemon = agentDaemon || null;
+
+    // Resolve legacy settings path now that app is ready
+    this.legacySettingsPath = path.join(app.getPath('userData'), LEGACY_SETTINGS_FILE);
 
     // Initialize repositories
     const db = dbManager.getDatabase();

@@ -15,7 +15,7 @@ const LEGACY_SETTINGS_FILE = 'appearance-settings.json';
 
 const DEFAULT_SETTINGS: AppearanceSettings = {
   themeMode: 'dark',
-  visualTheme: 'terminal',
+  visualTheme: 'warm',
   accentColor: 'cyan',
   disclaimerAccepted: false,
   onboardingCompleted: false,

@@ -21,7 +21,7 @@ export function AppearanceSettings({
   onShowOnboarding,
   onboardingCompletedAt,
 }: AppearanceSettingsProps) {
-  const isWarmVisualTheme = visualTheme === 'warm' || visualTheme === 'oblivion';
+  const isModernVisualTheme = visualTheme === 'warm' || visualTheme === 'oblivion';
   const formatCompletedDate = (isoString?: string) => {
     if (!isoString) return null;
     try {
@@ -84,7 +84,7 @@ export function AppearanceSettings({
           </button>
 
           <button
-            className={`theme-option ${isWarmVisualTheme ? 'selected' : ''}`}
+            className={`theme-option ${isModernVisualTheme ? 'selected' : ''}`}
             onClick={() => onVisualThemeChange('warm')}
           >
             <div className="theme-option-preview warm">
@@ -92,7 +92,7 @@ export function AppearanceSettings({
               <div className="theme-option-preview-line ui-line" />
               <div className="theme-option-preview-line ui-line" />
             </div>
-            <span className="theme-option-label">Studio</span>
+            <span className="theme-option-label">Modern</span>
           </button>
         </div>
       </div>

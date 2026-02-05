@@ -392,6 +392,8 @@ export interface AgentConfig {
   maxTokens?: number;
   /** Whether to retain memory/context after completion (default: false for sub-agents) */
   retainMemory?: boolean;
+  /** Whether this task may pause and wait for user input (default: true) */
+  allowUserInput?: boolean;
 }
 
 export interface Task {

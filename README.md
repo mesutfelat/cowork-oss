@@ -123,7 +123,7 @@ The packaged app will be in the `release/` directory.
 <p align="center">
   <img src="screenshots/cowork-os-main.png" alt="CoWork OS Interface" width="700">
   <br>
-  <em>Terminal-inspired UI with real-time task timeline</em>
+  <em>Switch between Modern (default) and Terminal visual themes with a real-time task timeline</em>
 </p>
 
 ---
@@ -291,10 +291,15 @@ All channels support:
 
 ### Visual Theme System
 
-Customize the app appearance with multiple theme options.
+Customize the app appearance with visual style and color mode options.
 
-| Theme | Description |
-|-------|-------------|
+| Visual Style | Description |
+|-------------|-------------|
+| **Modern** | Refined non-terminal UI style with rounded components (default) |
+| **Terminal** | CLI-inspired interface with prompt-style visuals |
+
+| Color Mode | Description |
+|------------|-------------|
 | **System** | Follows your macOS light/dark mode preference |
 | **Light** | Clean light interface |
 | **Dark** | Dark mode for reduced eye strain |
@@ -1964,7 +1969,7 @@ Users must comply with their model provider's terms:
 - [x] Voice Mode with ElevenLabs and OpenAI integration
 - [x] Enterprise MCP Connectors (Salesforce, Jira, HubSpot, Zendesk, ServiceNow, Linear, Asana, Okta)
 - [x] Cloud Storage Integrations (Notion, Box, OneDrive, Google Drive, Dropbox, SharePoint)
-- [x] Visual Theme System (Light/Dark/System modes)
+- [x] Visual Theme System (Modern/Terminal visual styles + Light/Dark/System color modes)
 - [x] Workspace recency ordering
 - [x] Web search retry with exponential backoff
 - [x] Google Workspace Integration (Gmail, Calendar, Drive with shared OAuth)

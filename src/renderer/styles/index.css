@@ -88,7 +88,7 @@
    Visual Themes
    ============================================ */
 
-/* Terminal Visual Theme (Default) */
+/* Terminal Visual Theme */
 .visual-terminal {
   --radius-sm: 8px;
   --radius-md: 10px;
@@ -98,7 +98,7 @@
   --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-/* Studio Visual Theme (non-terminal styling, same base colors) */
+/* Modern Visual Theme (default visual style, same base colors) */
 .visual-oblivion {
   --radius-sm: 12px;
   --radius-md: 16px;
@@ -108,7 +108,7 @@
   --font-ui: 'Avenir Next', 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
-/* Hide CLI-specific decorations in warm style */
+/* Hide CLI-specific decorations in modern style */
 .visual-oblivion .cli-section-prompt,
 .visual-oblivion .cli-btn-bracket {
   display: none !important;
@@ -132,7 +132,7 @@
   text-transform: none;
 }
 
-/* Rounded avatars/icons in warm style */
+/* Rounded avatars/icons in modern style */
 .visual-warm .avatar,
 .visual-warm .model-icon,
 .visual-oblivion .avatar,
@@ -165,7 +165,7 @@
   display: none !important;
 }
 
-/* In Warm/Oblivion Mode: Show Modern, Hide Terminal */
+/* In Modern Mode (warm/oblivion aliases): Show Modern, Hide Terminal */
 .visual-warm .terminal-only,
 .visual-oblivion .terminal-only {
   display: none !important;
@@ -190,7 +190,7 @@
   justify-content: center;
 }
 
-/* Hide other CLI artifacts in Warm Mode */
+/* Hide other CLI artifacts in Modern Mode */
 .visual-warm .cli-prompt,
 .visual-warm .cli-cursor,
 .visual-warm .cli-commands-header .cli-prompt,
@@ -204,7 +204,7 @@
   display: none !important;
 }
 
-/* Adjust input container for Warm Mode */
+/* Adjust input container for Modern Mode */
 .visual-warm .cli-input-wrapper,
 .visual-oblivion .cli-input-wrapper {
   padding-left: 0;
@@ -319,7 +319,7 @@
 
 
 
-/* Rounded avatars/icons in warm style */
+/* Rounded avatars/icons in modern style */
 .visual-oblivion .avatar,
 .visual-oblivion .model-icon {
   border-radius: 50%;
@@ -1046,6 +1046,33 @@ body {
   gap: 4px;
   overflow: visible;
   padding-top: 4px;
+}
+
+/* Title bar icon buttons */
+.title-bar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  z-index: 1;
+  -webkit-app-region: no-drag;
+  transition: background-color 0.15s ease;
+  color: #6b7280;
+}
+
+.title-bar-btn:hover {
+  background-color: var(--color-bg-hover);
+  color: var(--color-text-secondary);
+}
+
+.title-bar-btn:active {
+  background-color: var(--color-bg-secondary);
 }
 
 /* ============================================
@@ -4786,6 +4813,27 @@ button {
   margin-bottom: 8px;
 }
 
+/* Keyboard shortcut hint */
+.keyboard-hint {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  opacity: 0.6;
+  user-select: none;
+}
+
+.keyboard-hint kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  font-size: 10px;
+  font-family: inherit;
+  line-height: 1.4;
+  color: var(--color-text-muted);
+  background: var(--color-bg-glass);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 3px;
+}
+
 .lets-go-btn {
   display: flex;
   align-items: center;
@@ -6727,6 +6775,43 @@ button {
   white-space: pre;
 }
 
+.cli-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  background: var(--color-bg-glass);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border-subtle);
+}
+
+.cli-status-badge.active {
+  color: var(--color-accent);
+  background: var(--color-accent-subtle);
+  border-color: var(--color-accent);
+}
+
+.cli-status-badge.paused {
+  color: var(--color-warning);
+  background: rgba(251, 191, 36, 0.15);
+  border-color: var(--color-warning);
+}
+
+.cli-status-badge.blocked {
+  color: var(--color-error);
+  background: var(--color-error-subtle);
+  border-color: var(--color-error);
+}
+
+.cli-status-badge.completed {
+  color: var(--color-success);
+  background: var(--color-success-subtle);
+  border-color: var(--color-success);
+}
+
 .cli-hint {
   font-size: 11px;
   color: var(--color-text-muted);
@@ -7166,6 +7251,7 @@ button {
 }
 
 .cli-task-title {
+  display: block;
   font-size: 12px;
   color: var(--color-text-secondary);
   overflow: hidden;
@@ -7356,12 +7442,12 @@ button {
 .cli-sidebar-footer {
   display: flex !important;
   align-items: center !important;
-  justify-content: space-between !important;
+  justify-content: flex-start !important;
   background: rgba(0, 0, 0, 0.3) !important;
   border-top: 1px solid var(--color-border-subtle) !important;
-  padding: 12px 16px !important;
+  padding: 8px 12px !important;
   flex-shrink: 0 !important;
-  min-height: 48px !important;
+  min-height: 40px !important;
 }
 
 .cli-footer-actions {
@@ -7395,6 +7481,24 @@ button {
   padding: 4px 8px !important;
   width: auto !important;
   height: auto !important;
+  border-radius: var(--radius-sm) !important;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.cli-settings-btn .modern-only {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-ui) !important;
+  font-size: 12px !important;
+  font-weight: 500;
+}
+
+.cli-settings-btn .modern-only svg {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
 }
 
 .cli-settings-btn:hover {
@@ -16216,7 +16320,7 @@ button {
 }
 
 /* ============================================
-   Studio Visual Theme Overrides (shape + typography only)
+   Modern Visual Theme Overrides (shape + typography only)
    ============================================ */
 
 .visual-oblivion body {

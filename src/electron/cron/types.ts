@@ -138,6 +138,7 @@ export interface CronServiceDeps {
     prompt: string;
     workspaceId: string;
     modelKey?: string; // Optional model override
+    allowUserInput?: boolean; // Whether task can pause awaiting user input
   }) => Promise<{ id: string }>;
   // Channel delivery handler for sending results to messaging platforms
   deliverToChannel?: (params: {

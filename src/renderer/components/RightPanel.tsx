@@ -290,18 +290,21 @@ export function RightPanel({ task, workspace, events, tasks = [], queueStatus, o
                   <div key={step.id || index} className={`cli-progress-item ${step.status}`}>
                     <span className="cli-progress-num">{String(index + 1).padStart(2, '0')}</span>
                     <span className={`cli-progress-status ${step.status}`}>{getStatusIndicator(step.status)}</span>
-                    <span className="cli-progress-text">
-                      {step.description.length > 30 ? step.description.slice(0, 30) + '...' : step.description}
+                    <span className="cli-progress-text" title={step.description}>
+                      {step.description}
                     </span>
                   </div>
                 ))}
               </div>
             ) : (
               <div className="cli-empty-state">
-                <div className="cli-ascii-box">
-                  ┌─────────────────────┐
-                  │   {task?.status === 'executing' ? '◉ WORKING...' : task?.status === 'paused' ? '⏸ PAUSED' : task?.status === 'blocked' ? '! BLOCKED' : task?.status === 'completed' ? '✓ ALL DONE' : '○ READY'}{'     '}│
-                  └─────────────────────┘
+                <div className={`cli-status-badge ${task?.status === 'executing' ? 'active' : task?.status === 'paused' ? 'paused' : task?.status === 'blocked' ? 'blocked' : task?.status === 'completed' ? 'completed' : ''}`}>
+                  <span className="terminal-only">
+                    {task?.status === 'executing' ? '◉ WORKING...' : task?.status === 'paused' ? '⏸ PAUSED' : task?.status === 'blocked' ? '! BLOCKED' : task?.status === 'completed' ? '✓ ALL DONE' : '○ READY'}
+                  </span>
+                  <span className="modern-only">
+                    {task?.status === 'executing' ? 'Working...' : task?.status === 'paused' ? 'Paused' : task?.status === 'blocked' ? 'Blocked' : task?.status === 'completed' ? 'All done' : 'Ready'}
+                  </span>
                 </div>
                 <p className="cli-hint">
                   <span className="terminal-only">{agentContext.getUiCopy('rightProgressEmptyHint')}</span>
@@ -345,7 +348,7 @@ export function RightPanel({ task, workspace, events, tasks = [], queueStatus, o
                         </span>
                       </span>
                       <span className="cli-queue-title" onClick={() => onSelectTask?.(t.id)}>
-                        {(t.title || t.prompt).slice(0, 25)}{(t.title || t.prompt).length > 25 ? '...' : ''}
+                        {t.title || t.prompt}
                       </span>
                       <button className="cli-queue-cancel" onClick={() => onCancelTask?.(t.id)} title="Cancel">×</button>
                     </div>
@@ -367,7 +370,7 @@ export function RightPanel({ task, workspace, events, tasks = [], queueStatus, o
                         </span>
                       </span>
                       <span className="cli-queue-title" onClick={() => onSelectTask?.(t.id)}>
-                        {(t.title || t.prompt).slice(0, 25)}{(t.title || t.prompt).length > 25 ? '...' : ''}
+                        {t.title || t.prompt}
                       </span>
                       <button className="cli-queue-cancel" onClick={() => onCancelTask?.(t.id)} title="Cancel">×</button>
                     </div>
