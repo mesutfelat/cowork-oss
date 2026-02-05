@@ -30,7 +30,7 @@ Your AI needs a secure home. CoWork OS provides the runtime, security layers, an
 | **14 Messaging Channels** | WhatsApp, Telegram, Discord, Slack, Teams, Google Chat, iMessage, Signal, Mattermost, Matrix, Twitch, LINE, BlueBubbles, Email |
 | **8 Enterprise Connectors** | Salesforce, Jira, HubSpot, Zendesk, ServiceNow, Linear, Asana, Okta |
 | **6 Cloud Storage** | Notion, Box, OneDrive, Google Drive, Dropbox, SharePoint |
-| **Security-First** | 1800+ unit tests, configurable guardrails, approval workflows |
+| **Security-First** | 2350+ unit tests, configurable guardrails, approval workflows |
 | **Local-First** | Your data stays on your machine. BYOK (Bring Your Own Key) |
 
 > **Status**: macOS desktop app (cross-platform support planned)
@@ -65,7 +65,7 @@ Your AI needs a secure home. CoWork OS provides the runtime, security layers, an
 - **Dangerous command blocking**: Built-in patterns + custom regex rules
 - **Approval workflows**: User consent required for destructive operations
 - **Pairing & allowlists**: Control who can access your AI via messaging channels
-- **1800+ tests**: Comprehensive test coverage for access control and policies
+- **2350+ tests**: Comprehensive test coverage for access control and policies
 
 ### Your Data, Your Control
 
@@ -218,6 +218,18 @@ All channels support:
 - Session management
 - Rate limiting
 
+### Visual Theme System
+
+Customize the app appearance with multiple theme options.
+
+| Theme | Description |
+|-------|-------------|
+| **System** | Follows your macOS light/dark mode preference |
+| **Light** | Clean light interface |
+| **Dark** | Dark mode for reduced eye strain |
+
+Configure in **Settings** > **Appearance**.
+
 ### Agent Capabilities
 
 - **Task-Based Workflow**: Multi-step execution with plan-execute-observe loops
@@ -226,6 +238,7 @@ All channels support:
 - **75+ Built-in Skills**: GitHub, Slack, Notion, Spotify, Apple Notes, and more
 - **Document Creation**: Excel, Word, PDF, PowerPoint with professional formatting
 - **Persistent Memory**: Cross-session context with privacy-aware observation capture
+- **Workspace Recency**: Workspaces ordered by last used time for quick access
 
 ### Voice Mode (NEW)
 
@@ -1377,7 +1390,13 @@ Access CoWork OS from your iPhone, iPad, or Android device via the local network
 
 ## Web Search Integration
 
-Multi-provider web search for research tasks.
+Multi-provider web search for research tasks with automatic retry and fallback.
+
+### Features
+
+- **Automatic Retry**: Transient errors (rate limits, timeouts) trigger automatic retry with exponential backoff
+- **Provider Fallback**: If one provider fails, automatically tries the next configured provider
+- **Graceful Degradation**: Returns helpful error messages instead of failing silently
 
 ### Supported Providers
 
@@ -1409,6 +1428,8 @@ Claude Code-style tools for developers.
 "Find all TODO comments"
 → grep pattern="TODO:" glob="*.ts"
 ```
+
+**Smart Document Detection**: Automatically detects document-heavy workspaces (PDF/DOCX) and provides helpful guidance to use `read_file` instead, since grep only searches text files.
 
 ### edit_file - Surgical Editing
 
@@ -1876,7 +1897,7 @@ Users must comply with their model provider's terms:
 - [x] Tailscale and SSH remote access
 - [x] Personality system
 - [x] 75+ bundled skills
-- [x] 1800+ unit tests
+- [x] 2350+ unit tests
 - [x] Docker-based sandboxing (cross-platform)
 - [x] Per-context security policies (DM vs group)
 - [x] Enhanced pairing code UI with countdown
@@ -1885,6 +1906,9 @@ Users must comply with their model provider's terms:
 - [x] Voice Mode with ElevenLabs and OpenAI integration
 - [x] Enterprise MCP Connectors (Salesforce, Jira, HubSpot, Zendesk, ServiceNow, Linear, Asana, Okta)
 - [x] Cloud Storage Integrations (Notion, Box, OneDrive, Google Drive, Dropbox, SharePoint)
+- [x] Visual Theme System (Light/Dark/System modes)
+- [x] Workspace recency ordering
+- [x] Web search retry with exponential backoff
 
 ### Planned
 
