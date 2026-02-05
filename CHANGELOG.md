@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.25] - 2025-02-05
+
 ### Added
 - **Google Workspace Integration** - Unified access to Gmail, Google Calendar, and Google Drive
   - **Shared OAuth Authentication**: Single sign-in for all Google services
@@ -293,6 +295,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| 0.3.25 | 2025-02-05 | Google Workspace integration, gateway enhancements, agent retry logic |
 | 0.1.6 | 2025-01-25 | Discord bot integration with slash commands |
 | 0.1.5 | 2025-01-25 | Browser automation with Playwright |
 | 0.1.4 | 2025-01-25 | Real Office format support (Excel, Word, PDF, PowerPoint) |
@@ -300,7 +303,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 | 0.1.0 | 2025-01-24 | First public release with core features |
 | 0.0.1 | 2025-01-20 | Initial development setup |
 
-[Unreleased]: https://github.com/CoWork-OS/CoWork-OS/compare/v0.1.6...HEAD
+[Unreleased]: https://github.com/CoWork-OS/CoWork-OS/compare/v0.3.25...HEAD
+[0.3.25]: https://github.com/CoWork-OS/CoWork-OS/releases/tag/v0.3.25
 [0.1.6]: https://github.com/CoWork-OS/CoWork-OS/releases/tag/v0.1.6
 [0.1.5]: https://github.com/CoWork-OS/CoWork-OS/releases/tag/v0.1.5
 [0.1.4]: https://github.com/CoWork-OS/CoWork-OS/releases/tag/v0.1.4
