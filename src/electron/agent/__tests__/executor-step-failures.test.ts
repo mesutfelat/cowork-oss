@@ -235,6 +235,7 @@ describe('TaskExecutor executeStep failure handling', () => {
       ],
       {}
     );
+    (executor as any).shouldPauseForQuestions = true;
 
     const step: any = { id: '3', description: 'Clarify requirements', status: 'pending' };
 

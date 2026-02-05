@@ -1068,6 +1068,7 @@ export class TaskExecutor {
   private readonly toolResultMemoryLimit = 8;
   private readonly shouldPauseForQuestions: boolean;
   private dispatchedMentionedAgents = false;
+  private lastAssistantText: string | null = null;
 
   // Plan revision tracking to prevent infinite revision loops
   private planRevisionCount: number = 0;
@@ -1214,6 +1215,9 @@ export class TaskExecutor {
           error.message?.includes('rate limit') ||
           error.message?.includes('ECONNRESET') ||
           error.message?.includes('ETIMEDOUT') ||
+          error.message?.includes('ENOTFOUND') ||
+          error.message?.includes('EAI_AGAIN') ||
+          error.message?.includes('ECONNREFUSED') ||
           error.message?.includes('network') ||
           error.status === 429 ||
           error.status === 503 ||
@@ -2676,6 +2680,20 @@ You are continuing a previous conversation. The context from the previous conver
     }
   }
 
+  private isTransientProviderError(error: any): boolean {
+    if (!error) return false;
+    const message = String(error.message || '').toLowerCase();
+    const code = error.cause?.code || error.code;
+    const retryableCodes = new Set(['ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED']);
+    if (code && retryableCodes.has(code)) return true;
+    return (
+      message.includes('fetch failed') ||
+      message.includes('network') ||
+      message.includes('timeout') ||
+      message.includes('socket hang up')
+    );
+  }
+
   private async dispatchMentionedAgentsAfterPlanning(): Promise<void> {
     if (this.dispatchedMentionedAgents) return;
     if (!this.shouldPauseForQuestions) return;
@@ -2803,6 +2821,13 @@ You are continuing a previous conversation. The context from the previous conver
         console.log(`[TaskExecutor] Task cancelled - not logging as error`);
         // Status will be updated by the daemon's cancelTask method
         return;
+      }
+
+      if (this.isTransientProviderError(error)) {
+        const scheduled = this.daemon.handleTransientTaskFailure(this.task.id, error.message || 'Transient LLM error');
+        if (scheduled) {
+          return;
+        }
       }
 
       console.error(`Task execution failed:`, error);
@@ -3623,6 +3648,12 @@ SCHEDULING & REMINDERS:
           .filter((item: any) => item.type === 'text' && item.text)
           .map((item: any) => item.text)
           .join('\n');
+        if (assistantText && assistantText.trim().length > 0) {
+          this.lastAssistantText = assistantText.trim();
+        }
+        if (assistantText && assistantText.trim().length > 0) {
+          this.lastAssistantText = assistantText.trim();
+        }
         if (response.content) {
           for (const content of response.content) {
             if (content.type === 'text' && content.text) {

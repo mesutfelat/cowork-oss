@@ -54,6 +54,10 @@ export class AgentDaemon extends EventEmitter {
   private queueManager: TaskQueueManager;
   // Activity throttle: Map<taskId:eventType, lastTimestamp>
   private activityThrottle: Map<string, number> = new Map();
+  private pendingRetries: Map<string, ReturnType<typeof setTimeout>> = new Map();
+  private retryCounts: Map<string, number> = new Map();
+  private readonly maxTaskRetries = 2;
+  private readonly retryDelayMs = 30 * 1000;
 
   constructor(private dbManager: DatabaseManager) {
     super();
@@ -184,6 +188,7 @@ export class AgentDaemon extends EventEmitter {
         error: error.message || 'Failed to initialize task executor',
         completedAt: Date.now(),
       });
+      this.clearRetryState(task.id);
       this.logEvent(task.id, 'error', { error: error.message });
       // Notify queue manager so it can start next task
       this.queueManager.onTaskFinished(task.id);
@@ -209,6 +214,7 @@ export class AgentDaemon extends EventEmitter {
         error: error.message,
         completedAt: Date.now(),
       });
+      this.clearRetryState(task.id);
       this.logEvent(task.id, 'error', { error: error.message });
       this.activeTasks.delete(task.id);
       // Notify queue manager so it can start next task
@@ -426,6 +432,7 @@ export class AgentDaemon extends EventEmitter {
     // Check if task is queued (not yet started)
     if (this.queueManager.cancelQueuedTask(taskId)) {
       this.taskRepo.update(taskId, { status: 'cancelled', completedAt: Date.now() });
+      this.clearRetryState(taskId);
       this.logEvent(taskId, 'task_cancelled', {
         message: 'Task removed from queue',
       });
@@ -444,9 +451,60 @@ export class AgentDaemon extends EventEmitter {
     this.queueManager.onTaskFinished(taskId);
 
     // Always emit cancelled event so UI updates
+    this.clearRetryState(taskId);
     this.logEvent(taskId, 'task_cancelled', {
       message: 'Task was stopped by user',
     });
+  }
+
+  /**
+   * Handle transient provider errors by scheduling a retry instead of failing.
+   * Returns true if a retry was scheduled, false if retries are exhausted.
+   */
+  handleTransientTaskFailure(taskId: string, reason: string, delayMs: number = this.retryDelayMs): boolean {
+    const currentCount = this.retryCounts.get(taskId) ?? 0;
+    const nextCount = currentCount + 1;
+    if (nextCount > this.maxTaskRetries) {
+      return false;
+    }
+
+    this.retryCounts.set(taskId, nextCount);
+
+    if (this.pendingRetries.has(taskId)) {
+      return true;
+    }
+
+    // Mark as queued with a helpful message
+    this.taskRepo.update(taskId, {
+      status: 'queued',
+      error: `Transient provider error. Retry ${nextCount}/${this.maxTaskRetries} in ${Math.ceil(delayMs / 1000)}s.`,
+    });
+
+    this.logEvent(taskId, 'log', {
+      message: `Transient provider error detected. Scheduling retry ${nextCount}/${this.maxTaskRetries} in ${Math.ceil(delayMs / 1000)}s.`,
+      reason,
+    });
+
+    // Clear executor and free queue slot
+    this.activeTasks.delete(taskId);
+    this.queueManager.onTaskFinished(taskId);
+
+    const handle = setTimeout(async () => {
+      this.pendingRetries.delete(taskId);
+      const task = this.taskRepo.findById(taskId);
+      if (!task) {
+        this.retryCounts.delete(taskId);
+        return;
+      }
+      if (task.status !== 'queued') return;
+      if (this.activeTasks.has(taskId) || this.queueManager.isRunning(taskId) || this.queueManager.isQueued(taskId)) {
+        return;
+      }
+      await this.startTask(task);
+    }, delayMs);
+
+    this.pendingRetries.set(taskId, handle);
+    return true;
   }
 
   /**
@@ -944,6 +1002,9 @@ export class AgentDaemon extends EventEmitter {
    */
   updateTaskStatus(taskId: string, status: Task['status']): void {
     this.taskRepo.update(taskId, { status });
+    if (status === 'completed' || status === 'failed' || status === 'cancelled') {
+      this.clearRetryState(taskId);
+    }
   }
 
   /**
@@ -995,6 +1056,15 @@ export class AgentDaemon extends EventEmitter {
     this.taskRepo.update(taskId, updates);
   }
 
+  private clearRetryState(taskId: string): void {
+    const pending = this.pendingRetries.get(taskId);
+    if (pending) {
+      clearTimeout(pending);
+      this.pendingRetries.delete(taskId);
+    }
+    this.retryCounts.delete(taskId);
+  }
+
   /**
    * Mark task as completed
    * Note: We keep the executor in memory for follow-up messages (with TTL-based cleanup)
@@ -1004,6 +1074,7 @@ export class AgentDaemon extends EventEmitter {
       status: 'completed',
       completedAt: Date.now(),
     });
+    this.clearRetryState(taskId);
     // Mark executor as completed for TTL-based cleanup
     const cached = this.activeTasks.get(taskId);
     if (cached) {
@@ -1138,6 +1209,7 @@ export class AgentDaemon extends EventEmitter {
       status: 'failed',
       error: 'Task timed out - exceeded maximum allowed execution time',
     });
+    this.clearRetryState(taskId);
 
     // Emit timeout event
     this.logEvent(taskId, 'step_timeout', {
