@@ -250,11 +250,16 @@ export const OneDriveSettingsSchema = z.object({
   timeoutMs: z.number().int().min(1000).max(120000).optional(),
 });
 
-// ============ Google Drive Settings Schema ============
+// ============ Google Workspace Settings Schema ============
 
-export const GoogleDriveSettingsSchema = z.object({
+export const GoogleWorkspaceSettingsSchema = z.object({
   enabled: z.boolean().default(false),
+  clientId: z.string().max(4000).optional(),
+  clientSecret: z.string().max(4000).optional(),
   accessToken: z.string().max(4000).optional(),
+  refreshToken: z.string().max(4000).optional(),
+  tokenExpiresAt: z.number().int().optional(),
+  scopes: z.array(z.string().max(200)).optional(),
   timeoutMs: z.number().int().min(1000).max(120000).optional(),
 });
 

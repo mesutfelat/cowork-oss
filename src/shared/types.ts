@@ -149,8 +149,10 @@ export type ToolType =
   | 'box_action'
   // OneDrive
   | 'onedrive_action'
-  // Google Drive
+  // Google Workspace (Drive/Gmail/Calendar)
   | 'google_drive_action'
+  | 'gmail_action'
+  | 'calendar_action'
   // Dropbox
   | 'dropbox_action'
   // SharePoint
@@ -222,6 +224,8 @@ export const TOOL_GROUPS = {
     'box_action',
     'onedrive_action',
     'google_drive_action',
+    'gmail_action',
+    'calendar_action',
     'dropbox_action',
     'sharepoint_action',
     'browser_navigate',
@@ -313,6 +317,8 @@ export const TOOL_RISK_LEVELS: Record<ToolType, ToolRiskLevel> = {
   box_action: 'network',
   onedrive_action: 'network',
   google_drive_action: 'network',
+  gmail_action: 'network',
+  calendar_action: 'network',
   dropbox_action: 'network',
   sharepoint_action: 'network',
   // Meta
@@ -1387,10 +1393,11 @@ export const IPC_CHANNELS = {
   ONEDRIVE_GET_STATUS: 'onedrive:getStatus',
 
   // Google Drive Settings
-  GOOGLE_DRIVE_GET_SETTINGS: 'googleDrive:getSettings',
-  GOOGLE_DRIVE_SAVE_SETTINGS: 'googleDrive:saveSettings',
-  GOOGLE_DRIVE_TEST_CONNECTION: 'googleDrive:testConnection',
-  GOOGLE_DRIVE_GET_STATUS: 'googleDrive:getStatus',
+  GOOGLE_WORKSPACE_GET_SETTINGS: 'googleWorkspace:getSettings',
+  GOOGLE_WORKSPACE_SAVE_SETTINGS: 'googleWorkspace:saveSettings',
+  GOOGLE_WORKSPACE_TEST_CONNECTION: 'googleWorkspace:testConnection',
+  GOOGLE_WORKSPACE_GET_STATUS: 'googleWorkspace:getStatus',
+  GOOGLE_WORKSPACE_OAUTH_START: 'googleWorkspace:oauthStart',
 
   // Dropbox Settings
   DROPBOX_GET_SETTINGS: 'dropbox:getSettings',
@@ -2090,13 +2097,18 @@ export interface OneDriveConnectionTestResult {
 }
 
 // Google Drive integration settings
-export interface GoogleDriveSettingsData {
+export interface GoogleWorkspaceSettingsData {
   enabled: boolean;
+  clientId?: string;
+  clientSecret?: string;
   accessToken?: string;
+  refreshToken?: string;
+  tokenExpiresAt?: number;
+  scopes?: string[];
   timeoutMs?: number;
 }
 
-export interface GoogleDriveConnectionTestResult {
+export interface GoogleWorkspaceConnectionTestResult {
   success: boolean;
   error?: string;
   name?: string;
