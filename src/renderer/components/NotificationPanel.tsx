@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
+import { ThemeIcon } from './ThemeIcon';
+import { AlertTriangleIcon, CheckIcon, ClockIcon, InfoIcon, XIcon } from './LineIcons';
 
 // Define types inline for the renderer
 interface AppNotification {
   id: string;
-  type: 'task_completed' | 'task_failed' | 'scheduled_task' | 'info' | 'warning' | 'error';
+  type: 'task_completed' | 'task_failed' | 'scheduled_task' | 'input_required' | 'info' | 'warning' | 'error';
   title: string;
   message: string;
   read: boolean;
@@ -236,13 +238,14 @@ const Icons = {
   ),
 };
 
-const typeIcons: Record<string, { icon: string; bg: string; color: string }> = {
-  task_completed: { icon: '✅', bg: 'rgba(34, 197, 94, 0.15)', color: 'rgb(34, 197, 94)' },
-  task_failed: { icon: '❌', bg: 'rgba(239, 68, 68, 0.15)', color: 'rgb(239, 68, 68)' },
-  scheduled_task: { icon: '⏰', bg: 'var(--color-accent-glass)', color: 'var(--color-accent)' },
-  info: { icon: 'ℹ️', bg: 'rgba(59, 130, 246, 0.15)', color: 'rgb(59, 130, 246)' },
-  warning: { icon: '⚠️', bg: 'rgba(245, 158, 11, 0.15)', color: 'rgb(245, 158, 11)' },
-  error: { icon: '🚨', bg: 'rgba(239, 68, 68, 0.15)', color: 'rgb(239, 68, 68)' },
+const typeIcons: Record<string, { icon: React.ReactNode; bg: string; color: string }> = {
+  task_completed: { icon: <ThemeIcon emoji="✅" icon={<CheckIcon size={14} />} />, bg: 'rgba(34, 197, 94, 0.15)', color: 'rgb(34, 197, 94)' },
+  task_failed: { icon: <ThemeIcon emoji="❌" icon={<XIcon size={14} />} />, bg: 'rgba(239, 68, 68, 0.15)', color: 'rgb(239, 68, 68)' },
+  scheduled_task: { icon: <ThemeIcon emoji="⏰" icon={<ClockIcon size={14} />} />, bg: 'var(--color-accent-glass)', color: 'var(--color-accent)' },
+  input_required: { icon: <ThemeIcon emoji="📝" icon={<InfoIcon size={14} />} />, bg: 'rgba(245, 158, 11, 0.15)', color: 'rgb(245, 158, 11)' },
+  info: { icon: <ThemeIcon emoji="ℹ️" icon={<InfoIcon size={14} />} />, bg: 'rgba(59, 130, 246, 0.15)', color: 'rgb(59, 130, 246)' },
+  warning: { icon: <ThemeIcon emoji="⚠️" icon={<AlertTriangleIcon size={14} />} />, bg: 'rgba(245, 158, 11, 0.15)', color: 'rgb(245, 158, 11)' },
+  error: { icon: <ThemeIcon emoji="🚨" icon={<AlertTriangleIcon size={14} />} />, bg: 'rgba(239, 68, 68, 0.15)', color: 'rgb(239, 68, 68)' },
 };
 
 function formatRelativeTime(timestamp: number): string {
@@ -258,6 +261,10 @@ function formatRelativeTime(timestamp: number): string {
   if (hours < 24) return `${hours}h ago`;
   if (days < 7) return `${days}d ago`;
   return new Date(timestamp).toLocaleDateString();
+}
+
+function stripLeadingEmoji(text: string): string {
+  return text.replace(/^[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}][\uFE0F\uFE0E]?\s*/u, '');
 }
 
 export function NotificationPanel({ onNotificationClick }: NotificationPanelProps) {
@@ -340,8 +347,14 @@ export function NotificationPanel({ onNotificationClick }: NotificationPanelProp
   };
 
   const handleNotificationClick = async (notification: AppNotification) => {
-    // Mark as read
-    if (!notification.read) {
+    const shouldAutoClear = notification.type === 'input_required';
+    if (shouldAutoClear) {
+      try {
+        await window.electronAPI.deleteNotification(notification.id);
+      } catch (error) {
+        console.error('Failed to delete notification:', error);
+      }
+    } else if (!notification.read) {
       try {
         await window.electronAPI.markNotificationRead(notification.id);
       } catch (error) {
@@ -424,6 +437,7 @@ export function NotificationPanel({ onNotificationClick }: NotificationPanelProp
               notifications.map((notification) => {
                 const typeConfig = typeIcons[notification.type] || typeIcons.info;
                 const isHovered = hoveredId === notification.id;
+                const modernTitle = stripLeadingEmoji(notification.title);
 
                 return (
                   <div
@@ -451,7 +465,7 @@ export function NotificationPanel({ onNotificationClick }: NotificationPanelProp
                       {typeConfig.icon}
                     </div>
                     <div style={styles.notificationContent}>
-                      <p style={styles.notificationTitle}>{notification.title}</p>
+                      <p style={styles.notificationTitle}>{modernTitle}</p>
                       <p style={styles.notificationMessage}>{notification.message}</p>
                       <span style={styles.notificationTime}>
                         {formatRelativeTime(notification.createdAt)}

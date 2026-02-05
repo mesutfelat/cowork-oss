@@ -1,4 +1,23 @@
 import { TaskEvent, DEFAULT_QUIRKS } from '../../shared/types';
+import { ThemeIcon } from './ThemeIcon';
+import {
+  AlertTriangleIcon,
+  BanIcon,
+  CheckIcon,
+  ClipboardIcon,
+  DotIcon,
+  FileIcon,
+  PackageIcon,
+  PauseIcon,
+  PlayIcon,
+  ShieldIcon,
+  SlidersIcon,
+  StopIcon,
+  TargetIcon,
+  TrashIcon,
+  XIcon,
+  ZapIcon,
+} from './LineIcons';
 import type { AgentContext } from '../hooks/useAgentContext';
 import { getUiCopy, type UiCopyKey } from '../utils/agentMessages';
 
@@ -39,57 +58,57 @@ export function TaskTimeline({ events, agentContext }: TaskTimelineProps) {
   const getEventIcon = (type: TaskEvent['type']) => {
     switch (type) {
       case 'task_created':
-        return '🎯';
+        return <ThemeIcon emoji="🎯" icon={<TargetIcon size={16} />} />;
       case 'plan_created':
-        return '📋';
+        return <ThemeIcon emoji="📋" icon={<ClipboardIcon size={16} />} />;
       case 'step_started':
-        return '▶️';
+        return <ThemeIcon emoji="▶️" icon={<PlayIcon size={16} />} />;
       case 'step_completed':
-        return '✅';
+        return <ThemeIcon emoji="✅" icon={<CheckIcon size={16} />} />;
       case 'tool_call':
-        return '🔧';
+        return <ThemeIcon emoji="🔧" icon={<SlidersIcon size={16} />} />;
       case 'tool_result':
-        return '📦';
+        return <ThemeIcon emoji="📦" icon={<PackageIcon size={16} />} />;
       case 'file_created':
       case 'file_modified':
-        return '📄';
+        return <ThemeIcon emoji="📄" icon={<FileIcon size={16} />} />;
       case 'file_deleted':
-        return '🗑️';
+        return <ThemeIcon emoji="🗑️" icon={<TrashIcon size={16} />} />;
       case 'error':
-        return '❌';
+        return <ThemeIcon emoji="❌" icon={<XIcon size={16} />} />;
       case 'task_cancelled':
-        return '🛑';
+        return <ThemeIcon emoji="🛑" icon={<StopIcon size={16} />} />;
       case 'approval_requested':
-        return '⚠️';
+        return <ThemeIcon emoji="⚠️" icon={<AlertTriangleIcon size={16} />} />;
       case 'approval_granted':
-        return '✅';
+        return <ThemeIcon emoji="✅" icon={<CheckIcon size={16} />} />;
       case 'approval_denied':
-        return '⛔';
+        return <ThemeIcon emoji="⛔" icon={<BanIcon size={16} />} />;
       case 'task_paused':
-        return '⏸️';
+        return <ThemeIcon emoji="⏸️" icon={<PauseIcon size={16} />} />;
       case 'task_resumed':
-        return '▶️';
+        return <ThemeIcon emoji="▶️" icon={<PlayIcon size={16} />} />;
       case 'executing':
-        return '⚡';
+        return <ThemeIcon emoji="⚡" icon={<ZapIcon size={16} />} />;
       case 'task_completed':
-        return '✅';
+        return <ThemeIcon emoji="✅" icon={<CheckIcon size={16} />} />;
       case 'follow_up_completed':
-        return '✅';
+        return <ThemeIcon emoji="✅" icon={<CheckIcon size={16} />} />;
       default:
-        return '•';
+        return <ThemeIcon emoji="•" icon={<DotIcon size={8} />} />;
     }
   };
 
   const getEventTitle = (event: TaskEvent) => {
     switch (event.type) {
       case 'task_created':
-        return isCompanion ? "Session started - I'm here." : '🚀 Session Started';
+        return isCompanion ? "Session started - I'm here." : 'Session started';
       case 'plan_created':
         return isCompanion ? "Here's the path I'm taking" : "Here's our approach";
       case 'step_started':
         return `Working on: ${event.payload.step?.description || 'Getting started'}`;
       case 'step_completed':
-        return `✓ ${event.payload.step?.description || event.payload.message || 'Done'}`;
+        return event.payload.step?.description || event.payload.message || 'Done';
       case 'tool_call':
         return `Using: ${event.payload.tool}`;
       case 'tool_result':
@@ -119,9 +138,9 @@ export function TaskTimeline({ events, agentContext }: TaskTimelineProps) {
       case 'executing':
         return event.payload.message || 'Working on it';
       case 'task_completed':
-        return isCompanion ? 'All done.' : '✅ All done!';
+        return isCompanion ? 'All done.' : 'All done!';
       case 'follow_up_completed':
-        return '✅ All done!';
+        return 'All done!';
       case 'log':
         return event.payload.message;
       default:
@@ -211,7 +230,9 @@ export function TaskTimeline({ events, agentContext }: TaskTimelineProps) {
         {/* Show summary of blocked events if any - collapsed for cleaner UI */}
         {blockedEvents.length > 0 && (
           <div className="timeline-event timeline-event-muted">
-            <div className="event-icon">🛡️</div>
+            <div className="event-icon">
+              <ThemeIcon emoji="🛡️" icon={<ShieldIcon size={16} />} />
+            </div>
             <div className="event-content">
               <div className="event-header">
                 <div className="event-title">

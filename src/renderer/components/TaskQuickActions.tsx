@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { ThemeIcon } from './ThemeIcon';
+import { BotIcon, CalendarIcon, ClockIcon, ColumnsIcon, FlagIcon, TagIcon } from './LineIcons';
 import {
   TaskBoardColumn,
   TaskLabelData,
@@ -107,7 +109,7 @@ export function TaskQuickActions({
             className={`action-btn ${activePanel === 'column' ? 'active' : ''}`}
             onClick={() => setActivePanel(activePanel === 'column' ? null : 'column')}
           >
-            <span className="action-icon">📋</span>
+            <ThemeIcon className="action-icon" emoji="📋" icon={<ColumnsIcon size={16} />} />
             Move to Column
           </button>
 
@@ -115,7 +117,7 @@ export function TaskQuickActions({
             className={`action-btn ${activePanel === 'priority' ? 'active' : ''}`}
             onClick={() => setActivePanel(activePanel === 'priority' ? null : 'priority')}
           >
-            <span className="action-icon">!</span>
+            <ThemeIcon className="action-icon" emoji="!" icon={<FlagIcon size={16} />} />
             Set Priority
           </button>
 
@@ -123,7 +125,7 @@ export function TaskQuickActions({
             className={`action-btn ${activePanel === 'labels' ? 'active' : ''}`}
             onClick={() => setActivePanel(activePanel === 'labels' ? null : 'labels')}
           >
-            <span className="action-icon">🏷️</span>
+            <ThemeIcon className="action-icon" emoji="🏷️" icon={<TagIcon size={16} />} />
             Labels
           </button>
 
@@ -131,7 +133,7 @@ export function TaskQuickActions({
             className={`action-btn ${activePanel === 'agent' ? 'active' : ''}`}
             onClick={() => setActivePanel(activePanel === 'agent' ? null : 'agent')}
           >
-            <span className="action-icon">🤖</span>
+            <ThemeIcon className="action-icon" emoji="🤖" icon={<BotIcon size={16} />} />
             Assign Agent
           </button>
 
@@ -139,7 +141,7 @@ export function TaskQuickActions({
             className={`action-btn ${activePanel === 'due' ? 'active' : ''}`}
             onClick={() => setActivePanel(activePanel === 'due' ? null : 'due')}
           >
-            <span className="action-icon">📅</span>
+            <ThemeIcon className="action-icon" emoji="📅" icon={<CalendarIcon size={16} />} />
             Due Date
           </button>
 
@@ -147,7 +149,7 @@ export function TaskQuickActions({
             className={`action-btn ${activePanel === 'estimate' ? 'active' : ''}`}
             onClick={() => setActivePanel(activePanel === 'estimate' ? null : 'estimate')}
           >
-            <span className="action-icon">⏱️</span>
+            <ThemeIcon className="action-icon" emoji="⏱️" icon={<ClockIcon size={16} />} />
             Estimate
           </button>
         </div>
@@ -383,6 +385,9 @@ export function TaskQuickActions({
             font-size: 14px;
             width: 20px;
             text-align: center;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
           }
 
           .action-panel {

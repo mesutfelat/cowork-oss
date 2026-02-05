@@ -142,19 +142,61 @@ export function Sidebar({
   const getStatusIndicator = (status: Task['status']) => {
     switch (status) {
       case 'completed':
-        return '[✓]';
+        return (
+          <>
+            <span className="terminal-only">[✓]</span>
+            <span className="modern-only">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            </span>
+          </>
+        );
       case 'paused':
-        return '[P]';
+        return (
+          <>
+            <span className="terminal-only">[P]</span>
+            <span className="modern-only">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="10" y1="15" x2="10" y2="9"></line><line x1="14" y1="15" x2="14" y2="9"></line></svg>
+            </span>
+          </>
+        );
       case 'blocked':
-        return '[!]';
+        return (
+          <>
+            <span className="terminal-only">[!]</span>
+            <span className="modern-only">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            </span>
+          </>
+        );
       case 'failed':
       case 'cancelled':
-        return '[✗]';
+        return (
+          <>
+            <span className="terminal-only">[✗]</span>
+            <span className="modern-only">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </span>
+          </>
+        );
       case 'executing':
       case 'planning':
-        return '[~]';
+        return (
+          <>
+            <span className="terminal-only">[~]</span>
+            <span className="modern-only">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle></svg>
+            </span>
+          </>
+        );
       default:
-        return '[ ]';
+        return (
+          <>
+            <span className="terminal-only">[ ]</span>
+            <span className="modern-only">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" opacity="0.3"></circle></svg>
+            </span>
+          </>
+        );
     }
   };
 
@@ -310,16 +352,26 @@ export function Sidebar({
             onClick={onOpenMissionControl}
             title="Mission Control"
           >
-            <span className="cli-btn-bracket">[</span>
-            <span className="cli-btn-accent">MC</span>
-            <span className="cli-btn-bracket">]</span>
-            <span className="cli-btn-text">mission_control</span>
+            <span className="terminal-only">
+              <span className="cli-btn-bracket">[</span>
+              <span className="cli-btn-accent">MC</span>
+              <span className="cli-btn-bracket">]</span>
+            </span>
+            <span className="cli-btn-text">
+              <span className="terminal-only">mission_control</span>
+              <span className="modern-only">Mission Control</span>
+            </span>
           </button>
           <button className="new-task-btn cli-new-task-btn cli-action-btn" onClick={handleNewTask}>
-            <span className="cli-btn-bracket">[</span>
-            <span className="cli-btn-plus">+</span>
-            <span className="cli-btn-bracket">]</span>
-            <span className="cli-btn-text">new_session</span>
+            <span className="terminal-only">
+              <span className="cli-btn-bracket">[</span>
+              <span className="cli-btn-plus">+</span>
+              <span className="cli-btn-bracket">]</span>
+            </span>
+            <span className="cli-btn-text">
+              <span className="terminal-only">new_session</span>
+              <span className="modern-only">New Session</span>
+            </span>
           </button>
         </div>
       </div>
@@ -328,13 +380,17 @@ export function Sidebar({
       <div className="task-list cli-task-list">
         <div className="task-list-header cli-list-header">
           <span className="cli-section-prompt">&gt;</span>
-          <span>SESSIONS</span>
+          <span className="terminal-only">SESSIONS</span>
+          <span className="modern-only">Sessions</span>
         </div>
         {taskTree.length === 0 ? (
           <div className="sidebar-empty cli-empty">
-            <pre className="cli-tree">{`├── (no sessions yet)
+            <pre className="cli-tree terminal-only">{`├── (no sessions yet)
 └── ...`}</pre>
-            <p className="cli-hint"># start a new session above</p>
+            <p className="cli-hint">
+              <span className="terminal-only"># start a new session above</span>
+              <span className="modern-only">Start a new session to begin</span>
+            </p>
           </div>
         ) : (
           taskTree.map((node, index) =>
@@ -346,12 +402,15 @@ export function Sidebar({
       {/* Footer */}
       <div className="sidebar-footer cli-sidebar-footer">
         <div className="cli-footer-info">
-          <span className="cli-footer-label">SYS:</span>
+          <span className="cli-footer-label">
+            <span className="terminal-only">SYS:</span>
+          </span>
           <span className="cli-footer-value">CoWork OS</span>
         </div>
         <div className="cli-footer-actions">
           <button className="settings-btn cli-settings-btn" onClick={onOpenSettings} title="Settings">
-            [cfg]
+            <span className="terminal-only">[cfg]</span>
+            <span className="modern-only">Settings</span>
           </button>
         </div>
       </div>

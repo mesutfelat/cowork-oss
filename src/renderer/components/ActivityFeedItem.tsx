@@ -1,4 +1,21 @@
 import { ActivityData, ActivityType, ActivityActorType } from '../../electron/preload';
+import { ThemeIcon } from './ThemeIcon';
+import {
+  AlertTriangleIcon,
+  AtIcon,
+  BotIcon,
+  CheckIcon,
+  ClipboardIcon,
+  CodeIcon,
+  FileIcon,
+  InfoIcon,
+  MessageIcon,
+  PauseIcon,
+  PlayIcon,
+  SlidersIcon,
+  TrashIcon,
+  XIcon,
+} from './LineIcons';
 
 interface ActivityFeedItemProps {
   activity: ActivityData;
@@ -8,23 +25,23 @@ interface ActivityFeedItemProps {
   compact?: boolean;
 }
 
-const ACTIVITY_ICONS: Record<ActivityType, string> = {
-  task_created: '📋',
-  task_started: '▶️',
-  task_completed: '✅',
-  task_failed: '❌',
-  task_paused: '⏸️',
-  task_resumed: '▶️',
-  comment: '💬',
-  file_created: '📄',
-  file_modified: '✏️',
-  file_deleted: '🗑️',
-  command_executed: '💻',
-  tool_used: '🔧',
-  mention: '@',
-  agent_assigned: '🤖',
-  error: '⚠️',
-  info: 'ℹ️',
+const ACTIVITY_ICONS: Record<ActivityType, React.ReactNode> = {
+  task_created: <ThemeIcon emoji="📋" icon={<ClipboardIcon size={16} />} />,
+  task_started: <ThemeIcon emoji="▶️" icon={<PlayIcon size={16} />} />,
+  task_completed: <ThemeIcon emoji="✅" icon={<CheckIcon size={16} />} />,
+  task_failed: <ThemeIcon emoji="❌" icon={<XIcon size={16} />} />,
+  task_paused: <ThemeIcon emoji="⏸️" icon={<PauseIcon size={16} />} />,
+  task_resumed: <ThemeIcon emoji="▶️" icon={<PlayIcon size={16} />} />,
+  comment: <ThemeIcon emoji="💬" icon={<MessageIcon size={16} />} />,
+  file_created: <ThemeIcon emoji="📄" icon={<FileIcon size={16} />} />,
+  file_modified: <ThemeIcon emoji="✏️" icon={<FileIcon size={16} />} />,
+  file_deleted: <ThemeIcon emoji="🗑️" icon={<TrashIcon size={16} />} />,
+  command_executed: <ThemeIcon emoji="💻" icon={<CodeIcon size={16} />} />,
+  tool_used: <ThemeIcon emoji="🔧" icon={<SlidersIcon size={16} />} />,
+  mention: <ThemeIcon emoji="@" icon={<AtIcon size={16} />} />,
+  agent_assigned: <ThemeIcon emoji="🤖" icon={<BotIcon size={16} />} />,
+  error: <ThemeIcon emoji="⚠️" icon={<AlertTriangleIcon size={16} />} />,
+  info: <ThemeIcon emoji="ℹ️" icon={<InfoIcon size={16} />} />,
 };
 
 const ACTIVITY_COLORS: Record<ActivityType, string> = {

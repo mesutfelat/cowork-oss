@@ -1,9 +1,11 @@
-import { ThemeMode, AccentColor, ACCENT_COLORS } from '../../shared/types';
+import { ThemeMode, AccentColor, VisualTheme, ACCENT_COLORS } from '../../shared/types';
 
 interface AppearanceSettingsProps {
   themeMode: ThemeMode;
+  visualTheme: VisualTheme;
   accentColor: AccentColor;
   onThemeChange: (theme: ThemeMode) => void;
+  onVisualThemeChange: (theme: VisualTheme) => void;
   onAccentChange: (accent: AccentColor) => void;
   onShowOnboarding?: () => void;
   onboardingCompletedAt?: string;
@@ -11,12 +13,15 @@ interface AppearanceSettingsProps {
 
 export function AppearanceSettings({
   themeMode,
+  visualTheme,
   accentColor,
   onThemeChange,
+  onVisualThemeChange,
   onAccentChange,
   onShowOnboarding,
   onboardingCompletedAt,
 }: AppearanceSettingsProps) {
+  const isWarmVisualTheme = visualTheme === 'warm' || visualTheme === 'oblivion';
   const formatCompletedDate = (isoString?: string) => {
     if (!isoString) return null;
     try {
@@ -62,9 +67,39 @@ export function AppearanceSettings({
         </p>
       </div>
 
+      {/* Visual Style */}
+      <div className="appearance-section">
+        <h4>Visual Style</h4>
+        <div className="theme-switcher">
+          <button
+            className={`theme-option ${visualTheme === 'terminal' ? 'selected' : ''}`}
+            onClick={() => onVisualThemeChange('terminal')}
+          >
+            <div className="theme-option-preview terminal">
+              <div className="theme-option-preview-line code-line" />
+              <div className="theme-option-preview-line code-line" />
+              <div className="theme-option-preview-line code-line" />
+            </div>
+            <span className="theme-option-label">Terminal</span>
+          </button>
+
+          <button
+            className={`theme-option ${isWarmVisualTheme ? 'selected' : ''}`}
+            onClick={() => onVisualThemeChange('warm')}
+          >
+            <div className="theme-option-preview warm">
+              <div className="theme-option-preview-line ui-line" />
+              <div className="theme-option-preview-line ui-line" />
+              <div className="theme-option-preview-line ui-line" />
+            </div>
+            <span className="theme-option-label">Studio</span>
+          </button>
+        </div>
+      </div>
+
       {/* Theme Mode */}
       <div className="appearance-section">
-        <h4>Theme</h4>
+        <h4>Color Mode</h4>
         <div className="theme-switcher">
           <button
             className={`theme-option ${themeMode === 'light' ? 'selected' : ''}`}

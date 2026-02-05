@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { LLMSettingsData, ThemeMode, AccentColor, type LLMProviderType, type CustomProviderConfig } from '../../shared/types';
+import { LLMSettingsData, ThemeMode, VisualTheme, AccentColor, type LLMProviderType, type CustomProviderConfig } from '../../shared/types';
 import { CUSTOM_PROVIDER_MAP } from '../../shared/llm-provider-catalog';
 import { TelegramSettings } from './TelegramSettings';
 import { DiscordSettings } from './DiscordSettings';
@@ -54,8 +54,10 @@ interface SettingsProps {
   onBack: () => void;
   onSettingsChanged?: () => void;
   themeMode: ThemeMode;
+  visualTheme: VisualTheme;
   accentColor: AccentColor;
   onThemeChange: (theme: ThemeMode) => void;
+  onVisualThemeChange: (theme: VisualTheme) => void;
   onAccentChange: (accent: AccentColor) => void;
   initialTab?: SettingsTab;
   onShowOnboarding?: () => void;
@@ -377,7 +379,7 @@ const getLLMProviderIcon = (providerType: string, customEntry?: { compatibility?
   );
 };
 
-export function Settings({ onBack, onSettingsChanged, themeMode, accentColor, onThemeChange, onAccentChange, initialTab = 'appearance', onShowOnboarding, onboardingCompletedAt }: SettingsProps) {
+export function Settings({ onBack, onSettingsChanged, themeMode, visualTheme, accentColor, onThemeChange, onVisualThemeChange, onAccentChange, initialTab = 'appearance', onShowOnboarding, onboardingCompletedAt }: SettingsProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
   const [activeSecondaryChannel, setActiveSecondaryChannel] = useState<SecondaryChannel>('discord');
   const [activeIntegration, setActiveIntegration] = useState<IntegrationChannel>('notion');
@@ -1218,917 +1220,165 @@ export function Settings({ onBack, onSettingsChanged, themeMode, accentColor, on
               if (item.macOnly && !navigator.platform.toLowerCase().includes('mac')) return false;
               return item.label.toLowerCase().includes(sidebarSearch.toLowerCase());
             }).length === 0 && (
-              <div className="settings-nav-no-results">No matching settings</div>
-            )}
+                <div className="settings-nav-no-results">No matching settings</div>
+              )}
           </div>
         </div>
 
         <div className="settings-content-card">
           <div className="settings-content">
-          {activeTab === 'appearance' ? (
-            <AppearanceSettings
-              themeMode={themeMode}
-              accentColor={accentColor}
-              onThemeChange={onThemeChange}
-              onAccentChange={onAccentChange}
-              onShowOnboarding={onShowOnboarding}
-              onboardingCompletedAt={onboardingCompletedAt}
-            />
-          ) : activeTab === 'personality' ? (
-            <PersonalitySettings onSettingsChanged={onSettingsChanged} />
-          ) : activeTab === 'missioncontrol' ? (
-            <MissionControlPanel />
-          ) : activeTab === 'tray' ? (
-            <TraySettings />
-          ) : activeTab === 'voice' ? (
-            <VoiceSettings />
-          ) : activeTab === 'telegram' ? (
-            <TelegramSettings />
-          ) : activeTab === 'slack' ? (
-            <SlackSettings />
-          ) : activeTab === 'whatsapp' ? (
-            <WhatsAppSettings />
-          ) : activeTab === 'teams' ? (
-            <TeamsSettings />
-          ) : activeTab === 'x' ? (
-            <XSettings />
-          ) : activeTab === 'morechannels' ? (
-            <div className="more-channels-panel">
-              <div className="more-channels-header">
-                <h2>More Channels</h2>
-                <p className="settings-description">Configure additional messaging platforms</p>
-              </div>
-              <div className="more-channels-tabs">
-                {secondaryChannelItems.map(item => (
-                  <button
-                    key={item.key}
-                    className={`more-channels-tab ${activeSecondaryChannel === item.key ? 'active' : ''}`}
-                    onClick={() => setActiveSecondaryChannel(item.key)}
-                  >
-                    {item.icon}
-                    <span>{item.label}</span>
-                  </button>
-                ))}
-              </div>
-              <div className="more-channels-content">
-                {activeSecondaryChannel === 'discord' && <DiscordSettings />}
-                {activeSecondaryChannel === 'imessage' && <ImessageSettings />}
-                {activeSecondaryChannel === 'signal' && <SignalSettings />}
-                {activeSecondaryChannel === 'mattermost' && <MattermostSettings />}
-                {activeSecondaryChannel === 'matrix' && <MatrixSettings />}
-                {activeSecondaryChannel === 'twitch' && <TwitchSettings />}
-                {activeSecondaryChannel === 'line' && <LineSettings />}
-                {activeSecondaryChannel === 'bluebubbles' && <BlueBubblesSettings />}
-                {activeSecondaryChannel === 'email' && <EmailSettings />}
-                {activeSecondaryChannel === 'googlechat' && <GoogleChatSettings />}
-              </div>
-            </div>
-          ) : activeTab === 'integrations' ? (
-            <div className="integrations-panel">
-              <div className="integrations-header">
-                <h2>Integrations</h2>
-                <p className="settings-description">Connect productivity and storage tools for the agent</p>
-              </div>
-              <div className="integrations-tabs">
-                {integrationItems.map(item => (
-                  <button
-                    key={item.key}
-                    className={`integrations-tab ${activeIntegration === item.key ? 'active' : ''}`}
-                    onClick={() => setActiveIntegration(item.key)}
-                  >
-                    {item.icon}
-                    <span>{item.label}</span>
-                  </button>
-                ))}
-              </div>
-              <div className="integrations-content">
-                {activeIntegration === 'notion' && <NotionSettings />}
-                {activeIntegration === 'box' && <BoxSettings />}
-                {activeIntegration === 'onedrive' && <OneDriveSettings />}
-                {activeIntegration === 'googledrive' && <GoogleDriveSettings />}
-                {activeIntegration === 'dropbox' && <DropboxSettings />}
-                {activeIntegration === 'sharepoint' && <SharePointSettings />}
-              </div>
-            </div>
-          ) : activeTab === 'search' ? (
-            <SearchSettings />
-          ) : activeTab === 'updates' ? (
-            <UpdateSettings />
-          ) : activeTab === 'guardrails' ? (
-            <GuardrailSettings />
-          ) : activeTab === 'queue' ? (
-            <QueueSettings />
-          ) : activeTab === 'skills' ? (
-            <SkillsSettings />
-          ) : activeTab === 'skillhub' ? (
-            <SkillHubBrowser />
-          ) : activeTab === 'scheduled' ? (
-            <ScheduledTasksSettings />
-          ) : activeTab === 'connectors' ? (
-            <ConnectorsSettings />
-          ) : activeTab === 'mcp' ? (
-            <MCPSettings />
-          ) : activeTab === 'tools' ? (
-            <BuiltinToolsSettings />
-          ) : activeTab === 'hooks' ? (
-            <HooksSettings />
-          ) : activeTab === 'controlplane' ? (
-            <ControlPlaneSettings />
-          ) : activeTab === 'nodes' ? (
-            <NodesSettings />
-          ) : activeTab === 'extensions' ? (
-            <ExtensionsSettings />
-          ) : loading ? (
-            <div className="settings-loading">Loading settings...</div>
-          ) : (
-            <div className="llm-provider-panel">
-              <div className="llm-provider-header">
-                <h2>LLM Provider</h2>
-                <p className="settings-description">
-                  Choose which service to use for AI model calls
-                </p>
-              </div>
-              <div className="llm-provider-tabs">
-                {providers.map(provider => {
-                  const providerType = provider.type as LLMProviderType;
-                  const resolvedCustomType = resolveCustomProviderId(providerType);
-                  const customEntry = CUSTOM_PROVIDER_MAP.get(resolvedCustomType);
-                  const icon = getLLMProviderIcon(providerType, customEntry);
-
-                  return (
-                    <button
-                      key={provider.type}
-                      type="button"
-                      className={`llm-provider-tab ${settings.providerType === provider.type ? 'active' : ''} ${provider.configured ? 'configured' : ''}`}
-                      onClick={() => handleProviderSelect(providerType)}
-                    >
-                      {icon}
-                      <span className="llm-provider-tab-label">{provider.name}</span>
-                      {provider.configured && (
-                        <span className="llm-provider-tab-status" title="Configured" />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="llm-provider-content">
-                {settings.providerType === 'anthropic' && (
-                  <div className="settings-section">
-                    <h3>Model</h3>
-                    <select
-                      className="settings-select"
-                      value={settings.modelKey}
-                      onChange={(e) => setSettings({ ...settings, modelKey: e.target.value })}
-                    >
-                      {models.map(model => (
-                        <option key={model.key} value={model.key}>
-                          {model.displayName}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-              {settings.providerType === 'anthropic' && (
-                <div className="settings-section">
-                  <h3>Anthropic API Key</h3>
-                  <p className="settings-description">
-                    Enter your API key from{' '}
-                    <a href="https://console.anthropic.com/" target="_blank" rel="noopener noreferrer">
-                      console.anthropic.com
-                    </a>
-                  </p>
-                  <input
-                    type="password"
-                    className="settings-input"
-                    placeholder="sk-ant-..."
-                    value={anthropicApiKey}
-                    onChange={(e) => setAnthropicApiKey(e.target.value)}
-                  />
+            {activeTab === 'appearance' ? (
+              <AppearanceSettings
+                themeMode={themeMode}
+                visualTheme={visualTheme}
+                accentColor={accentColor}
+                onThemeChange={onThemeChange}
+                onVisualThemeChange={onVisualThemeChange}
+                onAccentChange={onAccentChange}
+                onShowOnboarding={onShowOnboarding}
+                onboardingCompletedAt={onboardingCompletedAt}
+              />
+            ) : activeTab === 'personality' ? (
+              <PersonalitySettings onSettingsChanged={onSettingsChanged} />
+            ) : activeTab === 'missioncontrol' ? (
+              <MissionControlPanel />
+            ) : activeTab === 'tray' ? (
+              <TraySettings />
+            ) : activeTab === 'voice' ? (
+              <VoiceSettings />
+            ) : activeTab === 'telegram' ? (
+              <TelegramSettings />
+            ) : activeTab === 'slack' ? (
+              <SlackSettings />
+            ) : activeTab === 'whatsapp' ? (
+              <WhatsAppSettings />
+            ) : activeTab === 'teams' ? (
+              <TeamsSettings />
+            ) : activeTab === 'x' ? (
+              <XSettings />
+            ) : activeTab === 'morechannels' ? (
+              <div className="more-channels-panel">
+                <div className="more-channels-header">
+                  <h2>More Channels</h2>
+                  <p className="settings-description">Configure additional messaging platforms</p>
                 </div>
-              )}
-
-              {settings.providerType === 'gemini' && (
-                <>
-                  <div className="settings-section">
-                    <h3>Gemini API Key</h3>
-                    <p className="settings-description">
-                      Enter your API key from{' '}
-                      <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">
-                        Google AI Studio
-                      </a>
-                    </p>
-                    <div className="settings-input-group">
-                      <input
-                        type="password"
-                        className="settings-input"
-                        placeholder="AIza..."
-                        value={geminiApiKey}
-                        onChange={(e) => setGeminiApiKey(e.target.value)}
-                      />
-                      <button
-                        className="button-small button-secondary"
-                        onClick={() => loadGeminiModels(geminiApiKey)}
-                        disabled={loadingGeminiModels}
-                      >
-                        {loadingGeminiModels ? 'Loading...' : 'Refresh Models'}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="settings-section">
-                    <h3>Model</h3>
-                    <p className="settings-description">
-                      Select a Gemini model. Enter your API key and click "Refresh Models" to load available models.
-                    </p>
-                    {geminiModels.length > 0 ? (
-                      <SearchableSelect
-                        options={geminiModels.map(model => ({
-                          value: model.name,
-                          label: model.displayName,
-                          description: model.description,
-                        }))}
-                        value={geminiModel}
-                        onChange={setGeminiModel}
-                        placeholder="Select a model..."
-                      />
-                    ) : (
-                      <input
-                        type="text"
-                        className="settings-input"
-                        placeholder="gemini-2.0-flash"
-                        value={geminiModel}
-                        onChange={(e) => setGeminiModel(e.target.value)}
-                      />
-                    )}
-                  </div>
-                </>
-              )}
-
-              {settings.providerType === 'openrouter' && (
-                <>
-                  <div className="settings-section">
-                    <h3>OpenRouter API Key</h3>
-                    <p className="settings-description">
-                      Enter your API key from{' '}
-                      <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer">
-                        OpenRouter
-                      </a>
-                    </p>
-                    <div className="settings-input-group">
-                      <input
-                        type="password"
-                        className="settings-input"
-                        placeholder="sk-or-..."
-                        value={openrouterApiKey}
-                        onChange={(e) => setOpenrouterApiKey(e.target.value)}
-                      />
-                      <button
-                        className="button-small button-secondary"
-                        onClick={() => loadOpenRouterModels(openrouterApiKey)}
-                        disabled={loadingOpenRouterModels}
-                      >
-                        {loadingOpenRouterModels ? 'Loading...' : 'Refresh Models'}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="settings-section">
-                    <h3>Base URL</h3>
-                    <p className="settings-description">
-                      Optional override for the OpenRouter API endpoint.
-                    </p>
-                    <input
-                      type="text"
-                      className="settings-input"
-                      placeholder="https://openrouter.ai/api/v1"
-                      value={openrouterBaseUrl}
-                      onChange={(e) => setOpenrouterBaseUrl(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="settings-section">
-                    <h3>Model</h3>
-                    <p className="settings-description">
-                      Select a model from OpenRouter's catalog. Enter your API key and click "Refresh Models" to load available models.
-                    </p>
-                    {openrouterModels.length > 0 ? (
-                      <SearchableSelect
-                        options={openrouterModels.map(model => ({
-                          value: model.id,
-                          label: model.name,
-                          description: `${Math.round(model.context_length / 1000)}k context`,
-                        }))}
-                        value={openrouterModel}
-                        onChange={setOpenrouterModel}
-                        placeholder="Select a model..."
-                      />
-                    ) : (
-                      <input
-                        type="text"
-                        className="settings-input"
-                        placeholder="anthropic/claude-3.5-sonnet"
-                        value={openrouterModel}
-                        onChange={(e) => setOpenrouterModel(e.target.value)}
-                      />
-                    )}
-                    <p className="settings-hint">
-                      OpenRouter provides access to many models from different providers (Claude, GPT-4, Llama, etc.) through a unified API.
-                    </p>
-                  </div>
-                </>
-              )}
-
-              {settings.providerType === 'openai' && (
-                <>
-                  <div className="settings-section">
-                    <h3>Authentication Method</h3>
-                    <p className="settings-description">
-                      Choose how to authenticate with OpenAI
-                    </p>
-                    <div className="auth-method-tabs">
-                      <button
-                        className={`auth-method-tab ${openaiAuthMethod === 'oauth' ? 'active' : ''}`}
-                        onClick={() => setOpenaiAuthMethod('oauth')}
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                          <circle cx="12" cy="7" r="4" />
-                        </svg>
-                        Sign in with ChatGPT
-                      </button>
-                      <button
-                        className={`auth-method-tab ${openaiAuthMethod === 'api_key' ? 'active' : ''}`}
-                        onClick={() => setOpenaiAuthMethod('api_key')}
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
-                        </svg>
-                        API Key
-                      </button>
-                    </div>
-                  </div>
-
-                  {openaiAuthMethod === 'oauth' && (
-                    <div className="settings-section">
-                      <h3>ChatGPT Account</h3>
-                      {openaiOAuthConnected ? (
-                        <div className="oauth-connected">
-                          <div className="oauth-status">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
-                              <path d="M22 4L12 14.01l-3-3" />
-                            </svg>
-                            <span>Connected to ChatGPT</span>
-                          </div>
-                          <p className="settings-description">
-                            Your ChatGPT account is connected. You can use GPT-4o and other models with your subscription.
-                          </p>
-                          <button
-                            className="button-small button-secondary"
-                            onClick={handleOpenAIOAuthLogout}
-                            disabled={openaiOAuthLoading}
-                          >
-                            {openaiOAuthLoading ? 'Disconnecting...' : 'Disconnect Account'}
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="oauth-login">
-                          <p className="settings-description">
-                            Sign in with your ChatGPT account to use GPT-4o, o1, and other models with your subscription.
-                          </p>
-                          <button
-                            className="button-primary oauth-login-btn"
-                            onClick={handleOpenAIOAuthLogin}
-                            disabled={openaiOAuthLoading}
-                          >
-                            {openaiOAuthLoading ? (
-                              <>
-                                <svg className="spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                  <path d="M21 12a9 9 0 11-6.219-8.56" />
-                                </svg>
-                                Connecting...
-                              </>
-                            ) : (
-                              <>
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                  <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
-                                  <polyline points="10 17 15 12 10 7" />
-                                  <line x1="15" y1="12" x2="3" y2="12" />
-                                </svg>
-                                Sign in with ChatGPT
-                              </>
-                            )}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {openaiAuthMethod === 'api_key' && (
-                    <div className="settings-section">
-                      <h3>OpenAI API Key</h3>
-                      <p className="settings-description">
-                        Enter your API key from{' '}
-                        <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer">
-                          OpenAI Platform
-                        </a>
-                      </p>
-                      <div className="settings-input-group">
-                        <input
-                          type="password"
-                          className="settings-input"
-                          placeholder="sk-..."
-                          value={openaiApiKey}
-                          onChange={(e) => setOpenaiApiKey(e.target.value)}
-                        />
-                        <button
-                          className="button-small button-secondary"
-                          onClick={() => loadOpenAIModels(openaiApiKey)}
-                          disabled={loadingOpenAIModels}
-                        >
-                          {loadingOpenAIModels ? 'Loading...' : 'Refresh Models'}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="settings-section">
-                    <h3>Model</h3>
-                    <p className="settings-description">
-                      {openaiAuthMethod === 'oauth' && openaiOAuthConnected
-                        ? 'Select a GPT model to use with your ChatGPT subscription.'
-                        : 'Select a GPT model. Enter your API key and click "Refresh Models" to load available models.'}
-                    </p>
-                    {openaiModels.length > 0 ? (
-                      <SearchableSelect
-                        options={openaiModels.map(model => ({
-                          value: model.id,
-                          label: model.name,
-                          description: model.description,
-                        }))}
-                        value={openaiModel}
-                        onChange={setOpenaiModel}
-                        placeholder="Select a model..."
-                      />
-                    ) : (
-                      <input
-                        type="text"
-                        className="settings-input"
-                        placeholder="gpt-4o-mini"
-                        value={openaiModel}
-                        onChange={(e) => setOpenaiModel(e.target.value)}
-                      />
-                    )}
-                    {openaiAuthMethod === 'oauth' && openaiOAuthConnected && (
-                      <button
-                        className="button-small button-secondary"
-                        onClick={() => loadOpenAIModels()}
-                        disabled={loadingOpenAIModels}
-                        style={{ marginTop: '8px' }}
-                      >
-                        {loadingOpenAIModels ? 'Loading...' : 'Refresh Models'}
-                      </button>
-                    )}
-                  </div>
-                </>
-              )}
-
-              {settings.providerType === 'azure' && (
-                <>
-                  <div className="settings-section">
-                    <h3>Azure OpenAI Endpoint</h3>
-                    <p className="settings-description">
-                      Enter your Azure OpenAI resource endpoint (for example, <code>https://your-resource.openai.azure.com</code>).
-                    </p>
-                    <input
-                      type="text"
-                      className="settings-input"
-                      placeholder="https://your-resource.openai.azure.com"
-                      value={azureEndpoint}
-                      onChange={(e) => setAzureEndpoint(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="settings-section">
-                    <h3>Azure OpenAI API Key</h3>
-                    <p className="settings-description">
-                      Enter the API key for your Azure OpenAI resource.
-                    </p>
-                    <input
-                      type="password"
-                      className="settings-input"
-                      placeholder="Azure API key"
-                      value={azureApiKey}
-                      onChange={(e) => setAzureApiKey(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="settings-section">
-                    <h3>Deployment Names</h3>
-                    <p className="settings-description">
-                      Enter one or more deployment names (one per line). These appear in the model selector.
-                    </p>
-                    <textarea
-                      className="settings-input"
-                      placeholder="gpt-4o-mini\nmy-other-deployment"
-                      rows={3}
-                      value={azureDeploymentsText}
-                      onChange={(e) => setAzureDeploymentsText(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="settings-section">
-                    <h3>Default Deployment</h3>
-                    <p className="settings-description">
-                      Optional. Used for connection tests and initial selection. You can switch models in the main view.
-                    </p>
-                    <input
-                      type="text"
-                      className="settings-input"
-                      placeholder="gpt-4o-mini"
-                      value={azureDeployment}
-                      onChange={(e) => setAzureDeployment(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="settings-section">
-                    <h3>API Version</h3>
-                    <p className="settings-description">
-                      Optional override for the Azure OpenAI API version.
-                    </p>
-                    <input
-                      type="text"
-                      className="settings-input"
-                      placeholder="2024-02-15-preview"
-                      value={azureApiVersion}
-                      onChange={(e) => setAzureApiVersion(e.target.value)}
-                    />
-                  </div>
-                </>
-              )}
-
-              {settings.providerType === 'groq' && (
-                <>
-                  <div className="settings-section">
-                    <h3>Groq API Key</h3>
-                    <p className="settings-description">
-                      Enter your API key from{' '}
-                      <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer">
-                        Groq Console
-                      </a>
-                    </p>
-                    <div className="settings-input-group">
-                      <input
-                        type="password"
-                        className="settings-input"
-                        placeholder="gsk_..."
-                        value={groqApiKey}
-                        onChange={(e) => setGroqApiKey(e.target.value)}
-                      />
-                      <button
-                        className="button-small button-secondary"
-                        onClick={() => loadGroqModels(groqApiKey)}
-                        disabled={loadingGroqModels}
-                      >
-                        {loadingGroqModels ? 'Loading...' : 'Refresh Models'}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="settings-section">
-                    <h3>Base URL</h3>
-                    <p className="settings-description">
-                      Optional override for the Groq API endpoint.
-                    </p>
-                    <input
-                      type="text"
-                      className="settings-input"
-                      placeholder="https://api.groq.com/openai/v1"
-                      value={groqBaseUrl}
-                      onChange={(e) => setGroqBaseUrl(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="settings-section">
-                    <h3>Model</h3>
-                    <p className="settings-description">
-                      Select a Groq model. Enter your API key and click "Refresh Models" to load available models.
-                    </p>
-                    {groqModels.length > 0 ? (
-                      <SearchableSelect
-                        options={groqModels.map(model => ({
-                          value: model.id,
-                          label: model.name,
-                        }))}
-                        value={groqModel}
-                        onChange={setGroqModel}
-                        placeholder="Select a model..."
-                      />
-                    ) : (
-                      <input
-                        type="text"
-                        className="settings-input"
-                        placeholder="llama-3.1-8b-instant"
-                        value={groqModel}
-                        onChange={(e) => setGroqModel(e.target.value)}
-                      />
-                    )}
-                  </div>
-                </>
-              )}
-
-              {settings.providerType === 'xai' && (
-                <>
-                  <div className="settings-section">
-                    <h3>xAI API Key</h3>
-                    <p className="settings-description">
-                      Enter your API key from{' '}
-                      <a href="https://console.x.ai/" target="_blank" rel="noopener noreferrer">
-                        xAI Console
-                      </a>
-                    </p>
-                    <div className="settings-input-group">
-                      <input
-                        type="password"
-                        className="settings-input"
-                        placeholder="xai-..."
-                        value={xaiApiKey}
-                        onChange={(e) => setXaiApiKey(e.target.value)}
-                      />
-                      <button
-                        className="button-small button-secondary"
-                        onClick={() => loadXAIModels(xaiApiKey)}
-                        disabled={loadingXaiModels}
-                      >
-                        {loadingXaiModels ? 'Loading...' : 'Refresh Models'}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="settings-section">
-                    <h3>Base URL</h3>
-                    <p className="settings-description">
-                      Optional override for the xAI API endpoint.
-                    </p>
-                    <input
-                      type="text"
-                      className="settings-input"
-                      placeholder="https://api.x.ai/v1"
-                      value={xaiBaseUrl}
-                      onChange={(e) => setXaiBaseUrl(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="settings-section">
-                    <h3>Model</h3>
-                    <p className="settings-description">
-                      Select a Grok model. Enter your API key and click "Refresh Models" to load available models.
-                    </p>
-                    {xaiModels.length > 0 ? (
-                      <SearchableSelect
-                        options={xaiModels.map(model => ({
-                          value: model.id,
-                          label: model.name,
-                        }))}
-                        value={xaiModel}
-                        onChange={setXaiModel}
-                        placeholder="Select a model..."
-                      />
-                    ) : (
-                      <input
-                        type="text"
-                        className="settings-input"
-                        placeholder="grok-4-fast-non-reasoning"
-                        value={xaiModel}
-                        onChange={(e) => setXaiModel(e.target.value)}
-                      />
-                    )}
-                  </div>
-                </>
-              )}
-
-              {settings.providerType === 'kimi' && (
-                <>
-                  <div className="settings-section">
-                    <h3>Kimi API Key</h3>
-                    <p className="settings-description">
-                      Enter your API key from{' '}
-                      <a href="https://platform.moonshot.ai/" target="_blank" rel="noopener noreferrer">
-                        Moonshot Platform
-                      </a>
-                    </p>
-                    <div className="settings-input-group">
-                      <input
-                        type="password"
-                        className="settings-input"
-                        placeholder="sk-..."
-                        value={kimiApiKey}
-                        onChange={(e) => setKimiApiKey(e.target.value)}
-                      />
-                      <button
-                        className="button-small button-secondary"
-                        onClick={() => loadKimiModels(kimiApiKey)}
-                        disabled={loadingKimiModels}
-                      >
-                        {loadingKimiModels ? 'Loading...' : 'Refresh Models'}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="settings-section">
-                    <h3>Base URL</h3>
-                    <p className="settings-description">
-                      Optional override for the Kimi API endpoint.
-                    </p>
-                    <input
-                      type="text"
-                      className="settings-input"
-                      placeholder="https://api.moonshot.ai/v1"
-                      value={kimiBaseUrl}
-                      onChange={(e) => setKimiBaseUrl(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="settings-section">
-                    <h3>Model</h3>
-                    <p className="settings-description">
-                      Select a Kimi model. Enter your API key and click "Refresh Models" to load available models.
-                    </p>
-                    {kimiModels.length > 0 ? (
-                      <SearchableSelect
-                        options={kimiModels.map(model => ({
-                          value: model.id,
-                          label: model.name,
-                        }))}
-                        value={kimiModel}
-                        onChange={setKimiModel}
-                        placeholder="Select a model..."
-                      />
-                    ) : (
-                      <input
-                        type="text"
-                        className="settings-input"
-                        placeholder="kimi-k2.5"
-                        value={kimiModel}
-                        onChange={(e) => setKimiModel(e.target.value)}
-                      />
-                    )}
-                  </div>
-                </>
-              )}
-
-              {selectedCustomProvider && (
-                <>
-                  <div className="settings-section">
-                    <h3>{selectedCustomProvider.apiKeyLabel}</h3>
-                    {selectedCustomProvider.apiKeyUrl ? (
-                      <p className="settings-description">
-                        Enter your API key from{' '}
-                        <a href={selectedCustomProvider.apiKeyUrl} target="_blank" rel="noopener noreferrer">
-                          {selectedCustomProvider.name}
-                        </a>
-                      </p>
-                    ) : selectedCustomProvider.description ? (
-                      <p className="settings-description">
-                        {selectedCustomProvider.description}
-                      </p>
-                    ) : null}
-                    <input
-                      type="password"
-                      className="settings-input"
-                      placeholder={selectedCustomProvider.apiKeyPlaceholder || 'sk-...'}
-                      value={selectedCustomConfig.apiKey || ''}
-                      onChange={(e) => updateCustomProvider(resolvedProviderType, { apiKey: e.target.value })}
-                    />
-                    {selectedCustomProvider.apiKeyOptional && (
-                      <p className="settings-hint">API key is optional for this provider.</p>
-                    )}
-                  </div>
-
-                  {(selectedCustomProvider.requiresBaseUrl || selectedCustomProvider.baseUrl) && (
-                    <div className="settings-section">
-                      <h3>Base URL</h3>
-                      <p className="settings-description">
-                        {selectedCustomProvider.requiresBaseUrl
-                          ? 'Base URL is required for this provider.'
-                          : 'Override the default base URL if needed.'}
-                      </p>
-                      <input
-                        type="text"
-                        className="settings-input"
-                        placeholder={selectedCustomProvider.baseUrl || 'https://...'}
-                        value={selectedCustomConfig.baseUrl || ''}
-                        onChange={(e) => updateCustomProvider(resolvedProviderType, { baseUrl: e.target.value })}
-                      />
-                    </div>
-                  )}
-
-                  <div className="settings-section">
-                    <h3>Model</h3>
-                    <p className="settings-description">
-                      Enter the model ID to use for {selectedCustomProvider.name}.
-                    </p>
-                    <input
-                      type="text"
-                      className="settings-input"
-                      placeholder={selectedCustomProvider.defaultModel || 'model-id'}
-                      value={selectedCustomConfig.model || ''}
-                      onChange={(e) => updateCustomProvider(resolvedProviderType, { model: e.target.value })}
-                    />
-                  </div>
-                </>
-              )}
-
-              {settings.providerType === 'bedrock' && (
-                <>
-                  <div className="settings-section">
-                    <h3>AWS Region</h3>
-                    <select
-                      className="settings-select"
-                      value={awsRegion}
-                      onChange={(e) => setAwsRegion(e.target.value)}
+                <div className="more-channels-tabs">
+                  {secondaryChannelItems.map(item => (
+                    <button
+                      key={item.key}
+                      className={`more-channels-tab ${activeSecondaryChannel === item.key ? 'active' : ''}`}
+                      onClick={() => setActiveSecondaryChannel(item.key)}
                     >
-                      <option value="us-east-1">US East (N. Virginia)</option>
-                      <option value="us-west-2">US West (Oregon)</option>
-                      <option value="eu-west-1">Europe (Ireland)</option>
-                      <option value="eu-central-1">Europe (Frankfurt)</option>
-                      <option value="ap-northeast-1">Asia Pacific (Tokyo)</option>
-                      <option value="ap-southeast-1">Asia Pacific (Singapore)</option>
-                      <option value="ap-southeast-2">Asia Pacific (Sydney)</option>
-                    </select>
-                  </div>
+                      {item.icon}
+                      <span>{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="more-channels-content">
+                  {activeSecondaryChannel === 'discord' && <DiscordSettings />}
+                  {activeSecondaryChannel === 'imessage' && <ImessageSettings />}
+                  {activeSecondaryChannel === 'signal' && <SignalSettings />}
+                  {activeSecondaryChannel === 'mattermost' && <MattermostSettings />}
+                  {activeSecondaryChannel === 'matrix' && <MatrixSettings />}
+                  {activeSecondaryChannel === 'twitch' && <TwitchSettings />}
+                  {activeSecondaryChannel === 'line' && <LineSettings />}
+                  {activeSecondaryChannel === 'bluebubbles' && <BlueBubblesSettings />}
+                  {activeSecondaryChannel === 'email' && <EmailSettings />}
+                  {activeSecondaryChannel === 'googlechat' && <GoogleChatSettings />}
+                </div>
+              </div>
+            ) : activeTab === 'integrations' ? (
+              <div className="integrations-panel">
+                <div className="integrations-header">
+                  <h2>Integrations</h2>
+                  <p className="settings-description">Connect productivity and storage tools for the agent</p>
+                </div>
+                <div className="integrations-tabs">
+                  {integrationItems.map(item => (
+                    <button
+                      key={item.key}
+                      className={`integrations-tab ${activeIntegration === item.key ? 'active' : ''}`}
+                      onClick={() => setActiveIntegration(item.key)}
+                    >
+                      {item.icon}
+                      <span>{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="integrations-content">
+                  {activeIntegration === 'notion' && <NotionSettings />}
+                  {activeIntegration === 'box' && <BoxSettings />}
+                  {activeIntegration === 'onedrive' && <OneDriveSettings />}
+                  {activeIntegration === 'googledrive' && <GoogleDriveSettings />}
+                  {activeIntegration === 'dropbox' && <DropboxSettings />}
+                  {activeIntegration === 'sharepoint' && <SharePointSettings />}
+                </div>
+              </div>
+            ) : activeTab === 'search' ? (
+              <SearchSettings />
+            ) : activeTab === 'updates' ? (
+              <UpdateSettings />
+            ) : activeTab === 'guardrails' ? (
+              <GuardrailSettings />
+            ) : activeTab === 'queue' ? (
+              <QueueSettings />
+            ) : activeTab === 'skills' ? (
+              <SkillsSettings />
+            ) : activeTab === 'skillhub' ? (
+              <SkillHubBrowser />
+            ) : activeTab === 'scheduled' ? (
+              <ScheduledTasksSettings />
+            ) : activeTab === 'connectors' ? (
+              <ConnectorsSettings />
+            ) : activeTab === 'mcp' ? (
+              <MCPSettings />
+            ) : activeTab === 'tools' ? (
+              <BuiltinToolsSettings />
+            ) : activeTab === 'hooks' ? (
+              <HooksSettings />
+            ) : activeTab === 'controlplane' ? (
+              <ControlPlaneSettings />
+            ) : activeTab === 'nodes' ? (
+              <NodesSettings />
+            ) : activeTab === 'extensions' ? (
+              <ExtensionsSettings />
+            ) : loading ? (
+              <div className="settings-loading">Loading settings...</div>
+            ) : (
+              <div className="llm-provider-panel">
+                <div className="llm-provider-header">
+                  <h2>LLM Provider</h2>
+                  <p className="settings-description">
+                    Choose which service to use for AI model calls
+                  </p>
+                </div>
+                <div className="llm-provider-tabs">
+                  {providers.map(provider => {
+                    const providerType = provider.type as LLMProviderType;
+                    const resolvedCustomType = resolveCustomProviderId(providerType);
+                    const customEntry = CUSTOM_PROVIDER_MAP.get(resolvedCustomType);
+                    const icon = getLLMProviderIcon(providerType, customEntry);
 
-                  <div className="settings-section">
-                    <h3>AWS Credentials</h3>
-
-                    <label className="settings-checkbox">
-                      <input
-                        type="checkbox"
-                        checked={useDefaultCredentials}
-                        onChange={(e) => setUseDefaultCredentials(e.target.checked)}
-                      />
-                      <span>Use default credential chain (recommended)</span>
-                    </label>
-
-                    {useDefaultCredentials ? (
-                      <div className="settings-subsection">
-                        <p className="settings-description">
-                          Uses AWS credentials from environment variables, shared credentials file (~/.aws/credentials), or IAM role.
-                        </p>
-                        <input
-                          type="text"
-                          className="settings-input"
-                          placeholder="AWS Profile (optional, e.g., 'default')"
-                          value={awsProfile}
-                          onChange={(e) => setAwsProfile(e.target.value)}
-                        />
-                      </div>
-                    ) : (
-                      <div className="settings-subsection">
-                        <input
-                          type="text"
-                          className="settings-input"
-                          placeholder="AWS Access Key ID"
-                          value={awsAccessKeyId}
-                          onChange={(e) => setAwsAccessKeyId(e.target.value)}
-                        />
-                        <input
-                          type="password"
-                          className="settings-input"
-                          placeholder="AWS Secret Access Key"
-                          value={awsSecretAccessKey}
-                          onChange={(e) => setAwsSecretAccessKey(e.target.value)}
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="settings-section">
-                    <h3>Model</h3>
-                    <p className="settings-description">
-                      Select a Claude model from AWS Bedrock.{' '}
+                    return (
                       <button
-                        className="button-small button-secondary"
-                        onClick={loadBedrockModels}
-                        disabled={loadingBedrockModels}
-                        style={{ marginLeft: '8px' }}
+                        key={provider.type}
+                        type="button"
+                        className={`llm-provider-tab ${settings.providerType === provider.type ? 'active' : ''} ${provider.configured ? 'configured' : ''}`}
+                        onClick={() => handleProviderSelect(providerType)}
                       >
-                        {loadingBedrockModels ? 'Loading...' : 'Refresh Models'}
+                        {icon}
+                        <span className="llm-provider-tab-label">{provider.name}</span>
+                        {provider.configured && (
+                          <span className="llm-provider-tab-status" title="Configured" />
+                        )}
                       </button>
-                    </p>
-                    {bedrockModels.length > 0 ? (
-                      <SearchableSelect
-                        options={bedrockModels.map(model => ({
-                          value: model.id,
-                          label: model.name,
-                          description: model.description,
-                        }))}
-                        value={bedrockModel}
-                        onChange={setBedrockModel}
-                        placeholder="Select a model..."
-                      />
-                    ) : (
+                    );
+                  })}
+                </div>
+                <div className="llm-provider-content">
+                  {settings.providerType === 'anthropic' && (
+                    <div className="settings-section">
+                      <h3>Model</h3>
                       <select
                         className="settings-select"
                         value={settings.modelKey}
@@ -2140,132 +1390,886 @@ export function Settings({ onBack, onSettingsChanged, themeMode, accentColor, on
                           </option>
                         ))}
                       </select>
-                    )}
-                  </div>
-                </>
-              )}
-
-              {settings.providerType === 'ollama' && (
-                <>
-                  <div className="settings-section">
-                    <h3>Ollama Server URL</h3>
-                    <p className="settings-description">
-                      URL of your Ollama server. Default is http://localhost:11434 for local installations.
-                    </p>
-                    <div className="settings-input-group">
-                      <input
-                        type="text"
-                        className="settings-input"
-                        placeholder="http://localhost:11434"
-                        value={ollamaBaseUrl}
-                        onChange={(e) => setOllamaBaseUrl(e.target.value)}
-                      />
-                      <button
-                        className="button-small button-secondary"
-                        onClick={() => loadOllamaModels(ollamaBaseUrl)}
-                        disabled={loadingOllamaModels}
-                      >
-                        {loadingOllamaModels ? 'Loading...' : 'Refresh Models'}
-                      </button>
                     </div>
-                  </div>
+                  )}
 
-                  <div className="settings-section">
-                    <h3>Model</h3>
-                    <p className="settings-description">
-                      Select from models available on your Ollama server, or enter a custom model name.
-                    </p>
-                    {ollamaModels.length > 0 ? (
-                      <SearchableSelect
-                        options={ollamaModels.map(model => ({
-                          value: model.name,
-                          label: model.name,
-                          description: formatBytes(model.size),
-                        }))}
-                        value={ollamaModel}
-                        onChange={setOllamaModel}
-                        placeholder="Select a model..."
-                      />
-                    ) : (
+                  {settings.providerType === 'anthropic' && (
+                    <div className="settings-section">
+                      <h3>Anthropic API Key</h3>
+                      <p className="settings-description">
+                        Enter your API key from{' '}
+                        <a href="https://console.anthropic.com/" target="_blank" rel="noopener noreferrer">
+                          console.anthropic.com
+                        </a>
+                      </p>
                       <input
-                        type="text"
+                        type="password"
                         className="settings-input"
-                        placeholder="llama3.2"
-                        value={ollamaModel}
-                        onChange={(e) => setOllamaModel(e.target.value)}
+                        placeholder="sk-ant-..."
+                        value={anthropicApiKey}
+                        onChange={(e) => setAnthropicApiKey(e.target.value)}
                       />
-                    )}
-                    <p className="settings-hint">
-                      Don't have models? Run <code>ollama pull llama3.2</code> to download a model.
-                    </p>
-                  </div>
+                    </div>
+                  )}
 
-                  <div className="settings-section">
-                    <h3>API Key (Optional)</h3>
-                    <p className="settings-description">
-                      Only needed if connecting to a remote Ollama server that requires authentication.
-                    </p>
-                    <input
-                      type="password"
-                      className="settings-input"
-                      placeholder="Optional API key for remote servers"
-                      value={ollamaApiKey}
-                      onChange={(e) => setOllamaApiKey(e.target.value)}
-                    />
-                  </div>
-                </>
-              )}
+                  {settings.providerType === 'gemini' && (
+                    <>
+                      <div className="settings-section">
+                        <h3>Gemini API Key</h3>
+                        <p className="settings-description">
+                          Enter your API key from{' '}
+                          <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">
+                            Google AI Studio
+                          </a>
+                        </p>
+                        <div className="settings-input-group">
+                          <input
+                            type="password"
+                            className="settings-input"
+                            placeholder="AIza..."
+                            value={geminiApiKey}
+                            onChange={(e) => setGeminiApiKey(e.target.value)}
+                          />
+                          <button
+                            className="button-small button-secondary"
+                            onClick={() => loadGeminiModels(geminiApiKey)}
+                            disabled={loadingGeminiModels}
+                          >
+                            {loadingGeminiModels ? 'Loading...' : 'Refresh Models'}
+                          </button>
+                        </div>
+                      </div>
 
-              {testResult && (
-                <div className={`test-result ${testResult.success ? 'success' : 'error'}`}>
-                  {testResult.success ? (
-                    <>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
-                        <path d="M22 4L12 14.01l-3-3" />
-                      </svg>
-                      Connection successful!
-                    </>
-                  ) : (
-                    <>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <circle cx="12" cy="12" r="10" />
-                        <line x1="15" y1="9" x2="9" y2="15" />
-                        <line x1="9" y1="9" x2="15" y2="15" />
-                      </svg>
-                      <span title={testResult.error}>
-                        {(() => {
-                          const error = testResult.error || 'Connection failed';
-                          // Extract meaningful part before JSON details
-                          const jsonStart = error.indexOf(' [{');
-                          const truncated = jsonStart > 0 ? error.slice(0, jsonStart) : error;
-                          return truncated.length > 200 ? truncated.slice(0, 200) + '...' : truncated;
-                        })()}
-                      </span>
+                      <div className="settings-section">
+                        <h3>Model</h3>
+                        <p className="settings-description">
+                          Select a Gemini model. Enter your API key and click "Refresh Models" to load available models.
+                        </p>
+                        {geminiModels.length > 0 ? (
+                          <SearchableSelect
+                            options={geminiModels.map(model => ({
+                              value: model.name,
+                              label: model.displayName,
+                              description: model.description,
+                            }))}
+                            value={geminiModel}
+                            onChange={setGeminiModel}
+                            placeholder="Select a model..."
+                          />
+                        ) : (
+                          <input
+                            type="text"
+                            className="settings-input"
+                            placeholder="gemini-2.0-flash"
+                            value={geminiModel}
+                            onChange={(e) => setGeminiModel(e.target.value)}
+                          />
+                        )}
+                      </div>
                     </>
                   )}
-                </div>
-              )}
 
-              <div className="settings-actions">
-                <button
-                  className="button-secondary"
-                  onClick={handleTestConnection}
-                  disabled={loading || testing}
-                >
-                  {testing ? 'Testing...' : 'Test Connection'}
-                </button>
-                <button
-                  className="button-primary"
-                  onClick={handleSave}
-                  disabled={loading || saving}
-                >
-                  {saving ? 'Saving...' : 'Save Settings'}
-                </button>
+                  {settings.providerType === 'openrouter' && (
+                    <>
+                      <div className="settings-section">
+                        <h3>OpenRouter API Key</h3>
+                        <p className="settings-description">
+                          Enter your API key from{' '}
+                          <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer">
+                            OpenRouter
+                          </a>
+                        </p>
+                        <div className="settings-input-group">
+                          <input
+                            type="password"
+                            className="settings-input"
+                            placeholder="sk-or-..."
+                            value={openrouterApiKey}
+                            onChange={(e) => setOpenrouterApiKey(e.target.value)}
+                          />
+                          <button
+                            className="button-small button-secondary"
+                            onClick={() => loadOpenRouterModels(openrouterApiKey)}
+                            disabled={loadingOpenRouterModels}
+                          >
+                            {loadingOpenRouterModels ? 'Loading...' : 'Refresh Models'}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="settings-section">
+                        <h3>Base URL</h3>
+                        <p className="settings-description">
+                          Optional override for the OpenRouter API endpoint.
+                        </p>
+                        <input
+                          type="text"
+                          className="settings-input"
+                          placeholder="https://openrouter.ai/api/v1"
+                          value={openrouterBaseUrl}
+                          onChange={(e) => setOpenrouterBaseUrl(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="settings-section">
+                        <h3>Model</h3>
+                        <p className="settings-description">
+                          Select a model from OpenRouter's catalog. Enter your API key and click "Refresh Models" to load available models.
+                        </p>
+                        {openrouterModels.length > 0 ? (
+                          <SearchableSelect
+                            options={openrouterModels.map(model => ({
+                              value: model.id,
+                              label: model.name,
+                              description: `${Math.round(model.context_length / 1000)}k context`,
+                            }))}
+                            value={openrouterModel}
+                            onChange={setOpenrouterModel}
+                            placeholder="Select a model..."
+                          />
+                        ) : (
+                          <input
+                            type="text"
+                            className="settings-input"
+                            placeholder="anthropic/claude-3.5-sonnet"
+                            value={openrouterModel}
+                            onChange={(e) => setOpenrouterModel(e.target.value)}
+                          />
+                        )}
+                        <p className="settings-hint">
+                          OpenRouter provides access to many models from different providers (Claude, GPT-4, Llama, etc.) through a unified API.
+                        </p>
+                      </div>
+                    </>
+                  )}
+
+                  {settings.providerType === 'openai' && (
+                    <>
+                      <div className="settings-section">
+                        <h3>Authentication Method</h3>
+                        <p className="settings-description">
+                          Choose how to authenticate with OpenAI
+                        </p>
+                        <div className="auth-method-tabs">
+                          <button
+                            className={`auth-method-tab ${openaiAuthMethod === 'oauth' ? 'active' : ''}`}
+                            onClick={() => setOpenaiAuthMethod('oauth')}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                              <circle cx="12" cy="7" r="4" />
+                            </svg>
+                            Sign in with ChatGPT
+                          </button>
+                          <button
+                            className={`auth-method-tab ${openaiAuthMethod === 'api_key' ? 'active' : ''}`}
+                            onClick={() => setOpenaiAuthMethod('api_key')}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
+                            </svg>
+                            API Key
+                          </button>
+                        </div>
+                      </div>
+
+                      {openaiAuthMethod === 'oauth' && (
+                        <div className="settings-section">
+                          <h3>ChatGPT Account</h3>
+                          {openaiOAuthConnected ? (
+                            <div className="oauth-connected">
+                              <div className="oauth-status">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
+                                  <path d="M22 4L12 14.01l-3-3" />
+                                </svg>
+                                <span>Connected to ChatGPT</span>
+                              </div>
+                              <p className="settings-description">
+                                Your ChatGPT account is connected. You can use GPT-4o and other models with your subscription.
+                              </p>
+                              <button
+                                className="button-small button-secondary"
+                                onClick={handleOpenAIOAuthLogout}
+                                disabled={openaiOAuthLoading}
+                              >
+                                {openaiOAuthLoading ? 'Disconnecting...' : 'Disconnect Account'}
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="oauth-login">
+                              <p className="settings-description">
+                                Sign in with your ChatGPT account to use GPT-4o, o1, and other models with your subscription.
+                              </p>
+                              <button
+                                className="button-primary oauth-login-btn"
+                                onClick={handleOpenAIOAuthLogin}
+                                disabled={openaiOAuthLoading}
+                              >
+                                {openaiOAuthLoading ? (
+                                  <>
+                                    <svg className="spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <path d="M21 12a9 9 0 11-6.219-8.56" />
+                                    </svg>
+                                    Connecting...
+                                  </>
+                                ) : (
+                                  <>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+                                      <polyline points="10 17 15 12 10 7" />
+                                      <line x1="15" y1="12" x2="3" y2="12" />
+                                    </svg>
+                                    Sign in with ChatGPT
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {openaiAuthMethod === 'api_key' && (
+                        <div className="settings-section">
+                          <h3>OpenAI API Key</h3>
+                          <p className="settings-description">
+                            Enter your API key from{' '}
+                            <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer">
+                              OpenAI Platform
+                            </a>
+                          </p>
+                          <div className="settings-input-group">
+                            <input
+                              type="password"
+                              className="settings-input"
+                              placeholder="sk-..."
+                              value={openaiApiKey}
+                              onChange={(e) => setOpenaiApiKey(e.target.value)}
+                            />
+                            <button
+                              className="button-small button-secondary"
+                              onClick={() => loadOpenAIModels(openaiApiKey)}
+                              disabled={loadingOpenAIModels}
+                            >
+                              {loadingOpenAIModels ? 'Loading...' : 'Refresh Models'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="settings-section">
+                        <h3>Model</h3>
+                        <p className="settings-description">
+                          {openaiAuthMethod === 'oauth' && openaiOAuthConnected
+                            ? 'Select a GPT model to use with your ChatGPT subscription.'
+                            : 'Select a GPT model. Enter your API key and click "Refresh Models" to load available models.'}
+                        </p>
+                        {openaiModels.length > 0 ? (
+                          <SearchableSelect
+                            options={openaiModels.map(model => ({
+                              value: model.id,
+                              label: model.name,
+                              description: model.description,
+                            }))}
+                            value={openaiModel}
+                            onChange={setOpenaiModel}
+                            placeholder="Select a model..."
+                          />
+                        ) : (
+                          <input
+                            type="text"
+                            className="settings-input"
+                            placeholder="gpt-4o-mini"
+                            value={openaiModel}
+                            onChange={(e) => setOpenaiModel(e.target.value)}
+                          />
+                        )}
+                        {openaiAuthMethod === 'oauth' && openaiOAuthConnected && (
+                          <button
+                            className="button-small button-secondary"
+                            onClick={() => loadOpenAIModels()}
+                            disabled={loadingOpenAIModels}
+                            style={{ marginTop: '8px' }}
+                          >
+                            {loadingOpenAIModels ? 'Loading...' : 'Refresh Models'}
+                          </button>
+                        )}
+                      </div>
+                    </>
+                  )}
+
+                  {settings.providerType === 'azure' && (
+                    <>
+                      <div className="settings-section">
+                        <h3>Azure OpenAI Endpoint</h3>
+                        <p className="settings-description">
+                          Enter your Azure OpenAI resource endpoint (for example, <code>https://your-resource.openai.azure.com</code>).
+                        </p>
+                        <input
+                          type="text"
+                          className="settings-input"
+                          placeholder="https://your-resource.openai.azure.com"
+                          value={azureEndpoint}
+                          onChange={(e) => setAzureEndpoint(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="settings-section">
+                        <h3>Azure OpenAI API Key</h3>
+                        <p className="settings-description">
+                          Enter the API key for your Azure OpenAI resource.
+                        </p>
+                        <input
+                          type="password"
+                          className="settings-input"
+                          placeholder="Azure API key"
+                          value={azureApiKey}
+                          onChange={(e) => setAzureApiKey(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="settings-section">
+                        <h3>Deployment Names</h3>
+                        <p className="settings-description">
+                          Enter one or more deployment names (one per line). These appear in the model selector.
+                        </p>
+                        <textarea
+                          className="settings-input"
+                          placeholder="gpt-4o-mini\nmy-other-deployment"
+                          rows={3}
+                          value={azureDeploymentsText}
+                          onChange={(e) => setAzureDeploymentsText(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="settings-section">
+                        <h3>Default Deployment</h3>
+                        <p className="settings-description">
+                          Optional. Used for connection tests and initial selection. You can switch models in the main view.
+                        </p>
+                        <input
+                          type="text"
+                          className="settings-input"
+                          placeholder="gpt-4o-mini"
+                          value={azureDeployment}
+                          onChange={(e) => setAzureDeployment(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="settings-section">
+                        <h3>API Version</h3>
+                        <p className="settings-description">
+                          Optional override for the Azure OpenAI API version.
+                        </p>
+                        <input
+                          type="text"
+                          className="settings-input"
+                          placeholder="2024-02-15-preview"
+                          value={azureApiVersion}
+                          onChange={(e) => setAzureApiVersion(e.target.value)}
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {settings.providerType === 'groq' && (
+                    <>
+                      <div className="settings-section">
+                        <h3>Groq API Key</h3>
+                        <p className="settings-description">
+                          Enter your API key from{' '}
+                          <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer">
+                            Groq Console
+                          </a>
+                        </p>
+                        <div className="settings-input-group">
+                          <input
+                            type="password"
+                            className="settings-input"
+                            placeholder="gsk_..."
+                            value={groqApiKey}
+                            onChange={(e) => setGroqApiKey(e.target.value)}
+                          />
+                          <button
+                            className="button-small button-secondary"
+                            onClick={() => loadGroqModels(groqApiKey)}
+                            disabled={loadingGroqModels}
+                          >
+                            {loadingGroqModels ? 'Loading...' : 'Refresh Models'}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="settings-section">
+                        <h3>Base URL</h3>
+                        <p className="settings-description">
+                          Optional override for the Groq API endpoint.
+                        </p>
+                        <input
+                          type="text"
+                          className="settings-input"
+                          placeholder="https://api.groq.com/openai/v1"
+                          value={groqBaseUrl}
+                          onChange={(e) => setGroqBaseUrl(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="settings-section">
+                        <h3>Model</h3>
+                        <p className="settings-description">
+                          Select a Groq model. Enter your API key and click "Refresh Models" to load available models.
+                        </p>
+                        {groqModels.length > 0 ? (
+                          <SearchableSelect
+                            options={groqModels.map(model => ({
+                              value: model.id,
+                              label: model.name,
+                            }))}
+                            value={groqModel}
+                            onChange={setGroqModel}
+                            placeholder="Select a model..."
+                          />
+                        ) : (
+                          <input
+                            type="text"
+                            className="settings-input"
+                            placeholder="llama-3.1-8b-instant"
+                            value={groqModel}
+                            onChange={(e) => setGroqModel(e.target.value)}
+                          />
+                        )}
+                      </div>
+                    </>
+                  )}
+
+                  {settings.providerType === 'xai' && (
+                    <>
+                      <div className="settings-section">
+                        <h3>xAI API Key</h3>
+                        <p className="settings-description">
+                          Enter your API key from{' '}
+                          <a href="https://console.x.ai/" target="_blank" rel="noopener noreferrer">
+                            xAI Console
+                          </a>
+                        </p>
+                        <div className="settings-input-group">
+                          <input
+                            type="password"
+                            className="settings-input"
+                            placeholder="xai-..."
+                            value={xaiApiKey}
+                            onChange={(e) => setXaiApiKey(e.target.value)}
+                          />
+                          <button
+                            className="button-small button-secondary"
+                            onClick={() => loadXAIModels(xaiApiKey)}
+                            disabled={loadingXaiModels}
+                          >
+                            {loadingXaiModels ? 'Loading...' : 'Refresh Models'}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="settings-section">
+                        <h3>Base URL</h3>
+                        <p className="settings-description">
+                          Optional override for the xAI API endpoint.
+                        </p>
+                        <input
+                          type="text"
+                          className="settings-input"
+                          placeholder="https://api.x.ai/v1"
+                          value={xaiBaseUrl}
+                          onChange={(e) => setXaiBaseUrl(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="settings-section">
+                        <h3>Model</h3>
+                        <p className="settings-description">
+                          Select a Grok model. Enter your API key and click "Refresh Models" to load available models.
+                        </p>
+                        {xaiModels.length > 0 ? (
+                          <SearchableSelect
+                            options={xaiModels.map(model => ({
+                              value: model.id,
+                              label: model.name,
+                            }))}
+                            value={xaiModel}
+                            onChange={setXaiModel}
+                            placeholder="Select a model..."
+                          />
+                        ) : (
+                          <input
+                            type="text"
+                            className="settings-input"
+                            placeholder="grok-4-fast-non-reasoning"
+                            value={xaiModel}
+                            onChange={(e) => setXaiModel(e.target.value)}
+                          />
+                        )}
+                      </div>
+                    </>
+                  )}
+
+                  {settings.providerType === 'kimi' && (
+                    <>
+                      <div className="settings-section">
+                        <h3>Kimi API Key</h3>
+                        <p className="settings-description">
+                          Enter your API key from{' '}
+                          <a href="https://platform.moonshot.ai/" target="_blank" rel="noopener noreferrer">
+                            Moonshot Platform
+                          </a>
+                        </p>
+                        <div className="settings-input-group">
+                          <input
+                            type="password"
+                            className="settings-input"
+                            placeholder="sk-..."
+                            value={kimiApiKey}
+                            onChange={(e) => setKimiApiKey(e.target.value)}
+                          />
+                          <button
+                            className="button-small button-secondary"
+                            onClick={() => loadKimiModels(kimiApiKey)}
+                            disabled={loadingKimiModels}
+                          >
+                            {loadingKimiModels ? 'Loading...' : 'Refresh Models'}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="settings-section">
+                        <h3>Base URL</h3>
+                        <p className="settings-description">
+                          Optional override for the Kimi API endpoint.
+                        </p>
+                        <input
+                          type="text"
+                          className="settings-input"
+                          placeholder="https://api.moonshot.ai/v1"
+                          value={kimiBaseUrl}
+                          onChange={(e) => setKimiBaseUrl(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="settings-section">
+                        <h3>Model</h3>
+                        <p className="settings-description">
+                          Select a Kimi model. Enter your API key and click "Refresh Models" to load available models.
+                        </p>
+                        {kimiModels.length > 0 ? (
+                          <SearchableSelect
+                            options={kimiModels.map(model => ({
+                              value: model.id,
+                              label: model.name,
+                            }))}
+                            value={kimiModel}
+                            onChange={setKimiModel}
+                            placeholder="Select a model..."
+                          />
+                        ) : (
+                          <input
+                            type="text"
+                            className="settings-input"
+                            placeholder="kimi-k2.5"
+                            value={kimiModel}
+                            onChange={(e) => setKimiModel(e.target.value)}
+                          />
+                        )}
+                      </div>
+                    </>
+                  )}
+
+                  {selectedCustomProvider && (
+                    <>
+                      <div className="settings-section">
+                        <h3>{selectedCustomProvider.apiKeyLabel}</h3>
+                        {selectedCustomProvider.apiKeyUrl ? (
+                          <p className="settings-description">
+                            Enter your API key from{' '}
+                            <a href={selectedCustomProvider.apiKeyUrl} target="_blank" rel="noopener noreferrer">
+                              {selectedCustomProvider.name}
+                            </a>
+                          </p>
+                        ) : selectedCustomProvider.description ? (
+                          <p className="settings-description">
+                            {selectedCustomProvider.description}
+                          </p>
+                        ) : null}
+                        <input
+                          type="password"
+                          className="settings-input"
+                          placeholder={selectedCustomProvider.apiKeyPlaceholder || 'sk-...'}
+                          value={selectedCustomConfig.apiKey || ''}
+                          onChange={(e) => updateCustomProvider(resolvedProviderType, { apiKey: e.target.value })}
+                        />
+                        {selectedCustomProvider.apiKeyOptional && (
+                          <p className="settings-hint">API key is optional for this provider.</p>
+                        )}
+                      </div>
+
+                      {(selectedCustomProvider.requiresBaseUrl || selectedCustomProvider.baseUrl) && (
+                        <div className="settings-section">
+                          <h3>Base URL</h3>
+                          <p className="settings-description">
+                            {selectedCustomProvider.requiresBaseUrl
+                              ? 'Base URL is required for this provider.'
+                              : 'Override the default base URL if needed.'}
+                          </p>
+                          <input
+                            type="text"
+                            className="settings-input"
+                            placeholder={selectedCustomProvider.baseUrl || 'https://...'}
+                            value={selectedCustomConfig.baseUrl || ''}
+                            onChange={(e) => updateCustomProvider(resolvedProviderType, { baseUrl: e.target.value })}
+                          />
+                        </div>
+                      )}
+
+                      <div className="settings-section">
+                        <h3>Model</h3>
+                        <p className="settings-description">
+                          Enter the model ID to use for {selectedCustomProvider.name}.
+                        </p>
+                        <input
+                          type="text"
+                          className="settings-input"
+                          placeholder={selectedCustomProvider.defaultModel || 'model-id'}
+                          value={selectedCustomConfig.model || ''}
+                          onChange={(e) => updateCustomProvider(resolvedProviderType, { model: e.target.value })}
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {settings.providerType === 'bedrock' && (
+                    <>
+                      <div className="settings-section">
+                        <h3>AWS Region</h3>
+                        <select
+                          className="settings-select"
+                          value={awsRegion}
+                          onChange={(e) => setAwsRegion(e.target.value)}
+                        >
+                          <option value="us-east-1">US East (N. Virginia)</option>
+                          <option value="us-west-2">US West (Oregon)</option>
+                          <option value="eu-west-1">Europe (Ireland)</option>
+                          <option value="eu-central-1">Europe (Frankfurt)</option>
+                          <option value="ap-northeast-1">Asia Pacific (Tokyo)</option>
+                          <option value="ap-southeast-1">Asia Pacific (Singapore)</option>
+                          <option value="ap-southeast-2">Asia Pacific (Sydney)</option>
+                        </select>
+                      </div>
+
+                      <div className="settings-section">
+                        <h3>AWS Credentials</h3>
+
+                        <label className="settings-checkbox">
+                          <input
+                            type="checkbox"
+                            checked={useDefaultCredentials}
+                            onChange={(e) => setUseDefaultCredentials(e.target.checked)}
+                          />
+                          <span>Use default credential chain (recommended)</span>
+                        </label>
+
+                        {useDefaultCredentials ? (
+                          <div className="settings-subsection">
+                            <p className="settings-description">
+                              Uses AWS credentials from environment variables, shared credentials file (~/.aws/credentials), or IAM role.
+                            </p>
+                            <input
+                              type="text"
+                              className="settings-input"
+                              placeholder="AWS Profile (optional, e.g., 'default')"
+                              value={awsProfile}
+                              onChange={(e) => setAwsProfile(e.target.value)}
+                            />
+                          </div>
+                        ) : (
+                          <div className="settings-subsection">
+                            <input
+                              type="text"
+                              className="settings-input"
+                              placeholder="AWS Access Key ID"
+                              value={awsAccessKeyId}
+                              onChange={(e) => setAwsAccessKeyId(e.target.value)}
+                            />
+                            <input
+                              type="password"
+                              className="settings-input"
+                              placeholder="AWS Secret Access Key"
+                              value={awsSecretAccessKey}
+                              onChange={(e) => setAwsSecretAccessKey(e.target.value)}
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="settings-section">
+                        <h3>Model</h3>
+                        <p className="settings-description">
+                          Select a Claude model from AWS Bedrock.{' '}
+                          <button
+                            className="button-small button-secondary"
+                            onClick={loadBedrockModels}
+                            disabled={loadingBedrockModels}
+                            style={{ marginLeft: '8px' }}
+                          >
+                            {loadingBedrockModels ? 'Loading...' : 'Refresh Models'}
+                          </button>
+                        </p>
+                        {bedrockModels.length > 0 ? (
+                          <SearchableSelect
+                            options={bedrockModels.map(model => ({
+                              value: model.id,
+                              label: model.name,
+                              description: model.description,
+                            }))}
+                            value={bedrockModel}
+                            onChange={setBedrockModel}
+                            placeholder="Select a model..."
+                          />
+                        ) : (
+                          <select
+                            className="settings-select"
+                            value={settings.modelKey}
+                            onChange={(e) => setSettings({ ...settings, modelKey: e.target.value })}
+                          >
+                            {models.map(model => (
+                              <option key={model.key} value={model.key}>
+                                {model.displayName}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
+                    </>
+                  )}
+
+                  {settings.providerType === 'ollama' && (
+                    <>
+                      <div className="settings-section">
+                        <h3>Ollama Server URL</h3>
+                        <p className="settings-description">
+                          URL of your Ollama server. Default is http://localhost:11434 for local installations.
+                        </p>
+                        <div className="settings-input-group">
+                          <input
+                            type="text"
+                            className="settings-input"
+                            placeholder="http://localhost:11434"
+                            value={ollamaBaseUrl}
+                            onChange={(e) => setOllamaBaseUrl(e.target.value)}
+                          />
+                          <button
+                            className="button-small button-secondary"
+                            onClick={() => loadOllamaModels(ollamaBaseUrl)}
+                            disabled={loadingOllamaModels}
+                          >
+                            {loadingOllamaModels ? 'Loading...' : 'Refresh Models'}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="settings-section">
+                        <h3>Model</h3>
+                        <p className="settings-description">
+                          Select from models available on your Ollama server, or enter a custom model name.
+                        </p>
+                        {ollamaModels.length > 0 ? (
+                          <SearchableSelect
+                            options={ollamaModels.map(model => ({
+                              value: model.name,
+                              label: model.name,
+                              description: formatBytes(model.size),
+                            }))}
+                            value={ollamaModel}
+                            onChange={setOllamaModel}
+                            placeholder="Select a model..."
+                          />
+                        ) : (
+                          <input
+                            type="text"
+                            className="settings-input"
+                            placeholder="llama3.2"
+                            value={ollamaModel}
+                            onChange={(e) => setOllamaModel(e.target.value)}
+                          />
+                        )}
+                        <p className="settings-hint">
+                          Don't have models? Run <code>ollama pull llama3.2</code> to download a model.
+                        </p>
+                      </div>
+
+                      <div className="settings-section">
+                        <h3>API Key (Optional)</h3>
+                        <p className="settings-description">
+                          Only needed if connecting to a remote Ollama server that requires authentication.
+                        </p>
+                        <input
+                          type="password"
+                          className="settings-input"
+                          placeholder="Optional API key for remote servers"
+                          value={ollamaApiKey}
+                          onChange={(e) => setOllamaApiKey(e.target.value)}
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {testResult && (
+                    <div className={`test-result ${testResult.success ? 'success' : 'error'}`}>
+                      {testResult.success ? (
+                        <>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
+                            <path d="M22 4L12 14.01l-3-3" />
+                          </svg>
+                          Connection successful!
+                        </>
+                      ) : (
+                        <>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="15" y1="9" x2="9" y2="15" />
+                            <line x1="9" y1="9" x2="15" y2="15" />
+                          </svg>
+                          <span title={testResult.error}>
+                            {(() => {
+                              const error = testResult.error || 'Connection failed';
+                              // Extract meaningful part before JSON details
+                              const jsonStart = error.indexOf(' [{');
+                              const truncated = jsonStart > 0 ? error.slice(0, jsonStart) : error;
+                              return truncated.length > 200 ? truncated.slice(0, 200) + '...' : truncated;
+                            })()}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="settings-actions">
+                    <button
+                      className="button-secondary"
+                      onClick={handleTestConnection}
+                      disabled={loading || testing}
+                    >
+                      {testing ? 'Testing...' : 'Test Connection'}
+                    </button>
+                    <button
+                      className="button-primary"
+                      onClick={handleSave}
+                      disabled={loading || saving}
+                    >
+                      {saving ? 'Saving...' : 'Save Settings'}
+                    </button>
+                  </div>
+                </div>
               </div>
-              </div>
-            </div>
-          )}
+            )}
           </div>
         </div>
       </div>

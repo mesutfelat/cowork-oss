@@ -8,13 +8,14 @@
 import { app } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
-import { AppearanceSettings, ThemeMode, AccentColor } from '../../shared/types';
+import { AppearanceSettings, ThemeMode, VisualTheme, AccentColor } from '../../shared/types';
 import { SecureSettingsRepository } from '../database/SecureSettingsRepository';
 
 const LEGACY_SETTINGS_FILE = 'appearance-settings.json';
 
 const DEFAULT_SETTINGS: AppearanceSettings = {
   themeMode: 'dark',
+  visualTheme: 'terminal',
   accentColor: 'cyan',
   disclaimerAccepted: false,
   onboardingCompleted: false,
@@ -121,6 +122,13 @@ export class AppearanceManager {
       if (!isValidThemeMode(settings.themeMode)) {
         settings.themeMode = DEFAULT_SETTINGS.themeMode;
       }
+      if (!isValidVisualTheme(settings.visualTheme)) {
+        settings.visualTheme = DEFAULT_SETTINGS.visualTheme;
+      }
+      // Normalize deprecated 'oblivion' theme to 'warm'
+      if (settings.visualTheme === 'oblivion') {
+        settings.visualTheme = 'warm';
+      }
       if (!isValidAccentColor(settings.accentColor)) {
         settings.accentColor = DEFAULT_SETTINGS.accentColor;
       }
@@ -146,8 +154,14 @@ export class AppearanceManager {
       const existingSettings = this.loadSettings();
 
       // Validate and merge with existing settings
+      // Normalize deprecated 'oblivion' to 'warm' before saving
+      let normalizedVisualTheme = isValidVisualTheme(settings.visualTheme) ? settings.visualTheme : existingSettings.visualTheme;
+      if (normalizedVisualTheme === 'oblivion') {
+        normalizedVisualTheme = 'warm';
+      }
       const validatedSettings: AppearanceSettings = {
         themeMode: isValidThemeMode(settings.themeMode) ? settings.themeMode : existingSettings.themeMode,
+        visualTheme: normalizedVisualTheme,
         accentColor: isValidAccentColor(settings.accentColor) ? settings.accentColor : existingSettings.accentColor,
         disclaimerAccepted: settings.disclaimerAccepted ?? existingSettings.disclaimerAccepted,
         onboardingCompleted: settings.onboardingCompleted ?? existingSettings.onboardingCompleted,
@@ -176,7 +190,11 @@ function isValidThemeMode(value: unknown): value is ThemeMode {
   return value === 'light' || value === 'dark' || value === 'system';
 }
 
+function isValidVisualTheme(value: unknown): value is VisualTheme {
+  return value === 'terminal' || value === 'warm' || value === 'oblivion';
+}
+
 function isValidAccentColor(value: unknown): value is AccentColor {
-  const validColors: AccentColor[] = ['cyan', 'blue', 'purple', 'pink', 'rose', 'orange', 'green', 'teal'];
+  const validColors: AccentColor[] = ['cyan', 'blue', 'purple', 'pink', 'rose', 'orange', 'green', 'teal', 'coral'];
   return validColors.includes(value as AccentColor);
 }

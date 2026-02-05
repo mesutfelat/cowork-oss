@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { FolderIcon } from './LineIcons';
 import { Workspace } from '../../shared/types';
 
 interface WorkspaceSelectorProps {
@@ -61,7 +62,7 @@ export function WorkspaceSelector({ onWorkspaceSelected }: WorkspaceSelectorProp
     <div className="workspace-selector cli-workspace-selector">
       <div className="workspace-selector-content cli-workspace-content">
         {/* Terminal Header */}
-        <div className="cli-terminal-header">
+        <div className="cli-terminal-header terminal-only">
           <div className="cli-terminal-dots">
             <span className="cli-dot"></span>
             <span className="cli-dot"></span>
@@ -77,7 +78,7 @@ export function WorkspaceSelector({ onWorkspaceSelected }: WorkspaceSelectorProp
             alt="CoWork OS"
             className="cli-mascot-logo"
           />
-          <pre className="cli-ascii-logo">{`
+          <pre className="cli-ascii-logo terminal-only">{`
   ██████╗ ██████╗ ██╗    ██╗ ██████╗ ██████╗ ██╗  ██╗       ██████╗ ███████╗
  ██╔════╝██╔═══██╗██║    ██║██╔═══██╗██╔══██╗██║ ██╔╝      ██╔═══██╗██╔════╝
  ██║     ██║   ██║██║ █╗ ██║██║   ██║██████╔╝█████╔╝ █████╗██║   ██║███████╗
@@ -85,21 +86,32 @@ export function WorkspaceSelector({ onWorkspaceSelected }: WorkspaceSelectorProp
  ╚██████╗╚██████╔╝╚███╔███╔╝╚██████╔╝██║  ██║██║  ██╗      ╚██████╔╝███████║
   ╚═════╝ ╚═════╝  ╚══╝╚══╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝       ╚═════╝ ╚══════╝`}</pre>
           <div className="cli-version">{appVersion ? `v${appVersion}` : ''}</div>
+          <div className="workspace-modern-title modern-only">Choose a workspace</div>
+          <div className="workspace-modern-subtitle modern-only">Pick a folder to get started.</div>
         </div>
 
         {/* Terminal Info */}
         <div className="cli-init-info">
           <div className="cli-line">
             <span className="cli-prompt">$</span>
-            <span className="cli-text">Welcome to CoWork OS</span>
+            <span className="cli-text">
+              <span className="terminal-only">Welcome to CoWork OS</span>
+              <span className="modern-only">Welcome to CoWork OS</span>
+            </span>
           </div>
           <div className="cli-line">
             <span className="cli-prompt">$</span>
-            <span className="cli-text">Select a workspace folder to initialize your environment</span>
+            <span className="cli-text">
+              <span className="terminal-only">Select a workspace folder to initialize your environment</span>
+              <span className="modern-only">Select a workspace folder to initialize your environment</span>
+            </span>
           </div>
           <div className="cli-line cli-blink">
             <span className="cli-prompt">$</span>
-            <span className="cli-text">Waiting for workspace selection...</span>
+            <span className="cli-text">
+              <span className="terminal-only">Waiting for workspace selection...</span>
+              <span className="modern-only">Waiting for your workspace selection...</span>
+            </span>
             <span className="cli-cursor-block">_</span>
           </div>
         </div>
@@ -109,7 +121,10 @@ export function WorkspaceSelector({ onWorkspaceSelected }: WorkspaceSelectorProp
           <div className="cli-workspace-list">
             <div className="cli-section-header">
               <span className="cli-section-prompt">&gt;</span>
-              <span className="cli-section-title">RECENT_WORKSPACES</span>
+              <span className="cli-section-title">
+                <span className="terminal-only">RECENT_WORKSPACES</span>
+                <span className="modern-only">Recent workspaces</span>
+              </span>
             </div>
             {workspaces.map((workspace, index) => (
               <div
@@ -118,7 +133,10 @@ export function WorkspaceSelector({ onWorkspaceSelected }: WorkspaceSelectorProp
                 onClick={() => onWorkspaceSelected(workspace)}
               >
                 <span className="cli-item-num">{String(index + 1).padStart(2, '0')}</span>
-                <span className="cli-item-icon">[dir]</span>
+                <span className="cli-item-icon">
+                  <span className="terminal-only">[dir]</span>
+                  <span className="modern-only"><FolderIcon size={16} /></span>
+                </span>
                 <div className="cli-item-info">
                   <span className="cli-item-name">{workspace.name}/</span>
                   <span className="cli-item-path">{workspace.path}</span>
@@ -131,18 +149,29 @@ export function WorkspaceSelector({ onWorkspaceSelected }: WorkspaceSelectorProp
         {/* Select Folder Action */}
         <div className="cli-workspace-actions">
           <button className="cli-action-btn" onClick={handleSelectFolder}>
-            <span className="cli-btn-bracket">[</span>
-            <span className="cli-btn-icon">+</span>
-            <span className="cli-btn-bracket">]</span>
-            <span className="cli-btn-text">select_folder</span>
+            <span className="terminal-only">
+              <span className="cli-btn-bracket">[</span>
+              <span className="cli-btn-icon">+</span>
+              <span className="cli-btn-bracket">]</span>
+            </span>
+            <span className="cli-btn-text">
+              <span className="terminal-only">select_folder</span>
+              <span className="modern-only">Select folder</span>
+            </span>
           </button>
-          <p className="cli-hint"># choose a directory for CoWork OS to operate in</p>
+          <p className="cli-hint">
+            <span className="terminal-only"># choose a directory for CoWork OS to operate in</span>
+            <span className="modern-only">Choose a directory for CoWork OS to operate in.</span>
+          </p>
         </div>
 
         {/* Footer */}
         <div className="cli-init-footer">
           <span className="cli-footer-prompt">$</span>
-          <span className="cli-footer-text">ready</span>
+          <span className="cli-footer-text">
+            <span className="terminal-only">ready</span>
+            <span className="modern-only">Ready to continue</span>
+          </span>
         </div>
       </div>
     </div>

@@ -4,6 +4,8 @@ import {
   WorkingStateType,
 } from '../../electron/preload';
 import { useAgentContext } from '../hooks/useAgentContext';
+import { ThemeIcon } from './ThemeIcon';
+import { ChartIcon, ClipboardIcon, EditIcon, TargetIcon } from './LineIcons';
 
 interface WorkingStateHistoryProps {
   agentRoleId: string;
@@ -12,11 +14,11 @@ interface WorkingStateHistoryProps {
   onClose: () => void;
 }
 
-const STATE_TYPE_LABELS: Record<WorkingStateType, { label: string; icon: string }> = {
-  context: { label: 'Context', icon: '📋' },
-  progress: { label: 'Progress', icon: '📊' },
-  notes: { label: 'Notes', icon: '📝' },
-  plan: { label: 'Plan', icon: '🎯' },
+const STATE_TYPE_LABELS: Record<WorkingStateType, { label: string; icon: React.ReactNode }> = {
+  context: { label: 'Context', icon: <ThemeIcon emoji="📋" icon={<ClipboardIcon size={14} />} /> },
+  progress: { label: 'Progress', icon: <ThemeIcon emoji="📊" icon={<ChartIcon size={14} />} /> },
+  notes: { label: 'Notes', icon: <ThemeIcon emoji="📝" icon={<EditIcon size={14} />} /> },
+  plan: { label: 'Plan', icon: <ThemeIcon emoji="🎯" icon={<TargetIcon size={14} />} /> },
 };
 
 function formatDate(timestamp: number): string {

@@ -10,7 +10,7 @@ import { BrowserView } from './components/BrowserView';
 import { ToastContainer } from './components/Toast';
 import { QuickTaskFAB } from './components/QuickTaskFAB';
 import { NotificationPanel } from './components/NotificationPanel';
-import { Task, Workspace, TaskEvent, LLMModelInfo, LLMProviderInfo, SuccessCriteria, UpdateInfo, ThemeMode, AccentColor, QueueStatus, ToastNotification } from '../shared/types';
+import { Task, Workspace, TaskEvent, LLMModelInfo, LLMProviderInfo, SuccessCriteria, UpdateInfo, ThemeMode, VisualTheme, AccentColor, QueueStatus, ToastNotification, TEMP_WORKSPACE_ID } from '../shared/types';
 
 
 // Helper to get effective theme based on system preference
@@ -43,6 +43,7 @@ export function App() {
 
   // Theme state (loaded from main process on mount)
   const [themeMode, setThemeMode] = useState<ThemeMode>('dark');
+  const [visualTheme, setVisualTheme] = useState<VisualTheme>('terminal');
   const [accentColor, setAccentColor] = useState<AccentColor>('cyan');
 
   // Queue state
@@ -128,6 +129,7 @@ export function App() {
       try {
         const settings = await window.electronAPI.getAppearanceSettings();
         setThemeMode(settings.themeMode);
+        setVisualTheme(settings.visualTheme || 'terminal');
         setAccentColor(settings.accentColor);
         setDisclaimerAccepted(settings.disclaimerAccepted ?? false);
         setOnboardingCompleted(settings.onboardingCompleted ?? false);
@@ -234,17 +236,23 @@ export function App() {
     // Remove existing theme classes
     root.classList.remove('theme-light', 'theme-dark');
 
-    // Apply theme class (only light needs explicit class, dark is default)
+    // Apply theme mode class
     if (effectiveTheme === 'light') {
       root.classList.add('theme-light');
     }
+    // dark is default, no class needed unless specified otherwise by visual styles
+
+    // Remove existing visual theme classes
+    root.classList.remove('visual-terminal', 'visual-warm', 'visual-oblivion');
+    const resolvedVisualTheme = visualTheme === 'warm' ? 'oblivion' : visualTheme;
+    root.classList.add(`visual-${resolvedVisualTheme}`);
 
     // Remove existing accent classes
-    root.classList.remove('accent-cyan', 'accent-blue', 'accent-purple', 'accent-pink', 'accent-rose', 'accent-orange', 'accent-green', 'accent-teal');
+    root.classList.remove('accent-cyan', 'accent-blue', 'accent-purple', 'accent-pink', 'accent-rose', 'accent-orange', 'accent-green', 'accent-teal', 'accent-coral');
 
     // Apply accent class
     root.classList.add(`accent-${accentColor}`);
-  }, [themeMode, accentColor]);
+  }, [themeMode, visualTheme, accentColor]);
 
   // Listen for system theme changes when in 'system' mode
   useEffect(() => {
@@ -292,6 +300,42 @@ export function App() {
       loadTasks();
     }
   }, [currentWorkspace]);
+
+  // Sync current workspace to the selected task's workspace
+  useEffect(() => {
+    if (!selectedTaskId) return;
+    const task = tasks.find(t => t.id === selectedTaskId);
+    if (!task) return;
+    if (currentWorkspace?.id === task.workspaceId) return;
+
+    let cancelled = false;
+
+    const loadTaskWorkspace = async () => {
+      try {
+        const resolved = task.workspaceId === TEMP_WORKSPACE_ID
+          ? await window.electronAPI.getTempWorkspace()
+          : await window.electronAPI.selectWorkspace(task.workspaceId);
+        if (!cancelled && resolved) {
+          setCurrentWorkspace(resolved);
+        }
+      } catch (error) {
+        console.error('Failed to load task workspace:', error);
+      }
+    };
+
+    void loadTaskWorkspace();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedTaskId, tasks, currentWorkspace?.id]);
+
+  // Track recency when the active workspace changes
+  useEffect(() => {
+    if (!currentWorkspace || currentWorkspace.id === TEMP_WORKSPACE_ID) return;
+    window.electronAPI.touchWorkspace(currentWorkspace.id).catch((error: unknown) => {
+      console.error('Failed to update workspace recency:', error);
+    });
+  }, [currentWorkspace?.id]);
 
   // Toast helper functions
   const addToast = (toast: Omit<ToastNotification, 'id'>) => {
@@ -348,6 +392,38 @@ export function App() {
 
       if (event.type === 'approval_granted') {
         void window.electronAPI.resumeTask(event.taskId);
+      }
+
+      if (event.type === 'task_paused' || event.type === 'approval_requested') {
+        const isApproval = event.type === 'approval_requested';
+        const task = tasksRef.current.find(t => t.id === event.taskId);
+        const baseTitle = isApproval ? 'Approval needed' : 'Input needed';
+        const title = task?.title ? `${baseTitle} · ${task.title}` : baseTitle;
+        const message =
+          (isApproval
+            ? event.payload?.approval?.description
+            : event.payload?.message) || 'Awaiting your input.';
+
+        void (async () => {
+          try {
+            const existing = await window.electronAPI.listNotifications();
+            const hasExisting = existing.some((n) =>
+              n.type === 'input_required' &&
+              n.taskId === event.taskId &&
+              !n.read
+            );
+            if (hasExisting) return;
+            await window.electronAPI.addNotification({
+              type: 'input_required',
+              title,
+              message,
+              taskId: event.taskId,
+              workspaceId: task?.workspaceId,
+            });
+          } catch (error) {
+            console.error('Failed to add input-required notification:', error);
+          }
+        })();
       }
 
       // Show toast notifications for task completion/failure
@@ -531,13 +607,19 @@ export function App() {
   const handleThemeChange = (theme: ThemeMode) => {
     setThemeMode(theme);
     // Persist to main process
-    window.electronAPI.saveAppearanceSettings({ themeMode: theme, accentColor });
+    window.electronAPI.saveAppearanceSettings({ themeMode: theme, visualTheme, accentColor });
+  };
+
+  const handleVisualThemeChange = (visual: VisualTheme) => {
+    setVisualTheme(visual);
+    // Persist to main process
+    window.electronAPI.saveAppearanceSettings({ themeMode, visualTheme: visual, accentColor });
   };
 
   const handleAccentChange = (accent: AccentColor) => {
     setAccentColor(accent);
     // Persist to main process
-    window.electronAPI.saveAppearanceSettings({ themeMode, accentColor: accent });
+    window.electronAPI.saveAppearanceSettings({ themeMode, visualTheme, accentColor: accent });
   };
 
   // Show loading state while checking disclaimer/onboarding status
@@ -783,8 +865,10 @@ export function App() {
           onBack={() => setCurrentView('main')}
           onSettingsChanged={loadLLMConfig}
           themeMode={themeMode}
+          visualTheme={visualTheme}
           accentColor={accentColor}
           onThemeChange={handleThemeChange}
+          onVisualThemeChange={handleVisualThemeChange}
           onAccentChange={handleAccentChange}
           initialTab={settingsTab}
           onShowOnboarding={handleShowOnboarding}

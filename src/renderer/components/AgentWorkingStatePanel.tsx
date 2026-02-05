@@ -5,6 +5,8 @@ import {
   AgentRoleData,
 } from '../../electron/preload';
 import { useAgentContext } from '../hooks/useAgentContext';
+import { ThemeIcon } from './ThemeIcon';
+import { ChartIcon, ClipboardIcon, EditIcon, TargetIcon } from './LineIcons';
 
 interface AgentWorkingStatePanelProps {
   agentRoleId: string;
@@ -13,25 +15,25 @@ interface AgentWorkingStatePanelProps {
   onEdit?: (state: AgentWorkingStateData) => void;
 }
 
-const STATE_TYPE_LABELS: Record<WorkingStateType, { label: string; icon: string; description: string }> = {
+const STATE_TYPE_LABELS: Record<WorkingStateType, { label: string; icon: React.ReactNode; description: string }> = {
   context: {
     label: 'Context',
-    icon: '📋',
+    icon: <ThemeIcon emoji="📋" icon={<ClipboardIcon size={16} />} />,
     description: 'Background information and current understanding',
   },
   progress: {
     label: 'Progress',
-    icon: '📊',
+    icon: <ThemeIcon emoji="📊" icon={<ChartIcon size={16} />} />,
     description: 'Current work progress and status',
   },
   notes: {
     label: 'Notes',
-    icon: '📝',
+    icon: <ThemeIcon emoji="📝" icon={<EditIcon size={16} />} />,
     description: 'Important observations and reminders',
   },
   plan: {
     label: 'Plan',
-    icon: '🎯',
+    icon: <ThemeIcon emoji="🎯" icon={<TargetIcon size={16} />} />,
     description: 'Action plan and next steps',
   },
 };

@@ -207,13 +207,54 @@ export function RightPanel({ task, workspace, events, tasks = [], queueStatus, o
     return Array.from(files).slice(0, 10); // Limit to 10 most recent
   }, [events]);
 
-  // Get status indicator for CLI style
+  // Get status indicator (terminal vs modern)
   const getStatusIndicator = (status: string) => {
     switch (status) {
-      case 'completed': return '[✓]';
-      case 'in_progress': return '[~]';
-      case 'failed': return '[✗]';
-      default: return '[ ]';
+      case 'completed':
+        return (
+          <>
+            <span className="terminal-only">[✓]</span>
+            <span className="modern-only">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </span>
+          </>
+        );
+      case 'in_progress':
+        return (
+          <>
+            <span className="terminal-only">[~]</span>
+            <span className="modern-only">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+              </svg>
+            </span>
+          </>
+        );
+      case 'failed':
+        return (
+          <>
+            <span className="terminal-only">[✗]</span>
+            <span className="modern-only">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </span>
+          </>
+        );
+      default:
+        return (
+          <>
+            <span className="terminal-only">[ ]</span>
+            <span className="modern-only">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" opacity="0.3" />
+              </svg>
+            </span>
+          </>
+        );
     }
   };
 
@@ -232,8 +273,14 @@ export function RightPanel({ task, workspace, events, tasks = [], queueStatus, o
       <div className="right-panel-section cli-section">
         <div className="cli-section-header" onClick={() => toggleSection('progress')}>
           <span className="cli-section-prompt">&gt;</span>
-          <span className="cli-section-title">{agentContext.getUiCopy('rightProgressTitle')}</span>
-          <span className="cli-section-toggle">{expandedSections.progress ? '[-]' : '[+]'}</span>
+          <span className="cli-section-title">
+            <span className="terminal-only">{agentContext.getUiCopy('rightProgressTitle')}</span>
+            <span className="modern-only">Progress</span>
+          </span>
+          <span className="cli-section-toggle">
+            <span className="terminal-only">{expandedSections.progress ? '[-]' : '[+]'}</span>
+            <span className="modern-only">{expandedSections.progress ? '−' : '+'}</span>
+          </span>
         </div>
         {expandedSections.progress && (
           <div className="cli-section-content">
@@ -256,7 +303,10 @@ export function RightPanel({ task, workspace, events, tasks = [], queueStatus, o
                   │   {task?.status === 'executing' ? '◉ WORKING...' : task?.status === 'paused' ? '⏸ PAUSED' : task?.status === 'blocked' ? '! BLOCKED' : task?.status === 'completed' ? '✓ ALL DONE' : '○ READY'}{'     '}│
                   └─────────────────────┘
                 </div>
-                <p className="cli-hint">{agentContext.getUiCopy('rightProgressEmptyHint')}</p>
+                <p className="cli-hint">
+                  <span className="terminal-only">{agentContext.getUiCopy('rightProgressEmptyHint')}</span>
+                  <span className="modern-only">Standing by when you are ready.</span>
+                </p>
               </div>
             )}
           </div>
@@ -268,18 +318,32 @@ export function RightPanel({ task, workspace, events, tasks = [], queueStatus, o
         <div className="right-panel-section cli-section">
           <div className="cli-section-header" onClick={() => toggleSection('queue')}>
             <span className="cli-section-prompt">&gt;</span>
-            <span className="cli-section-title">{agentContext.getUiCopy('rightQueueTitle')}</span>
+            <span className="cli-section-title">
+              <span className="terminal-only">{agentContext.getUiCopy('rightQueueTitle')}</span>
+              <span className="modern-only">Queue</span>
+            </span>
             <span className="cli-queue-badge">{queueStatus?.runningCount}/{queueStatus?.maxConcurrent}{queueStatus && queueStatus.queuedCount > 0 && ` +${queueStatus.queuedCount}`}</span>
-            <span className="cli-section-toggle">{expandedSections.queue ? '[-]' : '[+]'}</span>
+            <span className="cli-section-toggle">
+              <span className="terminal-only">{expandedSections.queue ? '[-]' : '[+]'}</span>
+              <span className="modern-only">{expandedSections.queue ? '−' : '+'}</span>
+            </span>
           </div>
           {expandedSections.queue && (
             <div className="cli-section-content">
               {runningTasks.length > 0 && (
                 <div className="cli-queue-group">
-                  <div className="cli-context-label">{agentContext.getUiCopy('rightQueueActiveLabel')}</div>
+                  <div className="cli-context-label">
+                    <span className="terminal-only">{agentContext.getUiCopy('rightQueueActiveLabel')}</span>
+                    <span className="modern-only">Active</span>
+                  </div>
                   {runningTasks.map(t => (
                     <div key={t.id} className="cli-queue-item running">
-                      <span className="cli-queue-status">[~]</span>
+                      <span className="cli-queue-status">
+                        <span className="terminal-only">[~]</span>
+                        <span className="modern-only">
+                          <span className="queue-status-dot running" />
+                        </span>
+                      </span>
                       <span className="cli-queue-title" onClick={() => onSelectTask?.(t.id)}>
                         {(t.title || t.prompt).slice(0, 25)}{(t.title || t.prompt).length > 25 ? '...' : ''}
                       </span>
@@ -290,10 +354,18 @@ export function RightPanel({ task, workspace, events, tasks = [], queueStatus, o
               )}
               {queuedTasks.length > 0 && (
                 <div className="cli-queue-group">
-                  <div className="cli-context-label">{agentContext.getUiCopy('rightQueueNextLabel')}</div>
+                  <div className="cli-context-label">
+                    <span className="terminal-only">{agentContext.getUiCopy('rightQueueNextLabel')}</span>
+                    <span className="modern-only">Up next</span>
+                  </div>
                   {queuedTasks.map((t, i) => (
                     <div key={t.id} className="cli-queue-item queued">
-                      <span className="cli-queue-status">[{i + 1}]</span>
+                      <span className="cli-queue-status">
+                        <span className="terminal-only">[{i + 1}]</span>
+                        <span className="modern-only">
+                          <span className="queue-status-pill">{i + 1}</span>
+                        </span>
+                      </span>
                       <span className="cli-queue-title" onClick={() => onSelectTask?.(t.id)}>
                         {(t.title || t.prompt).slice(0, 25)}{(t.title || t.prompt).length > 25 ? '...' : ''}
                       </span>
@@ -311,8 +383,14 @@ export function RightPanel({ task, workspace, events, tasks = [], queueStatus, o
       <div className="right-panel-section cli-section">
         <div className="cli-section-header" onClick={() => toggleSection('folder')}>
           <span className="cli-section-prompt">&gt;</span>
-          <span className="cli-section-title">{agentContext.getUiCopy('rightFilesTitle')}</span>
-          <span className="cli-section-toggle">{expandedSections.folder ? '[-]' : '[+]'}</span>
+          <span className="cli-section-title">
+            <span className="terminal-only">{agentContext.getUiCopy('rightFilesTitle')}</span>
+            <span className="modern-only">Files</span>
+          </span>
+          <span className="cli-section-toggle">
+            <span className="terminal-only">{expandedSections.folder ? '[-]' : '[+]'}</span>
+            <span className="modern-only">{expandedSections.folder ? '−' : '+'}</span>
+          </span>
         </div>
         {expandedSections.folder && (
           <div className="cli-section-content">
@@ -320,7 +398,12 @@ export function RightPanel({ task, workspace, events, tasks = [], queueStatus, o
               <div className="cli-file-list">
                 {files.map((file, index) => (
                   <div key={`${file.path}-${index}`} className={`cli-file-item ${file.action}`}>
-                    <span className={`cli-file-action ${file.action}`}>{getFileActionSymbol(file.action)}</span>
+                    <span className={`cli-file-action ${file.action}`}>
+                      <span className="terminal-only">{getFileActionSymbol(file.action)}</span>
+                      <span className="modern-only">
+                        <span className="file-action-dot" />
+                      </span>
+                    </span>
                     <ClickableFilePath path={file.path} workspacePath={workspace?.path} className="cli-file-name" onOpenViewer={setViewerFilePath} />
                   </div>
                 ))}
@@ -331,12 +414,18 @@ export function RightPanel({ task, workspace, events, tasks = [], queueStatus, o
 {`├── (empty)
 └── ...`}
                 </pre>
-                <p className="cli-hint">{agentContext.getUiCopy('rightFilesEmptyHint')}</p>
+                <p className="cli-hint">
+                  <span className="terminal-only">{agentContext.getUiCopy('rightFilesEmptyHint')}</span>
+                  <span className="modern-only">No file changes yet.</span>
+                </p>
               </div>
             )}
             {workspace && (
               <div className="cli-workspace-path">
-                <span className="cli-label">PWD:</span>
+                <span className="cli-label">
+                  <span className="terminal-only">PWD:</span>
+                  <span className="modern-only">Workspace</span>
+                </span>
                 <span className="cli-path" title={workspace.path}>{workspace.name}/</span>
               </div>
             )}
@@ -348,8 +437,14 @@ export function RightPanel({ task, workspace, events, tasks = [], queueStatus, o
       <div className="right-panel-section cli-section">
         <div className="cli-section-header" onClick={() => toggleSection('context')}>
           <span className="cli-section-prompt">&gt;</span>
-          <span className="cli-section-title">{agentContext.getUiCopy('rightContextTitle')}</span>
-          <span className="cli-section-toggle">{expandedSections.context ? '[-]' : '[+]'}</span>
+          <span className="cli-section-title">
+            <span className="terminal-only">{agentContext.getUiCopy('rightContextTitle')}</span>
+            <span className="modern-only">Context</span>
+          </span>
+          <span className="cli-section-toggle">
+            <span className="terminal-only">{expandedSections.context ? '[-]' : '[+]'}</span>
+            <span className="modern-only">{expandedSections.context ? '−' : '+'}</span>
+          </span>
         </div>
         {expandedSections.context && (
           <div className="cli-section-content">
@@ -357,7 +452,10 @@ export function RightPanel({ task, workspace, events, tasks = [], queueStatus, o
               <div className="cli-context-list">
                 {toolUsage.length > 0 && (
                   <div className="cli-context-group">
-                    <div className="cli-context-label"># tools_used:</div>
+                    <div className="cli-context-label">
+                      <span className="terminal-only"># tools_used:</span>
+                      <span className="modern-only">Tools used</span>
+                    </div>
                     {toolUsage.map((tool, index) => (
                       <div key={`${tool.name}-${index}`} className="cli-context-item">
                         <span className="cli-context-key">{tool.name}</span>
@@ -369,7 +467,10 @@ export function RightPanel({ task, workspace, events, tasks = [], queueStatus, o
                 )}
                 {referencedFiles.length > 0 && (
                   <div className="cli-context-group">
-                    <div className="cli-context-label"># files_read:</div>
+                    <div className="cli-context-label">
+                      <span className="terminal-only"># files_read:</span>
+                      <span className="modern-only">Files read</span>
+                    </div>
                     {referencedFiles.map((file, index) => (
                       <div key={`${file}-${index}`} className="cli-context-item">
                         <ClickableFilePath path={file} workspacePath={workspace?.path} className="cli-context-file" onOpenViewer={setViewerFilePath} />
@@ -381,10 +482,16 @@ export function RightPanel({ task, workspace, events, tasks = [], queueStatus, o
             ) : (
               <div className="cli-empty-state">
                 <div className="cli-context-empty">
-                  tools: 0
-                  files: 0
+                  <span className="terminal-only">
+                    tools: 0
+                    files: 0
+                  </span>
+                  <span className="modern-only">Nothing shared yet.</span>
                 </div>
-                <p className="cli-hint">{agentContext.getUiCopy('rightContextEmptyHint')}</p>
+                <p className="cli-hint">
+                  <span className="terminal-only">{agentContext.getUiCopy('rightContextEmptyHint')}</span>
+                  <span className="modern-only">Share tools or files to populate this panel.</span>
+                </p>
               </div>
             )}
           </div>
@@ -396,8 +503,14 @@ export function RightPanel({ task, workspace, events, tasks = [], queueStatus, o
 
       {/* Footer note */}
       <div className="cli-panel-footer">
-        <span className="cli-footer-prompt">$</span>
-        <span className="cli-footer-text">{agentContext.getUiCopy('rightFooterText')}</span>
+        <span className="cli-footer-prompt">
+          <span className="terminal-only">$</span>
+          <span className="modern-only">•</span>
+        </span>
+        <span className="cli-footer-text">
+          <span className="terminal-only">{agentContext.getUiCopy('rightFooterText')}</span>
+          <span className="modern-only">Local work only</span>
+        </span>
       </div>
 
       {/* File Viewer Modal */}

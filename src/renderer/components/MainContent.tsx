@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo, Fragment } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, Fragment, Children } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
@@ -105,6 +105,8 @@ const normalizeMentionSearch = (value: string): string =>
 import { ApprovalDialog } from './ApprovalDialog';
 import { SkillParameterModal } from './SkillParameterModal';
 import { FileViewer } from './FileViewer';
+import { ThemeIcon } from './ThemeIcon';
+import { AlertTriangleIcon, BookIcon, ChartIcon, CheckIcon, ClipboardIcon, EditIcon, FolderIcon, InfoIcon, SearchIcon, UsersIcon, XIcon } from './LineIcons';
 import { CommandOutput } from './CommandOutput';
 import { CanvasPreview } from './CanvasPreview';
 
@@ -343,9 +345,235 @@ function MessageSpeakButton({ text, voiceEnabled }: { text: string; voiceEnabled
   );
 }
 
-// Custom components for ReactMarkdown
-const markdownComponents = {
-  code: CodeBlock,
+const HEADING_EMOJI_REGEX = /^([\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}][\uFE0F\uFE0E]?)(\s+)?/u;
+
+const getHeadingIcon = (emoji: string): React.ReactNode | null => {
+  switch (emoji) {
+    case '✅':
+      return <CheckIcon size={16} />;
+    case '❌':
+      return <XIcon size={16} />;
+    case '⚠️':
+    case '⚠':
+      return <AlertTriangleIcon size={16} />;
+    case 'ℹ️':
+    case 'ℹ':
+      return <InfoIcon size={16} />;
+    default:
+      return null;
+  }
+};
+
+const renderHeading = (Tag: 'h1' | 'h2' | 'h3') => {
+  return ({ children, ...props }: any) => {
+    const nodes = Children.toArray(children);
+    let emoji: string | null = null;
+    if (typeof nodes[0] === 'string') {
+      const match = (nodes[0] as string).match(HEADING_EMOJI_REGEX);
+      if (match) {
+        emoji = match[1];
+        const nextIcon = getHeadingIcon(emoji);
+        if (nextIcon) {
+          nodes[0] = (nodes[0] as string).slice(match[0].length);
+          return (
+            <Tag {...props}>
+              <span className="markdown-heading-icon"><ThemeIcon emoji={emoji} icon={nextIcon} /></span>
+              {nodes}
+            </Tag>
+          );
+        }
+      }
+    }
+    const icon = emoji ? getHeadingIcon(emoji) : null;
+    return (
+      <Tag {...props}>
+        {icon && <span className="markdown-heading-icon"><ThemeIcon emoji={emoji} icon={icon} /></span>}
+        {nodes}
+      </Tag>
+    );
+  };
+};
+
+const isExternalHttpLink = (href: string): boolean =>
+  href.startsWith('http://') || href.startsWith('https://');
+
+const FILE_EXTENSIONS = new Set([
+  'txt', 'md', 'markdown', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'tsv', 'ppt', 'pptx',
+  'json', 'yaml', 'yml', 'xml', 'html', 'htm',
+  'js', 'ts', 'tsx', 'jsx', 'css', 'scss', 'less', 'sass',
+  'py', 'rb', 'go', 'rs', 'java', 'kt', 'swift', 'cpp', 'c', 'h', 'hpp',
+  'sh', 'bash', 'zsh', 'ps1', 'toml', 'ini', 'env', 'lock', 'log',
+  'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'tiff',
+  'mp3', 'wav', 'm4a', 'mp4', 'mov', 'avi', 'mkv',
+  'zip', 'tar', 'gz', 'tgz', 'rar', '7z',
+]);
+
+const getTextContent = (node: React.ReactNode): string => {
+  if (typeof node === 'string') return node;
+  if (Array.isArray(node)) return node.map(getTextContent).join('');
+  if (node && typeof node === 'object' && 'props' in node) {
+    return getTextContent((node as { props: { children?: React.ReactNode } }).props.children);
+  }
+  return '';
+};
+
+const stripHttpScheme = (value: string): string =>
+  value.replace(/^https?:\/\//, '');
+
+const looksLikeLocalFilePath = (value: string): boolean => {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  if (trimmed.startsWith('#')) return false;
+  if (trimmed.startsWith('file://')) return true;
+  if (trimmed.startsWith('mailto:') || trimmed.startsWith('tel:')) return false;
+  if (trimmed.includes('://') || trimmed.startsWith('www.')) return false;
+  if (trimmed.includes('@')) return false;
+  if (trimmed.startsWith('./') || trimmed.startsWith('../') || trimmed.startsWith('~/') || trimmed.startsWith('/')) return true;
+  if (/^[a-zA-Z]:[\\/]/.test(trimmed)) return true;
+  if (trimmed.includes('/') || trimmed.includes('\\')) return true;
+  const extMatch = trimmed.match(/\.([a-zA-Z0-9]{1,8})$/);
+  if (!extMatch) return false;
+  return FILE_EXTENSIONS.has(extMatch[1].toLowerCase());
+};
+
+const isFileLink = (href: string): boolean => {
+  if (!href) return false;
+  if (href.startsWith('#')) return false;
+  if (isExternalHttpLink(href)) return false;
+  if (href.startsWith('mailto:') || href.startsWith('tel:')) return false;
+  if (href.startsWith('file://')) return true;
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(href)) return false;
+  return true;
+};
+
+const normalizeFileHref = (href: string): string => {
+  if (!href) return href;
+  if (href.startsWith('file://')) {
+    const rawPath = href.replace(/^file:\/\//, '');
+    const decoded = (() => {
+      try {
+        return decodeURIComponent(rawPath);
+      } catch {
+        return rawPath;
+      }
+    })();
+    return decoded.replace(/^\/([a-zA-Z]:\/)/, '$1').split(/[?#]/)[0];
+  }
+  return href.split(/[?#]/)[0];
+};
+
+const resolveFileLinkTarget = (href: string, linkText: string): string | null => {
+  const trimmedText = linkText.trim();
+  const trimmedHref = href.trim();
+
+  if (looksLikeLocalFilePath(trimmedText)) {
+    const strippedHref = stripHttpScheme(trimmedHref).replace(/\/$/, '');
+    if (trimmedHref === trimmedText || strippedHref === trimmedText) {
+      return normalizeFileHref(trimmedText);
+    }
+  }
+
+  if (looksLikeLocalFilePath(trimmedHref)) {
+    return normalizeFileHref(trimmedHref);
+  }
+
+  return null;
+};
+
+const buildMarkdownComponents = (options: {
+  workspacePath?: string;
+  onOpenViewer?: (path: string) => void;
+}) => {
+  const { workspacePath, onOpenViewer } = options;
+
+  const MarkdownLink = ({ href, children, ...props }: any) => {
+    if (!href) {
+      return <a {...props}>{children}</a>;
+    }
+
+    const linkText = getTextContent(children);
+    const fileTarget = resolveFileLinkTarget(href, linkText);
+
+    if (fileTarget || isFileLink(href)) {
+      const filePath = fileTarget ?? normalizeFileHref(href);
+      const handleClick = async (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (onOpenViewer && workspacePath) {
+          onOpenViewer(filePath);
+          return;
+        }
+
+        if (!workspacePath) return;
+
+        try {
+          const error = await window.electronAPI.openFile(filePath, workspacePath);
+          if (error) {
+            console.error('Failed to open file:', error);
+          }
+        } catch (err) {
+          console.error('Error opening file:', err);
+        }
+      };
+
+      const handleContextMenu = async (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!workspacePath) return;
+        try {
+          await window.electronAPI.showInFinder(filePath, workspacePath);
+        } catch (err) {
+          console.error('Error showing in Finder:', err);
+        }
+      };
+
+      return (
+        <a
+          {...props}
+          href={href}
+          className={`clickable-file-path ${props.className || ''}`.trim()}
+          onClick={handleClick}
+          onContextMenu={handleContextMenu}
+          title={`${filePath}\n\nClick to preview • Right-click to show in Finder`}
+        >
+          {children}
+        </a>
+      );
+    }
+
+    if (isExternalHttpLink(href)) {
+      const handleClick = async (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        try {
+          await window.electronAPI.openExternal(href);
+        } catch (err) {
+          console.error('Error opening link:', err);
+        }
+      };
+      return (
+        <a {...props} href={href} onClick={handleClick}>
+          {children}
+        </a>
+      );
+    }
+
+    return (
+      <a {...props} href={href}>
+        {children}
+      </a>
+    );
+  };
+
+  // Custom components for ReactMarkdown
+  return {
+    code: CodeBlock,
+    h1: renderHeading('h1'),
+    h2: renderHeading('h2'),
+    h3: renderHeading('h3'),
+    a: MarkdownLink,
+  };
 };
 
 const userMarkdownPlugins = [remarkGfm, remarkBreaks];
@@ -355,9 +583,10 @@ interface ModelDropdownProps {
   models: LLMModelInfo[];
   selectedModel: string;
   onModelChange: (model: string) => void;
+  onOpenSettings?: (tab?: SettingsTab) => void;
 }
 
-function ModelDropdown({ models, selectedModel, onModelChange }: ModelDropdownProps) {
+function ModelDropdown({ models, selectedModel, onModelChange, onOpenSettings }: ModelDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [highlightedIndex, setHighlightedIndex] = useState(0);
@@ -440,6 +669,12 @@ function ModelDropdown({ models, selectedModel, onModelChange }: ModelDropdownPr
     setSearch('');
   };
 
+  const handleOpenProviders = () => {
+    setIsOpen(false);
+    setSearch('');
+    onOpenSettings?.('llm');
+  };
+
   return (
     <div className="model-dropdown-container" ref={containerRef}>
       <button
@@ -498,6 +733,11 @@ function ModelDropdown({ models, selectedModel, onModelChange }: ModelDropdownPr
                 </button>
               ))
             )}
+          </div>
+          <div className="model-dropdown-footer">
+            <button type="button" className="model-dropdown-provider-btn" onClick={handleOpenProviders}>
+              Change provider
+            </button>
           </div>
         </div>
       )}
@@ -653,6 +893,10 @@ export function MainContent({ task, selectedTaskId, workspace, events, onSendMes
     },
   });
   const [viewerFilePath, setViewerFilePath] = useState<string | null>(null);
+  const markdownComponents = useMemo(
+    () => buildMarkdownComponents({ workspacePath: workspace?.path, onOpenViewer: setViewerFilePath }),
+    [workspace?.path, setViewerFilePath]
+  );
   // Canvas sessions state - track active canvas sessions for current task
   const [canvasSessions, setCanvasSessions] = useState<CanvasSession[]>([]);
   // Workspace dropdown state
@@ -987,10 +1231,12 @@ export function MainContent({ task, selectedTaskId, workspace, events, onSendMes
     if (!showWorkspaceDropdown) {
       try {
         const workspaces = await window.electronAPI.listWorkspaces();
-        // Filter out temp workspace and sort by most recently created
+        // Filter out temp workspace and sort by most recently used
         const filteredWorkspaces = workspaces
           .filter((w: Workspace) => w.id !== TEMP_WORKSPACE_ID)
-          .sort((a: Workspace, b: Workspace) => b.createdAt - a.createdAt);
+          .sort((a: Workspace, b: Workspace) =>
+            (b.lastUsedAt ?? b.createdAt) - (a.lastUsedAt ?? a.createdAt)
+          );
         setWorkspacesList(filteredWorkspaces);
       } catch (error) {
         console.error('Failed to load workspaces:', error);
@@ -1388,7 +1634,7 @@ export function MainContent({ task, selectedTaskId, workspace, events, onSendMes
     const clipboardData = event.clipboardData;
     let clipboardFiles = Array.from(clipboardData?.files || []);
     if (clipboardFiles.length === 0 && clipboardData?.items) {
-      clipboardData.items.forEach((item) => {
+      Array.from(clipboardData.items).forEach((item: DataTransferItem) => {
         if (item.kind === 'file') {
           const file = item.getAsFile();
           if (file) clipboardFiles.push(file);
@@ -1520,9 +1766,9 @@ export function MainContent({ task, selectedTaskId, workspace, events, onSendMes
       const title = buildTaskTitle(titleSource);
       const options: GoalModeOptions | undefined = goalModeEnabled && verificationCommand
         ? {
-            successCriteria: { type: 'shell_command' as const, command: verificationCommand },
-            maxAttempts,
-          }
+          successCriteria: { type: 'shell_command' as const, command: verificationCommand },
+          maxAttempts,
+        }
         : undefined;
       onCreateTask(title, message, options);
       // Reset Goal Mode state
@@ -1693,7 +1939,10 @@ export function MainContent({ task, selectedTaskId, workspace, events, onSendMes
                 className="mention-autocomplete-icon"
                 style={{ backgroundColor: option.color || '#64748b' }}
               >
-                {option.icon || '👥'}
+                <ThemeIcon
+                  emoji={option.icon || '👥'}
+                  icon={<UsersIcon size={16} />}
+                />
               </span>
               <div className="mention-autocomplete-details">
                 <span className="mention-autocomplete-name">{displayLabel}</span>
@@ -1768,35 +2017,48 @@ export function MainContent({ task, selectedTaskId, workspace, events, onSendMes
         <div className="main-body welcome-view">
           <div className="welcome-content cli-style">
             {/* Logo */}
-            <div className="welcome-logo">
-              <img src="./cowork-os-logo.png" alt="CoWork OS" className="welcome-logo-img" />
+            <div className="welcome-header-modern modern-only">
+              <div className="modern-logo-container">
+                <img src="./cowork-os-logo.png" alt="CoWork OS" className="modern-logo" />
+                <div className="modern-title-container">
+                  <h1 className="modern-title">CoWork OS</h1>
+                  <span className="modern-version">{appVersion ? `v${appVersion}` : ''}</span>
+                </div>
+              </div>
+              <p className="modern-subtitle">{agentContext.getMessage('welcomeSubtitle')}</p>
             </div>
 
-            {/* ASCII Terminal Header */}
-            <div className="cli-header">
-              <pre className="ascii-art">{`
+            <div className="terminal-only">
+              <div className="welcome-logo">
+                <img src="./cowork-os-logo.png" alt="CoWork OS" className="welcome-logo-img" />
+              </div>
+
+              {/* ASCII Terminal Header */}
+              <div className="cli-header">
+                <pre className="ascii-art">{`
   ██████╗ ██████╗ ██╗    ██╗ ██████╗ ██████╗ ██╗  ██╗      ██████╗ ███████╗
  ██╔════╝██╔═══██╗██║    ██║██╔═══██╗██╔══██╗██║ ██╔╝     ██╔═══██╗██╔════╝
  ██║     ██║   ██║██║ █╗ ██║██║   ██║██████╔╝█████╔╝      ██║   ██║███████╗
  ██║     ██║   ██║██║███╗██║██║   ██║██╔══██╗██╔═██╗      ██║   ██║╚════██║
  ╚██████╗╚██████╔╝╚███╔███╔╝╚██████╔╝██║  ██║██║  ██╗     ╚██████╔╝███████║
   ╚═════╝ ╚═════╝  ╚══╝╚══╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝      ╚═════╝ ╚══════╝`}</pre>
-              <div className="cli-version">{appVersion ? `v${appVersion}` : ''}</div>
-            </div>
+                <div className="cli-version">{appVersion ? `v${appVersion}` : ''}</div>
+              </div>
 
-            {/* Terminal Info */}
-            <div className="cli-info">
-              <div className="cli-line">
-                <span className="cli-prompt">$</span>
-                <span className="cli-text" title={agentContext.getMessage('welcome')}>{agentContext.getMessage('welcome')}</span>
-              </div>
-              <div className="cli-line cli-line-secondary">
-                <span className="cli-prompt">&gt;</span>
-                <span className="cli-text">{agentContext.getMessage('welcomeSubtitle')}</span>
-              </div>
-              <div className="cli-line cli-line-disclosure">
-                <span className="cli-prompt">#</span>
-                <span className="cli-text cli-text-muted" title={agentContext.getMessage('disclaimer')}>{agentContext.getMessage('disclaimer')}</span>
+              {/* Terminal Info */}
+              <div className="cli-info">
+                <div className="cli-line">
+                  <span className="cli-prompt">$</span>
+                  <span className="cli-text" title={agentContext.getMessage('welcome')}>{agentContext.getMessage('welcome')}</span>
+                </div>
+                <div className="cli-line cli-line-secondary">
+                  <span className="cli-prompt">&gt;</span>
+                  <span className="cli-text">{agentContext.getMessage('welcomeSubtitle')}</span>
+                </div>
+                <div className="cli-line cli-line-disclosure">
+                  <span className="cli-prompt">#</span>
+                  <span className="cli-text cli-text-muted" title={agentContext.getMessage('disclaimer')}>{agentContext.getMessage('disclaimer')}</span>
+                </div>
               </div>
             </div>
 
@@ -1804,36 +2066,37 @@ export function MainContent({ task, selectedTaskId, workspace, events, onSendMes
             <div className="cli-commands">
               <div className="cli-commands-header">
                 <span className="cli-prompt">&gt;</span>
-                <span>QUICK START</span>
+                <span className="terminal-only">QUICK START</span>
+                <span className="modern-only">Quick start</span>
               </div>
               <div className="quick-start-grid">
                 <button className="quick-start-card" onClick={() => handleQuickAction('Let\'s organize the files in this folder together. Sort them by type and rename them with clear, consistent names.')} title="Let's sort and tidy up the workspace">
-                  <span className="quick-start-icon">📁</span>
+                  <ThemeIcon className="quick-start-icon" emoji="📁" icon={<FolderIcon size={22} />} />
                   <span className="quick-start-title">Organize files</span>
                   <span className="quick-start-desc">Let's sort and tidy up the workspace</span>
                 </button>
                 <button className="quick-start-card" onClick={() => handleQuickAction('Let\'s write a document together. I\'ll describe what I need and we can create it.')} title="Co-create reports, summaries, or notes">
-                  <span className="quick-start-icon">📝</span>
+                  <ThemeIcon className="quick-start-icon" emoji="📝" icon={<EditIcon size={22} />} />
                   <span className="quick-start-title">Write together</span>
                   <span className="quick-start-desc">Co-create reports, summaries, or notes</span>
                 </button>
                 <button className="quick-start-card" onClick={() => handleQuickAction('Let\'s analyze the data files in this folder together. We\'ll summarize the key findings and create a report.')} title="Work through spreadsheets or data files">
-                  <span className="quick-start-icon">📊</span>
+                  <ThemeIcon className="quick-start-icon" emoji="📊" icon={<ChartIcon size={22} />} />
                   <span className="quick-start-title">Analyze data</span>
                   <span className="quick-start-desc">Work through spreadsheets or data files</span>
                 </button>
                 <button className="quick-start-card" onClick={() => handleQuickAction('Let\'s generate documentation for this project together. We can create a README, API docs, or code comments as needed.')} title="Build documentation for the project">
-                  <span className="quick-start-icon">📖</span>
+                  <ThemeIcon className="quick-start-icon" emoji="📖" icon={<BookIcon size={22} />} />
                   <span className="quick-start-title">Generate docs</span>
                   <span className="quick-start-desc">Build documentation for the project</span>
                 </button>
                 <button className="quick-start-card" onClick={() => handleQuickAction('Let\'s research and summarize information from the files in this folder together.')} title="Dig through files and find insights">
-                  <span className="quick-start-icon">🔍</span>
+                  <ThemeIcon className="quick-start-icon" emoji="🔍" icon={<SearchIcon size={22} />} />
                   <span className="quick-start-title">Research together</span>
                   <span className="quick-start-desc">Dig through files and find insights</span>
                 </button>
                 <button className="quick-start-card" onClick={() => handleQuickAction('Let\'s prepare for a meeting together. We\'ll create an agenda, talking points, and organize materials needed.')} title="Get everything ready for a clean meeting">
-                  <span className="quick-start-icon">📋</span>
+                  <ThemeIcon className="quick-start-icon" emoji="📋" icon={<ClipboardIcon size={22} />} />
                   <span className="quick-start-title">Meeting prep</span>
                   <span className="quick-start-desc">Get everything ready for a clean meeting</span>
                 </button>
@@ -1939,31 +2202,31 @@ export function MainContent({ task, selectedTaskId, workspace, events, onSendMes
               </div>
 
               <div className="welcome-input-footer">
-              <div className="input-left-actions">
-                <button
-                  className="attachment-btn attachment-btn-left"
-                  onClick={handleAttachFiles}
-                  disabled={isUploadingAttachments}
-                  title="Attach files"
-                >
-                  <svg
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
+                <div className="input-left-actions">
+                  <button
+                    className="attachment-btn attachment-btn-left"
+                    onClick={handleAttachFiles}
+                    disabled={isUploadingAttachments}
+                    title="Attach files"
                   >
-                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
-                  </svg>
-                </button>
-                <div className="workspace-dropdown-container" ref={workspaceDropdownRef}>
-                  <button className="folder-selector" onClick={handleWorkspaceDropdownToggle}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
                     </svg>
+                  </button>
+                  <div className="workspace-dropdown-container" ref={workspaceDropdownRef}>
+                    <button className="folder-selector" onClick={handleWorkspaceDropdownToggle}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
+                      </svg>
                       <span>{workspace?.id === TEMP_WORKSPACE_ID ? 'Work in a folder' : (workspace?.name || 'Work in a folder')}</span>
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={showWorkspaceDropdown ? 'chevron-up' : ''}>
                         <path d="M6 9l6 6 6-6" />
@@ -1975,7 +2238,7 @@ export function MainContent({ task, selectedTaskId, workspace, events, onSendMes
                           <>
                             <div className="workspace-dropdown-header">Recent Folders</div>
                             <div className="workspace-dropdown-list">
-                              {workspacesList.slice(0, 5).map((w) => (
+                              {workspacesList.slice(0, 10).map((w) => (
                                 <button
                                   key={w.id}
                                   className={`workspace-dropdown-item ${workspace?.id === w.id ? 'active' : ''}`}
@@ -2024,6 +2287,7 @@ export function MainContent({ task, selectedTaskId, workspace, events, onSendMes
                     models={availableModels}
                     selectedModel={selectedModel}
                     onModelChange={onModelChange}
+                    onOpenSettings={onOpenSettings}
                   />
                   {/* Skills Menu Button */}
                   <div className="skills-menu-container" ref={skillsMenuRef}>
@@ -2103,8 +2367,8 @@ export function MainContent({ task, selectedTaskId, workspace, events, onSendMes
                     disabled={voiceInput.state === 'processing'}
                     title={
                       voiceInput.state === 'idle' ? 'Start voice input' :
-                      voiceInput.state === 'recording' ? 'Stop recording' :
-                      'Processing...'
+                        voiceInput.state === 'recording' ? 'Stop recording' :
+                          'Processing...'
                     }
                   >
                     {voiceInput.state === 'processing' ? (
@@ -2375,7 +2639,7 @@ export function MainContent({ task, selectedTaskId, workspace, events, onSendMes
                           </div>
                           <div className="event-time">{formatTime(event.timestamp)}</div>
                         </div>
-                        {isExpanded && renderEventDetails(event, voiceEnabled)}
+                {isExpanded && renderEventDetails(event, voiceEnabled, markdownComponents)}
                       </div>
                     </div>
                     {shouldRenderCommandOutput && (
@@ -2476,26 +2740,26 @@ export function MainContent({ task, selectedTaskId, workspace, events, onSendMes
               </div>
             </div>
           )}
-            <div className="input-row">
-              <button
-                className="attachment-btn attachment-btn-left"
-                onClick={handleAttachFiles}
-                disabled={isUploadingAttachments}
-                title="Attach files"
+          <div className="input-row">
+            <button
+              className="attachment-btn attachment-btn-left"
+              onClick={handleAttachFiles}
+              disabled={isUploadingAttachments}
+              title="Attach files"
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               >
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
-                </svg>
-              </button>
+                <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
+              </svg>
+            </button>
             <div className="mention-autocomplete-wrapper" ref={mentionContainerRef}>
               <textarea
                 ref={textareaRef}
@@ -2516,6 +2780,7 @@ export function MainContent({ task, selectedTaskId, workspace, events, onSendMes
                 models={availableModels}
                 selectedModel={selectedModel}
                 onModelChange={onModelChange}
+                onOpenSettings={onOpenSettings}
               />
               <button
                 className={`voice-input-btn ${voiceInput.state}`}
@@ -2523,8 +2788,8 @@ export function MainContent({ task, selectedTaskId, workspace, events, onSendMes
                 disabled={voiceInput.state === 'processing'}
                 title={
                   voiceInput.state === 'idle' ? 'Start voice input' :
-                  voiceInput.state === 'recording' ? 'Stop recording' :
-                  'Processing...'
+                    voiceInput.state === 'recording' ? 'Stop recording' :
+                      'Processing...'
                 }
               >
                 {voiceInput.state === 'processing' ? (
@@ -2572,6 +2837,59 @@ export function MainContent({ task, selectedTaskId, workspace, events, onSendMes
             </div>
           </div>
           <div className="input-below-actions">
+            <div className="workspace-dropdown-container" ref={workspaceDropdownRef}>
+              <button
+                className="folder-selector"
+                onClick={handleWorkspaceDropdownToggle}
+                title={workspace?.path || 'Select a workspace folder'}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                </svg>
+                <span>{workspace?.id === TEMP_WORKSPACE_ID ? 'Work in a folder' : (workspace?.name || 'Work in a folder')}</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={showWorkspaceDropdown ? 'chevron-up' : ''}>
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
+              </button>
+              {showWorkspaceDropdown && (
+                <div className="workspace-dropdown">
+                  {workspacesList.length > 0 && (
+                    <>
+                      <div className="workspace-dropdown-header">Recent Folders</div>
+                      <div className="workspace-dropdown-list">
+                        {workspacesList.slice(0, 10).map((w) => (
+                          <button
+                            key={w.id}
+                            className={`workspace-dropdown-item ${workspace?.id === w.id ? 'active' : ''}`}
+                            onClick={() => handleWorkspaceSelect(w)}
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                            </svg>
+                            <div className="workspace-item-info">
+                              <span className="workspace-item-name">{w.name}</span>
+                              <span className="workspace-item-path">{w.path}</span>
+                            </div>
+                            {workspace?.id === w.id && (
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="check-icon">
+                                <path d="M20 6L9 17l-5-5" />
+                              </svg>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="workspace-dropdown-divider" />
+                    </>
+                  )}
+                  <button className="workspace-dropdown-item new-folder" onClick={handleSelectNewFolder}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M12 5v14M5 12h14" />
+                    </svg>
+                    <span>Work in another folder...</span>
+                  </button>
+                </div>
+              )}
+            </div>
             <button
               className={`shell-toggle ${shellEnabled ? 'enabled' : ''}`}
               onClick={handleShellToggle}
@@ -2726,7 +3044,7 @@ function renderEventTitle(
   }
 }
 
-function renderEventDetails(event: TaskEvent, voiceEnabled: boolean) {
+function renderEventDetails(event: TaskEvent, voiceEnabled: boolean, markdownComponents: any) {
   switch (event.type) {
     case 'plan_created':
       return (

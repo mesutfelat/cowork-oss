@@ -4,6 +4,8 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { FileViewerResult } from '../../electron/preload';
 import { useAgentContext } from '../hooks/useAgentContext';
+import { ThemeIcon } from './ThemeIcon';
+import { AlertTriangleIcon, CodeIcon, FileIcon, FileTextIcon, GlobeIcon, ImageIcon, PresentationIcon } from './LineIcons';
 
 interface FileViewerProps {
   filePath: string;
@@ -66,17 +68,17 @@ export function FileViewer({ filePath, workspacePath, onClose }: FileViewerProps
   };
 
   // Get file icon based on type
-  const getFileIcon = (type?: string): string => {
+  const getFileIcon = (type?: string): React.ReactNode => {
     switch (type) {
-      case 'markdown': return '📝';
-      case 'code': return '💻';
-      case 'text': return '📄';
-      case 'docx': return '📘';
-      case 'pdf': return '📕';
-      case 'image': return '🖼️';
-      case 'pptx': return '📊';
-      case 'html': return '🌐';
-      default: return '📁';
+      case 'markdown': return <ThemeIcon emoji="📝" icon={<FileTextIcon size={16} />} />;
+      case 'code': return <ThemeIcon emoji="💻" icon={<CodeIcon size={16} />} />;
+      case 'text': return <ThemeIcon emoji="📄" icon={<FileIcon size={16} />} />;
+      case 'docx': return <ThemeIcon emoji="📘" icon={<FileTextIcon size={16} />} />;
+      case 'pdf': return <ThemeIcon emoji="📕" icon={<FileTextIcon size={16} />} />;
+      case 'image': return <ThemeIcon emoji="🖼️" icon={<ImageIcon size={16} />} />;
+      case 'pptx': return <ThemeIcon emoji="📊" icon={<PresentationIcon size={16} />} />;
+      case 'html': return <ThemeIcon emoji="🌐" icon={<GlobeIcon size={16} />} />;
+      default: return <ThemeIcon emoji="📁" icon={<FileIcon size={16} />} />;
     }
   };
 
@@ -141,7 +143,9 @@ export function FileViewer({ filePath, workspacePath, onClose }: FileViewerProps
       case 'pptx':
         return (
           <div className="file-viewer-placeholder">
-            <span className="file-viewer-placeholder-icon">📊</span>
+            <span className="file-viewer-placeholder-icon">
+              <ThemeIcon emoji="📊" icon={<PresentationIcon size={28} />} />
+            </span>
             <p>PowerPoint preview is not available.</p>
             <button onClick={handleOpenExternal} className="file-viewer-open-btn">
               Open in PowerPoint
@@ -152,7 +156,9 @@ export function FileViewer({ filePath, workspacePath, onClose }: FileViewerProps
       default:
         return (
           <div className="file-viewer-placeholder">
-            <span className="file-viewer-placeholder-icon">📁</span>
+            <span className="file-viewer-placeholder-icon">
+              <ThemeIcon emoji="📁" icon={<FileIcon size={28} />} />
+            </span>
             <p>This file type cannot be previewed.</p>
             <button onClick={handleOpenExternal} className="file-viewer-open-btn">
               Open with Default App
@@ -207,7 +213,9 @@ export function FileViewer({ filePath, workspacePath, onClose }: FileViewerProps
 
           {error && (
             <div className="file-viewer-error">
-              <span className="file-viewer-error-icon">⚠️</span>
+              <span className="file-viewer-error-icon">
+                <ThemeIcon emoji="⚠️" icon={<AlertTriangleIcon size={18} />} />
+              </span>
               <p>{error}</p>
               <button onClick={handleOpenExternal} className="file-viewer-open-btn">
                 Try Opening with Default App
