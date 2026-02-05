@@ -64,6 +64,11 @@ body:
       options:
         - Anthropic API
         - AWS Bedrock
+        - Google Gemini
+        - OpenRouter
+        - OpenAI
+        - Ollama (Local)
+        - Other / Multiple
         - Not applicable
     validations:
       required: true

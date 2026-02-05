@@ -39,6 +39,9 @@ body:
       options:
         - UI/UX
         - New Tool/Capability
+        - Messaging Channels
+        - Cloud Storage / Integrations
+        - LLM Providers
         - Performance
         - Security
         - Documentation

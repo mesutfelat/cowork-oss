@@ -8,6 +8,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Google Workspace Integration** - Unified access to Gmail, Google Calendar, and Google Drive
+  - **Shared OAuth Authentication**: Single sign-in for all Google services
+  - **Gmail Tools**: `gmail_action` for sending emails, reading messages, creating drafts, searching
+  - **Calendar Tools**: `google_calendar_action` for creating, updating, and managing events
+  - **Drive Tools**: Enhanced `google_drive_action` with improved error handling
+  - **Settings UI**: New "Google Workspace" tab replaces separate Google Drive settings
+- **Gateway Channel Enhancements** - Improved channel implementations
+  - **Gateway Cleanup**: Proper cleanup on disconnect for all channels
+  - **Matrix Direct Rooms**: Support for direct message rooms in Matrix
+  - **Slack Group Handling**: Proper `is_group` detection for Slack channels
+  - **WhatsApp Config**: Enhanced configuration options for WhatsApp
+  - **Security Pending State**: Better handling of pending security approvals
+- **Agent Transient Error Retry** - Automatic retry for transient failures
+  - **Daemon Retry**: Transient errors in daemon scheduling trigger automatic retry with exponential backoff
+  - **Executor Retry**: Step processing failures are retried before failing the task
+  - **Graceful Degradation**: Non-critical errors don't abort entire task execution
+- **Document Tool Parameter Inference** - Smart parameter handling for document creation
+  - **Filename Inference**: Automatically infer filename from path or name parameters
+  - **Format Detection**: Detect document format (docx/pdf) from file extension
+  - **Content Fallback**: Use assistant output as content when not explicitly provided
+  - **Validation Errors**: Return helpful error messages for missing required fields
+- **Channel User Repository** - Track user-channel mappings in database
 - **Encrypted Settings Storage (SecureSettingsRepository)** - All settings now stored encrypted in database
   - **OS Keychain Integration**: Settings encrypted using native OS keychain (macOS Keychain, Windows DPAPI, Linux libsecret)
   - **Fallback Encryption**: App-level AES-256 encryption when OS keychain unavailable

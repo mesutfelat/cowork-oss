@@ -241,7 +241,7 @@ Open **Settings** > **Integrations** to connect productivity and storage tools:
 - Notion
 - Box
 - OneDrive
-- Google Drive
+- Google Workspace (Gmail, Calendar, Drive)
 - Dropbox
 - SharePoint
 
@@ -393,7 +393,7 @@ Don't use system folders like `/System` or `/Applications`.
 6. **Custom Skills**: Create reusable workflows with custom prompts in Settings > Custom Skills
 7. **MCP Servers**: Connect to external tools via MCP in Settings > MCP Servers
 8. **Enterprise Connectors**: Install Salesforce, Jira, HubSpot, and other connectors from the MCP Registry
-9. **Cloud Storage**: Connect Notion, Box, OneDrive, Google Drive, Dropbox, or SharePoint in Settings > Integrations
+9. **Cloud Storage**: Connect Notion, Box, OneDrive, Google Workspace (Gmail/Calendar/Drive), Dropbox, or SharePoint in Settings > Integrations
 10. **Parallel Tasks**: Run multiple tasks concurrently (configure in Settings > Task Queue)
 11. **Guardrails**: Set token/cost budgets and blocked commands in Settings > Guardrails
 

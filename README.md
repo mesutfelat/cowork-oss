@@ -29,7 +29,7 @@ Your AI needs a secure home. CoWork OS provides the runtime, security layers, an
 | **20+ AI Providers** | Claude, OpenAI, Gemini, Bedrock, OpenRouter, Ollama (free/local), Groq, xAI, Kimi, Mistral, Cerebras, MiniMax, Qwen, Copilot, and more |
 | **14 Messaging Channels** | WhatsApp, Telegram, Discord, Slack, Teams, Google Chat, iMessage, Signal, Mattermost, Matrix, Twitch, LINE, BlueBubbles, Email |
 | **8 Enterprise Connectors** | Salesforce, Jira, HubSpot, Zendesk, ServiceNow, Linear, Asana, Okta |
-| **6 Cloud Storage** | Notion, Box, OneDrive, Google Drive, Dropbox, SharePoint |
+| **6 Cloud Storage** | Notion, Box, OneDrive, Google Workspace (Drive/Gmail/Calendar), Dropbox, SharePoint |
 | **Security-First** | 2350+ unit tests, configurable guardrails, approval workflows |
 | **Local-First** | Your data stays on your machine. BYOK (Bring Your Own Key) |
 
@@ -1574,25 +1574,47 @@ onedrive_action({
 
 ---
 
-## Google Drive Integration
+## Google Workspace Integration
 
-Configure in **Settings > Integrations > Google Drive**. Use `google_drive_action` to search, read, and manage Google Drive files and folders. Write actions (create, upload, delete) require approval.
+Configure in **Settings > Integrations > Google Workspace**. Unified access to Gmail, Google Calendar, and Google Drive with shared OAuth authentication.
 
-### List files
+### Available Tools
+
+| Service | Tool | Actions |
+|---------|------|---------|
+| **Drive** | `google_drive_action` | list_files, search, upload_file, download_file, delete_file |
+| **Gmail** | `gmail_action` | list_messages, search, send_email, read_email, create_draft |
+| **Calendar** | `google_calendar_action` | list_events, create_event, update_event, delete_event |
+
+### Gmail - Send an email
+
+```ts
+gmail_action({
+  action: "send_email",
+  to: "recipient@example.com",
+  subject: "Weekly Report",
+  body: "Please find the attached report..."
+});
+```
+
+### Calendar - Create an event
+
+```ts
+google_calendar_action({
+  action: "create_event",
+  title: "Team Standup",
+  start_time: "2025-02-10T09:00:00",
+  end_time: "2025-02-10T09:30:00",
+  attendees: ["team@example.com"]
+});
+```
+
+### Drive - List files
 
 ```ts
 google_drive_action({
   action: "list_files",
   page_size: 20
-});
-```
-
-### Upload a file
-
-```ts
-google_drive_action({
-  action: "upload_file",
-  file_path: "reports/summary.pdf"
 });
 ```
 
@@ -1909,6 +1931,10 @@ Users must comply with their model provider's terms:
 - [x] Visual Theme System (Light/Dark/System modes)
 - [x] Workspace recency ordering
 - [x] Web search retry with exponential backoff
+- [x] Google Workspace Integration (Gmail, Calendar, Drive with shared OAuth)
+- [x] Gateway channel cleanup and enhanced security (Matrix direct rooms, Slack groups)
+- [x] Agent transient error retry logic for improved reliability
+- [x] Smart parameter inference for document creation tools
 
 ### Planned
 

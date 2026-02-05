@@ -19,12 +19,14 @@ Fixes #
 ## Category
 <!-- What area does this change affect? -->
 - [ ] Security / Guardrails
-- [ ] Messaging Channels (WhatsApp, Telegram, Discord, Slack, iMessage)
+- [ ] Messaging Channels (WhatsApp, Telegram, Discord, Slack, Teams, Google Chat, iMessage, Signal, Matrix, etc.)
 - [ ] LLM Providers
 - [ ] Agent Capabilities / Tools
+- [ ] Cloud Storage (Google Workspace, OneDrive, Dropbox, Box, SharePoint, Notion)
 - [ ] UI / UX
 - [ ] MCP Integration
 - [ ] Remote Access (Tailscale, SSH, WebSocket API)
+- [ ] Database / IPC
 - [ ] Other
 
 ## Changes Made
