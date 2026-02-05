@@ -20,6 +20,7 @@ const IPC_CHANNELS = {
   WORKSPACE_LIST: 'workspace:list',
   WORKSPACE_CREATE: 'workspace:create',
   WORKSPACE_UPDATE_PERMISSIONS: 'workspace:updatePermissions',
+  WORKSPACE_TOUCH: 'workspace:touch',
   WORKSPACE_GET_TEMP: 'workspace:getTemp',
   APPROVAL_RESPOND: 'approval:respond',
   ARTIFACT_LIST: 'artifact:list',
@@ -782,7 +783,7 @@ interface CronEvent {
 }
 
 // Notification Types (inlined for sandboxed preload)
-type NotificationType = 'task_completed' | 'task_failed' | 'scheduled_task' | 'info' | 'warning' | 'error';
+type NotificationType = 'task_completed' | 'task_failed' | 'scheduled_task' | 'input_required' | 'info' | 'warning' | 'error';
 
 interface AppNotification {
   id: string;
@@ -1470,6 +1471,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   listWorkspaces: () => ipcRenderer.invoke(IPC_CHANNELS.WORKSPACE_LIST),
   selectWorkspace: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.WORKSPACE_SELECT, id),
   getTempWorkspace: () => ipcRenderer.invoke(IPC_CHANNELS.WORKSPACE_GET_TEMP),
+  touchWorkspace: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.WORKSPACE_TOUCH, id),
   updateWorkspacePermissions: (id: string, permissions: { shell?: boolean; network?: boolean }) =>
     ipcRenderer.invoke(IPC_CHANNELS.WORKSPACE_UPDATE_PERMISSIONS, id, permissions),
 
@@ -1777,6 +1779,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Notification APIs
   listNotifications: () => ipcRenderer.invoke(IPC_CHANNELS.NOTIFICATION_LIST),
+  addNotification: (data: { type: NotificationType; title: string; message: string; taskId?: string; cronJobId?: string; workspaceId?: string }) =>
+    ipcRenderer.invoke(IPC_CHANNELS.NOTIFICATION_ADD, data),
   getUnreadNotificationCount: () => ipcRenderer.invoke('notification:unreadCount'),
   markNotificationRead: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.NOTIFICATION_MARK_READ, id),
   markAllNotificationsRead: () => ipcRenderer.invoke(IPC_CHANNELS.NOTIFICATION_MARK_ALL_READ),
@@ -2260,6 +2264,7 @@ export interface ElectronAPI {
   listWorkspaces: () => Promise<any[]>;
   selectWorkspace: (id: string) => Promise<any>;
   getTempWorkspace: () => Promise<any>;
+  touchWorkspace: (id: string) => Promise<any>;
   updateWorkspacePermissions: (id: string, permissions: { shell?: boolean; network?: boolean }) => Promise<any>;
   respondToApproval: (data: any) => Promise<void>;
   listArtifacts: (taskId: string) => Promise<any[]>;
@@ -2472,6 +2477,7 @@ export interface ElectronAPI {
   // Appearance Settings
   getAppearanceSettings: () => Promise<{
     themeMode: 'light' | 'dark' | 'system';
+    visualTheme: 'terminal' | 'warm' | 'oblivion';
     accentColor: 'cyan' | 'blue' | 'purple' | 'pink' | 'rose' | 'orange' | 'green' | 'teal' | 'coral';
     disclaimerAccepted?: boolean;
     onboardingCompleted?: boolean;
@@ -2480,6 +2486,7 @@ export interface ElectronAPI {
   }>;
   saveAppearanceSettings: (settings: {
     themeMode?: 'light' | 'dark' | 'system';
+    visualTheme?: 'terminal' | 'warm' | 'oblivion';
     accentColor?: 'cyan' | 'blue' | 'purple' | 'pink' | 'rose' | 'orange' | 'green' | 'teal' | 'coral';
     disclaimerAccepted?: boolean;
     onboardingCompleted?: boolean;
@@ -2673,6 +2680,7 @@ export interface ElectronAPI {
   getCronWebhookStatus: () => Promise<CronWebhookStatus>;
   // Notifications
   listNotifications: () => Promise<AppNotification[]>;
+  addNotification: (data: { type: NotificationType; title: string; message: string; taskId?: string; cronJobId?: string; workspaceId?: string }) => Promise<AppNotification | null>;
   getUnreadNotificationCount: () => Promise<number>;
   markNotificationRead: (id: string) => Promise<AppNotification | null>;
   markAllNotificationsRead: () => Promise<void>;

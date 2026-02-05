@@ -679,6 +679,13 @@ export class MessageRouter {
         if (!isNaN(num) && num > 0 && num <= workspaces.length) {
           const workspace = workspaces[num - 1];
           this.sessionManager.setSessionWorkspace(sessionId, workspace.id);
+          if (workspace.id !== TEMP_WORKSPACE_ID) {
+            try {
+              this.workspaceRepo.updateLastUsedAt(workspace.id);
+            } catch (error) {
+              console.warn('Failed to update workspace last used time:', error);
+            }
+          }
           const selectedText = this.getUiCopy('workspaceSelected', { workspaceName: workspace.name });
           const exampleText = this.getUiCopy('workspaceSelectedExample');
           await adapter.sendMessage({
@@ -696,6 +703,13 @@ export class MessageRouter {
         );
         if (matchedWorkspace) {
           this.sessionManager.setSessionWorkspace(sessionId, matchedWorkspace.id);
+          if (matchedWorkspace.id !== TEMP_WORKSPACE_ID) {
+            try {
+              this.workspaceRepo.updateLastUsedAt(matchedWorkspace.id);
+            } catch (error) {
+              console.warn('Failed to update workspace last used time:', error);
+            }
+          }
           const selectedText = this.getUiCopy('workspaceSelected', { workspaceName: matchedWorkspace.name });
           const exampleText = this.getUiCopy('workspaceSelectedExample');
           await adapter.sendMessage({
@@ -1018,6 +1032,13 @@ export class MessageRouter {
 
     // Update session workspace
     this.sessionManager.setSessionWorkspace(sessionId, workspace.id);
+    if (workspace.id !== TEMP_WORKSPACE_ID) {
+      try {
+        this.workspaceRepo.updateLastUsedAt(workspace.id);
+      } catch (error) {
+        console.warn('Failed to update workspace last used time:', error);
+      }
+    }
 
     await adapter.sendMessage({
       chatId: message.chatId,

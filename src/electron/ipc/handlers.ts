@@ -858,7 +858,15 @@ export async function setupIpcHandlers(
   });
 
   ipcMain.handle(IPC_CHANNELS.WORKSPACE_SELECT, async (_, id: string) => {
-    return workspaceRepo.findById(id);
+    const workspace = workspaceRepo.findById(id);
+    if (workspace && workspace.id !== TEMP_WORKSPACE_ID) {
+      try {
+        workspaceRepo.updateLastUsedAt(workspace.id);
+      } catch (error) {
+        console.warn('Failed to update workspace last used time:', error);
+      }
+    }
+    return workspace;
   });
 
   ipcMain.handle(IPC_CHANNELS.WORKSPACE_UPDATE_PERMISSIONS, async (_, id: string, permissions: { shell?: boolean; network?: boolean; read?: boolean; write?: boolean; delete?: boolean }) => {
@@ -868,6 +876,15 @@ export async function setupIpcHandlers(
     }
     const updatedPermissions = { ...workspace.permissions, ...permissions };
     workspaceRepo.updatePermissions(id, updatedPermissions);
+    return workspaceRepo.findById(id);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.WORKSPACE_TOUCH, async (_, id: string) => {
+    const workspace = workspaceRepo.findById(id);
+    if (!workspace) {
+      throw new Error(`Workspace not found: ${id}`);
+    }
+    workspaceRepo.updateLastUsedAt(id);
     return workspaceRepo.findById(id);
   });
 
@@ -884,6 +901,14 @@ export async function setupIpcHandlers(
       budgetTokens,
       budgetCost,
     });
+
+    if (workspaceId !== TEMP_WORKSPACE_ID) {
+      try {
+        workspaceRepo.updateLastUsedAt(workspaceId);
+      } catch (error) {
+        console.warn('Failed to update workspace last used time:', error);
+      }
+    }
 
     // Start task execution in agent daemon
     try {

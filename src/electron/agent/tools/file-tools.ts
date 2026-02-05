@@ -178,11 +178,27 @@ export class FileTools {
     }
 
     this.checkPermission('read');
-    const fullPath = this.resolvePath(relativePath, 'read');
-    const ext = path.extname(fullPath).toLowerCase();
+    let fullPath = this.resolvePath(relativePath, 'read');
+    let ext = path.extname(fullPath).toLowerCase();
 
     try {
-      const stats = await fs.stat(fullPath);
+      let stats: { size: number };
+      try {
+        stats = await fs.stat(fullPath);
+      } catch (error: any) {
+        if (this.isNotFoundError(error) && !path.isAbsolute(relativePath)) {
+          const fallbackPath = await this.resolveCaseInsensitivePath(relativePath);
+          if (fallbackPath && fallbackPath !== fullPath) {
+            fullPath = fallbackPath;
+            ext = path.extname(fullPath).toLowerCase();
+            stats = await fs.stat(fullPath);
+          } else {
+            throw error;
+          }
+        } else {
+          throw error;
+        }
+      }
 
       // Handle DOCX files
       if (ext === '.docx') {
@@ -222,6 +238,53 @@ export class FileTools {
     } catch (error: any) {
       throw new Error(`Failed to read file: ${error.message}`);
     }
+  }
+
+  private isNotFoundError(error: any): boolean {
+    const code = error?.code;
+    if (code === 'ENOENT' || code === 'ENOTDIR') return true;
+    const message = String(error?.message || '');
+    return /no such file/i.test(message) || /not found/i.test(message);
+  }
+
+  /**
+   * Try resolving a path case-insensitively within the workspace.
+   * Only applies to workspace-relative paths without traversal.
+   */
+  private async resolveCaseInsensitivePath(relativePath: string): Promise<string | null> {
+    const normalized = path.normalize(relativePath);
+    if (path.isAbsolute(normalized)) return null;
+
+    const parts = normalized.split(path.sep).filter(Boolean);
+    if (parts.some(part => part === '..')) return null;
+
+    let current = this.workspace.path;
+    for (let i = 0; i < parts.length; i++) {
+      const segment = parts[i];
+      const lower = segment.toLowerCase();
+      let entries: Array<{ name: string; isDirectory: () => boolean }>;
+      try {
+        entries = await fs.readdir(current, { withFileTypes: true });
+      } catch {
+        return null;
+      }
+
+      if (entries.length > MAX_DIR_ENTRIES * 5) {
+        return null;
+      }
+
+      const match = entries.find(entry => entry.name.toLowerCase() === lower);
+      if (!match) return null;
+
+      const nextPath = path.join(current, match.name);
+      const isLast = i === parts.length - 1;
+      if (!isLast && !match.isDirectory()) {
+        return null;
+      }
+      current = nextPath;
+    }
+
+    return current;
   }
 
   /**
