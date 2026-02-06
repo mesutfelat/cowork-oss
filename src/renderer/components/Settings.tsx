@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type ReactNode } from 'react';
 import { LLMSettingsData, ThemeMode, VisualTheme, AccentColor, type LLMProviderType, type CustomProviderConfig } from '../../shared/types';
 import { CUSTOM_PROVIDER_MAP } from '../../shared/llm-provider-catalog';
 import { TelegramSettings } from './TelegramSettings';
@@ -247,7 +247,7 @@ function SearchableSelect({ options, value, onChange, placeholder = 'Select...',
 }
 
 // Sidebar navigation items configuration
-const sidebarItems: Array<{ tab: SettingsTab; label: string; icon: React.ReactNode; macOnly?: boolean }> = [
+const sidebarItems: Array<{ tab: SettingsTab; label: string; icon: ReactNode; macOnly?: boolean }> = [
   { tab: 'appearance', label: 'Appearance', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5" /><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" /></svg> },
   { tab: 'personality', label: 'Personality', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="8" r="5" /><path d="M20 21a8 8 0 0 0-16 0" /></svg> },
   { tab: 'missioncontrol', label: 'Mission Control', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="9" cy="7" r="4" /><path d="M17 7a4 4 0 0 1 0 8" /><path d="M9 15a7 7 0 0 0-7 7h14a7 7 0 0 0-7-7z" /><rect x="14" y="14" width="8" height="8" rx="1" /></svg> },
@@ -278,7 +278,7 @@ const sidebarItems: Array<{ tab: SettingsTab; label: string; icon: React.ReactNo
 ];
 
 // Secondary channel configuration for "More Channels" tab
-const secondaryChannelItems: Array<{ key: SecondaryChannel; label: string; icon: React.ReactNode }> = [
+const secondaryChannelItems: Array<{ key: SecondaryChannel; label: string; icon: ReactNode }> = [
   { key: 'discord', label: 'Discord', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg> },
   { key: 'imessage', label: 'iMessage', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /><circle cx="9" cy="10" r="1" fill="currentColor" /><circle cx="15" cy="10" r="1" fill="currentColor" /></svg> },
   { key: 'signal', label: 'Signal', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><path d="M9 12l2 2 4-4" /></svg> },
@@ -292,7 +292,7 @@ const secondaryChannelItems: Array<{ key: SecondaryChannel; label: string; icon:
 ];
 
 // App integrations configuration for "Integrations" tab
-const integrationItems: Array<{ key: IntegrationChannel; label: string; icon: React.ReactNode }> = [
+const integrationItems: Array<{ key: IntegrationChannel; label: string; icon: ReactNode }> = [
   { key: 'notion', label: 'Notion', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M8 7h8M8 11h8M8 15h6" /></svg> },
   { key: 'sharepoint', label: 'SharePoint', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M7 8h10M7 12h6" /></svg> },
   { key: 'onedrive', label: 'OneDrive', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M7 18h10a4 4 0 0 0 0-8 5 5 0 0 0-9.7-1.6A4 4 0 0 0 7 18z" /></svg> },
@@ -301,7 +301,7 @@ const integrationItems: Array<{ key: IntegrationChannel; label: string; icon: Re
   { key: 'dropbox', label: 'Dropbox', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M7 5l5 3-5 3-5-3 5-3zm10 0l5 3-5 3-5-3 5-3zM7 13l5 3-5 3-5-3 5-3zm10 0l5 3-5 3-5-3 5-3z" /></svg> },
 ];
 
-const LLM_PROVIDER_ICONS: Record<string, JSX.Element> = {
+const LLM_PROVIDER_ICONS: Record<string, ReactNode> = {
   anthropic: (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
@@ -1022,10 +1022,27 @@ export function Settings({ onBack, onSettingsChanged, themeMode, visualTheme, ac
         ? { region: awsRegion, profile: awsProfile || undefined }
         : { region: awsRegion, accessKeyId: awsAccessKeyId || undefined, secretAccessKey: awsSecretAccessKey || undefined };
       const models = await window.electronAPI.getBedrockModels(config);
-      setBedrockModels(models || []);
-      // If we got models and current model isn't in the list, select the first one
-      if (models && models.length > 0 && !models.some((m: any) => m.id === bedrockModel)) {
-        setBedrockModel(models[0].id);
+      const normalizedModels = models || [];
+
+      // Keep the user's currently selected model even if it isn't in the refreshed list
+      // (for example, custom inference profile ARN/ID). Only auto-select when empty.
+      const currentModel = bedrockModel?.trim();
+      let nextModels = normalizedModels;
+      if (currentModel && !normalizedModels.some((m: any) => m.id === currentModel)) {
+        nextModels = [
+          {
+            id: currentModel,
+            name: currentModel,
+            provider: 'Custom',
+            description: 'Currently selected (custom)',
+          },
+          ...normalizedModels,
+        ];
+      }
+
+      setBedrockModels(nextModels);
+      if (!currentModel && nextModels.length > 0) {
+        setBedrockModel(nextModels[0].id);
       }
       // Notify main page that models were refreshed (they're now cached)
       onSettingsChanged?.();

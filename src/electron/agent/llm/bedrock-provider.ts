@@ -28,6 +28,10 @@ export class BedrockProvider implements LLMProvider {
   readonly type = 'bedrock' as const;
   private client: BedrockRuntimeClient;
   private model: string;
+  private region: string;
+  private credentials?: any;
+  private resolvedModelCache = new Map<string, string>();
+  private inferenceProfileCache?: { fetchedAt: number; profiles: InferenceProfileCandidate[] };
 
   private static readonly toolNameRegex = /^[a-zA-Z0-9_-]+$/;
 
@@ -35,21 +39,24 @@ export class BedrockProvider implements LLMProvider {
     const clientConfig: BedrockRuntimeClientConfig = {
       region: config.awsRegion || 'us-east-1',
     };
+    this.region = config.awsRegion || 'us-east-1';
 
     // Store the model for use in testConnection
     this.model = config.model || 'anthropic.claude-3-5-sonnet-20241022-v2:0';
 
     // Use explicit credentials if provided
     if (config.awsAccessKeyId && config.awsSecretAccessKey) {
-      clientConfig.credentials = {
+      this.credentials = {
         accessKeyId: config.awsAccessKeyId,
         secretAccessKey: config.awsSecretAccessKey,
         ...(config.awsSessionToken && { sessionToken: config.awsSessionToken }),
       };
+      clientConfig.credentials = this.credentials;
     } else if (config.awsProfile) {
       // Use fromIni to load credentials from a specific profile
       // This avoids mutating process.env which could affect other code
-      clientConfig.credentials = fromIni({ profile: config.awsProfile });
+      this.credentials = fromIni({ profile: config.awsProfile });
+      clientConfig.credentials = this.credentials;
     }
     // Otherwise, let the SDK use default credential chain
     // (environment variables, IAM role, etc.)
@@ -63,8 +70,9 @@ export class BedrockProvider implements LLMProvider {
     const system = this.convertSystem(request.system);
     const toolConfig = request.tools ? this.convertTools(request.tools, toolNameMap) : undefined;
 
+    const resolvedModelId = await this.resolveModelId(request.model);
     const command = new ConverseCommand({
-      modelId: request.model,
+      modelId: resolvedModelId,
       messages,
       system,
       inferenceConfig: {
@@ -74,7 +82,10 @@ export class BedrockProvider implements LLMProvider {
     });
 
     try {
-      console.log(`[Bedrock] Calling API with model: ${request.model}`);
+      if (resolvedModelId !== request.model) {
+        console.log(`[Bedrock] Resolved model: ${request.model} -> ${resolvedModelId}`);
+      }
+      console.log(`[Bedrock] Calling API with model: ${resolvedModelId}`);
       const response = await this.client.send(
         command,
         // Pass abort signal to allow cancellation
@@ -86,6 +97,36 @@ export class BedrockProvider implements LLMProvider {
       if (error.name === 'AbortError' || error.message?.includes('aborted')) {
         console.log(`[Bedrock] Request aborted`);
         throw new Error('Request cancelled');
+      }
+
+      const rawMessage = String(error?.message || '');
+      const lower = rawMessage.toLowerCase();
+
+      // If Bedrock rejects the requested model for on-demand invocation, automatically
+      // retry with an inference profile that the user has access to (when available).
+      if (lower.includes('inference profile') || lower.includes('on-demand throughput')) {
+        const fallback = await this.resolveInferenceProfileFallback(request.model);
+        if (fallback && fallback !== resolvedModelId) {
+          console.log(`[Bedrock] Retrying with inference profile: ${fallback}`);
+          const retryResponse = await this.client.send(
+            new ConverseCommand({
+              modelId: fallback,
+              messages,
+              system,
+              inferenceConfig: { maxTokens: request.maxTokens },
+              ...(toolConfig && { toolConfig }),
+            }),
+            request.signal ? { abortSignal: request.signal } : undefined
+          );
+          // Cache for subsequent calls in this process.
+          this.resolvedModelCache.set(request.model, fallback);
+          return this.convertResponse(retryResponse, toolNameMap);
+        }
+
+        throw new Error(
+          `Model ${request.model} requires an inference profile in AWS Bedrock, but none could be resolved automatically. ` +
+          `Select an inference profile ID/ARN (often starts with "us.") in Settings.`
+        );
       }
 
       console.error(`[Bedrock] API error:`, {
@@ -103,7 +144,7 @@ export class BedrockProvider implements LLMProvider {
       // Send a minimal request to test the connection using the configured model
       console.log(`[Bedrock] Testing connection with model: ${this.model}`);
       const command = new ConverseCommand({
-        modelId: this.model,
+        modelId: await this.resolveModelId(this.model),
         messages: [
           {
             role: 'user',
@@ -122,9 +163,32 @@ export class BedrockProvider implements LLMProvider {
       let errorMessage = error.message || 'Failed to connect to AWS Bedrock';
 
       // Check for inference profile requirement
-      if (errorMessage.includes('inference profile')) {
+      if (errorMessage.includes('inference profile') || errorMessage.toLowerCase().includes('on-demand throughput')) {
+        const fallback = await this.resolveInferenceProfileFallback(this.model);
+        if (fallback) {
+          try {
+            await this.client.send(
+              new ConverseCommand({
+                modelId: fallback,
+                messages: [
+                  {
+                    role: 'user',
+                    content: [{ text: 'Hi' }],
+                  },
+                ],
+                inferenceConfig: { maxTokens: 10 },
+              })
+            );
+            // Persist within this provider instance for subsequent tests.
+            this.model = fallback;
+            return { success: true };
+          } catch (fallbackError: any) {
+            errorMessage = fallbackError?.message || errorMessage;
+          }
+        }
+
         errorMessage = `Model ${this.model} requires an inference profile. ` +
-          `Try selecting a different model or create an inference profile in AWS Console.`;
+          `Try selecting a different model or create/select an inference profile in AWS Console.`;
       }
 
       return {
@@ -132,6 +196,159 @@ export class BedrockProvider implements LLMProvider {
         error: errorMessage,
       };
     }
+  }
+
+  private async resolveModelId(requested: string): Promise<string> {
+    const trimmed = (requested || '').trim();
+    if (!trimmed) return trimmed;
+
+    const cached = this.resolvedModelCache.get(trimmed);
+    if (cached) return cached;
+
+    // If it's already an inference profile ID/ARN, use as-is.
+    if (trimmed.startsWith('us.') || trimmed.startsWith('arn:')) {
+      this.resolvedModelCache.set(trimmed, trimmed);
+      return trimmed;
+    }
+
+    // Attempt to map a foundation model ID to an accessible inference profile.
+    if (this.isClaudeModelId(trimmed)) {
+      const fallback = await this.resolveInferenceProfileFallback(trimmed);
+      if (fallback) {
+        this.resolvedModelCache.set(trimmed, fallback);
+        return fallback;
+      }
+    }
+
+    // No inference profile found; fall back to requested model (may still work for older on-demand models).
+    this.resolvedModelCache.set(trimmed, trimmed);
+    return trimmed;
+  }
+
+  private async resolveInferenceProfileFallback(requestedModel: string): Promise<string | null> {
+    if (!this.isClaudeModelId(requestedModel)) return null;
+
+    const profiles = await this.getClaudeInferenceProfiles();
+    if (profiles.length === 0) return null;
+
+    const token = this.extractModelToken(requestedModel);
+    let best: { id: string; score: number } | null = null;
+
+    for (const profile of profiles) {
+      let score = 0;
+      if (profile.id.startsWith('us.')) score += 5;
+      if (profile.type === 'SYSTEM_DEFINED') score += 2;
+
+      if (token) {
+        for (const modelArn of profile.modelArns) {
+          const arnToken = this.extractModelToken(modelArn);
+          if (!arnToken) continue;
+          if (arnToken === token) score += 100;
+          else if (arnToken.includes(token) || token.includes(arnToken)) score += 30;
+        }
+      }
+
+      if (!best || score > best.score) {
+        best = { id: profile.id, score };
+      }
+    }
+
+    // If we couldn't match by token, pick the first usable profile (stable order from AWS).
+    if (!best || best.score === 0) {
+      return profiles[0].id;
+    }
+
+    return best.id;
+  }
+
+  private async getClaudeInferenceProfiles(): Promise<InferenceProfileCandidate[]> {
+    const now = Date.now();
+    if (this.inferenceProfileCache && now - this.inferenceProfileCache.fetchedAt < 5 * 60 * 1000) {
+      return this.inferenceProfileCache.profiles;
+    }
+
+    try {
+      const { BedrockClient, ListInferenceProfilesCommand } = await import('@aws-sdk/client-bedrock');
+      const client = new BedrockClient({
+        region: this.region,
+        ...(this.credentials && { credentials: this.credentials }),
+      } as any);
+
+      const results: InferenceProfileCandidate[] = [];
+      let nextToken: string | undefined;
+      let pageCount = 0;
+
+      do {
+        pageCount++;
+        const response = await client.send(
+          new ListInferenceProfilesCommand({
+            maxResults: 100,
+            nextToken,
+          })
+        );
+
+        const profiles = (response.inferenceProfileSummaries || []) as any[];
+        for (const p of profiles) {
+          if (p?.status && p.status !== 'ACTIVE') continue;
+
+          const modelArns = Array.isArray(p?.models) ? p.models.map((m: any) => String(m?.modelArn || '')).filter(Boolean) : [];
+          const hasClaude = modelArns.some((arn: string) => {
+            const lower = arn.toLowerCase();
+            return lower.includes('anthropic') && lower.includes('claude');
+          });
+          if (!hasClaude) continue;
+
+          const id = String((p?.inferenceProfileId || p?.inferenceProfileArn || '')).trim();
+          if (!id) continue;
+
+          results.push({
+            id,
+            type: p?.type ? String(p.type) : undefined,
+            modelArns,
+          });
+        }
+
+        nextToken = response.nextToken;
+      } while (nextToken && pageCount < 10);
+
+      this.inferenceProfileCache = { fetchedAt: now, profiles: results };
+      return results;
+    } catch (err) {
+      // If the caller doesn't have permissions to list inference profiles, we can't auto-resolve.
+      this.inferenceProfileCache = { fetchedAt: now, profiles: [] };
+      return [];
+    }
+  }
+
+  private extractModelToken(input: string): string {
+    let s = (input || '').toLowerCase().trim();
+    if (!s) return '';
+
+    // Support matching against ARNs like .../foundation-model/<modelId>
+    if (s.startsWith('arn:')) {
+      const idx = s.lastIndexOf('/');
+      if (idx !== -1 && idx + 1 < s.length) {
+        s = s.slice(idx + 1);
+      }
+    }
+
+    if (s.startsWith('anthropic.')) s = s.slice('anthropic.'.length);
+
+    // Drop trailing :N.
+    s = s.replace(/:\\d+$/, '');
+
+    // Drop trailing -vN.
+    s = s.replace(/-v\\d+$/, '');
+
+    // Drop trailing -YYYYMMDD (common in Bedrock model IDs).
+    s = s.replace(/-20\\d{6,8}$/, '');
+
+    return s;
+  }
+
+  private isClaudeModelId(modelId: string): boolean {
+    const lower = (modelId || '').toLowerCase();
+    return lower.includes('claude') || lower.includes('anthropic');
   }
 
   private convertSystem(system: string): SystemContentBlock[] {
@@ -286,4 +503,10 @@ export class BedrockProvider implements LLMProvider {
 interface ToolNameMap {
   toProvider: Map<string, string>;
   fromProvider: Map<string, string>;
+}
+
+interface InferenceProfileCandidate {
+  id: string;
+  type?: string;
+  modelArns: string[];
 }

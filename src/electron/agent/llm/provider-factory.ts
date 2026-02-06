@@ -1349,19 +1349,19 @@ export class LLMProviderFactory {
     const secretAccessKey = config?.secretAccessKey || settings.bedrock?.secretAccessKey;
     const profile = config?.profile || settings.bedrock?.profile;
 
-    // Default Claude models available on Bedrock
+    // Default Claude models available on Bedrock (these are inference profile IDs).
     const defaultModels = Object.entries(MODELS).map(([key, value]) => ({
       id: value.bedrock,
       name: value.displayName,
       provider: 'Anthropic',
-      description: key.includes('opus') ? 'Most capable for complex tasks' :
-                   key.includes('sonnet') ? 'Balanced performance and speed' :
-                   'Fast and efficient',
+      description: key.includes('opus') ? 'Most capable for complex tasks (inference profile)' :
+                   key.includes('sonnet') ? 'Balanced performance and speed (inference profile)' :
+                   'Fast and efficient (inference profile)',
     }));
 
     try {
-      // Import BedrockClient for listing models (different from runtime client)
-      const { BedrockClient, ListFoundationModelsCommand } = await import('@aws-sdk/client-bedrock');
+      // Import BedrockClient for listing inference profiles/models (different from runtime client)
+      const { BedrockClient, ListInferenceProfilesCommand } = await import('@aws-sdk/client-bedrock');
       const { fromIni } = await import('@aws-sdk/credential-provider-ini');
 
       const clientConfig: any = { region };
@@ -1376,28 +1376,64 @@ export class LLMProviderFactory {
       }
 
       const client = new BedrockClient(clientConfig);
-      const command = new ListFoundationModelsCommand({
-        byOutputModality: 'TEXT',
-      });
 
-      const response = await client.send(command);
-      const models = response.modelSummaries || [];
+      // Prefer inference profiles for Claude models; many newer Bedrock models
+      // require an inference profile ID/ARN instead of the foundation model ID.
+      const inferenceProfiles: Array<{ id: string; name: string; provider: string; description: string }> = [];
+      let nextToken: string | undefined;
+      let pageCount = 0;
 
-      // Filter for Claude models and format the response
-      const claudeModels = models
-        .filter((m: any) => m.providerName === 'Anthropic' && m.modelId?.includes('claude'))
-        .map((m: any) => ({
-          id: m.modelId || '',
-          name: m.modelName || m.modelId || '',
-          provider: m.providerName || 'Anthropic',
-          description: m.modelId?.includes('opus') ? 'Most capable for complex tasks' :
-                       m.modelId?.includes('sonnet') ? 'Balanced performance and speed' :
-                       m.modelId?.includes('haiku') ? 'Fast and efficient' :
-                       'Claude model',
-        }))
-        .filter((m: any) => m.id);
+      do {
+        pageCount++;
+        const response = await client.send(
+          new ListInferenceProfilesCommand({
+            maxResults: 100,
+            nextToken,
+          })
+        );
 
-      return claudeModels.length > 0 ? claudeModels : defaultModels;
+        const profiles = response.inferenceProfileSummaries || [];
+        for (const profileSummary of profiles as any[]) {
+          if (profileSummary?.status && profileSummary.status !== 'ACTIVE') continue;
+
+          const models = (profileSummary?.models || []) as Array<{ modelArn?: string }>;
+          const hasClaudeModel = models.some((m) => {
+            const arn = (m?.modelArn || '').toLowerCase();
+            return arn.includes('anthropic') && arn.includes('claude');
+          });
+          if (!hasClaudeModel) continue;
+
+          const id = (profileSummary?.inferenceProfileId || profileSummary?.inferenceProfileArn || '').trim();
+          if (!id) continue;
+
+          const name = (profileSummary?.inferenceProfileName || id).trim();
+          const type = profileSummary?.type ? String(profileSummary.type) : 'INFERENCE_PROFILE';
+          const description = profileSummary?.description
+            ? String(profileSummary.description)
+            : `Inference profile (${type})`;
+
+          inferenceProfiles.push({
+            id,
+            name,
+            provider: 'Anthropic',
+            description,
+          });
+        }
+
+        nextToken = response.nextToken;
+        // Safety cap to avoid unexpectedly huge listings.
+      } while (nextToken && pageCount < 10);
+
+      const seen = new Set<string>();
+      const merged: Array<{ id: string; name: string; provider: string; description: string }> = [];
+
+      for (const entry of [...defaultModels, ...inferenceProfiles]) {
+        if (!entry.id || seen.has(entry.id)) continue;
+        seen.add(entry.id);
+        merged.push(entry);
+      }
+
+      return merged.length > 0 ? merged : defaultModels;
     } catch (error: any) {
       console.error('Failed to fetch Bedrock models:', error);
       // Return default models on error
