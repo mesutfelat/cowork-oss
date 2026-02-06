@@ -1,0 +1,11 @@
+{
+  "owner": "stperic",
+  "slug": "local-websearch",
+  "displayName": "Local web search using SearXNG",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1769622046273,
+    "commit": "https://github.com/clawdbot/skills/commit/a3fbf56f479817f172096cb7dbf2cd7fdf40b13a"
+  },
+  "history": []
+}

@@ -1,0 +1,14 @@
+{
+  "id": "local-websearch",
+  "name": "local-websearch",
+  "description": "Search the web privately via a self-hosted SearXNG metasearch engine.",
+  "icon": "🔍",
+  "category": "Tools",
+  "prompt": "# local-websearch\n\n# SearXNG Web Search\n\nPrivacy-respecting metasearch via your self-hosted SearXNG instance.\n\n## When to use (trigger phrases)\n\nUse this skill when the user asks:\n- \"search the web for...\"\n- \"look up...\" / \"find information about...\"\n- \"what is...\" (when current info needed)\n- \"research...\" / \"search for...\"\n- \"google...\" (redirect to privacy-respecting search)\n\n## Quick start\n\nBundled script path: `{baseDir}/searxng_search.py`\n\n```bash\npython3 {baseDir}/searxng_search.py \"your query\"\npython3 {baseDir}/searxng_search.py \"query\" --count 10\npython3 {baseDir}/searxng_search.py \"query\" --lang de\n```\n\n## Setup\n\nSet `SEARXNG_URL` environment variable:\n```bash\nexport SEARXNG_URL=\"http://your-searxng-host:8888\"\n```\n\n## Flags\n\n| Flag | Default | Description |\n|------|---------|-------------|\n| `-n`, `--count` | 5 | Results to return (1-20) |\n| `-l`, `--lang` | auto | Language code (en, de, fr, es, etc.) |\n\n## Output\n\nReturns JSON:\n```json\n{\n  \"query\": \"search terms\",\n  \"count\": 5,\n  \"results\": [\n    {\"title\": \"...\", \"url\": \"...\", \"description\": \"...\", \"engines\": [\"google\", \"brave\"], \"score\": 1.5}\n  ]\n}\n```\n\n## Notes\n\n- No API keys needed—SearXNG aggregates upstream engines\n- Results include source engines for transparency\n- Scores indicate relevance (higher = better)\n- For news, add \"news\" to query or use `--lang` for regional results",
+  "parameters": [],
+  "enabled": true,
+  "metadata": {
+    "version": "1.0.0",
+    "author": "stperic"
+  }
+}
