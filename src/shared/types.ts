@@ -192,6 +192,7 @@ export const TOOL_GROUPS = {
   // Read-only operations - lowest risk
   'group:read': [
     'read_file',
+    'read_files',
     'list_directory',
     'search_files',
     'system_info',
