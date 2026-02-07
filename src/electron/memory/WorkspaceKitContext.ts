@@ -16,6 +16,13 @@ const MAX_FILE_BYTES = 96 * 1024;
 const MAX_SECTION_CHARS = 6000;
 const MAX_TOTAL_CHARS = 16000;
 
+// Optional "map" files for faster codebase orientation. These are NOT part of the kit directory.
+const MAP_FILES: Array<{ relPath: string; title: string }> = [
+  { relPath: 'docs/CODEBASE_MAP.md', title: 'Codebase Map' },
+  { relPath: 'docs/ARCHITECTURE.md', title: 'Architecture Notes' },
+  { relPath: 'ARCHITECTURE.md', title: 'Architecture Notes (Root)' },
+];
+
 function getLocalDateStamp(now: Date): string {
   const yyyy = String(now.getFullYear());
   const mm = String(now.getMonth() + 1).padStart(2, '0');
@@ -210,6 +217,26 @@ function buildKitSections(workspacePath: string, taskPrompt: string, now: Date):
   return sections;
 }
 
+function buildMapSections(workspacePath: string): ExtractedSection[] {
+  const sections: ExtractedSection[] = [];
+
+  for (const file of MAP_FILES) {
+    const absPath = safeResolveWithinWorkspace(workspacePath, file.relPath);
+    if (!absPath) continue;
+    const raw = readFilePrefix(absPath, MAX_FILE_BYTES);
+    if (!raw) continue;
+    const extracted = sanitizeForInjection(clampSection(raw, MAX_SECTION_CHARS));
+    if (!extracted) continue;
+    sections.push({
+      title: file.title,
+      relPath: file.relPath.replace(/\\/g, '/'),
+      content: extracted,
+    });
+  }
+
+  return sections;
+}
+
 /**
  * Build a concise workspace "context pack" from `.cowork/` files.
  * Intended for system prompt injection (sanitized and size-capped).
@@ -219,17 +246,23 @@ export function buildWorkspaceKitContext(
   taskPrompt: string,
   now: Date = new Date()
 ): string {
+  const collectedSections: ExtractedSection[] = [];
+
+  // Map files are independent of kit dir existence.
+  collectedSections.push(...buildMapSections(workspacePath));
+
   const kitDir = safeResolveWithinWorkspace(workspacePath, KIT_DIRNAME);
-  if (!kitDir) return '';
-  try {
-    if (!fs.existsSync(kitDir) || !fs.statSync(kitDir).isDirectory()) {
-      return '';
+  if (kitDir) {
+    try {
+      if (fs.existsSync(kitDir) && fs.statSync(kitDir).isDirectory()) {
+        collectedSections.push(...buildKitSections(workspacePath, taskPrompt, now));
+      }
+    } catch {
+      // ignore
     }
-  } catch {
-    return '';
   }
 
-  const sections = buildKitSections(workspacePath, taskPrompt, now);
+  const sections = collectedSections;
   if (sections.length === 0) return '';
 
   const parts: string[] = [];

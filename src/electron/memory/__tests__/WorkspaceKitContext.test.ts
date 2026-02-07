@@ -38,6 +38,16 @@ describe('WorkspaceKitContext', () => {
     expect(out).toContain('Be concise');
   });
 
+  it('includes docs/CODEBASE_MAP.md content when present (even without .cowork)', () => {
+    writeFile(
+      path.join(tmpDir, 'docs', 'CODEBASE_MAP.md'),
+      '# Codebase Map\n\n## Overview\n- This project does X\n'
+    );
+    const out = buildWorkspaceKitContext(tmpDir, 'any');
+    expect(out).toContain('Codebase Map (docs/CODEBASE_MAP.md)');
+    expect(out).toContain('This project does X');
+  });
+
   it('extracts only filled fields from USER.md', () => {
     writeFile(
       path.join(tmpDir, '.cowork', 'USER.md'),
