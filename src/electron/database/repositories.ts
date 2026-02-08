@@ -2123,6 +2123,19 @@ export interface MemoryStats {
 export class MemoryRepository {
   constructor(private db: Database.Database) {}
 
+  // Keep this small and local: we want memory search to be robust against
+  // natural-language queries (punctuation, filler words) without pulling in
+  // other modules and risking circular deps.
+  private static readonly MEMORY_SEARCH_STOP_WORDS = new Set([
+    'a', 'an', 'the', 'and', 'or', 'but', 'if', 'then', 'else',
+    'is', 'are', 'was', 'were', 'be', 'been', 'being',
+    'to', 'of', 'in', 'on', 'for', 'with', 'by', 'as', 'at', 'from', 'into', 'about',
+    'that', 'this', 'it', 'its', 'we', 'you', 'they', 'i', 'he', 'she', 'them',
+    'our', 'your', 'my', 'me', 'us',
+    'do', 'does', 'did', 'done', 'can', 'could', 'should', 'would', 'will', 'shall', 'may', 'might',
+    'not', 'no', 'yes', 'please', 'help',
+  ]);
+
   create(memory: Omit<Memory, 'id' | 'createdAt' | 'updatedAt'>): Memory {
     const now = Date.now();
     const newMemory: Memory = {
@@ -2202,7 +2215,13 @@ export class MemoryRepository {
   search(workspaceId: string, query: string, limit = 20, includePrivate = false): MemorySearchResult[] {
     const privacyFilter = includePrivate ? '' : 'AND m.is_private = 0';
     try {
-      // Try FTS5 search first
+      // Try FTS5 search first.
+      //
+      // FTS5 uses a query language where whitespace implies AND. That is often
+      // too strict for natural language prompts (lots of filler words), and
+      // punctuation can also produce syntax errors. We therefore:
+      // 1) try raw query
+      // 2) if empty or error, retry with a relaxed OR query over key tokens
       const stmt = this.db.prepare(`
         SELECT m.id, m.summary, m.content, m.type, m.created_at, m.task_id,
                bm25(memories_fts) as score
@@ -2213,30 +2232,70 @@ export class MemoryRepository {
         LIMIT ?
       `);
 
-      const rows = stmt.all(query, workspaceId, limit) as Record<string, unknown>[];
-      return rows.map(row => ({
-        id: row.id as string,
-        snippet: (row.summary as string) || this.truncateToSnippet(row.content as string, 200),
-        type: row.type as MemoryType,
-        relevanceScore: Math.abs(row.score as number),
-        createdAt: row.created_at as number,
-        taskId: (row.task_id as string) || undefined,
-        source: 'db' as const,
-      }));
+      const raw = (query || '').trim();
+      if (!raw) return [];
+      const tokenized = this.buildRelaxedFtsQuery(raw);
+
+      const mapRows = (rows: Record<string, unknown>[]) =>
+        rows.map(row => ({
+          id: row.id as string,
+          snippet: (row.summary as string) || this.truncateToSnippet(row.content as string, 200),
+          type: row.type as MemoryType,
+          relevanceScore: Math.abs(row.score as number),
+          createdAt: row.created_at as number,
+          taskId: (row.task_id as string) || undefined,
+          source: 'db' as const,
+        }));
+
+      let rows: Record<string, unknown>[] = [];
+      try {
+        rows = stmt.all(raw, workspaceId, limit) as Record<string, unknown>[];
+      } catch (err) {
+        // Raw query may be invalid FTS syntax; retry below with tokenized query.
+        rows = [];
+      }
+
+      // If raw query was too strict (common) or failed, retry with relaxed query.
+      if (rows.length === 0 && tokenized) {
+        try {
+          rows = stmt.all(tokenized, workspaceId, limit) as Record<string, unknown>[];
+        } catch {
+          // Ignore; we'll fall back to LIKE below.
+          rows = [];
+        }
+      }
+
+      if (rows.length > 0) {
+        return mapRows(rows);
+      }
     } catch {
       // Fall back to LIKE search if FTS5 is not available
       const fallbackPrivacyFilter = includePrivate ? '' : 'AND is_private = 0';
+      const raw = (query || '').trim();
+      const tokens = this.tokenizeSearchQuery(raw);
+      const likeTokens = (tokens.length > 0 ? tokens : [raw]).slice(0, 8).filter(Boolean);
+
+      // Build an OR LIKE query over a small token set for recall.
+      const clauses: string[] = [];
+      const params: unknown[] = [workspaceId];
+      for (const token of likeTokens) {
+        clauses.push('(content LIKE ? OR summary LIKE ?)');
+        const like = `%${token}%`;
+        params.push(like, like);
+      }
+
+      const where = clauses.length > 0 ? `AND (${clauses.join(' OR ')})` : '';
       const stmt = this.db.prepare(`
         SELECT id, summary, content, type, created_at, task_id
         FROM memories
         WHERE workspace_id = ? ${fallbackPrivacyFilter}
-          AND (content LIKE ? OR summary LIKE ?)
+          ${where}
         ORDER BY created_at DESC
         LIMIT ?
       `);
 
-      const likeQuery = `%${query}%`;
-      const rows = stmt.all(workspaceId, likeQuery, likeQuery, limit) as Record<string, unknown>[];
+      params.push(limit);
+      const rows = stmt.all(...params) as Record<string, unknown>[];
       return rows.map(row => ({
         id: row.id as string,
         snippet: (row.summary as string) || this.truncateToSnippet(row.content as string, 200),
@@ -2247,6 +2306,8 @@ export class MemoryRepository {
         source: 'db' as const,
       }));
     }
+
+    return [];
   }
 
   /**
@@ -2434,6 +2495,25 @@ export class MemoryRepository {
   private truncateToSnippet(content: string, maxChars: number): string {
     if (content.length <= maxChars) return content;
     return content.slice(0, maxChars - 3) + '...';
+  }
+
+  private tokenizeSearchQuery(raw: string): string[] {
+    return (raw || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9_\s-]/g, ' ')
+      .split(/\s+/)
+      .map((t) => t.trim())
+      .filter((t) => t.length > 1 && !MemoryRepository.MEMORY_SEARCH_STOP_WORDS.has(t));
+  }
+
+  private buildRelaxedFtsQuery(raw: string): string | null {
+    const tokens = this.tokenizeSearchQuery(raw).slice(0, 8);
+    if (tokens.length === 0) return null;
+
+    // Quote tokens to avoid them being interpreted as query operators.
+    // Use OR to improve recall for long natural-language prompts.
+    const parts = tokens.map((t) => `"${t.replace(/"/g, '')}"`);
+    return parts.join(' OR ');
   }
 
   private mapRowToMemory(row: Record<string, unknown>): Memory {

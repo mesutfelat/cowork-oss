@@ -49,6 +49,11 @@ This will:
    - Choose a folder you want CoWork OS to work in
    - This will be your workspace (e.g., `~/Documents/test-workspace`)
 
+2. **Initialize the Workspace Kit (Optional, Recommended)**
+   - Open **Settings** > **Memory Hub**
+   - Under **Workspace Kit**, click **Initialize**
+   - This creates a `.cowork/` directory in your workspace for durable context and project scaffolding
+
 2. **Create a Task**
    - Click "+ New Task"
    - Title: "Organize my files"

@@ -133,7 +133,8 @@ CoWork OS can store and retrieve local memories per workspace, with:
 - Auto-capture from task execution
 - Privacy protection (sensitive detection, private memories)
 - Search + progressive retrieval
-- Optional workspace "Memory Kit" (`.cowork/`) indexing for durable human-edited context
+- Optional workspace kit (`.cowork/`) initialization + indexing for durable human-edited context
+- Project contexts under `.cowork/projects/<projectId>/` with per-project access rules
 - ChatGPT export import (distilled via LLM, stored locally)
 
 Key code:
@@ -141,6 +142,7 @@ Key code:
 - Workspace kit extraction: `src/electron/memory/WorkspaceKitContext.ts`
 - Markdown indexing + redaction: `src/electron/memory/MarkdownMemoryIndexService.ts`
 - ChatGPT importer: `src/electron/memory/ChatGPTImporter.ts`
+ - Project access rules: `src/electron/security/project-access.ts`
 
 Docs:
 - Security-focused memory guidance: `docs/security/best-practices.md`
@@ -244,11 +246,13 @@ Mission Control is the in-app control surface for managing multiple agent roles 
 - Standup reports (daily summaries generated from task state)
 - Task subscriptions (agents "watching" tasks/threads)
 - Task board (columns/priorities/labels)
+- Agent teams (multi-agent collaboration with shared checklists and coordinated runs)
+- Performance reviews (ratings + autonomy-level recommendations for agent roles)
 
 Key code:
-- IPC handlers: `src/electron/ipc/mission-control-handlers.ts`
+- IPC handlers: `src/electron/ipc/mission-control-handlers.ts`, `src/electron/ipc/handlers.ts`
 - Repos/services: `src/electron/agents/`, `src/electron/reports/StandupReportService.ts`, `src/electron/activity/`
-- UI: `src/renderer/components/MissionControlPanel.tsx`, `src/renderer/components/AgentRoleEditor.tsx`, `src/renderer/components/TaskBoard.tsx`, `src/renderer/components/StandupReportViewer.tsx`
+- UI: `src/renderer/components/MissionControlPanel.tsx`, `src/renderer/components/AgentRoleEditor.tsx`, `src/renderer/components/TaskBoard.tsx`, `src/renderer/components/StandupReportViewer.tsx`, `src/renderer/components/AgentTeamsPanel.tsx`, `src/renderer/components/AgentPerformanceReviewViewer.tsx`
 
 ### 13. Desktop Shell (Tray, Notifications, Updates)
 
@@ -269,14 +273,16 @@ CoWork OS includes local task export utilities (intended for reporting/sharing w
 Key code:
 - Task export: `src/electron/reports/task-export.ts`
 
-### 15. Roadmap / WIP: Agent Teams
+### 15. Agent Teams
 
-There is a draft "Team Lead + Teammates" model for multi-agent orchestration. As of this repo snapshot, treat it as **in progress**.
+There is a "Team Lead + Teammates" model for multi-agent orchestration with a shared checklist and run lifecycle.
+Runs spawn child tasks and synchronize terminal task outcomes back into the checklist.
 
 Docs/code:
-- Contract draft: `docs/agent-teams-contract.md`
-- (Scaffolded) repos: `src/electron/agents/AgentTeam*Repository.ts`
-- (Scaffolded) UI: `src/renderer/components/AgentTeamsPanel.tsx`
+- Contract: `docs/agent-teams-contract.md`
+- Orchestrator: `src/electron/agents/AgentTeamOrchestrator.ts`
+- Repos: `src/electron/agents/AgentTeam*Repository.ts`
+- UI: `src/renderer/components/AgentTeamsPanel.tsx`
 
 ## Security Model (Summary)
 

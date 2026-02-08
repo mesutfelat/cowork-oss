@@ -98,6 +98,20 @@ This prevents unintended browsing during automation tasks.
 - Symlink attacks are mitigated through path normalization
 - Implementation: `src/electron/agent/tools/file-tools.ts`
 
+### Workspace Kit Project Access Rules
+
+If a workspace contains a `.cowork/projects/<projectId>/ACCESS.md` file, built-in tools enforce per-project access based on the task's assigned agent role:
+
+- `## Allow` and `## Deny` sections accept agent role IDs (one per line prefixed with `-`).
+- Use `all` to match every agent role.
+- Deny wins over allow.
+
+Enforcement applies to:
+- File/edit/grep/search tools when the path is inside `.cowork/projects/<projectId>/...`
+- Workspace-kit context injection (denied projects are excluded from injected context)
+
+Important: shell commands are not subject to these per-project access rules. Keep shell permission disabled unless you explicitly need it, and review shell approvals carefully.
+
 ### Shell Command Execution
 
 When you enable shell permissions:

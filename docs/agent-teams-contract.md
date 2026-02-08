@@ -1,4 +1,4 @@
-# Agent Teams Contract (Draft v1)
+# Agent Teams Contract
 
 ## Goal
 Define a first-class Team Lead + Teammates orchestration model on top of existing CoWork task/agent primitives.
@@ -14,7 +14,7 @@ Define a first-class Team Lead + Teammates orchestration model on top of existin
 - Replacing Mission Control board
 - Changing workspace-level security policy precedence
 
-## Data Model (Proposed)
+## Data Model
 
 ### `agent_teams`
 ```sql
@@ -85,7 +85,7 @@ CREATE INDEX idx_team_items_run ON agent_team_items(team_run_id);
 CREATE INDEX idx_team_items_source_task ON agent_team_items(source_task_id);
 ```
 
-## IPC / API Contract (Proposed)
+## IPC / API Contract
 
 Follow existing naming style in `IPC_CHANNELS`.
 
@@ -185,10 +185,17 @@ interface AgentTeamItem {
   - `tasks.result_summary`
   - `agent_team_items.result_summary` (if linked by `source_task_id`)
 - Workspace/context policy manager remains source of truth for approvals and denies.
+- Team defaults are used for spawned work:
+  - `agent_teams.default_model_preference` -> `AgentConfig.modelKey` (e.g., "cheaper" -> `haiku-4-5`)
+  - `agent_teams.default_personality` -> `AgentConfig.personalityId`
+- Team-run spawned child tasks set `AgentConfig.bypassQueue=false` so they respect the global task queue concurrency limit.
 
-## Rollout Plan
-1. Correctness baseline (already started): persist child summaries + enforce `retainMemory`.
-2. Add Team tables + repositories + migrations.
-3. Add Team IPC handlers and preload APIs.
-4. Add Team run orchestrator in daemon (mapping team items <-> tasks).
-5. Add renderer Team Builder + Team Run monitor.
+## Events
+
+The renderer subscribes to `TEAM_RUN_EVENT` and maintains local state with incremental updates.
+
+Common event types:
+- `team_created`, `team_updated`, `team_deleted`
+- `team_member_added`, `team_member_updated`, `team_member_removed`, `team_members_reordered`
+- `team_run_created`, `team_run_updated`, `team_run_loaded`
+- `team_item_created`, `team_item_updated`, `team_item_deleted`, `team_item_moved`, `team_item_spawned`

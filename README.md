@@ -32,7 +32,7 @@ Your AI needs a secure home. CoWork OS provides the runtime, security layers, an
 | **6 Cloud Storage** | Notion, Box, OneDrive, Google Workspace (Drive/Gmail/Calendar), Dropbox, SharePoint |
 | **Voice Calls** | Outbound phone calls via ElevenLabs Agents |
 | **Agent Teams** | Multi-agent collaboration with shared checklists and coordinated runs |
-| **Memory Kit** | Workspace `.cowork/` memory indexing, context injection, per-workspace settings |
+| **Workspace Kit** | Workspace `.cowork/` kit (projects, access rules, context injection, per-workspace settings) |
 | **Security-First** | 2350+ unit tests, configurable guardrails, approval workflows, gateway hardening |
 | **Local-First** | Your data stays on your machine. BYOK (Bring Your Own Key) |
 
@@ -295,8 +295,9 @@ Configure in **Settings** > **Appearance**.
 - **85+ Built-in Skills**: GitHub, Slack, Notion, Spotify, Apple Notes, and more
 - **Document Creation**: Excel, Word, PDF, PowerPoint with professional formatting
 - **Persistent Memory**: Cross-session context with privacy-aware observation capture
-- **Workspace Memory Kit**: `.cowork/` directory indexing with markdown search and context injection
+- **Workspace Kit**: `.cowork/` project kit + markdown indexing with context injection
 - **Agent Teams**: Multi-agent collaboration with shared checklists, coordinated runs, and team management UI
+- **Performance Reviews**: Score and review agent-role outcomes, with autonomy-level recommendations
 - **Voice Calls**: Outbound phone calls via ElevenLabs Agents (list agents, list numbers, initiate calls)
 - **Vision**: Analyze workspace images (screenshots, photos, diagrams) via `analyze_image` tool (OpenAI, Anthropic, or Gemini)
 - **Email IMAP Access**: Direct IMAP mailbox access via `email_imap_unread` — check unread emails without needing Google Workspace
@@ -348,18 +349,24 @@ Capture and recall observations across sessions for improved context continuity.
 
 Configure in **Settings** > **Memory** for each workspace.
 
-### Workspace Memory Kit
+### Workspace Kit (.cowork)
 
-Index and search `.cowork/` workspace directories for persistent project context that agents can leverage.
+Initialize and maintain a `.cowork/` directory inside each workspace for durable context, project scaffolding, and prompt injection.
 
 | Feature | Description |
 |---------|-------------|
-| **Markdown Indexing** | Indexes `.cowork/` markdown files (AGENTS.md, SOUL.md, etc.) in each workspace |
+| **Kit Initialization** | Creates a standard `.cowork/` structure + templates (agents, identity, memory, etc.) |
+| **Project Contexts** | Create `.cowork/projects/<projectId>/` with `ACCESS.md`, `CONTEXT.md`, and `research/` |
+| **Markdown Indexing** | Indexes `.cowork/` markdown files for durable human-edited context |
 | **Keyword Search** | Search by keyword matching against indexed sections |
-| **Context Injection** | Aggregates workspace kit files into agent prompts automatically |
+| **Context Injection** | Aggregates workspace kit files (and relevant project contexts) into agent prompts automatically |
 | **Global Toggles** | Enable/disable memory features globally via Memory Hub settings |
 | **Per-Workspace Settings** | Configure memory behavior per workspace |
 | **Mixed Search Results** | Supports both database and markdown-backed search results |
+
+Notes:
+- Context injection is only enabled for private tasks and can be toggled in **Settings** > **Memory Hub**.
+- Project access rules are enforced for file/edit/grep tools and for project context injection.
 
 Configure in **Settings** > **Memory Hub**.
 
@@ -373,10 +380,24 @@ Coordinate multiple agents working together on complex tasks with shared state.
 | **Shared Checklists** | Agents share checklist items for coordinated task execution |
 | **Run Tracking** | Track team runs with status, progress, and history |
 | **Member Roles** | Assign different agents to team members |
+| **Defaults** | Set default model + personality preferences for spawned work |
+| **Queue-Friendly** | Team runs respect global concurrency limits by default |
 | **UI Panel** | Full React UI for creating, managing, and monitoring agent teams |
 | **Data Persistence** | SQLite-backed repositories for teams, members, items, and runs |
 
-Configure in the **Agent Teams** panel.
+Configure in **Mission Control** > **Teams**.
+
+### Performance Reviews
+
+Generate performance reviews for agent roles based on recent task outcomes and apply recommended autonomy levels.
+
+| Feature | Description |
+|---------|-------------|
+| **Ratings + Metrics** | Deterministic scoring based on completion/failure and throughput |
+| **Autonomy Recommendations** | Suggests `intern` / `specialist` / `lead` based on recent performance |
+| **History** | Stored locally for audit and comparison |
+
+Configure in **Mission Control** > **Reviews**.
 
 ### Configurable Guardrails
 
@@ -2050,7 +2071,7 @@ Users must comply with their model provider's terms:
 - [x] Bedrock inference profile auto-resolution (auto-resolves model IDs to inference profiles)
 - [x] Gateway hardening (group chat security, streaming coalescing, restart resilience, tool restrictions)
 - [x] Outbound phone calls via ElevenLabs Agents (voice_call tool)
-- [x] Workspace Memory Kit (`.cowork/` markdown indexing, context injection, memory hub settings)
+- [x] Workspace Kit (`.cowork/` init + projects, markdown indexing, context injection, memory hub settings)
 - [x] Agent Teams (multi-agent collaboration with shared checklists, coordinated runs, team UI)
 - [x] Gateway pending selection state for workspace/provider commands (improved WhatsApp/iMessage UX)
 - [x] Task result summary persistence from executor to daemon
