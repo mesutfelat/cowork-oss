@@ -1,4 +1,5 @@
 import { Task, Workspace, Plan, PlanStep, TaskEvent, SuccessCriteria, TEMP_WORKSPACE_ID } from '../../shared/types';
+import { isVerificationStepDescription } from '../../shared/plan-utils';
 import * as fs from 'fs';
 import * as path from 'path';
 import { AgentDaemon } from './daemon';
@@ -3356,6 +3357,7 @@ TOOL PARAMETER REMINDERS:
 VERIFICATION STEP (REQUIRED):
 - For non-trivial tasks, include a FINAL verification step
 - Verification can include: reading the output file to confirm changes, checking file exists, summarizing what was done
+- The verification step is INTERNAL: do not rely on it for user-facing deliverables (file paths, summaries, final answers). Those must be provided in earlier steps.
 - Example: "Verify: Read the modified document and confirm new sections were added correctly"
 
 5. SCHEDULING & REMINDERS:
@@ -3703,6 +3705,7 @@ Format your plan as a JSON object with this structure:
    * Execute a single plan step
    */
   private async executeStep(step: PlanStep): Promise<void> {
+    const isPlanVerifyStep = isVerificationStepDescription(step.description);
     this.daemon.logEvent(this.task.id, 'step_started', { step });
 
     step.status = 'in_progress';
@@ -3977,9 +3980,9 @@ TASK / CONVERSATION HISTORY:
       }
 
       if (isVerifyStep) {
-        stepContext += `\n\nVERIFICATION MODE:\n- This is a verification step. Keep the response brief (1-3 sentences).\n- Do NOT output a checklist. Do NOT restate the full deliverable.\n- If the deliverable has NOT been provided earlier, provide it now, then add a one-sentence verification note.\n`;
+        stepContext += `\n\nVERIFICATION MODE:\n- This is an INTERNAL verification step.\n- Use tools as needed to check the deliverable.\n- Do NOT mention verification (avoid words like "verified", "verification passed", "looks good").\n- If everything checks out, respond with exactly: OK\n- If something is wrong or missing, clearly state the problem and what needs to change.\n`;
         if (isLastStep) {
-          stepContext += `- This is the FINAL step. Include a very short recap (2-4 sentences) of the deliverable before the verification note so the last message still answers the user.\n`;
+          stepContext += `- This is the FINAL step.\n`;
         }
         if (this.lastNonVerificationOutput) {
           stepContext += `\n\nMOST RECENT DELIVERABLE (use this for verification):\n${this.lastNonVerificationOutput}`;
@@ -4121,6 +4124,9 @@ TASK / CONVERSATION HISTORY:
             if (content.type === 'text' && content.text) {
               this.daemon.logEvent(this.task.id, 'assistant_message', {
                 message: content.text,
+                stepId: step.id,
+                stepDescription: step.description,
+                internal: isPlanVerifyStep,
               });
 
               // Security: Check for potential prompt leakage or injection compliance
