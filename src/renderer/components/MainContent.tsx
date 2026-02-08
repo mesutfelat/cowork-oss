@@ -109,6 +109,7 @@ import { ThemeIcon } from './ThemeIcon';
 import { AlertTriangleIcon, BookIcon, ChartIcon, CheckIcon, ClipboardIcon, EditIcon, FolderIcon, InfoIcon, SearchIcon, UsersIcon, XIcon } from './LineIcons';
 import { CommandOutput } from './CommandOutput';
 import { CanvasPreview } from './CanvasPreview';
+import { InlineImagePreview } from './InlineImagePreview';
 
 // Code block component with copy button
 interface CodeBlockProps {
@@ -1295,8 +1296,21 @@ export function MainContent({ task, selectedTaskId, workspace, events, onSendMes
     });
   };
 
+  const isImageFileEvent = (event: TaskEvent): boolean => {
+    if (event.type !== 'file_created' && event.type !== 'file_modified') return false;
+    const filePath = String(event.payload?.path || event.payload?.from || '');
+    const mimeType = typeof event.payload?.mimeType === 'string' ? event.payload.mimeType.toLowerCase() : '';
+    const imageExt = /\.(png|jpe?g|gif|webp|svg|bmp|ico)$/i;
+    return (
+      event.payload?.type === 'image' ||
+      mimeType.startsWith('image/') ||
+      imageExt.test(filePath)
+    );
+  };
+
   // Check if an event has details to show
   const hasEventDetails = (event: TaskEvent): boolean => {
+    if (isImageFileEvent(event)) return true;
     return ['plan_created', 'tool_call', 'tool_result', 'assistant_message', 'error'].includes(event.type);
   };
 
@@ -1304,6 +1318,7 @@ export function MainContent({ task, selectedTaskId, workspace, events, onSendMes
   // Important events (plan, assistant responses, errors) should be expanded
   // Verbose events (tool calls/results) should be collapsed
   const shouldDefaultExpand = (event: TaskEvent): boolean => {
+    if (isImageFileEvent(event)) return true;
     return ['plan_created', 'assistant_message', 'error'].includes(event.type);
   };
 
@@ -2596,7 +2611,8 @@ export function MainContent({ task, selectedTaskId, workspace, events, onSendMes
 
                 // Technical events - only show when showSteps is true
                 const alwaysVisibleEvents = new Set(['approval_requested', 'approval_granted', 'approval_denied']);
-                if (!showSteps && !alwaysVisibleEvents.has(event.type)) {
+                const showEvenWithoutSteps = alwaysVisibleEvents.has(event.type) || isImageFileEvent(event);
+                if (!showSteps && !showEvenWithoutSteps) {
                   // Even if we're not showing steps, we may still need to render CommandOutput here
                   if (shouldRenderCommandOutput) {
                     return (
@@ -2639,7 +2655,7 @@ export function MainContent({ task, selectedTaskId, workspace, events, onSendMes
                           </div>
                           <div className="event-time">{formatTime(event.timestamp)}</div>
                         </div>
-                {isExpanded && renderEventDetails(event, voiceEnabled, markdownComponents)}
+                {isExpanded && renderEventDetails(event, voiceEnabled, markdownComponents, { workspacePath: workspace?.path, onOpenViewer: setViewerFilePath })}
                       </div>
                     </div>
                     {shouldRenderCommandOutput && (
@@ -3047,7 +3063,19 @@ function renderEventTitle(
   }
 }
 
-function renderEventDetails(event: TaskEvent, voiceEnabled: boolean, markdownComponents: any) {
+function renderEventDetails(
+  event: TaskEvent,
+  voiceEnabled: boolean,
+  markdownComponents: any,
+  options?: {
+    workspacePath?: string;
+    onOpenViewer?: (path: string) => void;
+  }
+) {
+  const workspacePath = options?.workspacePath;
+  const onOpenViewer = options?.onOpenViewer;
+  const imageExt = /\.(png|jpe?g|gif|webp|svg|bmp|ico)$/i;
+
   switch (event.type) {
     case 'plan_created':
       return (
@@ -3088,6 +3116,22 @@ function renderEventDetails(event: TaskEvent, voiceEnabled: boolean, markdownCom
           </div>
         </div>
       );
+    case 'file_created':
+    case 'file_modified': {
+      const filePath = event.payload?.path || event.payload?.from;
+      const isImage =
+        event.payload?.type === 'image' ||
+        (typeof event.payload?.mimeType === 'string' && event.payload.mimeType.toLowerCase().startsWith('image/')) ||
+        imageExt.test(String(filePath || ''));
+
+      if (!isImage || !filePath || !workspacePath) return null;
+
+      return (
+        <div className="event-details event-details-file-preview">
+          <InlineImagePreview filePath={filePath} workspacePath={workspacePath} onOpenViewer={onOpenViewer} />
+        </div>
+      );
+    }
     case 'error':
       return (
         <div className="event-details" style={{ background: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.2)' }}>
