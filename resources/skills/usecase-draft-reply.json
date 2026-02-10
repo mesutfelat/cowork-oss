@@ -1,0 +1,46 @@
+{
+  "id": "usecase-draft-reply",
+  "name": "Draft Reply",
+  "description": "Summarize a chat and draft 2 reply options. Stops before sending.",
+  "icon": "💬",
+  "category": "Use Cases",
+  "prompt": "Reply drafting workflow.\n\nGoal\n- Summarize the recent conversation and draft a high-quality reply.\n\nInputs\n- Channel: {{channel}}\n- Chat hint (name/keyword): {{chat_hint}}\n- Since: {{since}}\n- Message limit: {{message_limit}}\n- Tone: {{tone}}\n\nSteps\n1) Use channel_list_chats on channel \"{{channel}}\" with since \"{{since}}\".\n2) Find the most likely chat for \"{{chat_hint}}\".\n   - If there are multiple plausible matches, show the top 5 candidates (chat_id + last_preview + last_message_at) and ask me which chat_id to use, then STOP.\n3) Use channel_history for the chosen chat_id (limit {{message_limit}}, since \"{{since}}\" if it helps).\n4) Produce:\n   - A 3-6 bullet summary of what happened\n   - What the other person likely wants / open questions\n   - Two reply drafts (A and B) in tone \"{{tone}}\"\n5) STOP BEFORE SENDING. Ask me: \"Send A, send B, or edit?\". Do not send anything until I explicitly confirm \"send\".\n",
+  "parameters": [
+    {
+      "name": "channel",
+      "type": "select",
+      "description": "Which channel to read from",
+      "required": true,
+      "options": ["imessage", "whatsapp", "slack", "telegram", "email"]
+    },
+    {
+      "name": "chat_hint",
+      "type": "string",
+      "description": "Name/keyword to identify the chat in channel_list_chats results",
+      "required": true
+    },
+    {
+      "name": "since",
+      "type": "string",
+      "description": "Time window (e.g., \"15m\", \"24h\", \"7d\")",
+      "required": false,
+      "default": "24h"
+    },
+    {
+      "name": "message_limit",
+      "type": "number",
+      "description": "How many recent messages to fetch",
+      "required": false,
+      "default": 40
+    },
+    {
+      "name": "tone",
+      "type": "select",
+      "description": "Desired tone for the draft",
+      "required": false,
+      "default": "friendly",
+      "options": ["friendly", "concise", "professional"]
+    }
+  ],
+  "enabled": true
+}

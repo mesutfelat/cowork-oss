@@ -1,0 +1,46 @@
+{
+  "id": "usecase-transaction-scan",
+  "name": "Transaction Scan",
+  "description": "Scan recent messages/emails for card transactions and flag suspicious charges.",
+  "icon": "💳",
+  "category": "Use Cases",
+  "prompt": "Transaction scan workflow.\n\nGoal\n- Scan recent notifications for transactions and flag anything suspicious.\n\nInputs\n- Channel: {{channel}}\n- Chat hint (name/keyword): {{chat_hint}}\n- Since: {{since}}\n- Message limit: {{message_limit}}\n- Flag amounts over: {{amount_threshold}}\n\nSteps\n1) If Gmail integration is configured, prefer gmail_action to search for transaction notifications in the last \"{{since}}\" (merchant/issuer keywords from \"{{chat_hint}}\" if provided).\n2) Otherwise, use channel_list_chats on channel \"{{channel}}\" with since \"{{since}}\".\n   - Pick the most likely chat for \"{{chat_hint}}\".\n   - If ambiguous, show top 5 candidates and ask me which chat_id to use, then STOP.\n3) Use channel_history for the chosen chat_id (limit {{message_limit}}, since \"{{since}}\" if it helps).\n4) Extract transactions (date/time if present, merchant, amount, currency).\n5) Flag suspicious patterns:\n   - Amount >= {{amount_threshold}}\n   - New or unusual merchant\n   - Rapid repeat charges\n   - Foreign currency / location mismatch\n6) Output:\n   - A table of charges\n   - A short risk assessment\n   - Suggested next actions\n7) Do not contact the bank or send any messages unless I explicitly confirm.\n",
+  "parameters": [
+    {
+      "name": "channel",
+      "type": "select",
+      "description": "Where transaction alerts arrive",
+      "required": true,
+      "options": ["email", "slack", "imessage"]
+    },
+    {
+      "name": "chat_hint",
+      "type": "string",
+      "description": "Issuer/merchant keyword to identify the feed (e.g., \"Amex\", \"Wise\", \"Chase\")",
+      "required": false,
+      "default": "Amex"
+    },
+    {
+      "name": "since",
+      "type": "string",
+      "description": "Time window (e.g., \"24h\", \"7d\")",
+      "required": false,
+      "default": "7d"
+    },
+    {
+      "name": "message_limit",
+      "type": "number",
+      "description": "How many messages to fetch",
+      "required": false,
+      "default": 200
+    },
+    {
+      "name": "amount_threshold",
+      "type": "number",
+      "description": "Flag transactions at or above this amount",
+      "required": false,
+      "default": 200
+    }
+  ],
+  "enabled": true
+}

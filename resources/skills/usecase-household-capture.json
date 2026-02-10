@@ -1,0 +1,30 @@
+{
+  "id": "usecase-household-capture",
+  "name": "Household Capture",
+  "description": "Turn a messy household message into Notion tasks + optional reminders.",
+  "icon": "🏠",
+  "category": "Use Cases",
+  "prompt": "Household capture workflow.\n\nGoal\n- Turn a messy message into clean tasks and log them to Notion.\n\nInputs\n- Notion database_id: {{notion_database_id}}\n- Raw tasks text:\n{{tasks}}\n- Create reminders: {{create_reminders}}\n\nSteps\n1) Parse the raw tasks text into a structured checklist. Infer:\n   - Priority (high/medium/low)\n   - Due date (if implied)\n   - Owner (if mentioned)\n2) If \"{{notion_database_id}}\" is missing or looks invalid, ask me for the database_id and STOP.\n3) Create one Notion page per task in that database using notion_action create_page.\n   - Put the task title in the Notion title property.\n   - If the database supports it, also set properties like due date, status, priority.\n4) If create_reminders is true:\n   - For tasks with due dates/times, create Apple Reminders via apple_reminders_action (or schedule_task if Reminders is unavailable).\n5) Return a concise report:\n   - Task list\n   - Notion page IDs/URLs\n   - Reminder IDs (if created)\n\nSafety\n- Ask for approval before creating or modifying external items if the tool requires it.\n",
+  "parameters": [
+    {
+      "name": "notion_database_id",
+      "type": "string",
+      "description": "Target Notion database_id where tasks should be created",
+      "required": true
+    },
+    {
+      "name": "tasks",
+      "type": "string",
+      "description": "Paste the raw household tasks text here",
+      "required": true
+    },
+    {
+      "name": "create_reminders",
+      "type": "boolean",
+      "description": "Also create reminders for due tasks",
+      "required": false,
+      "default": true
+    }
+  ],
+  "enabled": true
+}
