@@ -5637,6 +5637,15 @@ TASK / CONVERSATION HISTORY:
     const gatewayContext = this.task.agentConfig?.gatewayContext ?? 'private';
     const allowMemoryInjection = retainMemory && gatewayContext === 'private';
 
+    let contextPackInjectionEnabled = false;
+    try {
+      const features = MemoryFeaturesManager.loadSettings();
+      contextPackInjectionEnabled = !!features.contextPackInjectionEnabled;
+    } catch {
+      // optional
+    }
+    const allowSharedContextInjection = gatewayContext === 'private' && contextPackInjectionEnabled;
+
     // Build message with knowledge context from previous steps
     let messageWithContext = message;
     const knowledgeSummary = this.fileOperationTracker.getKnowledgeSummary();

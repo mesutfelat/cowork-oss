@@ -14,6 +14,7 @@ import { AgentRoleRepository } from './agents/AgentRoleRepository';
 import { MentionRepository } from './agents/MentionRepository';
 import { ActivityRepository } from './activity/ActivityRepository';
 import { WorkingStateRepository } from './agents/WorkingStateRepository';
+import { CrossSignalService } from './agents/CrossSignalService';
 import { AgentDaemon } from './agent/daemon';
 import {
   ChannelMessageRepository,
@@ -47,6 +48,7 @@ let dbManager: DatabaseManager;
 let agentDaemon: AgentDaemon;
 let channelGateway: ChannelGateway;
 let cronService: CronService | null = null;
+let crossSignalService: CrossSignalService | null = null;
 
 // Suppress GPU-related Chromium errors that occur with transparent windows and vibrancy
 // These are cosmetic errors that don't affect functionality
@@ -175,6 +177,15 @@ app.whenReady().then(async () => {
   // Initialize agent daemon
   agentDaemon = new AgentDaemon(dbManager);
   await agentDaemon.initialize();
+
+  // Initialize cross-agent signal tracker (best-effort; do not block app startup)
+  try {
+    crossSignalService = new CrossSignalService(dbManager.getDatabase());
+    await crossSignalService.start(agentDaemon);
+    console.log('[Main] CrossSignalService initialized');
+  } catch (error) {
+    console.error('[Main] Failed to initialize CrossSignalService:', error);
+  }
 
   // Initialize Memory Service for cross-session context
   try {

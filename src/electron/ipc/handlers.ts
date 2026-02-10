@@ -3970,7 +3970,9 @@ function setupKitHandlers(workspaceRepo: WorkspaceRepository): void {
           `This file is workspace-local and can be auto-updated by agents.\n` +
           `Use it to track entities/topics that show up across multiple agents, contradictions, and amplified opportunities.\n\n` +
           `## Signals (Last 24h)\n` +
-          `- \n\n` +
+          `<!-- cowork:auto:signals:start -->\n` +
+          `- (none)\n` +
+          `<!-- cowork:auto:signals:end -->\n\n` +
           `## Conflicts / Contradictions\n` +
           `- \n\n` +
           `## Notes\n` +
