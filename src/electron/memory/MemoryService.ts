@@ -23,6 +23,7 @@ import { LLMProviderFactory } from '../agent/llm';
 import { estimateTokens } from '../agent/context-manager';
 import { InputSanitizer } from '../agent/security';
 import { cosineSimilarity, createLocalEmbedding, tokenizeForLocalEmbedding } from './local-embedding';
+import { MarkdownMemoryIndexService } from './MarkdownMemoryIndexService';
 
 // Privacy patterns to exclude - matches common sensitive data patterns
 const SENSITIVE_PATTERNS = [
@@ -66,6 +67,7 @@ export class MemoryService {
   private static embeddingRepo: MemoryEmbeddingRepository;
   private static summaryRepo: MemorySummaryRepository;
   private static settingsRepo: MemorySettingsRepository;
+  private static markdownIndex: MarkdownMemoryIndexService | null = null;
   private static memoryEmbeddingsByWorkspace = new Map<
     string,
     Map<string, { updatedAt: number; embedding: Float32Array }>
@@ -94,12 +96,56 @@ export class MemoryService {
     this.embeddingRepo = new MemoryEmbeddingRepository(db);
     this.summaryRepo = new MemorySummaryRepository(db);
     this.settingsRepo = new MemorySettingsRepository(db);
+    this.markdownIndex = new MarkdownMemoryIndexService(db);
     this.initialized = true;
 
     // Start periodic cleanup
     this.cleanupIntervalHandle = setInterval(() => this.runCleanup(), CLEANUP_INTERVAL_MS);
 
     console.log('[MemoryService] Initialized');
+  }
+
+  /**
+   * Sync workspace markdown index (kit notes, docs, etc.)
+   * This is optional; failures should not impact the core memory system.
+   */
+  static async syncWorkspaceMarkdown(workspaceId: string, workspacePath: string, force = false): Promise<void> {
+    this.ensureInitialized();
+    if (!this.markdownIndex) return;
+    await this.markdownIndex.syncWorkspace(workspaceId, workspacePath, force);
+  }
+
+  /**
+   * Search indexed markdown within a workspace path (best-effort).
+   * Intended for retrieving durable workspace notes such as `.cowork/` memory files.
+   */
+  static searchWorkspaceMarkdown(
+    workspaceId: string,
+    workspacePath: string,
+    query: string,
+    limit = 10
+  ): MemorySearchResult[] {
+    this.ensureInitialized();
+    if (!this.markdownIndex) return [];
+    try {
+      return this.markdownIndex.search(workspaceId, workspacePath, query, limit);
+    } catch {
+      return [];
+    }
+  }
+
+  static getRecentWorkspaceMarkdownSnippets(
+    workspaceId: string,
+    workspacePath: string,
+    limit = 3
+  ): MemorySearchResult[] {
+    this.ensureInitialized();
+    if (!this.markdownIndex) return [];
+    try {
+      return this.markdownIndex.getRecentSnippets(workspaceId, workspacePath, limit);
+    } catch {
+      return [];
+    }
   }
 
   /**
@@ -628,6 +674,11 @@ export class MemoryService {
     } catch {
       // ignore
     }
+    try {
+      this.markdownIndex?.clearWorkspace(workspaceId);
+    } catch {
+      // ignore
+    }
     this.memoryEmbeddingsByWorkspace.delete(workspaceId);
     this.embeddingsLoadedForWorkspace.delete(workspaceId);
     this.embeddingBackfillInProgress.delete(workspaceId);
@@ -854,6 +905,7 @@ Summary:`,
     memoryEvents.removeAllListeners();
     this.memoryEmbeddingsByWorkspace.clear();
     this.importedEmbeddings.clear();
+    this.markdownIndex = null;
     this.importedEmbeddingsLoaded = false;
     this.importedEmbeddingBackfillInProgress = false;
     this.embeddingsLoadedForWorkspace.clear();

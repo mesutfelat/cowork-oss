@@ -4278,6 +4278,13 @@ function setupKitHandlers(workspaceRepo: WorkspaceRepository): void {
       await writeTemplate(workspacePath, t.relPath, t.content, mode);
     }
 
+    // Best-effort: keep kit notes searchable for hybrid recall (does not affect kit init success).
+    try {
+      await MemoryService.syncWorkspaceMarkdown(request.workspaceId, path.join(workspacePath, kitDirName), true);
+    } catch {
+      // optional enhancement
+    }
+
     await ensureDefaultKitCronJobs(request.workspaceId);
 
     return await computeStatus(request.workspaceId);
