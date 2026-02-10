@@ -1255,6 +1255,7 @@ export class TaskExecutor {
 
       const limit = 10;
       const recentLimit = 4;
+      const maxLines = 14;
       const recent = MemoryService.getRecent(workspaceId, recentLimit);
       const search = MemoryService.search(workspaceId, trimmed, limit);
 
@@ -1275,6 +1276,7 @@ export class TaskExecutor {
         const snippet = formatSnippet(raw, 200);
         if (!snippet) continue;
         lines.push(`- [recent:${mem.type}] (${date}) ${snippet}`);
+        if (lines.length >= maxLines) break;
       }
 
       for (const result of search) {
@@ -1284,7 +1286,29 @@ export class TaskExecutor {
         const snippet = formatSnippet(result.snippet, 220);
         if (!snippet) continue;
         lines.push(`- [match:${result.type}] (${date}) ${snippet}`);
-        if (lines.length >= 12) break;
+        if (lines.length >= maxLines) break;
+      }
+
+      // Also search workspace kit notes (e.g., `.cowork/memory/*`) via markdown index when available.
+      if (lines.length < maxLines && this.workspace.permissions.read) {
+        try {
+          const kitRoot = path.join(this.workspace.path, '.cowork');
+          if (fs.existsSync(kitRoot) && fs.statSync(kitRoot).isDirectory()) {
+            const kitMatches = MemoryService.searchWorkspaceMarkdown(workspaceId, kitRoot, trimmed, 8);
+            for (const result of kitMatches) {
+              if (seen.has(result.id)) continue;
+              seen.add(result.id);
+              if (result.source !== 'markdown') continue;
+              const loc = `.cowork/${result.path}#L${result.startLine}-${result.endLine}`;
+              const snippet = formatSnippet(result.snippet, 220);
+              if (!snippet) continue;
+              lines.push(`- [note] (${loc}) ${snippet}`);
+              if (lines.length >= maxLines) break;
+            }
+          }
+        } catch {
+          // optional enhancement
+        }
       }
 
       if (lines.length === 0) return '';
@@ -4343,6 +4367,18 @@ Format your plan as a JSON object with this structure:
     }
     const allowSharedContextInjection = gatewayContext === 'private' && contextPackInjectionEnabled;
 
+    // Best-effort: keep `.cowork/` notes searchable for hybrid recall (sync is debounced internally).
+    if (allowMemoryInjection && this.workspace.permissions.read) {
+      try {
+        const kitRoot = path.join(this.workspace.path, '.cowork');
+        if (fs.existsSync(kitRoot) && fs.statSync(kitRoot).isDirectory()) {
+          await MemoryService.syncWorkspaceMarkdown(this.workspace.id, kitRoot, false);
+        }
+      } catch {
+        // optional enhancement
+      }
+    }
+
     if (allowMemoryInjection) {
       try {
         memoryContext = MemoryService.getContextForInjection(this.workspace.id, this.task.prompt);
@@ -5869,6 +5905,18 @@ TASK / CONVERSATION HISTORY:
       // optional
     }
     const allowSharedContextInjection = gatewayContext === 'private' && contextPackInjectionEnabled;
+
+    // Best-effort: keep `.cowork/` notes searchable for hybrid recall (sync is debounced internally).
+    if (allowMemoryInjection && this.workspace.permissions.read) {
+      try {
+        const kitRoot = path.join(this.workspace.path, '.cowork');
+        if (fs.existsSync(kitRoot) && fs.statSync(kitRoot).isDirectory()) {
+          await MemoryService.syncWorkspaceMarkdown(this.workspace.id, kitRoot, false);
+        }
+      } catch {
+        // optional enhancement
+      }
+    }
 
     // Build message with knowledge context from previous steps
     let messageWithContext = message;
