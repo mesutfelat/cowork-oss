@@ -27,33 +27,51 @@ function run(cmd, args, opts = {}) {
     env: opts.env || process.env,
     cwd: opts.cwd || process.cwd(),
   });
-  if (res.status !== 0) {
-    // If the process was killed, status can be null. Use signal if present.
-    const sig = res.signal ? ` (signal ${res.signal})` : "";
-    console.error(`\n[cowork] Command failed${sig}.`);
-    process.exit(res.status ?? 1);
-  }
+  return res;
 }
 
 function computeJobs() {
-  // Prefer explicit overrides. Default to 2 to reduce peak memory.
-  const raw =
-    process.env.COWORK_SETUP_JOBS ||
-    process.env.npm_config_jobs ||
-    process.env.JOBS ||
-    "2";
-  const n = Number.parseInt(String(raw), 10);
-  if (!Number.isFinite(n) || n < 1) return 2;
-  return Math.min(n, Math.max(1, os.cpus()?.length || 2));
+  // Users should be able to run README commands without tweaking env vars.
+  // Default to 1 job on macOS for reliability (reduces peak memory).
+  const raw = process.env.COWORK_SETUP_JOBS;
+  if (raw != null && String(raw).trim() !== "") {
+    const parsed = Number.parseInt(String(raw), 10);
+    if (Number.isFinite(parsed) && parsed >= 1) return parsed;
+  }
+
+  if (process.platform === "darwin") return 1;
+
+  const cpuCount = Math.max(1, os.cpus()?.length ?? 1);
+  return Math.min(2, cpuCount);
 }
 
 function baseEnvWithJobs(jobs) {
   // These influence node-gyp/make parallelism on macOS/Linux.
-  // If the user already set them, keep their values.
+  // Always set safe values so global MAKEFLAGS doesn't accidentally cause OOM.
   const env = { ...process.env };
-  if (!env.npm_config_jobs) env.npm_config_jobs = String(jobs);
-  if (!env.MAKEFLAGS) env.MAKEFLAGS = `-j${jobs}`;
+  env.npm_config_jobs = String(jobs);
+  env.MAKEFLAGS = `-j${jobs}`;
   return env;
+}
+
+function isKilledByOS(res) {
+  // `Killed: 9` => SIGKILL. Some wrappers surface this as exit 137.
+  return res.signal === "SIGKILL" || res.status === 137;
+}
+
+function fail(res, context) {
+  const sig = res.signal ? ` (signal ${res.signal})` : "";
+  const code =
+    res.status == null ? "" : ` (exit ${String(res.status).trim()})`;
+  console.error(`\n[cowork] ${context} failed${sig}${code}.`);
+  if (isKilledByOS(res)) {
+    console.error(
+      "[cowork] macOS terminated the process (usually memory pressure). " +
+        "This script already limits parallelism; if it still happens, " +
+        "close other apps and re-run `npm run setup`."
+    );
+  }
+  process.exit(res.status ?? 1);
 }
 
 function checkPrereqs() {
@@ -77,26 +95,58 @@ function main() {
 
   checkPrereqs();
 
-  const jobs = computeJobs();
-  const env = baseEnvWithJobs(jobs);
-  console.log(`[cowork] Using jobs=${jobs} (override via COWORK_SETUP_JOBS=1)`);
+  const userSpecifiedJobs =
+    process.env.COWORK_SETUP_JOBS != null &&
+    String(process.env.COWORK_SETUP_JOBS).trim() !== "";
 
-  // 1) Download/unpack Electron binary (postinstall is skipped due to ignore-scripts=true).
-  run(process.execPath, ["node_modules/electron/install.js"], { env });
-
-  // 2) Rebuild better-sqlite3 against Electron.
-  // Call the CLI entrypoint directly to avoid platform-specific .bin shims.
-  run(
-    process.execPath,
-    [
-      "node_modules/@electron/rebuild/lib/cli.js",
-      "-f",
-      "-w",
-      "better-sqlite3",
-      "--sequential",
-    ],
-    { env }
+  let jobs = computeJobs();
+  console.log(
+    `[cowork] Using jobs=${jobs} (set COWORK_SETUP_JOBS=N to override)`
   );
+
+  const runElectronInstall = (env) =>
+    run(process.execPath, ["node_modules/electron/install.js"], { env });
+
+  const runRebuild = (env) =>
+    run(
+      process.execPath,
+      [
+        "node_modules/@electron/rebuild/lib/cli.js",
+        "-f",
+        "-w",
+        "better-sqlite3",
+        "--sequential",
+      ],
+      { env }
+    );
+
+  const attempt = (attemptJobs) => {
+    const env = baseEnvWithJobs(attemptJobs);
+
+    // 1) Download/unpack Electron binary (postinstall is often skipped due to ignore-scripts=true).
+    const installRes = runElectronInstall(env);
+    if (installRes.status !== 0) return installRes;
+
+    // 2) Rebuild better-sqlite3 against Electron.
+    // Call the CLI entrypoint directly to avoid platform-specific .bin shims.
+    const rebuildRes = runRebuild(env);
+    return rebuildRes;
+  };
+
+  let res = attempt(jobs);
+  if (res.status !== 0 && isKilledByOS(res) && !userSpecifiedJobs && jobs > 1) {
+    console.log(
+      `\n[cowork] Detected SIGKILL; retrying once with jobs=1 to reduce memory...`
+    );
+    jobs = 1;
+    res = attempt(jobs);
+  }
+
+  if (res.status !== 0) {
+    // We don't know which sub-step failed at this point (install vs rebuild),
+    // but the command output will show the last printed step.
+    fail(res, "Native setup");
+  }
 
   console.log("\n[cowork] Native setup complete.");
 }

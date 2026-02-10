@@ -41,9 +41,7 @@ This will:
 - If the model list is empty, click **Refresh Models** after entering your API key (and Base URL if overridden).
 - If a provider endpoint changes, override the **Base URL** in Settings (custom providers or Groq/xAI/Kimi/OpenRouter).
 - If Ollama fails to connect, confirm the service is running and the base URL is correct (default `http://localhost:11434`).
-- If `npm run setup` fails on macOS with `Killed: 9`, rerun native setup with reduced parallelism:
-  - `COWORK_SETUP_JOBS=1 npm run setup:native`
-  - Ensure Xcode CLT is installed: `xcode-select --install`
+- If `npm run setup` fails on macOS with `Killed: 9`, macOS terminated the native build due to memory pressure. Re-run `npm run setup` after closing other apps.
 
 ### Step 4: Create Your First Task
 

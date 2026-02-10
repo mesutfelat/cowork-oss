@@ -78,18 +78,9 @@ npm run dev
 
 #### Troubleshooting: macOS "Killed: 9" during setup
 
-If `npm run setup` fails with `Killed: 9`, macOS is terminating a process (often due to memory pressure) during Electron download or the `better-sqlite3` rebuild.
+If `npm run setup` fails with `Killed: 9`, macOS terminated the native build due to memory pressure.
 
-Try:
-
-```bash
-# Reduce native build parallelism (lower peak memory)
-COWORK_SETUP_JOBS=1 npm run setup:native
-```
-
-Also verify:
-- You did not copy a different `package.json` into the repo (it must match `package-lock.json`).
-- Xcode CLT is installed: `xcode-select -p`
+This repo’s `setup:native` script automatically rebuilds native modules with reduced parallelism on macOS to avoid this; if it still happens, close other apps and re-run `npm run setup`.
 
 #### Build for Production
 
