@@ -7,7 +7,7 @@
 ```bash
 git clone https://github.com/CoWork-OS/CoWork-OS.git
 cd CoWork-OS
-npm install
+npm run setup
 ```
 
 ### Step 2: Run the App
@@ -349,7 +349,7 @@ Output: `release/CoWork-OS-{version}.dmg`
 **Solution**: Clear and reinstall:
 ```bash
 rm -rf node_modules dist
-npm install
+npm run setup
 npm run dev
 ```
 

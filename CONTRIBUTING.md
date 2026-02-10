@@ -43,8 +43,8 @@ Please read and follow our [Code of Conduct](CODE_OF_CONDUCT.md) to keep our com
 git clone https://github.com/YOUR_USERNAME/CoWork-OS.git
 cd CoWork-OS
 
-# Install dependencies
-npm install
+# Install dependencies and set up native modules
+npm run setup
 
 # Copy environment example
 cp .env.example .env

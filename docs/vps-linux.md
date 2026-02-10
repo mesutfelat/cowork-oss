@@ -90,7 +90,7 @@ sudo apt-get install -y --no-install-recommends \
 ```bash
 git clone https://github.com/CoWork-OS/CoWork-OS.git /opt/cowork-os
 cd /opt/cowork-os
-npm ci
+npm run setup:server
 npm run build:daemon
 npm run build:connectors
 ```
@@ -172,7 +172,7 @@ sudo apt-get install -y --no-install-recommends \
 ```bash
 git clone https://github.com/CoWork-OS/CoWork-OS.git /opt/cowork-os
 cd /opt/cowork-os
-npm ci
+npm run setup:server
 npm run build:electron
 npm run build:connectors
 ```

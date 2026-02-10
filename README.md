@@ -66,8 +66,8 @@ Your AI needs a secure home. CoWork OS provides the runtime, security layers, an
 git clone https://github.com/CoWork-OS/CoWork-OS.git
 cd CoWork-OS
 
-# Install dependencies
-npm install
+# Install dependencies and set up native modules
+npm run setup
 
 # Run in development mode
 npm run dev
@@ -78,6 +78,7 @@ npm run dev
 #### Build for Production
 
 ```bash
+npm run setup   # if not already done
 npm run build
 npm run package
 ```

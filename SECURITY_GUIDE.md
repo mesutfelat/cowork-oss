@@ -330,7 +330,7 @@ If you use the gateway feature to connect messaging bots (Telegram, Discord, Sla
 For **git clones** (development):
 1. Checks GitHub API for new releases/commits
 2. User initiates update manually
-3. Runs: `git pull`, `npm install`, `npm run build`
+3. Runs: `git pull`, `npm run setup`, `npm run build`
 4. Requires app restart
 
 For **packaged builds**:
@@ -344,7 +344,7 @@ For **packaged builds**:
 |------|------------|
 | Malicious code in update | Updates are user-initiated, not automatic |
 | Compromised dependencies | Dependencies from reputable sources only |
-| npm install risks | postinstall only rebuilds better-sqlite3 |
+| npm install risks | Third-party lifecycle scripts disabled via `.npmrc`; `npm run setup` handles native rebuilds explicitly |
 
 **Note**: If you're security-conscious, review changes before updating:
 ```bash
