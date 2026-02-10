@@ -102,11 +102,14 @@ function fail(res, context) {
   if (isKilledByOS(res)) {
     console.error(
       "[cowork] macOS terminated the process (usually memory pressure). " +
-        "This script already limits parallelism; if it still happens, " +
+        "Setup will retry automatically; if it still fails after retries, " +
         "close other apps and re-run `npm run setup`."
     );
   }
-  process.exit(res.status ?? 1);
+  // If a child process was SIGKILL'd, `spawnSync` will surface it as `signal`
+  // with `status === null`. Exit 137 (128 + 9) so shell-level retries can
+  // reliably detect and retry.
+  process.exit(isKilledByOS(res) ? 137 : res.status ?? 1);
 }
 
 function checkPrereqs() {
