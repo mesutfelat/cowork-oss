@@ -16,7 +16,9 @@
  */
 
 import { spawnSync } from "node:child_process";
+import fs from "node:fs";
 import os from "node:os";
+import path from "node:path";
 import process from "node:process";
 
 function run(cmd, args, opts = {}) {
@@ -57,6 +59,39 @@ function baseEnvWithJobs(jobs) {
 function isKilledByOS(res) {
   // `Killed: 9` => SIGKILL. Some wrappers surface this as exit 137.
   return res.signal === "SIGKILL" || res.status === 137;
+}
+
+function readJson(filePath) {
+  return JSON.parse(fs.readFileSync(filePath, "utf8"));
+}
+
+function getElectronVersion() {
+  try {
+    const pkg = readJson(path.join("node_modules", "electron", "package.json"));
+    return String(pkg.version || "").trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+function getElectronModulesAbi(env) {
+  // Use Electron's bundled Node in "run as node" mode so this doesn't start a GUI app.
+  const res = spawnSync(
+    path.join("node_modules", ".bin", "electron"),
+    ["-p", "process.versions.modules"],
+    { env: { ...env, ELECTRON_RUN_AS_NODE: "1" }, encoding: "utf8" }
+  );
+  if (res.status !== 0) return null;
+  return String(res.stdout || "").trim() || null;
+}
+
+function testBetterSqlite3InElectron(env) {
+  const res = spawnSync(
+    path.join("node_modules", ".bin", "electron"),
+    ["-e", "require('better-sqlite3'); console.log('ok')"],
+    { env: { ...env, ELECTRON_RUN_AS_NODE: "1" }, encoding: "utf8" }
+  );
+  return res;
 }
 
 function fail(res, context) {
@@ -104,33 +139,71 @@ function main() {
     `[cowork] Using jobs=${jobs} (set COWORK_SETUP_JOBS=N to override)`
   );
 
-  const runElectronInstall = (env) =>
-    run(process.execPath, ["node_modules/electron/install.js"], { env });
+  const attempt = (attemptJobs) => {
+    const env = baseEnvWithJobs(attemptJobs);
 
-  const runRebuild = (env) =>
-    run(
+    // 1) Ensure Electron binary exists (postinstall is often skipped due to ignore-scripts=true).
+    const installRes = run(process.execPath, ["node_modules/electron/install.js"], {
+      env,
+    });
+    if (installRes.status !== 0) return installRes;
+
+    const electronVersion = getElectronVersion();
+    const electronAbi = getElectronModulesAbi(env);
+
+    console.log(
+      `[cowork] Electron: version=${electronVersion ?? "?"} modules=${
+        electronAbi ?? "?"
+      }`
+    );
+
+    // 2) Prefer the lightest path: ask better-sqlite3 to install a prebuild for Electron.
+    // If a matching prebuild exists, this avoids compiling from source (which is where macOS SIGKILLs happen).
+    if (electronVersion) {
+      const electronEnv = {
+        ...env,
+        npm_config_runtime: "electron",
+        npm_config_target: electronVersion,
+        npm_config_disturl: "https://electronjs.org/headers",
+        npm_config_arch: process.arch,
+      };
+      const rebuildElectronRes = run(
+        "npm",
+        ["rebuild", "--ignore-scripts=false", "better-sqlite3"],
+        { env: electronEnv }
+      );
+      if (rebuildElectronRes.status !== 0) return rebuildElectronRes;
+
+      const testRes = testBetterSqlite3InElectron(electronEnv);
+      if (testRes.status === 0) {
+        console.log("[cowork] better-sqlite3 loads in Electron.");
+        return testRes;
+      }
+
+      console.log(
+        "[cowork] better-sqlite3 did not load after Electron-targeted rebuild; falling back to electron-rebuild."
+      );
+    } else {
+      console.log(
+        "[cowork] Could not determine Electron version; falling back to electron-rebuild."
+      );
+    }
+
+    // 3) Fallback: electron-rebuild (most expensive). Keep it sequential and only rebuild the one module.
+    const rebuildRes = run(
       process.execPath,
       [
         "node_modules/@electron/rebuild/lib/cli.js",
         "-f",
-        "-w",
+        "--only",
         "better-sqlite3",
         "--sequential",
       ],
       { env }
     );
+    if (rebuildRes.status !== 0) return rebuildRes;
 
-  const attempt = (attemptJobs) => {
-    const env = baseEnvWithJobs(attemptJobs);
-
-    // 1) Download/unpack Electron binary (postinstall is often skipped due to ignore-scripts=true).
-    const installRes = runElectronInstall(env);
-    if (installRes.status !== 0) return installRes;
-
-    // 2) Rebuild better-sqlite3 against Electron.
-    // Call the CLI entrypoint directly to avoid platform-specific .bin shims.
-    const rebuildRes = runRebuild(env);
-    return rebuildRes;
+    return testBetterSqlite3InElectron(env);
   };
 
   let res = attempt(jobs);
@@ -142,11 +215,7 @@ function main() {
     res = attempt(jobs);
   }
 
-  if (res.status !== 0) {
-    // We don't know which sub-step failed at this point (install vs rebuild),
-    // but the command output will show the last printed step.
-    fail(res, "Native setup");
-  }
+  if (res.status !== 0) fail(res, "Native setup");
 
   console.log("\n[cowork] Native setup complete.");
 }
