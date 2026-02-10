@@ -4065,7 +4065,7 @@ function setupKitHandlers(workspaceRepo: WorkspaceRepository): void {
     await fs.mkdir(absPath, { recursive: true });
   };
 
-  const ensureDefaultKitCronJobs = async (workspaceId: string): Promise<void> => {
+  const ensureDefaultKitCronJobs = async (workspaceId: string, kitMode: 'missing' | 'overwrite'): Promise<void> => {
     if (!workspaceId || workspaceId === TEMP_WORKSPACE_ID) return;
 
     const cron = getCronService();
@@ -4193,48 +4193,96 @@ function setupKitHandlers(workspaceRepo: WorkspaceRepository): void {
 
     try {
       const existing = await cron.list({ includeDisabled: true });
-      const hasMarker = (marker: string) =>
-        existing.some((j) => j.workspaceId === workspaceId && typeof j.description === 'string' && j.description.includes(marker));
+      const existingInWorkspace = existing.filter((j) => j.workspaceId === workspaceId);
 
-      const jobs: CronJobCreate[] = [
+      const desired: Array<{ marker: string; job: CronJobCreate }> = [
         {
-          name: 'Kit: Hourly Memory Digest',
-          description: `Automated hourly memory digest. [${markers.hourly}]`,
-          enabled: true,
-          schedule: { kind: 'cron', expr: '0 * * * *' },
-          workspaceId,
-          taskPrompt: buildHourlyPrompt(),
-          taskTitle: 'Kit: Hourly Memory Digest',
-          maxHistoryEntries: 25,
+          marker: markers.hourly,
+          job: {
+            name: 'Kit: Hourly Memory Digest',
+            description: `Automated hourly memory digest. [${markers.hourly}]`,
+            enabled: true,
+            schedule: { kind: 'cron', expr: '0 * * * *' },
+            workspaceId,
+            taskPrompt: buildHourlyPrompt(),
+            taskTitle: 'Kit: Hourly Memory Digest',
+            maxHistoryEntries: 25,
+          },
         },
         {
-          name: 'Kit: Daily Context Sync',
-          description: `Automated daily context sync. [${markers.daily}]`,
-          enabled: true,
-          schedule: { kind: 'cron', expr: '0 21 * * *' },
-          workspaceId,
-          taskPrompt: buildDailyPrompt(),
-          taskTitle: 'Kit: Daily Context Sync',
-          maxHistoryEntries: 25,
+          marker: markers.daily,
+          job: {
+            name: 'Kit: Daily Context Sync',
+            description: `Automated daily context sync. [${markers.daily}]`,
+            enabled: true,
+            schedule: { kind: 'cron', expr: '0 21 * * *' },
+            workspaceId,
+            taskPrompt: buildDailyPrompt(),
+            taskTitle: 'Kit: Daily Context Sync',
+            maxHistoryEntries: 25,
+          },
         },
         {
-          name: 'Kit: Weekly Synthesis',
-          description: `Automated weekly synthesis. [${markers.weekly}]`,
-          enabled: true,
-          schedule: { kind: 'cron', expr: '0 18 * * 0' },
-          workspaceId,
-          taskPrompt: buildWeeklyPrompt(),
-          taskTitle: 'Kit: Weekly Synthesis',
-          maxHistoryEntries: 25,
+          marker: markers.weekly,
+          job: {
+            name: 'Kit: Weekly Synthesis',
+            description: `Automated weekly synthesis. [${markers.weekly}]`,
+            enabled: true,
+            schedule: { kind: 'cron', expr: '0 18 * * 0' },
+            workspaceId,
+            taskPrompt: buildWeeklyPrompt(),
+            taskTitle: 'Kit: Weekly Synthesis',
+            maxHistoryEntries: 25,
+          },
         },
       ];
 
-      for (const job of jobs) {
-        const marker = job.description?.match(/\[(.+)\]/)?.[1] || '';
-        if (marker && hasMarker(marker)) continue;
-        const res = await cron.add(job);
+      const findJob = (name: string, marker: string) =>
+        existingInWorkspace.find((j) => typeof j.description === 'string' && j.description.includes(marker))
+        ?? existingInWorkspace.find((j) => j.name === name);
+
+      for (const spec of desired) {
+        const existingJob = findJob(spec.job.name, spec.marker);
+        if (!existingJob) {
+          const res = await cron.add(spec.job);
+          if (!res.ok) {
+            console.warn('[Kit] Failed to add scheduled job:', spec.job.name, res.error);
+          }
+          continue;
+        }
+
+        // Update kit-managed job prompts/description. Preserve schedule/enabled in "missing" mode.
+        const patch: any = {
+          name: spec.job.name,
+          description: spec.job.description,
+          taskPrompt: spec.job.taskPrompt,
+          taskTitle: spec.job.taskTitle,
+          maxHistoryEntries: spec.job.maxHistoryEntries,
+        };
+
+        if (kitMode === 'overwrite') {
+          patch.enabled = spec.job.enabled;
+          patch.schedule = spec.job.schedule;
+        }
+
+        const needsUpdate = (() => {
+          if (existingJob.name !== patch.name) return true;
+          if ((existingJob.description || '') !== (patch.description || '')) return true;
+          if (existingJob.taskPrompt !== patch.taskPrompt) return true;
+          if ((existingJob.taskTitle || '') !== (patch.taskTitle || '')) return true;
+          if ((existingJob.maxHistoryEntries || 0) !== (patch.maxHistoryEntries || 0)) return true;
+          if (kitMode === 'overwrite') {
+            if (existingJob.enabled !== patch.enabled) return true;
+            if (JSON.stringify(existingJob.schedule) !== JSON.stringify(patch.schedule)) return true;
+          }
+          return false;
+        })();
+
+        if (!needsUpdate) continue;
+
+        const res = await cron.update(existingJob.id, patch);
         if (!res.ok) {
-          console.warn('[Kit] Failed to add scheduled job:', job.name, res.error);
+          console.warn('[Kit] Failed to update scheduled job:', spec.job.name, res.error);
         }
       }
     } catch (error) {
@@ -4285,7 +4333,7 @@ function setupKitHandlers(workspaceRepo: WorkspaceRepository): void {
       // optional enhancement
     }
 
-    await ensureDefaultKitCronJobs(request.workspaceId);
+    await ensureDefaultKitCronJobs(request.workspaceId, mode);
 
     return await computeStatus(request.workspaceId);
   });
