@@ -86,8 +86,9 @@ The packaged app will be in the `release/` directory.
 
 ### Linux VPS (Headless / Server Mode)
 
-Run CoWork OS without a GUI and manage it remotely via the WebSocket Control Plane:
+Run CoWork OS without a GUI and manage it remotely via the WebSocket Control Plane (Web UI + CLI):
 
+- Overview / positioning: `docs/self-hosting.md`
 - Guide: `docs/vps-linux.md`
 - Start (Node-only, no Electron/Xvfb): `node bin/coworkd-node.js`
 - Start (headless Electron): `node bin/coworkd.js`

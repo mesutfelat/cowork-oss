@@ -8,10 +8,14 @@ CoWork OS can run on Linux as a long-running daemon in two ways:
 Both modes can be driven remotely using:
 
 - `--headless` (no Electron windows)
-- The **WebSocket Control Plane** for remote task creation/monitoring
+- The **WebSocket Control Plane** for remote task creation/monitoring (Web UI + CLI)
 - Optional channel gateways (Telegram/Discord/Slack/etc) if you’ve configured them in the DB
 
 This mode is designed for VPS/systemd/docker deployments.
+
+If you want an overview (what the interface is, which runtime to pick, what works on Linux), start with:
+
+- `docs/self-hosting.md`
 
 ## Option A: Docker (Headless Electron)
 
