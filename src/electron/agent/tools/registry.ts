@@ -27,6 +27,8 @@ import { OneDriveTools } from './onedrive-tools';
 import { GoogleDriveTools } from './google-drive-tools';
 import { GmailTools } from './gmail-tools';
 import { GoogleCalendarTools } from './google-calendar-tools';
+import { AppleCalendarTools } from './apple-calendar-tools';
+import { AppleRemindersTools } from './apple-reminders-tools';
 import { DropboxTools } from './dropbox-tools';
 import { SharePointTools } from './sharepoint-tools';
 import { VoiceCallTools } from './voice-call-tools';
@@ -45,6 +47,26 @@ import { getCustomSkillLoader } from '../custom-skill-loader';
 import { PersonalityManager } from '../../settings/personality-manager';
 import { PersonalityId, PersonaId, PERSONALITY_DEFINITIONS, PERSONA_DEFINITIONS } from '../../../shared/types';
 import { resolveModelPreferenceToModelKey, resolvePersonalityPreference } from '../../../shared/agent-preferences';
+import { isHeadlessMode } from '../../utils/runtime-mode';
+
+function sanitizeFilename(raw: string, maxLen = 120): string {
+  const base = path.basename(String(raw || '').trim() || 'artifact');
+  const cleaned = base
+    .replace(/[^a-zA-Z0-9._-]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, maxLen);
+  return cleaned || 'artifact';
+}
+
+function guessExtFromMime(mimeType?: string): string {
+  const mime = (mimeType || '').toLowerCase();
+  if (mime === 'image/png') return '.png';
+  if (mime === 'image/jpeg') return '.jpg';
+  if (mime === 'image/webp') return '.webp';
+  if (mime === 'image/gif') return '.gif';
+  if (mime === 'image/bmp') return '.bmp';
+  return '';
+}
 
 /**
  * ToolRegistry manages all available tools and their execution
@@ -75,6 +97,8 @@ export class ToolRegistry {
   private googleDriveTools: GoogleDriveTools;
   private gmailTools: GmailTools;
   private googleCalendarTools: GoogleCalendarTools;
+  private appleCalendarTools: AppleCalendarTools;
+  private appleRemindersTools: AppleRemindersTools;
   private dropboxTools: DropboxTools;
   private sharePointTools: SharePointTools;
   private voiceCallTools: VoiceCallTools;
@@ -117,6 +141,8 @@ export class ToolRegistry {
     this.googleDriveTools = new GoogleDriveTools(workspace, daemon, taskId);
     this.gmailTools = new GmailTools(workspace, daemon, taskId);
     this.googleCalendarTools = new GoogleCalendarTools(workspace, daemon, taskId);
+    this.appleCalendarTools = new AppleCalendarTools(workspace, daemon, taskId);
+    this.appleRemindersTools = new AppleRemindersTools(workspace, daemon, taskId);
     this.dropboxTools = new DropboxTools(workspace, daemon, taskId);
     this.sharePointTools = new SharePointTools(workspace, daemon, taskId);
     this.voiceCallTools = new VoiceCallTools(workspace, daemon, taskId);
@@ -193,6 +219,8 @@ export class ToolRegistry {
     this.googleDriveTools.setWorkspace(workspace);
     this.gmailTools.setWorkspace(workspace);
     this.googleCalendarTools.setWorkspace(workspace);
+    this.appleCalendarTools.setWorkspace(workspace);
+    this.appleRemindersTools.setWorkspace(workspace);
     this.dropboxTools.setWorkspace(workspace);
     this.sharePointTools.setWorkspace(workspace);
     this.voiceCallTools.setWorkspace(workspace);
@@ -261,6 +289,7 @@ export class ToolRegistry {
    * Sorts tools by priority (high priority tools first)
    */
   getTools(): LLMTool[] {
+    const headless = isHeadlessMode();
     const allTools: LLMTool[] = [
       ...this.getFileToolDefinitions(),
       ...this.getSkillToolDefinitions(),
@@ -309,6 +338,16 @@ export class ToolRegistry {
       allTools.push(...this.getGoogleCalendarToolDefinitions());
     }
 
+    // Apple Calendar tools (macOS only)
+    if (AppleCalendarTools.isAvailable()) {
+      allTools.push(...this.getAppleCalendarToolDefinitions());
+    }
+
+    // Apple Reminders tools (macOS only)
+    if (AppleRemindersTools.isAvailable()) {
+      allTools.push(...this.getAppleRemindersToolDefinitions());
+    }
+
     // Only add Dropbox tool if integration is enabled
     if (DropboxTools.isEnabled()) {
       allTools.push(...this.getDropboxToolDefinitions());
@@ -334,16 +373,16 @@ export class ToolRegistry {
     allTools.push(...VisionTools.getToolDefinitions());
 
     // Always add system tools (they enable broader system interaction)
-    allTools.push(...SystemTools.getToolDefinitions());
+    allTools.push(...SystemTools.getToolDefinitions({ headless }));
 
     // Always add cron/scheduling tools (enables task scheduling)
     allTools.push(...CronTools.getToolDefinitions());
 
-    // Always add canvas tools (enables visual workspace)
-    allTools.push(...CanvasTools.getToolDefinitions());
-
-    // Visual annotator tools (agentic image iteration loop)
-    allTools.push(...VisualTools.getToolDefinitions());
+    // Canvas/visual tools require a desktop UI; skip in headless mode (VPS/server).
+    if (!headless) {
+      allTools.push(...CanvasTools.getToolDefinitions());
+      allTools.push(...VisualTools.getToolDefinitions());
+    }
 
     // Always add mention tools (enables multi-agent collaboration)
     allTools.push(...MentionTools.getToolDefinitions());
@@ -989,6 +1028,12 @@ ${skillDescriptions}`;
     // Google Calendar tools
     if (name === 'calendar_action') return await this.googleCalendarTools.executeAction(input);
 
+    // Apple Calendar tools (macOS)
+    if (name === 'apple_calendar_action') return await this.appleCalendarTools.executeAction(input);
+
+    // Apple Reminders tools (macOS)
+    if (name === 'apple_reminders_action') return await this.appleRemindersTools.executeAction(input);
+
     // Dropbox tools
     if (name === 'dropbox_action') return await this.dropboxTools.executeAction(input);
 
@@ -1233,13 +1278,33 @@ ${skillDescriptions}`;
       }
 
       // Handle image content from MCP tools (e.g., take_screenshot)
+      const savedImageFilenames: string[] = [];
       for (const content of result.content) {
         if (content.type === 'image' && content.data) {
           // Save inline image to workspace
-          const filename = input?.filePath
-            ? path.basename(input.filePath)
-            : `mcp-screenshot-${Date.now()}.png`;
-          const outputPath = path.join(this.workspace.path, filename);
+          const mimeType: string | undefined = content.mimeType || undefined;
+          const ext = guessExtFromMime(mimeType) || '.png';
+          const rawNameCandidate =
+            (typeof input?.filePath === 'string' && input.filePath.trim())
+              ? path.basename(input.filePath)
+              : (typeof input?.filename === 'string' && input.filename.trim())
+                ? path.basename(input.filename)
+                : (typeof input?.name === 'string' && input.name.trim())
+                  ? String(input.name).trim()
+                  : `mcp-screenshot-${Date.now()}`;
+
+          let filename = sanitizeFilename(rawNameCandidate);
+          if (!path.extname(filename)) {
+            filename += ext;
+          }
+
+          let outputPath = path.join(this.workspace.path, filename);
+          if (fs.existsSync(outputPath)) {
+            const stem = path.basename(filename, path.extname(filename));
+            const unique = `${stem}-${Date.now()}${path.extname(filename) || ext}`;
+            filename = unique;
+            outputPath = path.join(this.workspace.path, filename);
+          }
 
           try {
             const imageBuffer = Buffer.from(content.data, 'base64');
@@ -1253,7 +1318,8 @@ ${skillDescriptions}`;
             });
 
             // Register as artifact
-            this.daemon.registerArtifact(this.taskId, outputPath, content.mimeType || 'image/png');
+            this.daemon.registerArtifact(this.taskId, outputPath, mimeType || 'image/png');
+            savedImageFilenames.push(filename);
 
             console.log(`[ToolRegistry] Saved MCP image artifact: ${filename}`);
           } catch (error) {
@@ -1268,7 +1334,20 @@ ${skillDescriptions}`;
         .map((c: any) => c.text);
 
       if (textParts.length > 0) {
-        return textParts.join('\n');
+        const baseText = textParts.join('\n');
+        if (savedImageFilenames.length > 0) {
+          const suffix = savedImageFilenames
+            .map((f) => `Saved image: ${f}`)
+            .join('\n');
+          return `${baseText}\n${suffix}`;
+        }
+        return baseText;
+      }
+
+      if (savedImageFilenames.length > 0) {
+        return savedImageFilenames.length === 1
+          ? `Saved image: ${savedImageFilenames[0]}`
+          : savedImageFilenames.map((f) => `Saved image: ${f}`).join('\n');
       }
 
       // Return raw result if no text content
@@ -3039,6 +3118,155 @@ ${skillDescriptions}`;
             payload: {
               type: 'object',
               description: 'Raw event payload override (for create/update)',
+            },
+          },
+          required: ['action'],
+        },
+      },
+    ];
+  }
+
+  /**
+   * Define Apple Calendar tools (macOS only)
+   */
+  private getAppleCalendarToolDefinitions(): LLMTool[] {
+    return [
+      {
+        name: 'apple_calendar_action',
+        description:
+          'Use the local Apple Calendar app on macOS to list and manage events. ' +
+          'Write actions (create/update/delete) require user approval.',
+        input_schema: {
+          type: 'object',
+          properties: {
+            action: {
+              type: 'string',
+              enum: [
+                'list_calendars',
+                'list_events',
+                'get_event',
+                'create_event',
+                'update_event',
+                'delete_event',
+              ],
+              description: 'Action to perform',
+            },
+            calendar_id: {
+              type: 'string',
+              description: 'Calendar identifier (calendarIdentifier) or calendar name (optional; defaults to a writable calendar)',
+            },
+            event_id: {
+              type: 'string',
+              description: 'Event UID (for get/update/delete)',
+            },
+            query: {
+              type: 'string',
+              description: 'Search query (for list_events; matched against summary/notes/location)',
+            },
+            time_min: {
+              type: 'string',
+              description: 'ISO start time (for list_events; default: now)',
+            },
+            time_max: {
+              type: 'string',
+              description: 'ISO end time (for list_events; default: now + 7 days)',
+            },
+            max_results: {
+              type: 'number',
+              description: 'Max results (for list_events; default: 50, max: 500)',
+            },
+            summary: {
+              type: 'string',
+              description: 'Event summary (for create/update)',
+            },
+            description: {
+              type: 'string',
+              description: 'Event notes (for create/update)',
+            },
+            location: {
+              type: 'string',
+              description: 'Event location (for create/update)',
+            },
+            start: {
+              type: 'string',
+              description: 'Event start ISO time (for create/update)',
+            },
+            end: {
+              type: 'string',
+              description: 'Event end ISO time (for create/update)',
+            },
+          },
+          required: ['action'],
+        },
+      },
+    ];
+  }
+
+  /**
+   * Define Apple Reminders tools (macOS only)
+   */
+  private getAppleRemindersToolDefinitions(): LLMTool[] {
+    return [
+      {
+        name: 'apple_reminders_action',
+        description:
+          'Use the local Apple Reminders app on macOS to list and manage reminders. ' +
+          'Write actions (create/update/complete/delete) require user approval.',
+        input_schema: {
+          type: 'object',
+          properties: {
+            action: {
+              type: 'string',
+              enum: [
+                'list_lists',
+                'list_reminders',
+                'get_reminder',
+                'create_reminder',
+                'update_reminder',
+                'complete_reminder',
+                'delete_reminder',
+              ],
+              description: 'Action to perform',
+            },
+            list_id: {
+              type: 'string',
+              description: 'List identifier (id) or list name (optional; defaults to the first list)',
+            },
+            reminder_id: {
+              type: 'string',
+              description: 'Reminder identifier (for get/update/complete/delete)',
+            },
+            query: {
+              type: 'string',
+              description: 'Search query (for list_reminders; matched against title/notes/list name)',
+            },
+            include_completed: {
+              type: 'boolean',
+              description: 'Include completed reminders (for list_reminders; default: false)',
+            },
+            due_min: {
+              type: 'string',
+              description: 'ISO start time for due-date filtering (for list_reminders; optional)',
+            },
+            due_max: {
+              type: 'string',
+              description: 'ISO end time for due-date filtering (for list_reminders; optional)',
+            },
+            max_results: {
+              type: 'number',
+              description: 'Max results (for list_reminders; default: 100, max: 500)',
+            },
+            title: {
+              type: 'string',
+              description: 'Reminder title (for create/update)',
+            },
+            notes: {
+              type: 'string',
+              description: 'Reminder notes (for create/update)',
+            },
+            due: {
+              type: 'string',
+              description: 'ISO due datetime (for create/update)',
             },
           },
           required: ['action'],

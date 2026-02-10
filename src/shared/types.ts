@@ -194,6 +194,8 @@ export type ToolType =
   | 'google_drive_action'
   | 'gmail_action'
   | 'calendar_action'
+  // Apple Calendar (macOS)
+  | 'apple_calendar_action'
   // Dropbox
   | 'dropbox_action'
   // SharePoint
@@ -281,6 +283,7 @@ export const TOOL_GROUPS = {
     'google_drive_action',
     'gmail_action',
     'calendar_action',
+    'apple_calendar_action',
     'dropbox_action',
     'sharepoint_action',
     'browser_navigate',
@@ -385,6 +388,7 @@ export const TOOL_RISK_LEVELS: Record<ToolType, ToolRiskLevel> = {
   google_drive_action: 'network',
   gmail_action: 'network',
   calendar_action: 'network',
+  apple_calendar_action: 'network',
   dropbox_action: 'network',
   sharepoint_action: 'network',
   // Meta
@@ -2215,6 +2219,13 @@ export interface AddChannelRequest {
   name: string;
   botToken?: string;
   securityMode?: SecurityMode;
+  /**
+   * Ambient inbox options (stored in channel config).
+   * - ambientMode: log messages but only process explicit commands (messages starting with '/')
+   * - silentUnauthorized: do not send "pairing required" / "unauthorized" replies
+   */
+  ambientMode?: boolean;
+  silentUnauthorized?: boolean;
   // Discord-specific fields
   applicationId?: string;
   guildIds?: string[];
@@ -2225,12 +2236,14 @@ export interface AddChannelRequest {
   allowedNumbers?: string[];
   selfChatMode?: boolean;
   responsePrefix?: string;
+  ingestNonSelfChatsInSelfChatMode?: boolean;
   // iMessage-specific fields
   cliPath?: string;
   dbPath?: string;
   dmPolicy?: 'open' | 'allowlist' | 'pairing' | 'disabled';
   groupPolicy?: 'open' | 'allowlist' | 'disabled';
   allowedContacts?: string[];
+  captureSelfMessages?: boolean;
   // Signal-specific fields
   phoneNumber?: string;
   dataDir?: string;
