@@ -3,17 +3,28 @@ import { promisify } from 'util';
 import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs/promises';
-import { clipboard, desktopCapturer, nativeImage, shell, app } from 'electron';
 import { Workspace } from '../../../shared/types';
 import { AgentDaemon } from '../daemon';
 import { LLMTool } from '../llm/types';
 import { MemoryService } from '../../memory/MemoryService';
+import { getUserDataDir } from '../../utils/user-data-dir';
 
 const execAsync = promisify(exec);
 const execFileAsync = promisify(execFile);
 
 const DEFAULT_TIMEOUT = 30 * 1000; // 30 seconds
 const APPLESCRIPT_TIMEOUT_MS = 120 * 1000; // 2 minutes
+
+function getElectronApis(): { clipboard?: any; desktopCapturer?: any; shell?: any; app?: any } {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const electron = require('electron') as any;
+    if (electron && typeof electron === 'object') return electron;
+  } catch {
+    // Not running under Electron.
+  }
+  return {};
+}
 
 /**
  * SystemTools provides system-level capabilities beyond the workspace
@@ -93,6 +104,11 @@ export class SystemTools {
       tool: 'read_clipboard',
     });
 
+    const { clipboard } = getElectronApis();
+    if (!clipboard) {
+      throw new Error('Clipboard access is only available in the desktop (Electron) runtime');
+    }
+
     const text = clipboard.readText();
     const image = clipboard.readImage();
     const formats = clipboard.availableFormats();
@@ -126,6 +142,11 @@ export class SystemTools {
       textLength: text.length,
     });
 
+    const { clipboard } = getElectronApis();
+    if (!clipboard) {
+      throw new Error('Clipboard access is only available in the desktop (Electron) runtime');
+    }
+
     clipboard.writeText(text);
 
     this.daemon.logEvent(this.taskId, 'tool_result', {
@@ -158,6 +179,11 @@ export class SystemTools {
     });
 
     try {
+      const { desktopCapturer } = getElectronApis();
+      if (!desktopCapturer) {
+        throw new Error('Screenshot capture is only available in the desktop (Electron) runtime');
+      }
+
       // Get all available sources (screens and windows)
       const sources = await desktopCapturer.getSources({
         types: ['screen'],
@@ -278,6 +304,11 @@ export class SystemTools {
       url,
     });
 
+    const { shell } = getElectronApis();
+    if (!shell?.openExternal) {
+      throw new Error('openUrl is only available in the desktop (Electron) runtime');
+    }
+
     await shell.openExternal(url);
 
     this.daemon.logEvent(this.taskId, 'tool_result', {
@@ -305,6 +336,11 @@ export class SystemTools {
       tool: 'open_path',
       path: filePath,
     });
+
+    const { shell } = getElectronApis();
+    if (!shell?.openPath) {
+      throw new Error('openPath is only available in the desktop (Electron) runtime');
+    }
 
     const result = await shell.openPath(fullPath);
 
@@ -340,6 +376,11 @@ export class SystemTools {
       tool: 'show_in_folder',
       path: filePath,
     });
+
+    const { shell } = getElectronApis();
+    if (!shell?.showItemInFolder) {
+      throw new Error('showInFolder is only available in the desktop (Electron) runtime');
+    }
 
     shell.showItemInFolder(fullPath);
 
@@ -388,13 +429,16 @@ export class SystemTools {
     documents: string;
     desktop: string;
   } {
+    const { app } = getElectronApis();
+    const home = os.homedir();
+    const getPath = typeof app?.getPath === 'function' ? (name: string) => app.getPath(name) : null;
     return {
-      userData: app.getPath('userData'),
-      temp: app.getPath('temp'),
-      home: app.getPath('home'),
-      downloads: app.getPath('downloads'),
-      documents: app.getPath('documents'),
-      desktop: app.getPath('desktop'),
+      userData: getUserDataDir(),
+      temp: getPath ? getPath('temp') : os.tmpdir(),
+      home: getPath ? getPath('home') : home,
+      downloads: getPath ? getPath('downloads') : path.join(home, 'Downloads'),
+      documents: getPath ? getPath('documents') : path.join(home, 'Documents'),
+      desktop: getPath ? getPath('desktop') : path.join(home, 'Desktop'),
     };
   }
 
@@ -555,7 +599,70 @@ export class SystemTools {
   /**
    * Static method to get tool definitions
    */
-  static getToolDefinitions(): LLMTool[] {
+  static getToolDefinitions(options?: { headless?: boolean }): LLMTool[] {
+    const headless = options?.headless === true;
+
+    // In headless/VPS mode, avoid exposing tools that require an interactive desktop session.
+    // Keep informational tools and memory search available.
+    if (headless) {
+      return [
+        {
+          name: 'system_info',
+          description: 'Get system information including OS, CPU, memory, and user details',
+          input_schema: {
+            type: 'object',
+            properties: {},
+            required: [],
+          },
+        },
+        {
+          name: 'get_env',
+          description: 'Get the value of an environment variable',
+          input_schema: {
+            type: 'object',
+            properties: {
+              name: {
+                type: 'string',
+                description: 'Name of the environment variable',
+              },
+            },
+            required: ['name'],
+          },
+        },
+        {
+          name: 'get_app_paths',
+          description: 'Get common system paths (home, downloads, documents, desktop, temp)',
+          input_schema: {
+            type: 'object',
+            properties: {},
+            required: [],
+          },
+        },
+        {
+          name: 'search_memories',
+          description:
+            'Search the workspace memory database for past observations, decisions, and insights ' +
+            'from previous sessions and imported conversations (e.g. ChatGPT history). ' +
+            'Use this tool when the user asks about something discussed previously, ' +
+            'or when you need to recall past context. Returns matching memory snippets.',
+          input_schema: {
+            type: 'object',
+            properties: {
+              query: {
+                type: 'string',
+                description: 'Search query — keywords, names, topics, or phrases to find in memories',
+              },
+              limit: {
+                type: 'number',
+                description: 'Maximum number of results to return (default: 20, max: 50)',
+              },
+            },
+            required: ['query'],
+          },
+        },
+      ];
+    }
+
     return [
       {
         name: 'system_info',

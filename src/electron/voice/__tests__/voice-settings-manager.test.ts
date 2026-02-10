@@ -6,6 +6,8 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
+const ORIGINAL_COWORK_USER_DATA_DIR = process.env.COWORK_USER_DATA_DIR;
+
 // Define mock functions at module scope before imports
 const mockRepositorySave = vi.fn();
 const mockRepositoryLoad = vi.fn();
@@ -50,7 +52,6 @@ vi.mock('fs', () => ({
 }));
 
 // Import after mocks are set up
-import { app, safeStorage } from 'electron';
 import { VoiceSettingsManager } from '../voice-settings-manager';
 import { DEFAULT_VOICE_SETTINGS, VoiceSettings } from '../../../shared/types';
 
@@ -65,6 +66,8 @@ const mockDb = {
 
 describe('VoiceSettingsManager', () => {
   beforeEach(() => {
+    process.env.COWORK_USER_DATA_DIR = '/mock/user/data';
+
     vi.clearAllMocks();
     // Reset cached settings and repository
     VoiceSettingsManager.clearCache();
@@ -77,13 +80,18 @@ describe('VoiceSettingsManager', () => {
   });
 
   afterEach(() => {
+    if (ORIGINAL_COWORK_USER_DATA_DIR === undefined) {
+      delete process.env.COWORK_USER_DATA_DIR;
+    } else {
+      process.env.COWORK_USER_DATA_DIR = ORIGINAL_COWORK_USER_DATA_DIR;
+    }
     vi.clearAllMocks();
   });
 
   describe('initialize', () => {
     it('should set the user data path', () => {
       VoiceSettingsManager.initialize(mockDb);
-      expect(app.getPath).toHaveBeenCalledWith('userData');
+      expect((VoiceSettingsManager as any).userDataPath).toBe('/mock/user/data');
     });
 
     it('should create a SecureSettingsRepository', () => {

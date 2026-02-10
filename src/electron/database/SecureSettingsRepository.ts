@@ -11,11 +11,12 @@
  */
 
 import Database from 'better-sqlite3';
-import { app, safeStorage } from 'electron';
 import { v4 as uuidv4 } from 'uuid';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
+import { getUserDataDir } from '../utils/user-data-dir';
+import { getSafeStorage, type SafeStorageLike } from '../utils/safe-storage';
 
 /** Result status for load operations */
 export type LoadStatus =
@@ -76,10 +77,20 @@ const MACHINE_ID_FILE = '.cowork-machine-id';
 export class SecureSettingsRepository {
   private static instance: SecureSettingsRepository | null = null;
   private encryptionAvailable: boolean;
+  private safeStorage: SafeStorageLike | null;
   private machineId: string | null = null;
 
   constructor(private db: Database.Database) {
-    this.encryptionAvailable = safeStorage.isEncryptionAvailable();
+    this.safeStorage = getSafeStorage();
+    try {
+      this.encryptionAvailable = this.safeStorage?.isEncryptionAvailable() ?? false;
+    } catch (error) {
+      this.encryptionAvailable = false;
+      console.warn(
+        '[SecureSettingsRepository] safeStorage encryption probe failed; falling back to app-level encryption:',
+        error
+      );
+    }
     if (!this.encryptionAvailable) {
       console.warn(
         '[SecureSettingsRepository] OS encryption not available. Settings will be stored with app-level encryption only.'
@@ -97,7 +108,7 @@ export class SecureSettingsRepository {
    */
   private initializeMachineId(): void {
     try {
-      const userDataPath = app.getPath('userData');
+      const userDataPath = getUserDataDir();
       const machineIdPath = path.join(userDataPath, MACHINE_ID_FILE);
 
       if (fs.existsSync(machineIdPath)) {
@@ -414,9 +425,9 @@ export class SecureSettingsRepository {
    * otherwise use app-level encryption with a derived key
    */
   private encrypt(data: string): string {
-    if (this.encryptionAvailable) {
+    if (this.encryptionAvailable && this.safeStorage) {
       // Use OS keychain encryption
-      const encryptedBuffer = safeStorage.encryptString(data);
+      const encryptedBuffer = this.safeStorage.encryptString(data);
       return 'os:' + encryptedBuffer.toString('base64');
     } else {
       // Fallback: Use app-level AES encryption
@@ -441,12 +452,12 @@ export class SecureSettingsRepository {
   private decrypt(encryptedData: string): string {
     if (encryptedData.startsWith('os:')) {
       // OS keychain decryption
-      if (!this.encryptionAvailable) {
+      if (!this.encryptionAvailable || !this.safeStorage) {
         throw new Error('OS encryption was used but is no longer available');
       }
       const base64Data = encryptedData.slice(3);
       const encryptedBuffer = Buffer.from(base64Data, 'base64');
-      return safeStorage.decryptString(encryptedBuffer);
+      return this.safeStorage.decryptString(encryptedBuffer);
     } else if (encryptedData.startsWith('app:')) {
       // App-level AES decryption
       const parts = encryptedData.slice(4).split(':');

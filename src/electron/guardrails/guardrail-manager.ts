@@ -5,11 +5,11 @@
  * Settings are stored encrypted in the database using SecureSettingsRepository.
  */
 
-import { app } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
 import { GuardrailSettings, DEFAULT_BLOCKED_COMMAND_PATTERNS, DEFAULT_TRUSTED_COMMAND_PATTERNS } from '../../shared/types';
 import { SecureSettingsRepository } from '../database/SecureSettingsRepository';
+import { getUserDataDir } from '../utils/user-data-dir';
 
 const LEGACY_SETTINGS_FILE = 'guardrail-settings.json';
 
@@ -52,7 +52,7 @@ export class GuardrailManager {
    * Initialize the GuardrailManager
    */
   static initialize(): void {
-    const userDataPath = app.getPath('userData');
+    const userDataPath = getUserDataDir();
     this.legacySettingsPath = path.join(userDataPath, LEGACY_SETTINGS_FILE);
 
     // Migrate from legacy JSON file to encrypted database

@@ -6,7 +6,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { app } from 'electron';
+import { getUserDataDir } from '../utils/user-data-dir';
 import type { CronStoreFile } from './types';
 
 // Lazy-evaluated paths (app.getPath() is not available until app is ready)
@@ -15,7 +15,7 @@ let _cronStorePath: string | null = null;
 
 export function getCronDir(): string {
   if (!_cronDir) {
-    _cronDir = path.join(app.getPath('userData'), 'cron');
+    _cronDir = path.join(getUserDataDir(), 'cron');
   }
   return _cronDir;
 }

@@ -6,11 +6,11 @@
  * Settings are stored encrypted in the database using SecureSettingsRepository.
  */
 
-import { app } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
 import { Task, TaskStatus, QueueSettings, QueueStatus, DEFAULT_QUEUE_SETTINGS } from '../../shared/types';
 import { SecureSettingsRepository } from '../database/SecureSettingsRepository';
+import { getUserDataDir } from '../utils/user-data-dir';
 
 const LEGACY_SETTINGS_FILE = 'queue-settings.json';
 
@@ -36,7 +36,7 @@ export class TaskQueueManager {
 
   constructor(callbacks: DaemonCallbacks) {
     this.callbacks = callbacks;
-    const userDataPath = app.getPath('userData');
+    const userDataPath = getUserDataDir();
     this.legacySettingsPath = path.join(userDataPath, LEGACY_SETTINGS_FILE);
 
     // Migrate from legacy file if needed

@@ -5,8 +5,8 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { app } from 'electron';
 import type { AppNotification, NotificationStoreFile } from '../../shared/types';
+import { getUserDataDir } from '../utils/user-data-dir';
 
 // Lazy-evaluated paths (app.getPath() is not available until app is ready)
 let _notificationDir: string | null = null;
@@ -14,7 +14,7 @@ let _notificationStorePath: string | null = null;
 
 export function getNotificationDir(): string {
   if (!_notificationDir) {
-    _notificationDir = path.join(app.getPath('userData'), 'notifications');
+    _notificationDir = path.join(getUserDataDir(), 'notifications');
   }
   return _notificationDir;
 }

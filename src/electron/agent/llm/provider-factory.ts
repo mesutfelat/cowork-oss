@@ -1,4 +1,3 @@
-import { app, safeStorage } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
 import { getModels as getPiAiModels } from '@mariozechner/pi-ai';
@@ -39,6 +38,8 @@ import {
   type ProviderCatalogEntry,
 } from '../../../shared/llm-provider-catalog';
 import type { CustomProviderConfig } from '../../../shared/types';
+import { getUserDataDir } from '../../utils/user-data-dir';
+import { getSafeStorage } from '../../utils/safe-storage';
 
 const LEGACY_SETTINGS_FILE = 'llm-settings.json';
 const MASKED_VALUE = '***configured***';
@@ -149,7 +150,8 @@ function encryptSecret(value?: string): string | undefined {
   if (trimmed === MASKED_VALUE) return undefined;
 
   try {
-    if (safeStorage.isEncryptionAvailable()) {
+    const safeStorage = getSafeStorage();
+    if (safeStorage?.isEncryptionAvailable()) {
       const encrypted = safeStorage.encryptString(trimmed);
       return ENCRYPTED_PREFIX + encrypted.toString('base64');
     }
@@ -170,10 +172,11 @@ function decryptSecret(value?: string): string | undefined {
 
   if (value.startsWith(ENCRYPTED_PREFIX)) {
     try {
-      const isAvailable = safeStorage.isEncryptionAvailable();
+      const safeStorage = getSafeStorage();
+      const isAvailable = safeStorage?.isEncryptionAvailable?.() ?? false;
       if (isAvailable) {
         const encrypted = Buffer.from(value.slice(ENCRYPTED_PREFIX.length), 'base64');
-        const decrypted = safeStorage.decryptString(encrypted);
+        const decrypted = safeStorage!.decryptString(encrypted);
         return decrypted;
       } else {
         console.error('[LLM Settings] safeStorage encryption not available - cannot decrypt secrets');
@@ -446,7 +449,7 @@ export class LLMProviderFactory {
    * Initialize the factory
    */
   static initialize(): void {
-    const userDataPath = app.getPath('userData');
+    const userDataPath = getUserDataDir();
     this.legacySettingsPath = path.join(userDataPath, LEGACY_SETTINGS_FILE);
 
     // Migrate from legacy JSON file to encrypted database
@@ -1583,6 +1586,7 @@ export class LLMProviderFactory {
             if (id.includes('5.1-codex-mini')) return 0;
             if (id.includes('5.1-codex-max')) return 1;
             if (id === 'gpt-5.1') return 2;
+            if (id.includes('5.3-codex')) return 3;
             if (id.includes('5.2-codex')) return 3;
             if (id === 'gpt-5.2') return 4;
             return 5;
@@ -1600,6 +1604,7 @@ export class LLMProviderFactory {
           { id: 'gpt-5.1-codex-max', name: 'GPT-5.1 Codex Max', description: 'Maximum capability for complex tasks' },
           { id: 'gpt-5.1', name: 'GPT-5.1', description: 'Balanced performance and capability' },
           { id: 'gpt-5.2-codex', name: 'GPT-5.2 Codex', description: 'Advanced reasoning model' },
+          { id: 'gpt-5.3-codex', name: 'GPT-5.3 Codex', description: 'Advanced reasoning model' },
           { id: 'gpt-5.2', name: 'GPT-5.2', description: 'Most advanced reasoning' },
         ];
       }
@@ -1763,6 +1768,7 @@ export class LLMProviderFactory {
     if (modelId === 'gpt-5.1-codex-max') return 'GPT-5.1 Codex Max';
     if (modelId === 'gpt-5.2') return 'GPT-5.2';
     if (modelId === 'gpt-5.2-codex') return 'GPT-5.2 Codex';
+    if (modelId === 'gpt-5.3-codex') return 'GPT-5.3 Codex';
     return modelId;
   }
 
@@ -1785,6 +1791,7 @@ export class LLMProviderFactory {
     if (modelId === 'gpt-5.1-codex-max') return 'Maximum capability for complex tasks';
     if (modelId === 'gpt-5.2') return 'Most advanced reasoning';
     if (modelId === 'gpt-5.2-codex') return 'Advanced reasoning model';
+    if (modelId === 'gpt-5.3-codex') return 'Advanced reasoning model';
     return 'OpenAI model';
   }
 

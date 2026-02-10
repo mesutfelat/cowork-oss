@@ -6,7 +6,6 @@
 
 import path from 'path';
 import { pathToFileURL } from 'url';
-import { app } from 'electron';
 import {
   HooksConfig,
   HookMappingConfig,
@@ -19,6 +18,7 @@ import {
   HOOK_PRESET_MAPPINGS,
   DEFAULT_HOOKS_PATH,
 } from './types';
+import { getUserDataDir } from '../utils/user-data-dir';
 
 const transformCache = new Map<string, HookTransformFn>();
 
@@ -87,7 +87,7 @@ export function resolveHookMappings(hooks?: HooksConfig): HookMappingResolved[] 
 
   if (mappings.length === 0) return [];
 
-  const configDir = app.getPath('userData');
+  const configDir = getUserDataDir();
   const transformsDir = hooks.transformsDir
     ? resolvePath(configDir, hooks.transformsDir)
     : configDir;

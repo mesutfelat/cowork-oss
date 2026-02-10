@@ -5,10 +5,10 @@
  * Settings are stored encrypted in the database using SecureSettingsRepository.
  */
 
-import { app } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
 import { SecureSettingsRepository } from '../database/SecureSettingsRepository';
+import { getUserDataDir } from '../utils/user-data-dir';
 
 const LEGACY_SETTINGS_FILE = 'tailscale-settings.json';
 
@@ -59,7 +59,7 @@ export class TailscaleSettingsManager {
   static initialize(): void {
     if (this.initialized) return;
 
-    const userDataPath = app.getPath('userData');
+    const userDataPath = getUserDataDir();
     this.legacySettingsPath = path.join(userDataPath, LEGACY_SETTINGS_FILE);
     this.initialized = true;
 

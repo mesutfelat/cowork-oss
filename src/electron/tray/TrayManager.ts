@@ -21,6 +21,7 @@ import { AgentDaemon } from '../agent/daemon';
 import { QuickInputWindow } from './QuickInputWindow';
 import { TEMP_WORKSPACE_ID, TEMP_WORKSPACE_NAME, Workspace } from '../../shared/types';
 import { SecureSettingsRepository } from '../database/SecureSettingsRepository';
+import { getUserDataDir } from '../utils/user-data-dir';
 
 const LEGACY_SETTINGS_FILE = 'tray-settings.json';
 
@@ -95,7 +96,7 @@ export class TrayManager {
     this.agentDaemon = agentDaemon || null;
 
     // Resolve legacy settings path now that app is ready
-    this.legacySettingsPath = path.join(app.getPath('userData'), LEGACY_SETTINGS_FILE);
+    this.legacySettingsPath = path.join(getUserDataDir(), LEGACY_SETTINGS_FILE);
 
     // Initialize repositories
     const db = dbManager.getDatabase();

@@ -1,10 +1,21 @@
-import { shell } from 'electron';
 import {
   loginOpenAICodex,
   refreshOpenAICodexToken,
   getOAuthApiKey,
   OAuthCredentials,
 } from '@mariozechner/pi-ai';
+
+function getElectronShell(): any | null {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const electron = require('electron') as any;
+    const shell = electron?.shell;
+    if (shell) return shell;
+  } catch {
+    // Not running under Electron.
+  }
+  return null;
+}
 
 /**
  * OpenAI OAuth tokens compatible with pi-ai SDK
@@ -56,7 +67,13 @@ export class OpenAIOAuth {
     const credentials = await loginOpenAICodex({
       onAuth: (info) => {
         console.log('[OpenAI OAuth] Opening browser for authentication...');
-        shell.openExternal(info.url);
+        const shell = getElectronShell();
+        if (shell?.openExternal) {
+          shell.openExternal(info.url);
+        } else {
+          console.log('[OpenAI OAuth] Browser open is unavailable in this runtime. Open this URL manually:');
+          console.log(info.url);
+        }
         if (info.instructions) {
           console.log('[OpenAI OAuth] Instructions:', info.instructions);
         }

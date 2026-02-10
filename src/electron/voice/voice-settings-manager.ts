@@ -6,7 +6,6 @@
  * using the SecureSettingsRepository.
  */
 
-import { app, safeStorage } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
 import Database from 'better-sqlite3';
@@ -18,6 +17,8 @@ import {
   DEFAULT_VOICE_SETTINGS,
 } from '../../shared/types';
 import { SecureSettingsRepository } from '../database/SecureSettingsRepository';
+import { getUserDataDir } from '../utils/user-data-dir';
+import { getSafeStorage } from '../utils/safe-storage';
 
 // Legacy file names for migration
 const LEGACY_SETTINGS_FILE = 'voice-settings.json';
@@ -63,7 +64,7 @@ export class VoiceSettingsManager {
    * Initialize the VoiceSettingsManager with the database
    */
   static initialize(db?: Database.Database): void {
-    this.userDataPath = app.getPath('userData');
+    this.userDataPath = getUserDataDir();
 
     if (db) {
       this.repository = new SecureSettingsRepository(db);
@@ -316,7 +317,8 @@ export class VoiceSettingsManager {
    */
   private static loadLegacySecureKeys(legacyKeysPath: string): LegacySecureKeys {
     try {
-      if (!safeStorage.isEncryptionAvailable()) {
+      const safeStorage = getSafeStorage();
+      if (!safeStorage?.isEncryptionAvailable?.()) {
         // Fall back to plain text storage if encryption unavailable
         const data = fs.readFileSync(legacyKeysPath, 'utf-8');
         return JSON.parse(data);

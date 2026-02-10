@@ -1,4 +1,5 @@
 import { spawn, ChildProcess, execSync } from 'child_process';
+import { existsSync } from 'fs';
 import { Workspace, CommandTerminationReason } from '../../../shared/types';
 import { AgentDaemon } from '../daemon';
 import { GuardrailManager } from '../../guardrails/guardrail-manager';
@@ -54,6 +55,18 @@ function isValidUsername(username: string | undefined): username is string {
   // Username must be alphanumeric, underscore, or dash (standard POSIX username chars)
   // Max length 32 chars (common limit)
   return /^[a-zA-Z0-9_-]{1,32}$/.test(username);
+}
+
+function resolveShellForCommandExecution(): string {
+  const envShell = process.env.SHELL;
+  if (envShell && existsSync(envShell)) return envShell;
+
+  // In minimal Linux containers (e.g., Alpine), /bin/bash may not exist.
+  if (existsSync('/bin/bash')) return '/bin/bash';
+  if (existsSync('/bin/sh')) return '/bin/sh';
+
+  // Last resort: fall back to whatever is set (even if it doesn't exist).
+  return envShell || '/bin/sh';
 }
 
 /**
@@ -445,12 +458,13 @@ export class ShellTools {
     const timeout = Math.min(options?.timeout || DEFAULT_TIMEOUT, MAX_TIMEOUT);
 
     // Create a minimal, safe environment (don't leak sensitive process.env vars like API keys)
+    const resolvedShell = resolveShellForCommandExecution();
     const safeEnv: Record<string, string> = {
       // Essential system variables only
       PATH: process.env.PATH || '/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin',
       HOME: process.env.HOME || '',
       USER: process.env.USER || '',
-      SHELL: process.env.SHELL || '/bin/bash',
+      SHELL: resolvedShell,
       LANG: process.env.LANG || 'en_US.UTF-8',
       TERM: process.env.TERM || 'xterm-256color',
       TMPDIR: process.env.TMPDIR || '/tmp',
@@ -478,9 +492,8 @@ export class ShellTools {
       // Clear any leftover escalation timeouts from previous commands
       this.clearEscalationTimeouts();
 
-      // Use shell to handle complex commands with pipes, redirects, etc.
-      const shell = process.env.SHELL || '/bin/bash';
-      const child = spawn(shell, ['-c', command], {
+      // Use a shell to handle complex commands with pipes, redirects, etc.
+      const child = spawn(resolvedShell, ['-c', command], {
         cwd,
         env: safeEnv,
         stdio: ['pipe', 'pipe', 'pipe'],  // Enable stdin for interactive commands

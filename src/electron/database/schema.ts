@@ -1,14 +1,14 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
-import { app } from 'electron';
+import { getUserDataDir } from '../utils/user-data-dir';
 
 export class DatabaseManager {
   private static instance: DatabaseManager | null = null;
   private db: Database.Database;
 
   constructor() {
-    const userDataPath = app.getPath('userData');
+    const userDataPath = getUserDataDir();
 
     // Run migration from old cowork-oss directory before opening database
     this.migrateFromLegacyDirectory(userDataPath);

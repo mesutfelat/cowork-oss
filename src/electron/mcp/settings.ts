@@ -5,7 +5,6 @@
  * Settings are stored encrypted in the database using SecureSettingsRepository.
  */
 
-import { app, safeStorage } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
 import {
@@ -16,11 +15,25 @@ import {
 } from './types';
 import { v4 as uuidv4 } from 'uuid';
 import { SecureSettingsRepository } from '../database/SecureSettingsRepository';
+import { getUserDataDir } from '../utils/user-data-dir';
+import { getSafeStorage } from '../utils/safe-storage';
 
 const LEGACY_SETTINGS_FILE = 'mcp-settings.json';
 const MASKED_VALUE = '***configured***';
 const ENCRYPTED_PREFIX = 'encrypted:';
 const CONNECTOR_SCRIPT_PATH_REGEX = /(?:^|[\\/])connectors[\\/]([^\\/]+)[\\/]dist[\\/]index\.js$/;
+
+function getElectronApp(): any | null {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const electron = require('electron') as any;
+    const app = electron?.app;
+    if (app && typeof app === 'object') return app;
+  } catch {
+    // Not running under Electron.
+  }
+  return null;
+}
 
 function arraysEqual(a: string[], b: string[]): boolean {
   if (a.length !== b.length) return false;
@@ -28,8 +41,10 @@ function arraysEqual(a: string[], b: string[]): boolean {
 }
 
 function getConnectorScriptPathForCurrentRuntime(connectorName: string): string {
-  const baseDir = app.isPackaged
-    ? path.join(process.resourcesPath, 'connectors')
+  const electronApp = getElectronApp();
+  const isPackaged = Boolean(electronApp?.isPackaged) && typeof (process as any).resourcesPath === 'string';
+  const baseDir = isPackaged
+    ? path.join((process as any).resourcesPath, 'connectors')
     : path.join(process.cwd(), 'connectors');
   return path.join(baseDir, connectorName, 'dist', 'index.js');
 }
@@ -87,7 +102,8 @@ function encryptSecret(value?: string): string | undefined {
   if (trimmed === MASKED_VALUE) return undefined;
 
   try {
-    if (safeStorage.isEncryptionAvailable()) {
+    const safeStorage = getSafeStorage();
+    if (safeStorage?.isEncryptionAvailable()) {
       const encrypted = safeStorage.encryptString(trimmed);
       return ENCRYPTED_PREFIX + encrypted.toString('base64');
     }
@@ -107,7 +123,8 @@ function decryptSecret(value?: string): string | undefined {
 
   if (value.startsWith(ENCRYPTED_PREFIX)) {
     try {
-      if (safeStorage.isEncryptionAvailable()) {
+      const safeStorage = getSafeStorage();
+      if (safeStorage?.isEncryptionAvailable()) {
         const encrypted = Buffer.from(value.slice(ENCRYPTED_PREFIX.length), 'base64');
         const decrypted = safeStorage.decryptString(encrypted);
         return decrypted;
@@ -199,7 +216,7 @@ export class MCPSettingsManager {
   static initialize(): void {
     if (this.initialized) return;
 
-    const userDataPath = app.getPath('userData');
+    const userDataPath = getUserDataDir();
     this.legacySettingsPath = path.join(userDataPath, LEGACY_SETTINGS_FILE);
     this.initialized = true;
 

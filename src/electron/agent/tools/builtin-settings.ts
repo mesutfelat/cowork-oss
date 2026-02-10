@@ -6,8 +6,8 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { app } from 'electron';
 import { SecureSettingsRepository } from '../../database/SecureSettingsRepository';
+import { getUserDataDir } from '../../utils/user-data-dir';
 
 /**
  * Tool category configuration
@@ -131,6 +131,7 @@ const TOOL_CATEGORIES: Record<string, keyof BuiltinToolsSettings['categories']> 
   gmail_action: 'webfetch',
   email_imap_unread: 'webfetch',
   calendar_action: 'webfetch',
+  apple_calendar_action: 'webfetch',
   dropbox_action: 'webfetch',
   sharepoint_action: 'webfetch',
   voice_call: 'webfetch',
@@ -203,7 +204,7 @@ export class BuiltinToolsSettingsManager {
    */
   private static getLegacySettingsPath(): string {
     if (!this.legacySettingsPath) {
-      const userDataPath = app.getPath('userData');
+      const userDataPath = getUserDataDir();
       this.legacySettingsPath = path.join(userDataPath, LEGACY_SETTINGS_FILE);
     }
     return this.legacySettingsPath;

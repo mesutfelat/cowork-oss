@@ -5,11 +5,11 @@
  * Settings are stored encrypted in the database using SecureSettingsRepository.
  */
 
-import { app } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
 import { AppearanceSettings, ThemeMode, VisualTheme, AccentColor } from '../../shared/types';
 import { SecureSettingsRepository } from '../database/SecureSettingsRepository';
+import { getUserDataDir } from '../utils/user-data-dir';
 
 const LEGACY_SETTINGS_FILE = 'appearance-settings.json';
 
@@ -31,7 +31,7 @@ export class AppearanceManager {
    * Initialize the AppearanceManager
    */
   static initialize(): void {
-    const userDataPath = app.getPath('userData');
+    const userDataPath = getUserDataDir();
     this.legacySettingsPath = path.join(userDataPath, LEGACY_SETTINGS_FILE);
     console.log('[AppearanceManager] Initialized');
 

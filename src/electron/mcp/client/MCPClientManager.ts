@@ -7,7 +7,6 @@
  */
 
 import { EventEmitter } from 'events';
-import { BrowserWindow } from 'electron';
 import {
   MCPServerConfig,
   MCPServerStatus,
@@ -19,6 +18,18 @@ import {
 import { MCPSettingsManager } from '../settings';
 import { MCPServerConnection } from './MCPServerConnection';
 import { IPC_CHANNELS } from '../../../shared/types';
+
+function getAllElectronWindows(): any[] {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const electron = require('electron') as any;
+    const BrowserWindow = electron?.BrowserWindow;
+    if (BrowserWindow?.getAllWindows) return BrowserWindow.getAllWindows();
+  } catch {
+    // Not running under Electron.
+  }
+  return [];
+}
 
 export class MCPClientManager extends EventEmitter {
   private static instance: MCPClientManager | null = null;
@@ -395,7 +406,7 @@ export class MCPClientManager extends EventEmitter {
    */
   private broadcastStatusChange(): void {
     const status = this.getStatus();
-    const windows = BrowserWindow.getAllWindows();
+    const windows = getAllElectronWindows();
 
     for (const window of windows) {
       if (!window.isDestroyed()) {

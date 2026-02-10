@@ -10,7 +10,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { app } from 'electron';
+import { getUserDataDir } from '../utils/user-data-dir';
 import {
   CustomSkill,
   SkillRegistryEntry,
@@ -73,7 +73,7 @@ export class SkillRegistry {
     this.registryUrl = config?.registryUrl || DEFAULT_REGISTRY_URL;
     this.managedSkillsDir =
       config?.managedSkillsDir ||
-      path.join(app.getPath('userData'), SKILLS_FOLDER_NAME);
+      path.join(getUserDataDir(), SKILLS_FOLDER_NAME);
 
     // Ensure managed skills directory exists
     this.ensureSkillsDirectory();

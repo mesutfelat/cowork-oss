@@ -1,5 +1,4 @@
 import { EventEmitter } from 'events';
-import { BrowserWindow } from 'electron';
 import * as fs from 'fs';
 import * as crypto from 'crypto';
 import { DatabaseManager } from '../database/schema';
@@ -36,6 +35,20 @@ interface CachedExecutor {
   executor: TaskExecutor;
   lastAccessed: number;
   status: 'active' | 'completed';
+}
+
+function getAllElectronWindows(): any[] {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const electron = require('electron') as any;
+    const BrowserWindow = electron?.BrowserWindow;
+    if (BrowserWindow?.getAllWindows) {
+      return BrowserWindow.getAllWindows();
+    }
+  } catch {
+    // Not running under Electron (or Electron APIs unavailable).
+  }
+  return [];
 }
 
 /**
@@ -513,7 +526,7 @@ export class AgentDaemon extends EventEmitter {
   }
 
   private emitActivityEvent(activity: Activity): void {
-    const windows = BrowserWindow.getAllWindows();
+    const windows = getAllElectronWindows();
     windows.forEach(window => {
       try {
         if (!window.isDestroyed() && window.webContents && !window.webContents.isDestroyed()) {
@@ -526,7 +539,7 @@ export class AgentDaemon extends EventEmitter {
   }
 
   private emitMentionEvent(mention: AgentMention): void {
-    const windows = BrowserWindow.getAllWindows();
+    const windows = getAllElectronWindows();
     windows.forEach(window => {
       try {
         if (!window.isDestroyed() && window.webContents && !window.webContents.isDestroyed()) {
@@ -1222,7 +1235,7 @@ export class AgentDaemon extends EventEmitter {
     }
 
     // Emit to renderer process via IPC
-    const windows = BrowserWindow.getAllWindows();
+    const windows = getAllElectronWindows();
     windows.forEach(window => {
       // Check if window is still valid before sending
       try {
@@ -2000,7 +2013,7 @@ export class AgentDaemon extends EventEmitter {
    * Emit queue update event to all windows
    */
   private emitQueueUpdate(status: QueueStatus): void {
-    const windows = BrowserWindow.getAllWindows();
+    const windows = getAllElectronWindows();
     windows.forEach(window => {
       try {
         if (!window.isDestroyed() && window.webContents && !window.webContents.isDestroyed()) {

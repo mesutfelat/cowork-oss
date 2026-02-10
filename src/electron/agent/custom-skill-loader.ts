@@ -11,7 +11,6 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { app } from 'electron';
 import {
   CustomSkill,
   SkillSource,
@@ -22,6 +21,7 @@ import {
 import { SkillEligibilityChecker, getSkillEligibilityChecker } from './skill-eligibility';
 import { getSkillRegistry } from './skill-registry';
 import { InputSanitizer } from './security';
+import { getUserDataDir } from '../utils/user-data-dir';
 
 const SKILLS_FOLDER_NAME = 'skills';
 const SKILL_FILE_EXTENSION = '.json';
@@ -62,7 +62,7 @@ export class CustomSkillLoader {
     // Managed skills directory (from registry)
     this.managedSkillsDir =
       config?.managedSkillsDir ||
-      path.join(app.getPath('userData'), SKILLS_FOLDER_NAME);
+      path.join(getUserDataDir(), SKILLS_FOLDER_NAME);
 
     // Workspace skills directory (set later when workspace is loaded)
     this.workspaceSkillsDir = config?.workspaceSkillsDir || null;

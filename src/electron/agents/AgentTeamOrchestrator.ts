@@ -1,4 +1,3 @@
-import { BrowserWindow } from 'electron';
 import type { AgentConfig, Task, AgentTeam, AgentTeamItem, AgentTeamRun, AgentTeamRunStatus, AgentTeamItemStatus, UpdateAgentTeamItemRequest } from '../../shared/types';
 import { IPC_CHANNELS } from '../../shared/types';
 import { resolveModelPreferenceToModelKey, resolvePersonalityPreference } from '../../shared/agent-preferences';
@@ -34,8 +33,21 @@ export type AgentTeamOrchestratorDeps = {
   cancelTask: (taskId: string) => Promise<void>;
 };
 
+function getAllElectronWindows(): any[] {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const electron = require('electron') as any;
+    if (!electron || typeof electron !== 'object') return [];
+    const BrowserWindow = electron?.BrowserWindow;
+    if (BrowserWindow?.getAllWindows) return BrowserWindow.getAllWindows();
+  } catch {
+    // ignore
+  }
+  return [];
+}
+
 function emitTeamEvent(event: any): void {
-  const windows = BrowserWindow.getAllWindows();
+  const windows = getAllElectronWindows();
   windows.forEach((window) => {
     try {
       if (!window.isDestroyed() && window.webContents && !window.webContents.isDestroyed()) {

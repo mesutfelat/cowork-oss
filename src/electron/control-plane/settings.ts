@@ -5,7 +5,6 @@
  * Settings are stored encrypted in the database using SecureSettingsRepository.
  */
 
-import { app, safeStorage } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
 import crypto from 'crypto';
@@ -15,6 +14,8 @@ import type {
   RemoteGatewayConfig,
 } from '../../shared/types';
 import { SecureSettingsRepository } from '../database/SecureSettingsRepository';
+import { getUserDataDir } from '../utils/user-data-dir';
+import { getSafeStorage } from '../utils/safe-storage';
 
 const LEGACY_SETTINGS_FILE = 'control-plane-settings.json';
 const MASKED_VALUE = '***configured***';
@@ -96,7 +97,8 @@ function encryptSecret(value?: string): string | undefined {
   if (trimmed === MASKED_VALUE) return undefined;
 
   try {
-    if (safeStorage.isEncryptionAvailable()) {
+    const safeStorage = getSafeStorage();
+    if (safeStorage?.isEncryptionAvailable()) {
       const encrypted = safeStorage.encryptString(trimmed);
       return ENCRYPTED_PREFIX + encrypted.toString('base64');
     }
@@ -115,7 +117,8 @@ function decryptSecret(value?: string): string | undefined {
 
   if (value.startsWith(ENCRYPTED_PREFIX)) {
     try {
-      if (safeStorage.isEncryptionAvailable()) {
+      const safeStorage = getSafeStorage();
+      if (safeStorage?.isEncryptionAvailable()) {
         const encrypted = Buffer.from(value.slice(ENCRYPTED_PREFIX.length), 'base64');
         return safeStorage.decryptString(encrypted);
       }
@@ -147,7 +150,7 @@ export class ControlPlaneSettingsManager {
   static initialize(): void {
     if (this.initialized) return;
 
-    const userDataPath = app.getPath('userData');
+    const userDataPath = getUserDataDir();
     this.legacySettingsPath = path.join(userDataPath, LEGACY_SETTINGS_FILE);
     this.initialized = true;
 

@@ -1,4 +1,3 @@
-import { app } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
 import {
@@ -15,6 +14,7 @@ import { BraveProvider } from './brave-provider';
 import { SerpApiProvider } from './serpapi-provider';
 import { GoogleProvider } from './google-provider';
 import { SecureSettingsRepository } from '../../database/SecureSettingsRepository';
+import { getUserDataDir } from '../../utils/user-data-dir';
 
 const LEGACY_SETTINGS_FILE = 'search-settings.json';
 
@@ -97,7 +97,7 @@ export class SearchProviderFactory {
    * Initialize the factory
    */
   static initialize(): void {
-    const userDataPath = app.getPath('userData');
+    const userDataPath = getUserDataDir();
     this.legacySettingsPath = path.join(userDataPath, LEGACY_SETTINGS_FILE);
 
     // Migrate from legacy JSON file to encrypted database

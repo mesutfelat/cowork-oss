@@ -12,7 +12,7 @@
  * - A2UI (Agent-to-UI) action handling
  */
 
-import { app, BrowserWindow, screen, shell } from 'electron';
+import type { BrowserWindow } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import { existsSync, readdirSync } from 'fs';
@@ -26,6 +26,33 @@ import type {
   CanvasSnapshot,
 } from '../../shared/types';
 import { loadCanvasStore, saveCanvasStore } from './canvas-store';
+import { getUserDataDir } from '../utils/user-data-dir';
+
+function getElectronRuntime(): { BrowserWindow: any; screen: any; shell: any } | null {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const electron = require('electron') as any;
+    // In plain Node.js, `require('electron')` resolves to the Electron binary path (string),
+    // not the runtime API object. Only treat it as available when it looks like the API.
+    if (!electron || typeof electron !== 'object') return null;
+    if (!electron.BrowserWindow || !electron.screen || !electron.shell) return null;
+    return {
+      BrowserWindow: electron.BrowserWindow,
+      screen: electron.screen,
+      shell: electron.shell,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function requireElectronRuntime(): { BrowserWindow: any; screen: any; shell: any } {
+  const rt = getElectronRuntime();
+  if (!rt) {
+    throw new Error('Live Canvas requires the Electron desktop runtime and is not available in the Node-only daemon/headless mode.');
+  }
+  return rt;
+}
 
 // Default HTML scaffold for new canvas sessions
 const DEFAULT_HTML = `<!DOCTYPE html>
@@ -195,7 +222,7 @@ export class CanvasManager {
   ): Promise<CanvasSession> {
     const sessionId = randomUUID();
     const sessionDir = path.join(
-      app.getPath('userData'),
+      getUserDataDir(),
       'canvas',
       sessionId
     );
@@ -392,6 +419,7 @@ export class CanvasManager {
    * showing a separate window to the user
    */
   private async ensureWindowForSnapshots(sessionId: string): Promise<BrowserWindow> {
+    const { BrowserWindow: BrowserWindowCtor, screen: screenApi } = requireElectronRuntime();
     const session = this.sessions.get(sessionId);
     if (!session) {
       throw new Error('Canvas session not found');
@@ -412,7 +440,7 @@ export class CanvasManager {
         initialHeight = mainBounds.height;
       } else {
         // Fallback: position on right side of primary display
-        const primaryDisplay = screen.getPrimaryDisplay();
+        const primaryDisplay = screenApi.getPrimaryDisplay();
         const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
         initialX = screenWidth - 920; // 900 width + 20 margin
         initialY = 50;
@@ -421,7 +449,7 @@ export class CanvasManager {
 
       // Create new HIDDEN window for snapshots
       // NOT a child window - will be positioned to the side when shown
-      window = new BrowserWindow({
+      window = new BrowserWindowCtor({
         x: initialX,
         y: initialY,
         width: 900,
@@ -436,7 +464,7 @@ export class CanvasManager {
           sandbox: false,
         },
         backgroundColor: '#1a1a2e',
-      });
+      }) as BrowserWindow;
 
       this.windows.set(sessionId, window);
       this.windowToSession.set(window.id, sessionId);
@@ -486,6 +514,7 @@ export class CanvasManager {
    * Show the canvas window (opens it visibly to the user)
    */
   async showCanvas(sessionId: string): Promise<void> {
+    const { screen: screenApi } = requireElectronRuntime();
     // Ensure window exists (may be hidden)
     const window = await this.ensureWindowForSnapshots(sessionId);
 
@@ -506,7 +535,7 @@ export class CanvasManager {
     } else {
       console.log(`[CanvasManager] WARNING: mainWindow not available, using fallback position`);
       // Fallback: position on right side of primary display
-      const primaryDisplay = screen.getPrimaryDisplay();
+      const primaryDisplay = screenApi.getPrimaryDisplay();
       const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
       bounds = {
         x: screenWidth - 920, // 900 width + 20 margin
@@ -675,13 +704,14 @@ export class CanvasManager {
    * Open canvas content in the default system browser
    */
   async openInBrowser(sessionId: string): Promise<{ success: boolean; path: string }> {
+    const { shell: shellApi } = requireElectronRuntime();
     const session = this.sessions.get(sessionId);
     if (!session) {
       throw new Error(`Canvas session not found: ${sessionId}`);
     }
 
     if (this.getSessionMode(session) === 'browser' && session.url) {
-      await shell.openExternal(session.url);
+      await shellApi.openExternal(session.url);
       console.log(`[CanvasManager] Opened session ${sessionId} in browser: ${session.url}`);
       return { success: true, path: session.url };
     }
@@ -692,7 +722,7 @@ export class CanvasManager {
     }
 
     // Open in default browser
-    await shell.openPath(htmlPath);
+    await shellApi.openPath(htmlPath);
 
     console.log(`[CanvasManager] Opened session ${sessionId} in browser: ${htmlPath}`);
     return { success: true, path: htmlPath };

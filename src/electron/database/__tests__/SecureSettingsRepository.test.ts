@@ -7,17 +7,22 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type Database from 'better-sqlite3';
 
-// Mock electron's safeStorage and app
+const ORIGINAL_COWORK_USER_DATA_DIR = process.env.COWORK_USER_DATA_DIR;
+
+// Mock safeStorage (via our helper) and electron app (for any incidental app path usage)
 const mockEncryptString = vi.fn();
 const mockDecryptString = vi.fn();
 const mockIsEncryptionAvailable = vi.fn();
 
-vi.mock('electron', () => ({
-  safeStorage: {
+vi.mock('../../utils/safe-storage', () => ({
+  getSafeStorage: () => ({
     encryptString: (data: string) => mockEncryptString(data),
     decryptString: (buffer: Buffer) => mockDecryptString(buffer),
     isEncryptionAvailable: () => mockIsEncryptionAvailable(),
-  },
+  }),
+}));
+
+vi.mock('electron', () => ({
   app: {
     getPath: vi.fn(() => '/mock/user/data'),
   },
@@ -47,8 +52,11 @@ vi.mock('os', () => ({
   homedir: vi.fn(() => '/Users/testuser'),
 }));
 
-// Import after mocks are set up
-import { SecureSettingsRepository, SettingsCategory } from '../SecureSettingsRepository';
+import type { SettingsCategory } from '../SecureSettingsRepository';
+
+// This test suite relies on module mocking. Since Vitest may reuse module caches across test files,
+// we dynamically import the module under test after applying mocks to ensure a clean copy.
+let SecureSettingsRepositoryClass: typeof import('../SecureSettingsRepository').SecureSettingsRepository;
 
 describe('SecureSettingsRepository', () => {
   let mockDb: Database.Database;
@@ -57,9 +65,12 @@ describe('SecureSettingsRepository', () => {
     get: ReturnType<typeof vi.fn>;
     all: ReturnType<typeof vi.fn>;
   };
-  let repository: SecureSettingsRepository;
+  let repository: any;
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    // Ensure getUserDataDir() resolves to our mock path in non-Electron unit tests.
+    process.env.COWORK_USER_DATA_DIR = '/mock/user/data';
+
     // Reset all mocks
     vi.clearAllMocks();
 
@@ -94,38 +105,49 @@ describe('SecureSettingsRepository', () => {
     mockFsExistsSync.mockReturnValue(false);
     mockFsWriteFileSync.mockImplementation(() => {});
 
+    // Force a fresh import so the safe-storage mock is always applied.
+    vi.resetModules();
+    const mod = await import('../SecureSettingsRepository');
+    SecureSettingsRepositoryClass = mod.SecureSettingsRepository;
+
     // Reset singleton
-    (SecureSettingsRepository as any).instance = null;
+    (SecureSettingsRepositoryClass as any).instance = null;
   });
 
   afterEach(() => {
+    if (ORIGINAL_COWORK_USER_DATA_DIR === undefined) {
+      delete process.env.COWORK_USER_DATA_DIR;
+    } else {
+      process.env.COWORK_USER_DATA_DIR = ORIGINAL_COWORK_USER_DATA_DIR;
+    }
+
     // Clean up singleton
-    (SecureSettingsRepository as any).instance = null;
+    (SecureSettingsRepositoryClass as any).instance = null;
   });
 
   describe('constructor and singleton', () => {
     it('should create instance and set as singleton', () => {
-      repository = new SecureSettingsRepository(mockDb);
+      repository = new SecureSettingsRepositoryClass(mockDb);
 
-      expect(SecureSettingsRepository.isInitialized()).toBe(true);
-      expect(SecureSettingsRepository.getInstance()).toBe(repository);
+      expect(SecureSettingsRepositoryClass.isInitialized()).toBe(true);
+      expect(SecureSettingsRepositoryClass.getInstance()).toBe(repository);
     });
 
     it('should throw when getInstance called before initialization', () => {
-      expect(() => SecureSettingsRepository.getInstance()).toThrow(
+      expect(() => SecureSettingsRepositoryClass.getInstance()).toThrow(
         'SecureSettingsRepository has not been initialized'
       );
     });
 
     it('should return false from isInitialized before construction', () => {
-      expect(SecureSettingsRepository.isInitialized()).toBe(false);
+      expect(SecureSettingsRepositoryClass.isInitialized()).toBe(false);
     });
 
     it('should warn when OS encryption is not available', () => {
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       mockIsEncryptionAvailable.mockReturnValue(false);
 
-      repository = new SecureSettingsRepository(mockDb);
+      repository = new SecureSettingsRepositoryClass(mockDb);
 
       expect(consoleSpy).toHaveBeenCalledWith(
         expect.stringContaining('OS encryption not available')
@@ -136,7 +158,7 @@ describe('SecureSettingsRepository', () => {
 
   describe('save()', () => {
     beforeEach(() => {
-      repository = new SecureSettingsRepository(mockDb);
+      repository = new SecureSettingsRepositoryClass(mockDb);
     });
 
     it('should insert new settings when none exist', () => {
@@ -188,8 +210,8 @@ describe('SecureSettingsRepository', () => {
 
     it('should use app-level encryption when OS keychain unavailable', () => {
       mockIsEncryptionAvailable.mockReturnValue(false);
-      (SecureSettingsRepository as any).instance = null;
-      repository = new SecureSettingsRepository(mockDb);
+      (SecureSettingsRepositoryClass as any).instance = null;
+      repository = new SecureSettingsRepositoryClass(mockDb);
       mockStmt.get.mockReturnValue(undefined);
 
       repository.save('search', { provider: 'brave' });
@@ -223,7 +245,7 @@ describe('SecureSettingsRepository', () => {
 
   describe('load()', () => {
     beforeEach(() => {
-      repository = new SecureSettingsRepository(mockDb);
+      repository = new SecureSettingsRepositoryClass(mockDb);
     });
 
     it('should return undefined when no settings exist', () => {
@@ -309,7 +331,7 @@ describe('SecureSettingsRepository', () => {
 
   describe('delete()', () => {
     beforeEach(() => {
-      repository = new SecureSettingsRepository(mockDb);
+      repository = new SecureSettingsRepositoryClass(mockDb);
     });
 
     it('should delete settings and return true when found', () => {
@@ -333,7 +355,7 @@ describe('SecureSettingsRepository', () => {
 
   describe('exists()', () => {
     beforeEach(() => {
-      repository = new SecureSettingsRepository(mockDb);
+      repository = new SecureSettingsRepositoryClass(mockDb);
     });
 
     it('should return true when settings exist', () => {
@@ -356,7 +378,7 @@ describe('SecureSettingsRepository', () => {
 
   describe('listCategories()', () => {
     beforeEach(() => {
-      repository = new SecureSettingsRepository(mockDb);
+      repository = new SecureSettingsRepositoryClass(mockDb);
     });
 
     it('should return all stored categories', () => {
@@ -385,7 +407,7 @@ describe('SecureSettingsRepository', () => {
 
   describe('getMetadata()', () => {
     beforeEach(() => {
-      repository = new SecureSettingsRepository(mockDb);
+      repository = new SecureSettingsRepositoryClass(mockDb);
     });
 
     it('should return timestamps when settings exist', () => {
@@ -414,7 +436,7 @@ describe('SecureSettingsRepository', () => {
   describe('encryption modes', () => {
     it('should use OS encryption prefix when available', () => {
       mockIsEncryptionAvailable.mockReturnValue(true);
-      repository = new SecureSettingsRepository(mockDb);
+      repository = new SecureSettingsRepositoryClass(mockDb);
       mockStmt.get.mockReturnValue(undefined);
 
       repository.save('voice', { test: 'data' });
@@ -425,7 +447,7 @@ describe('SecureSettingsRepository', () => {
 
     it('should use app encryption prefix when OS unavailable', () => {
       mockIsEncryptionAvailable.mockReturnValue(false);
-      repository = new SecureSettingsRepository(mockDb);
+      repository = new SecureSettingsRepositoryClass(mockDb);
       mockStmt.get.mockReturnValue(undefined);
 
       repository.save('voice', { test: 'data' });
@@ -436,8 +458,8 @@ describe('SecureSettingsRepository', () => {
 
     it('should handle app-encrypted data on load (round-trip)', () => {
       mockIsEncryptionAvailable.mockReturnValue(false);
-      (SecureSettingsRepository as any).instance = null;
-      repository = new SecureSettingsRepository(mockDb);
+      (SecureSettingsRepositoryClass as any).instance = null;
+      repository = new SecureSettingsRepositoryClass(mockDb);
 
       const testData = { provider: 'test' };
 
@@ -471,7 +493,7 @@ describe('SecureSettingsRepository', () => {
 
     it('should throw when OS encryption was used but is no longer available', () => {
       mockIsEncryptionAvailable.mockReturnValue(false);
-      repository = new SecureSettingsRepository(mockDb);
+      repository = new SecureSettingsRepositoryClass(mockDb);
 
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
@@ -499,7 +521,7 @@ describe('SecureSettingsRepository', () => {
 
   describe('data integrity', () => {
     beforeEach(() => {
-      repository = new SecureSettingsRepository(mockDb);
+      repository = new SecureSettingsRepositoryClass(mockDb);
     });
 
     it('should compute consistent checksum for same data', () => {
@@ -552,7 +574,7 @@ describe('SecureSettingsRepository', () => {
     ];
 
     beforeEach(() => {
-      repository = new SecureSettingsRepository(mockDb);
+      repository = new SecureSettingsRepositoryClass(mockDb);
     });
 
     it.each(categories)('should handle category: %s', (category) => {
@@ -576,7 +598,7 @@ describe('SecureSettingsRepository', () => {
     it('should generate and persist machine ID on first run', () => {
       mockFsExistsSync.mockReturnValue(false);
 
-      repository = new SecureSettingsRepository(mockDb);
+      repository = new SecureSettingsRepositoryClass(mockDb);
 
       expect(mockFsWriteFileSync).toHaveBeenCalledWith(
         '/mock/user/data/.cowork-machine-id',
@@ -589,7 +611,7 @@ describe('SecureSettingsRepository', () => {
       mockFsExistsSync.mockReturnValue(true);
       mockFsReadFileSync.mockReturnValue('existing-machine-id-uuid');
 
-      repository = new SecureSettingsRepository(mockDb);
+      repository = new SecureSettingsRepositoryClass(mockDb);
 
       expect(mockFsWriteFileSync).not.toHaveBeenCalled();
       expect(mockFsReadFileSync).toHaveBeenCalledWith(
@@ -602,9 +624,9 @@ describe('SecureSettingsRepository', () => {
       mockIsEncryptionAvailable.mockReturnValue(false);
       mockFsExistsSync.mockReturnValue(true);
       mockFsReadFileSync.mockReturnValue('stable-machine-id');
-      (SecureSettingsRepository as any).instance = null;
+      (SecureSettingsRepositoryClass as any).instance = null;
 
-      repository = new SecureSettingsRepository(mockDb);
+      repository = new SecureSettingsRepositoryClass(mockDb);
       mockStmt.get.mockReturnValue(undefined);
 
       repository.save('voice', { test: 'data' });
@@ -617,7 +639,7 @@ describe('SecureSettingsRepository', () => {
 
   describe('loadWithStatus()', () => {
     beforeEach(() => {
-      repository = new SecureSettingsRepository(mockDb);
+      repository = new SecureSettingsRepositoryClass(mockDb);
     });
 
     it('should return not_found status when no settings exist', () => {
@@ -675,8 +697,8 @@ describe('SecureSettingsRepository', () => {
 
     it('should return os_encryption_unavailable status when OS encryption lost', () => {
       mockIsEncryptionAvailable.mockReturnValue(false);
-      (SecureSettingsRepository as any).instance = null;
-      repository = new SecureSettingsRepository(mockDb);
+      (SecureSettingsRepositoryClass as any).instance = null;
+      repository = new SecureSettingsRepositoryClass(mockDb);
 
       mockStmt.get.mockReturnValue({
         id: 'test-id',
@@ -719,7 +741,7 @@ describe('SecureSettingsRepository', () => {
 
   describe('checkHealth()', () => {
     beforeEach(() => {
-      repository = new SecureSettingsRepository(mockDb);
+      repository = new SecureSettingsRepositoryClass(mockDb);
     });
 
     it('should return status without exposing data', () => {
@@ -733,7 +755,7 @@ describe('SecureSettingsRepository', () => {
 
   describe('deleteCorrupted()', () => {
     beforeEach(() => {
-      repository = new SecureSettingsRepository(mockDb);
+      repository = new SecureSettingsRepositoryClass(mockDb);
     });
 
     it('should delete settings when corrupted', () => {

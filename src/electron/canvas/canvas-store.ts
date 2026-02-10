@@ -5,8 +5,8 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { app } from 'electron';
 import type { CanvasSession } from '../../shared/types';
+import { getUserDataDir } from '../utils/user-data-dir';
 
 export interface CanvasStoreFile {
   version: number;
@@ -19,7 +19,7 @@ let _canvasStorePath: string | null = null;
 
 export function getCanvasDir(): string {
   if (!_canvasDir) {
-    _canvasDir = path.join(app.getPath('userData'), 'canvas');
+    _canvasDir = path.join(getUserDataDir(), 'canvas');
   }
   return _canvasDir;
 }

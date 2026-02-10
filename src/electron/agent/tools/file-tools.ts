@@ -1,6 +1,5 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { shell } from 'electron';
 import { Workspace } from '../../../shared/types';
 import { AgentDaemon } from '../daemon';
 import { GuardrailManager } from '../../guardrails/guardrail-manager';
@@ -20,6 +19,18 @@ const MAX_FILE_SIZE = 100 * 1024; // 100KB max for file reads
 const MAX_DIR_ENTRIES = 100; // Max files to list per directory
 const MAX_SEARCH_RESULTS = 50; // Max search results
 const MAX_NAME_PAD = 48; // Cap for aligned directory listings
+
+function getElectronShell(): any | null {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const electron = require('electron') as any;
+    const shell = electron?.shell;
+    if (shell) return shell;
+  } catch {
+    // Not running under Electron.
+  }
+  return null;
+}
 
 /**
  * FileTools implements safe file operations within the workspace
@@ -772,7 +783,12 @@ export class FileTools {
     try {
       // For .app bundles on macOS, use shell.trashItem directly (safer and expected behavior)
       if (fullPath.endsWith('.app')) {
-        await shell.trashItem(fullPath);
+        const shell = getElectronShell();
+        if (shell?.trashItem) {
+          await shell.trashItem(fullPath);
+        } else {
+          await fs.rm(fullPath, { recursive: true, force: true });
+        }
 
         this.daemon.logEvent(this.taskId, 'file_deleted', {
           path: relativePath,
@@ -801,6 +817,10 @@ export class FileTools {
       // This handles EPERM, EACCES, ENOTEMPTY and other filesystem errors
       if (error.code === 'EPERM' || error.code === 'EACCES' || error.code === 'ENOTEMPTY' || error.code === 'EBUSY') {
         try {
+          const shell = getElectronShell();
+          if (!shell?.trashItem) {
+            throw new Error('trashItem not available (Electron shell unavailable)');
+          }
           await shell.trashItem(fullPath);
 
           this.daemon.logEvent(this.taskId, 'file_deleted', {
