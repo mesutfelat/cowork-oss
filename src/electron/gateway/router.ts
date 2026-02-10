@@ -52,6 +52,7 @@ import {
 import { DEFAULT_QUIRKS } from '../../shared/types';
 import { formatChatTranscriptForPrompt } from './chat-transcript';
 import { evaluateWorkspaceRouterRules } from './router-rules';
+import { extractJsonValues } from '../utils/json-utils';
 
 export interface RouterConfig {
   /** Default workspace ID to use for new sessions */
@@ -1016,6 +1017,186 @@ export class MessageRouter {
           }
         }
       }
+    }
+  }
+
+  private extractVoiceTranscriptFromMessageText(text: string): string | null {
+    const raw = String(text || '');
+    if (!raw) return null;
+    const match = raw.match(/Voice Message Received[\s\S]*?\n---\n([\s\S]*?)\n---/i);
+    if (match && match[1] && String(match[1]).trim()) {
+      return String(match[1]).trim();
+    }
+    return null;
+  }
+
+  private formatLocalTimestamp(now: Date): string {
+    const yyyy = String(now.getFullYear());
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    const hh = String(now.getHours()).padStart(2, '0');
+    const min = String(now.getMinutes()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+  }
+
+  private updatePrioritiesMarkdown(markdown: string, priorities: string[], timestamp: string): string {
+    const lines = String(markdown || '').split('\n');
+    const sanitize = (s: string) =>
+      String(s || '')
+        .replace(/[\r\n\t]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    const clean = (s: string) => {
+      const trimmed = sanitize(s).replace(/^[-*]\s+/, '').trim();
+      return trimmed.length > 220 ? trimmed.slice(0, 217) + '...' : trimmed;
+    };
+
+    const incoming = priorities
+      .map((p) => clean(p))
+      .filter((p) => p.length > 0)
+      .slice(0, 8);
+
+    if (incoming.length === 0) return markdown;
+
+    const idxCurrent = lines.findIndex((l) => /^##\s+Current\s*$/.test(l));
+    if (idxCurrent >= 0) {
+      let idxEnd = lines.length;
+      for (let i = idxCurrent + 1; i < lines.length; i++) {
+        if (/^##\s+/.test(lines[i])) {
+          idxEnd = i;
+          break;
+        }
+      }
+
+      const existingItems: string[] = [];
+      for (let i = idxCurrent + 1; i < idxEnd; i++) {
+        const m = lines[i].match(/^\s*\d+\.\s*(.*)$/);
+        if (m) {
+          const v = clean(m[1] || '');
+          if (v) existingItems.push(v);
+        }
+      }
+
+      const seen = new Set<string>();
+      const merged: string[] = [];
+      for (const p of [...incoming, ...existingItems]) {
+        const key = p.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        merged.push(p);
+        if (merged.length >= 5) break;
+      }
+
+      const rendered: string[] = [];
+      const count = Math.max(3, merged.length);
+      for (let i = 0; i < count; i++) {
+        rendered.push(`${i + 1}. ${merged[i] || ''}`.trimEnd());
+      }
+
+      lines.splice(idxCurrent + 1, idxEnd - (idxCurrent + 1), ...rendered, '');
+    }
+
+    const idxHistory = lines.findIndex((l) => /^##\s+History\s*$/.test(l));
+    if (idxHistory >= 0) {
+      const entryLines: string[] = [];
+      entryLines.push(`### ${timestamp}`);
+      entryLines.push(`- Priorities: ${incoming.join(' | ')}`);
+      entryLines.push('');
+      lines.splice(idxHistory + 1, 0, ...entryLines);
+    }
+
+    return lines.join('\n').replace(/\n{4,}/g, '\n\n\n').trimEnd() + '\n';
+  }
+
+  private async maybeUpdatePrioritiesFromVoiceMessage(params: {
+    message: IncomingMessage;
+    workspace: Workspace;
+    contextType: 'dm' | 'group';
+  }): Promise<void> {
+    if (params.contextType !== 'dm') return;
+
+    const hasAudio = Array.isArray(params.message.attachments)
+      && params.message.attachments.some((a) => a?.type === 'audio');
+    if (!hasAudio) return;
+
+    const transcript = this.extractVoiceTranscriptFromMessageText(params.message.text);
+    if (!transcript) return;
+
+    const prioritiesPath = path.join(params.workspace.path, '.cowork', 'PRIORITIES.md');
+    if (!fs.existsSync(prioritiesPath)) return;
+
+    // Extract structured priorities from the transcript via the configured LLM (best-effort).
+    let extractedPriorities: string[] = [];
+    try {
+      const provider = LLMProviderFactory.createProvider();
+      const settings = LLMProviderFactory.getSettings();
+      const providerType = LLMProviderFactory.getSelectedProvider();
+      const azureDeployment = settings.azure?.deployment || settings.azure?.deployments?.[0];
+      const modelId = LLMProviderFactory.getModelId(
+        settings.modelKey,
+        providerType,
+        settings.ollama?.model,
+        settings.gemini?.model,
+        settings.openrouter?.model,
+        settings.openai?.model,
+        azureDeployment,
+        settings.groq?.model,
+        settings.xai?.model,
+        settings.kimi?.model,
+        settings.customProviders,
+        settings.bedrock?.model
+      );
+
+      const system = [
+        'You extract structured priorities from a short voice transcript.',
+        'Return ONLY valid JSON, no markdown, no commentary.',
+        'Schema:',
+        '{ "priorities": string[], "decisions": string[], "action_items": string[], "context_shifts": string[] }',
+        'Rules:',
+        '- priorities must be ordered (most important first)',
+        '- keep each string <= 140 characters',
+        '- if unsure, use empty arrays',
+      ].join('\n');
+
+      const resp = await provider.createMessage({
+        model: modelId,
+        maxTokens: 600,
+        system,
+        messages: [
+          {
+            role: 'user',
+            content: transcript.slice(0, 6000),
+          },
+        ],
+      });
+
+      const text = (resp.content || [])
+        .filter((c: any) => c.type === 'text' && c.text)
+        .map((c: any) => c.text)
+        .join('\n');
+
+      const values = extractJsonValues(text, { maxResults: 1, allowRepair: true });
+      const obj = values[0] as any;
+      if (obj && typeof obj === 'object' && Array.isArray(obj.priorities)) {
+        extractedPriorities = obj.priorities.filter((p: any) => typeof p === 'string');
+      }
+    } catch (error) {
+      console.warn('[Router] Voice priority extraction failed:', error);
+      extractedPriorities = [];
+    }
+
+    if (extractedPriorities.length === 0) return;
+
+    try {
+      const current = fs.readFileSync(prioritiesPath, 'utf8');
+      const next = this.updatePrioritiesMarkdown(current, extractedPriorities, this.formatLocalTimestamp(new Date()));
+      if (next !== current) {
+        const tmp = prioritiesPath + '.tmp';
+        fs.writeFileSync(tmp, next, 'utf8');
+        fs.renameSync(tmp, prioritiesPath);
+      }
+    } catch (error) {
+      console.warn('[Router] Failed to update PRIORITIES.md:', error);
     }
   }
 
@@ -3854,6 +4035,14 @@ export class MessageRouter {
       return;
     }
 
+    // Prefer adapter-provided isGroup. If missing, fall back to a conservative heuristic.
+    // Note: For some adapters chatId/userId can differ even in DMs, which would over-restrict tools.
+    // Adapters should set isGroup explicitly when possible.
+    const dmOnlyChannels: ChannelType[] = ['email', 'imessage', 'bluebubbles'];
+    const inferredIsGroup =
+      message.isGroup ?? (dmOnlyChannels.includes(adapter.type) ? false : message.chatId !== message.userId);
+    const contextType = securityContext?.contextType ?? (inferredIsGroup ? 'group' : 'dm');
+
     // Persist inbound attachments into the workspace and append references to the message text.
     const savedAttachments = await this.persistInboundAttachments(adapter.type, message, workspace);
     if (savedAttachments.length > 0) {
@@ -3880,7 +4069,14 @@ export class MessageRouter {
             // Ignore artifact registration failures; attachment is still usable via filesystem tools.
           }
         }
-      }
+              }
+    }
+
+    // Voice note -> structured priorities (best-effort) before the agent sees the message.
+    try {
+      await this.maybeUpdatePrioritiesFromVoiceMessage({ message, workspace, contextType });
+    } catch {
+      // ignore
     }
 
     // Check if there's an existing task for this session (active or completed)
@@ -3950,13 +4146,6 @@ export class MessageRouter {
       ? message.text.substring(0, 50) + '...'
       : message.text;
 
-    // Prefer adapter-provided isGroup. If missing, fall back to a conservative heuristic.
-    // Note: For some adapters chatId/userId can differ even in DMs, which would over-restrict tools.
-    // Adapters should set isGroup explicitly when possible.
-    const dmOnlyChannels: ChannelType[] = ['email', 'imessage', 'bluebubbles'];
-    const inferredIsGroup = message.isGroup ?? (dmOnlyChannels.includes(adapter.type) ? false : message.chatId !== message.userId);
-
-    const contextType = securityContext?.contextType ?? (inferredIsGroup ? 'group' : 'dm');
     const gatewayContext = contextType === 'group' ? 'group' : 'private';
     const toolRestrictions = securityContext?.deniedTools?.filter((t) => typeof t === 'string' && t.trim().length > 0);
 
