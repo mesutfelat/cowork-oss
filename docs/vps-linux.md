@@ -21,6 +21,28 @@ If you want an overview (what the interface is, which runtime to pick, what work
 
 This repo includes a headless Docker image that runs CoWork OS as a daemon.
 
+### How You Use It (After It’s Running)
+
+1. Create an SSH tunnel from your laptop:
+
+```bash
+ssh -N -L 18789:127.0.0.1:18789 user@your-vps
+```
+
+2. Open the minimal Control Plane Web UI locally:
+
+```text
+http://127.0.0.1:18789/
+```
+
+3. Or use `coworkctl`:
+
+```bash
+export COWORK_CONTROL_PLANE_URL=ws://127.0.0.1:18789
+export COWORK_CONTROL_PLANE_TOKEN=... # from logs (first token generation) or via --print-control-plane-token
+node bin/coworkctl.js call config.get
+```
+
 1. Build and start:
 
 ```bash
@@ -118,6 +140,9 @@ sudo npx playwright install --with-deps chromium
 ```
 
 If you don’t need browser automation, you can ignore this and rely on `web_fetch` + API-based search providers.
+
+If you’re running under Docker and want Playwright inside the container, you’ll want a container image that includes
+the required libraries. (We can add an optional “Playwright-ready” Docker profile/image next.)
 
 ## Option C: Systemd (Headless Electron)
 

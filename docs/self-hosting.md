@@ -14,6 +14,21 @@ The key idea: on Linux you typically do **not** run a desktop app UI. Instead yo
 
 If you need the macOS desktop app UI, that’s a separate mode.
 
+## First 10 Minutes (What Users Actually Do)
+
+Typical flow on a new VPS:
+
+1. Start the daemon (Node-only recommended).
+2. SSH tunnel the Control Plane port to your laptop.
+3. Open the minimal Control Plane Web UI in your browser.
+4. Create a workspace (or bootstrap one at startup).
+5. Create a task and watch events.
+
+Where the “UI” lives:
+
+- The daemon serves a minimal Web UI at `http://127.0.0.1:18789/` (on the server).
+- You view it from your laptop via tunnel/Tailscale (so it still *looks like* `http://127.0.0.1:18789/` locally).
+
 ## Choose Your Runtime
 
 Pick one of these. They all run the same underlying agent runtime, DB, and settings:
@@ -39,6 +54,18 @@ On a VPS, users typically interact in one of these ways:
 3. **Messaging channels**: configure Telegram/Discord/Slack/etc and treat that as the UI.
 
 There is no requirement to have a macOS machine running.
+
+## Headless-Friendly Channels
+
+These are generally easiest on a VPS:
+
+- Telegram, Discord, Slack, Teams, Google Chat, Mattermost, Matrix, Twitch, LINE, Email
+
+Channels that typically require a macOS relay or a “pairing UI”:
+
+- iMessage (macOS only)
+- BlueBubbles (macOS relay)
+- WhatsApp often requires QR pairing flows that are easiest from the desktop app (headless support depends on how you plan to complete QR pairing)
 
 ## Feature Reality Check (Linux Headless)
 
@@ -83,3 +110,22 @@ All persistent state lives under the **user data directory** (DB + encrypted set
 
 Back up that directory (or the Docker volume) to back up the instance.
 
+## Common Questions (FAQ)
+
+**Do I need a macOS machine at all?**  
+No. Linux headless mode is designed to be fully usable by itself via Control Plane (web/CLI) and optionally messaging channels.
+
+**Is there a GUI?**  
+You get a minimal **Web UI** (served by the daemon) plus a CLI. The full desktop UI is macOS-only.
+
+**How do I run my first task?**  
+Create a workspace (bootstrap or `workspace.create`), then `task.create`, then watch `task.event` (Web UI or `coworkctl`).
+
+**Where are credentials stored?**  
+In the encrypted settings store under the user data directory (see above). Headless deployments typically import from env vars at boot (`COWORK_IMPORT_ENV_SETTINGS=1`).
+
+**How do approvals work without a desktop UI?**  
+Approvals are visible and actionable over the Control Plane (Web UI + `approval.list` / `approval.respond`).
+
+**Can I expose Control Plane to the public internet?**  
+Not recommended. Prefer SSH tunnel or Tailscale. If you must, treat it like a high-value admin API and put it behind strong network controls.
