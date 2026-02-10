@@ -1619,9 +1619,14 @@ ${transcript}
       } catch {
         const template =
           `# Daily Log (${stamp})\n\n` +
+          `<!-- cowork:auto:daily:start -->\n` +
           `## Open Loops\n\n` +
           `## Next Actions\n\n` +
-          `## Decisions\n`;
+          `## Decisions\n\n` +
+          `## Summary\n\n` +
+          `<!-- cowork:auto:daily:end -->\n\n` +
+          `## Notes\n` +
+          `- \n`;
         await fs.promises.writeFile(dailyPath, template, 'utf8');
       }
     };
