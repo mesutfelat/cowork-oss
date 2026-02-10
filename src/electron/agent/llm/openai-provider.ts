@@ -192,6 +192,15 @@ export class OpenAIProvider implements LLMProvider {
         signal: request.signal,
       });
 
+      // pi-ai returns an AssistantMessage even on errors (stopReason: "error"/"aborted").
+      // Our executor expects provider errors to be thrown so it can retry/fail loudly.
+      if (response?.stopReason === 'aborted') {
+        throw new Error('Request cancelled');
+      }
+      if (response?.stopReason === 'error') {
+        throw new Error(response?.errorMessage || 'OpenAI request failed');
+      }
+
       // Convert pi-ai response to our format
       return this.convertPiAiResponse(response);
     } catch (error: any) {
@@ -283,6 +292,7 @@ export class OpenAIProvider implements LLMProvider {
             if (id.includes('5.1-codex-mini')) return 0;
             if (id.includes('5.1-codex-max')) return 1;
             if (id === 'gpt-5.1') return 2;
+            if (id.includes('5.3-codex')) return 3;
             if (id.includes('5.2-codex')) return 3;
             if (id === 'gpt-5.2') return 4;
             return 5;
@@ -348,6 +358,7 @@ export class OpenAIProvider implements LLMProvider {
       { id: 'gpt-5.1-codex-max', name: 'GPT-5.1 Codex Max', description: 'Maximum capability for complex tasks' },
       { id: 'gpt-5.1', name: 'GPT-5.1', description: 'Balanced performance and capability' },
       { id: 'gpt-5.2-codex', name: 'GPT-5.2 Codex', description: 'Advanced reasoning model' },
+      { id: 'gpt-5.3-codex', name: 'GPT-5.3 Codex', description: 'Advanced reasoning model' },
       { id: 'gpt-5.2', name: 'GPT-5.2', description: 'Most advanced reasoning' },
     ];
   }
@@ -373,6 +384,7 @@ export class OpenAIProvider implements LLMProvider {
     if (modelId === 'gpt-5.1-codex-max') return 'GPT-5.1 Codex Max';
     if (modelId === 'gpt-5.2') return 'GPT-5.2';
     if (modelId === 'gpt-5.2-codex') return 'GPT-5.2 Codex';
+    if (modelId === 'gpt-5.3-codex') return 'GPT-5.3 Codex';
     return modelId;
   }
 
@@ -391,6 +403,7 @@ export class OpenAIProvider implements LLMProvider {
     if (modelId === 'gpt-5.1-codex-max') return 'Maximum capability for complex tasks';
     if (modelId === 'gpt-5.2') return 'Most advanced reasoning';
     if (modelId === 'gpt-5.2-codex') return 'Advanced reasoning model';
+    if (modelId === 'gpt-5.3-codex') return 'Advanced reasoning model';
     return 'OpenAI model';
   }
 
