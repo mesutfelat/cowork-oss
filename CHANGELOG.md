@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.66] - 2026-02-11
+
+### Fixed
+- `npm ci` could hang indefinitely in CI due an `overrides.undici` resolution loop on npm 11.
+- Removed the `undici` override so release and publish jobs can complete.
+
 ## [0.3.65] - 2026-02-11
 
 ### Fixed
