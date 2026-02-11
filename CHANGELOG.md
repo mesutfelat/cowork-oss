@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.62] - 2026-02-11
+
+### Fixed
+- npm installs could still fail when the package `postinstall` script itself was SIGKILL'd by macOS memory pressure.
+- Removed `postinstall` from the published npm package so `npm install cowork-os@latest` no longer depends on any CoWork lifecycle hook.
+
 ## [0.3.61] - 2026-02-11
 
 ### Fixed
