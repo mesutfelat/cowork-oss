@@ -55,11 +55,16 @@ Your AI needs a secure home. CoWork OS provides the runtime, security layers, an
 
 ### From npm (CLI Launch)
 
+Use this flow to test like a first-time user in a clean folder:
+
 ```bash
 # Install into a local folder
 mkdir -p /tmp/cowork-run
 cd /tmp/cowork-run
 npm install cowork-os@latest --no-audit --no-fund
+
+# Ensure no previously running CoWork instance is active
+pkill -f '/cowork-os' || true
 
 # Start app
 npx cowork-os
@@ -69,6 +74,22 @@ You can also install globally and launch directly:
 
 ```bash
 npm install -g cowork-os
+
+# Optional: verify installed version
+npm list -g cowork-os --depth=0
+
+# Ensure no previously running CoWork instance is active
+pkill -f '/cowork-os' || true
+
+cowork-os
+```
+
+If the app opens but shows `vUnknown` or `Error invoking remote method 'app:getVersion'`, you likely connected to an older already-running instance.
+
+Run:
+
+```bash
+pkill -f '/cowork-os' || true
 cowork-os
 ```
 
