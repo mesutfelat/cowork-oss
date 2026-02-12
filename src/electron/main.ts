@@ -31,7 +31,7 @@ import { ChannelGateway } from './gateway';
 import { formatChatTranscriptForPrompt } from './gateway/chat-transcript';
 import { updateManager } from './updater';
 import { importProcessEnvToSettings, migrateEnvToSettings } from './utils/env-migration';
-import { TEMP_WORKSPACE_ID } from '../../shared/types';
+import { TEMP_WORKSPACE_ID } from '../shared/types';
 import { GuardrailManager } from './guardrails/guardrail-manager';
 import { AppearanceManager } from './settings/appearance-manager';
 import { MemoryFeaturesManager } from './settings/memory-features-manager';

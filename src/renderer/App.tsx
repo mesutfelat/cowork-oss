@@ -397,22 +397,28 @@ export function App() {
       if (event.type === 'task_paused' || event.type === 'approval_requested') {
         const isApproval = event.type === 'approval_requested';
         const task = tasksRef.current.find(t => t.id === event.taskId);
-        const baseTitle = isApproval ? 'Approval needed' : 'Input needed';
+        const baseTitle = isApproval ? 'Approval needed' : 'Quick check-in';
         const title = task?.title ? `${baseTitle} · ${task.title}` : baseTitle;
         const message =
           (isApproval
             ? event.payload?.approval?.description
-            : event.payload?.message) || 'Awaiting your input.';
+            : event.payload?.message) || 'Quick pause - ready to continue once you respond.';
 
         void (async () => {
           try {
             const existing = await window.electronAPI.listNotifications();
-            const hasExisting = existing.some((n) =>
+            const existingForTask = existing.filter((n) =>
               n.type === 'input_required' &&
-              n.taskId === event.taskId &&
-              !n.read
+              n.taskId === event.taskId
             );
-            if (hasExisting) return;
+            if (existingForTask.length > 0) {
+              const removals = await Promise.allSettled(
+                existingForTask.map((n) => window.electronAPI.deleteNotification(n.id))
+              );
+              if (removals.some((result) => result.status === 'rejected')) {
+                console.error('Some stale input-required notifications failed to clear before sending update.');
+              }
+            }
             await window.electronAPI.addNotification({
               type: 'input_required',
               title,
@@ -422,6 +428,28 @@ export function App() {
             });
           } catch (error) {
             console.error('Failed to add input-required notification:', error);
+          }
+        })();
+      }
+
+      if (event.type === 'task_resumed' || event.type === 'approval_granted') {
+        void (async () => {
+          try {
+            const existing = await window.electronAPI.listNotifications();
+            const existingForTask = existing.filter((n) =>
+              n.type === 'input_required' &&
+              n.taskId === event.taskId
+            );
+            if (existingForTask.length > 0) {
+              const removals = await Promise.allSettled(
+                existingForTask.map((n) => window.electronAPI.deleteNotification(n.id))
+              );
+              if (removals.some((result) => result.status === 'rejected')) {
+                console.error('Failed to clear some stale input-required notifications after resume.');
+              }
+            }
+          } catch (error) {
+            console.error('Failed to clear input-required notifications after resume:', error);
           }
         })();
       }

@@ -371,4 +371,171 @@ describe('TaskExecutor executeStep failure handling', () => {
     expect(verifyContextHasDeliverable).toBe(true);
     expect(verifyContextIncludesSummary).toBe(true);
   });
+
+  it('detects recovery intent from user messaging in simple phrases', () => {
+    const executor = createExecutorWithStubs([textResponse('done')], {});
+    expect((executor as any).isRecoveryIntent('I need you to find another way')).toBe(true);
+    expect((executor as any).isRecoveryIntent('Can\'t do this in this environment')).toBe(true);
+    expect((executor as any).isRecoveryIntent('Please continue')).toBe(false);
+  });
+
+  it('does not treat unrelated phrases as recovery intent', () => {
+    const executor = createExecutorWithStubs([textResponse('done')], {});
+    expect((executor as any).isRecoveryIntent('Consider an alternative approach for this design, then resume')).toBe(false);
+    expect((executor as any).isRecoveryIntent('This is not possible with the current configuration')).toBe(false);
+    expect((executor as any).isRecoveryIntent('Another approach may be better later')).toBe(false);
+  });
+
+  it('resets attempt-level plan revision state on retry', () => {
+    const executor = createExecutorWithStubs([textResponse('done')], {});
+    (executor as any).conversationHistory = [];
+    const stepOne: any = { id: '1', description: 'Step one', status: 'completed', startedAt: 1, completedAt: 2, error: 'old' };
+    const stepTwo: any = { id: '2', description: 'Step two', status: 'failed', startedAt: 1, completedAt: 2, error: 'old' };
+    executor.task.currentAttempt = 2;
+    executor.plan = { description: 'Plan', steps: [stepOne, stepTwo] };
+    executor.lastAssistantOutput = 'summary';
+    executor.lastNonVerificationOutput = 'summary';
+    executor.planRevisionCount = 3;
+
+    (executor as any).resetForRetry();
+
+    expect(executor.plan!.steps[0].status).toBe('pending');
+    expect(executor.plan!.steps[0].startedAt).toBeUndefined();
+    expect(executor.plan!.steps[0].error).toBeUndefined();
+    expect(executor.plan!.steps[1].status).toBe('pending');
+    expect(executor.toolResultMemory).toEqual([]);
+    expect(executor.lastAssistantOutput).toBeNull();
+    expect(executor.lastNonVerificationOutput).toBeNull();
+    expect(executor.planRevisionCount).toBe(0);
+    expect((executor as any).conversationHistory.at(-1)?.content).toContain('This is attempt 2');
+  });
+
+  it('does not re-run recovery plan insertion for the same failing signature twice', async () => {
+    const executor = createExecutorWithStubs(
+      [
+        toolUseResponse('run_command', { command: 'exit 1' }),
+        textResponse('done'),
+        toolUseResponse('run_command', { command: 'exit 1' }),
+        textResponse('done'),
+      ],
+      {
+        run_command: { success: false, error: 'cannot complete this task without a workaround' },
+      }
+    );
+    (executor as any).handlePlanRevision = vi.fn();
+    const failedStep: any = { id: '1', description: 'Run baseline task', status: 'pending' };
+    const retainedPendingStep: any = { id: '2', description: 'Validate output', status: 'pending' };
+
+    executor.plan = { description: 'Plan', steps: [failedStep, retainedPendingStep] };
+    executor.maxPlanRevisions = 5;
+    executor.planRevisionCount = 0;
+    executor.recoveryRequestActive = true;
+
+    await (executor as any).executeStep(failedStep);
+    await (executor as any).executeStep(failedStep);
+
+    expect((executor as any).handlePlanRevision).toHaveBeenCalledTimes(1);
+    expect(failedStep.status).toBe('failed');
+    expect(executor.planRevisionCount).toBe(1);
+    const planDescriptions = executor.plan.steps.map((step: any) => step.description);
+    expect(planDescriptions.filter((desc: string) => desc.includes('alternative toolchain')).length).toBe(1);
+    expect(planDescriptions.length).toBe(4);
+  });
+
+  it('adds recovery steps again when failure reason changes after a retry', async () => {
+    const executor = createExecutorWithStubs(
+      [
+        toolUseResponse('run_command', { command: 'exit 1' }),
+        textResponse('done'),
+        toolUseResponse('run_command', { command: 'exit 1' }),
+        textResponse('done'),
+      ],
+      {}
+    );
+
+    let runAttempt = 0;
+    (executor as any).toolRegistry.executeTool = vi.fn(async () => {
+      runAttempt += 1;
+      return {
+        success: false,
+        exitCode: 1,
+        error: runAttempt === 1
+          ? 'cannot complete this task because of a temporary blocker'
+          : 'cannot complete this task because a different blocker appeared',
+      };
+    });
+
+    (executor as any).handlePlanRevision = vi.fn();
+    const failedStep: any = { id: '1', description: 'Run baseline task', status: 'pending' };
+    const retainedPendingStep: any = { id: '2', description: 'Validate output', status: 'pending' };
+    executor.plan = { description: 'Plan', steps: [failedStep, retainedPendingStep] };
+    executor.maxPlanRevisions = 5;
+    executor.planRevisionCount = 0;
+    executor.recoveryRequestActive = true;
+
+    await (executor as any).executeStep(failedStep);
+    await (executor as any).executeStep(failedStep);
+
+    expect((executor as any).handlePlanRevision).toHaveBeenCalledTimes(2);
+    const planDescriptions = executor.plan.steps.map((step: any) => step.description);
+    expect(planDescriptions.filter((desc: string) => desc.includes('alternative toolchain')).length).toBe(2);
+    expect(planDescriptions.length).toBe(6);
+    expect(executor.planRevisionCount).toBe(2);
+  });
+
+  it('adds recovery plan steps without clearing unrelated pending steps', async () => {
+    const executor = createExecutorWithStubs(
+      [
+        toolUseResponse('run_command', { command: 'exit 1' }),
+        textResponse('done'),
+      ],
+      {
+        run_command: { success: false, error: 'exit code 1' },
+      }
+    );
+
+    const failedStep: any = { id: '1', description: 'Run baseline task', status: 'pending' };
+    const retainedPendingStep: any = { id: '2', description: 'Validate output', status: 'pending' };
+    executor.plan = { description: 'Plan', steps: [failedStep, retainedPendingStep] };
+    executor.maxPlanRevisions = 5;
+    executor.recoveryRequestActive = true;
+    executor.planRevisionCount = 0;
+
+    await (executor as any).executeStep(failedStep);
+
+    expect(failedStep.status).toBe('failed');
+    const planDescriptions = executor.plan.steps.map((step: any) => step.description);
+    expect(planDescriptions).toContain('Try an alternative toolchain or different input strategy for: Run baseline task');
+    expect(planDescriptions).toContain(
+      'If normal tools are blocked, implement the smallest safe code/feature change needed to continue and complete the goal.'
+    );
+    expect(planDescriptions).toContain('Validate output');
+    expect(planDescriptions.length).toBe(4);
+  });
+
+  it('triggers recovery on blocked-step reasons even without explicit user request', async () => {
+    const executor = createExecutorWithStubs(
+      [
+        toolUseResponse('run_command', { command: 'exit 1' }),
+        textResponse('done'),
+      ],
+      {
+        run_command: { success: false, error: 'cannot complete this task without a workaround' },
+      }
+    );
+    executor.recoveryRequestActive = false;
+    const failedStep: any = { id: '1', description: 'Run baseline task', status: 'pending' };
+    const retainedPendingStep: any = { id: '2', description: 'Validate output', status: 'pending' };
+    executor.plan = { description: 'Plan', steps: [failedStep, retainedPendingStep] };
+    executor.maxPlanRevisions = 5;
+    executor.planRevisionCount = 0;
+    (executor as any).isRecoveryIntent = vi.fn((reason: string) => reason.includes('cannot complete this task'));
+
+    await (executor as any).executeStep(failedStep);
+
+    const planDescriptions = executor.plan.steps.map((step: any) => step.description);
+    expect(planDescriptions).toContain('Try an alternative toolchain or different input strategy for: Run baseline task');
+    expect(failedStep.status).toBe('failed');
+    expect(executor.planRevisionCount).toBe(1);
+  });
 });

@@ -347,14 +347,7 @@ export function NotificationPanel({ onNotificationClick }: NotificationPanelProp
   };
 
   const handleNotificationClick = async (notification: AppNotification) => {
-    const shouldAutoClear = notification.type === 'input_required';
-    if (shouldAutoClear) {
-      try {
-        await window.electronAPI.deleteNotification(notification.id);
-      } catch (error) {
-        console.error('Failed to delete notification:', error);
-      }
-    } else if (!notification.read) {
+    if (!notification.read) {
       try {
         await window.electronAPI.markNotificationRead(notification.id);
       } catch (error) {

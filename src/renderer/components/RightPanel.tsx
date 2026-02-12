@@ -311,10 +311,10 @@ export function RightPanel({ task, workspace, events, tasks = [], queueStatus, o
               <div className="cli-empty-state">
                 <div className={`cli-status-badge ${task?.status === 'executing' ? 'active' : task?.status === 'paused' ? 'paused' : task?.status === 'blocked' ? 'blocked' : task?.status === 'completed' ? 'completed' : ''}`}>
                   <span className="terminal-only">
-                    {task?.status === 'executing' ? '◉ WORKING...' : task?.status === 'paused' ? '⏸ PAUSED' : task?.status === 'blocked' ? '! BLOCKED' : task?.status === 'completed' ? '✓ ALL DONE' : '○ READY'}
+                    {task?.status === 'executing' ? '◉ WORKING...' : task?.status === 'paused' ? '⏸ WAITING' : task?.status === 'blocked' ? '! NEEDS YOUR GO-AHEAD' : task?.status === 'completed' ? '✓ ALL DONE' : '○ READY'}
                   </span>
                   <span className="modern-only">
-                    {task?.status === 'executing' ? 'Working...' : task?.status === 'paused' ? 'Paused' : task?.status === 'blocked' ? 'Blocked' : task?.status === 'completed' ? 'All done' : 'Ready'}
+                    {task?.status === 'executing' ? 'Working...' : task?.status === 'paused' ? 'Waiting for your cue' : task?.status === 'blocked' ? 'Needs your go-ahead' : task?.status === 'completed' ? 'All done' : 'Ready'}
                   </span>
                 </div>
                 <p className="cli-hint">

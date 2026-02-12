@@ -11,7 +11,6 @@ interface TaskViewProps {
 export function TaskView({ task }: TaskViewProps) {
   const [events, setEvents] = useState<TaskEvent[]>([]);
   const [pendingApproval, setPendingApproval] = useState<any>(null);
-  const [resuming, setResuming] = useState(false);
   const agentContext = useAgentContext();
 
   useEffect(() => {
@@ -51,15 +50,12 @@ export function TaskView({ task }: TaskViewProps) {
     }
   };
 
-  const handleResume = async () => {
+  const handleResumeTask = async () => {
     if (!task) return;
     try {
-      setResuming(true);
       await window.electronAPI.resumeTask(task.id);
     } catch (error) {
       console.error('Failed to resume task:', error);
-    } finally {
-      setResuming(false);
     }
   };
 
@@ -127,16 +123,15 @@ export function TaskView({ task }: TaskViewProps) {
         {task.status === 'paused' && (
           <div className="task-status-banner task-status-banner-paused">
             <div className="task-status-banner-content">
-              <strong>{agentContext.getUiCopy('taskStatusPausedTitle')}</strong>
+              <strong>I'm waiting for your next direction.</strong>
               {latestPauseEvent?.payload?.message && (
                 <span className="task-status-banner-detail">{latestPauseEvent.payload.message}</span>
               )}
+              <span className="task-status-banner-detail">Send your response in chat and I'll continue right away.</span>
+              <button className="mc-btn" type="button" onClick={() => void handleResumeTask()}>
+                Continue
+              </button>
             </div>
-            <button className="btn-secondary" onClick={handleResume} disabled={resuming}>
-              {resuming
-                ? agentContext.getUiCopy('taskStatusResuming')
-                : agentContext.getUiCopy('taskStatusResume')}
-            </button>
           </div>
         )}
 

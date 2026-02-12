@@ -143,9 +143,11 @@ export function TaskTimeline({ events, agentContext }: TaskTimelineProps) {
       case 'approval_denied':
         return 'Approval denied';
       case 'task_paused':
-        return event.payload.message || (isCompanion ? 'Paused - waiting on your cue' : 'Paused - waiting for input');
+        return event.payload.message || (isCompanion
+          ? 'I paused to check with you before moving on'
+          : 'Paused to get your call');
       case 'task_resumed':
-        return 'Resumed';
+        return isCompanion ? 'Back in motion' : 'Resumed';
       case 'executing':
         return event.payload.message || 'Working on it';
       case 'task_completed':
