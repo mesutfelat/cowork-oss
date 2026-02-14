@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.77] - 2026-02-14
+
+### Fixed
+- **Setup script safety**: `npm run setup` in a fresh install now runs dependency reinstall with `--ignore-scripts` so optional postinstall hooks like `electron-winstaller` cannot SIGKILL the process during first-run recovery on macOS.
+- **Install reliability carry-forward**: this patch keeps the documented `/tmp` first-install sequence intact while ensuring setup stays stable across npm install layouts.
+- **Version alignment**: published metadata is now aligned on `0.3.77` so the installability fix is included in both npm and GitHub release tracks.
+
 ## [0.3.76] - 2026-02-14
 
 ### Fixed
@@ -527,6 +534,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| 0.3.77 | 2026-02-14 | Skips lifecycle scripts during setup reinstall and prevents setup-time SIGKILL in user-first installs |
 | 0.3.76 | 2026-02-14 | Pinned Electron to 40.2.1 for first-run installability and aligned README CLI flow |
 | 0.3.75 | 2026-02-14 | Restored 0.3.71-compatible Electron lockfile for installability and release confidence |
 | 0.3.73 | 2026-02-14 | Release automation hardening and task/workspace validation fixes |
@@ -540,7 +548,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 | 0.1.0 | 2025-01-24 | First public release with core features |
 | 0.0.1 | 2025-01-20 | Initial development setup |
 
-[Unreleased]: https://github.com/CoWork-OS/CoWork-OS/compare/v0.3.76...HEAD
+[Unreleased]: https://github.com/CoWork-OS/CoWork-OS/compare/v0.3.77...HEAD
+[0.3.77]: https://github.com/CoWork-OS/CoWork-OS/releases/tag/v0.3.77
 [0.3.76]: https://github.com/CoWork-OS/CoWork-OS/releases/tag/v0.3.76
 [0.3.75]: https://github.com/CoWork-OS/CoWork-OS/releases/tag/v0.3.75
 [0.3.73]: https://github.com/CoWork-OS/CoWork-OS/releases/tag/v0.3.73
