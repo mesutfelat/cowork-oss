@@ -42,6 +42,32 @@ jobs:
       - name: Build application
         run: npm run build
 
+      - name: Prepare draft GitHub release for packaging
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          npm_version="$(node -p "require('./package.json').version")"
+          candidate_tags=("${GITHUB_REF_NAME}" "v${npm_version}" "${npm_version}")
+          release_tag=""
+
+          for tag in "${candidate_tags[@]}"; do
+            if gh release view "${tag}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+              release_tag="${tag}"
+              break
+            fi
+          done
+
+          if [ -n "${release_tag}" ]; then
+            echo "Found existing release tag: ${release_tag}"
+            gh release edit "${release_tag}" --repo "${GITHUB_REPOSITORY}" --draft=true
+          else
+            release_tag="${GITHUB_REF_NAME}"
+            echo "Creating draft release for ${release_tag}"
+            gh release create "${release_tag}" --repo "${GITHUB_REPOSITORY}" --title "Release ${npm_version}" --draft
+          fi
+
+          echo "Cowork release draft prepared: ${release_tag}"
+
       - name: Prepare package.json for electron-builder
         run: |
           node -e "
