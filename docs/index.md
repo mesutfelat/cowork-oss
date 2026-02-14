@@ -3,7 +3,7 @@ layout: home
 hero:
   name: CoWork OS
   text: The operating system for personal AI assistants
-  tagline: Self-hosted, local-first agentic task automation for macOS
+  tagline: Self-hosted, local-first Agentic Tribe task automation for macOS
   actions:
     - theme: brand
       text: Get Started

@@ -31,7 +31,7 @@ Your AI needs a secure home. CoWork OS provides the runtime, security layers, an
 | **8 Enterprise Connectors** | Salesforce, Jira, HubSpot, Zendesk, ServiceNow, Linear, Asana, Okta |
 | **6 Cloud Storage** | Notion, Box, OneDrive, Google Workspace (Drive/Gmail/Calendar), Dropbox, SharePoint |
 | **Voice Calls** | Outbound phone calls via ElevenLabs Agents |
-| **Agent Teams** | Multi-agent collaboration with shared checklists and coordinated runs |
+| **Agentic Tribe** | Agent collaboration through shared checklists, coordinated runs, and agentic tool-calling |
 | **Workspace Kit** | Workspace `.cowork/` kit (projects, access rules, context injection, per-workspace settings) |
 | **Security-First** | 2800+ unit tests, configurable guardrails, approval workflows, gateway hardening |
 | **Local-First** | Your data stays on your machine. BYOK (Bring Your Own Key) |
@@ -469,7 +469,7 @@ Configure in **Settings** > **Appearance**.
 - **Document Creation**: Excel, Word, PDF, PowerPoint with professional formatting
 - **Persistent Memory**: Cross-session context with privacy-aware observation capture
 - **Workspace Kit**: `.cowork/` project kit + markdown indexing with context injection
-- **Agent Teams**: Multi-agent collaboration with shared checklists, coordinated runs, and team management UI
+- **Agentic Tribe**: Coordinated multi-agent execution with shared checklists, synchronized runs, and team management UI
 - **Performance Reviews**: Score and review agent-role outcomes, with autonomy-level recommendations
 - **Voice Calls**: Outbound phone calls via ElevenLabs Agents (list agents, list numbers, initiate calls)
 - **Vision**: Analyze workspace images (screenshots, photos, diagrams) via `analyze_image` tool (OpenAI, Anthropic, or Gemini)
@@ -582,19 +582,19 @@ Tips:
   - `mkdir -p .cowork/agents/<role-id> && printf '%s\n' "# SOUL.md" "..." > .cowork/agents/<role-id>/SOUL.md`
   - If you are unsure about the folder name, place a `default` profile at `.cowork/agents/default/` and copy it to `.../<role-id>/`.
 
-### Agent Teams
+### Agentic Tribe
 
-Coordinate multiple agents working together on complex tasks with shared state.
+Coordinate multiple agents as an Agentic Tribe to solve complex tasks together through shared state, context, and tool-calling loops.
 
 | Feature | Description |
 |---------|-------------|
 | **Team Management** | Create and manage teams with multiple agent members |
-| **Shared Checklists** | Agents share checklist items for coordinated task execution |
+| **Shared Checklists** | Tribe members share checklist items for coordinated task execution |
 | **Run Tracking** | Track team runs with status, progress, and history |
 | **Member Roles** | Assign different agents to team members |
 | **Defaults** | Set default model + personality preferences for spawned work |
 | **Queue-Friendly** | Team runs respect global concurrency limits by default |
-| **UI Panel** | Full React UI for creating, managing, and monitoring agent teams |
+| **UI Panel** | Full React UI for creating, managing, and monitoring agentic tribes |
 | **Data Persistence** | SQLite-backed repositories for teams, members, items, and runs |
 
 Configure in **Mission Control** > **Teams**.
@@ -2295,7 +2295,7 @@ Users must comply with their model provider's terms:
 - [x] Gateway hardening (group chat security, streaming coalescing, restart resilience, tool restrictions)
 - [x] Outbound phone calls via ElevenLabs Agents (voice_call tool)
 - [x] Workspace Kit (`.cowork/` init + projects, markdown indexing, context injection, memory hub settings)
-- [x] Agent Teams (multi-agent collaboration with shared checklists, coordinated runs, team UI)
+- [x] Agentic Tribe (coordinated agentic execution with shared checklists, synchronized runs, and tribe UI)
 - [x] Gateway pending selection state for workspace/provider commands (improved WhatsApp/iMessage UX)
 - [x] Task result summary persistence from executor to daemon
 - [x] Memory retention isolation for sub-agents and public contexts

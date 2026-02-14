@@ -287,7 +287,7 @@ Mission Control is the in-app control surface for managing multiple agent roles 
 - Standup reports (daily summaries generated from task state)
 - Task subscriptions (agents "watching" tasks/threads)
 - Task board (columns/priorities/labels)
-- Agent teams (multi-agent collaboration with shared checklists and coordinated runs)
+- Agentic Tribe (multi-agent collaboration with shared checklists, synchronized run context, and coordinated execution)
 - Performance reviews (ratings + autonomy-level recommendations for agent roles)
 
 Key code:
@@ -314,10 +314,10 @@ CoWork OS includes local task export utilities (intended for reporting/sharing w
 Key code:
 - Task export: `src/electron/reports/task-export.ts`
 
-### 15. Agent Teams
+### 15. Agentic Tribe
 
-There is a "Team Lead + Teammates" model for multi-agent orchestration with a shared checklist and run lifecycle.
-Runs spawn child tasks and synchronize terminal task outcomes back into the checklist.
+There is a "Tribe Lead + Members" model for agentic collaboration with a shared checklist and run lifecycle.
+The tribe runtime aligns tool-calling, child-task execution, and task outcomes into a single shared state.
 
 Docs/code:
 - Contract: `docs/agent-teams-contract.md`

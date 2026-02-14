@@ -1,12 +1,12 @@
-# Agent Teams Contract
+# Agentic Tribe Contract
 
 ## Goal
-Define a first-class Team Lead + Teammates orchestration model on top of existing CoWork task/agent primitives.
+Define a first-class Tribe Lead + Members model on top of existing CoWork task/agent primitives.
 
 ## Scope
-- Team definition and membership
-- Team run lifecycle
-- Shared team task list/checklist
+- Tribe definition and membership
+- Tribe run lifecycle
+- Shared tribe task list/checklist
 - Execution/events contract between renderer and daemon
 
 ## Non-Goals
