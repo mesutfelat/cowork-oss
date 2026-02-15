@@ -9957,13 +9957,15 @@ button {
 /* ===== Toast Notifications ===== */
 .toast-container {
   position: fixed;
-  bottom: 100px;
-  right: 20px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   display: flex;
   flex-direction: column;
   gap: 10px;
   z-index: 10000;
   pointer-events: none;
+  align-items: center;
 }
 
 .toast {
@@ -10080,8 +10082,14 @@ button {
   flex-wrap: wrap;
 }
 
-.toast-action-btn {
+.toast-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   margin-top: 8px;
+}
+
+.toast-action-btn {
   padding: 6px 12px;
   background: var(--color-accent);
   color: white;
@@ -10095,6 +10103,23 @@ button {
 
 .toast-action-btn:hover {
   background: var(--color-accent-hover);
+}
+
+.toast-action-btn-secondary {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.toast-action-btn-secondary:hover {
+  background: var(--color-bg-tertiary);
+}
+
+.toast-action-btn-danger {
+  background: var(--color-error);
+}
+
+.toast-action-btn-danger:hover {
+  background: #dc2626;
 }
 
 /* ===== Quick Task FAB ===== */

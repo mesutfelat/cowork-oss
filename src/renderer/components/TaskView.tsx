@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Task, TaskEvent } from '../../shared/types';
 import { TaskTimeline } from './TaskTimeline';
-import { ApprovalDialog } from './ApprovalDialog';
 import { useAgentContext } from '../hooks/useAgentContext';
 
 interface TaskViewProps {
@@ -17,7 +16,6 @@ function capTaskViewEvents(events: TaskEvent[]): TaskEvent[] {
 
 export function TaskView({ task }: TaskViewProps) {
   const [events, setEvents] = useState<TaskEvent[]>([]);
-  const [pendingApproval, setPendingApproval] = useState<any>(null);
   const agentContext = useAgentContext();
 
   useEffect(() => {
@@ -30,32 +28,11 @@ export function TaskView({ task }: TaskViewProps) {
     const unsubscribe = window.electronAPI.onTaskEvent((event: TaskEvent) => {
       if (event.taskId === task.id) {
         setEvents(prev => capTaskViewEvents([...prev, event]));
-
-        // Check if approval is requested
-        if (event.type === 'approval_requested' && event.payload?.autoApproved !== true) {
-          setPendingApproval(event.payload.approval);
-        } else if (event.type === 'approval_granted' || event.type === 'approval_denied') {
-          setPendingApproval(null);
-        }
       }
     });
 
     return unsubscribe;
   }, [task?.id]);
-
-  const handleApprovalResponse = async (approved: boolean) => {
-    if (!pendingApproval) return;
-
-    try {
-      await window.electronAPI.respondToApproval({
-        approvalId: pendingApproval.id,
-        approved,
-      });
-      setPendingApproval(null);
-    } catch (error) {
-      console.error('Failed to respond to approval:', error);
-    }
-  };
 
   const handleResumeTask = async () => {
     if (!task) return;
@@ -152,13 +129,6 @@ export function TaskView({ task }: TaskViewProps) {
         )}
       </div>
 
-      {pendingApproval && (
-        <ApprovalDialog
-          approval={pendingApproval}
-          onApprove={() => handleApprovalResponse(true)}
-          onDeny={() => handleApprovalResponse(false)}
-        />
-      )}
     </div>
   );
 }

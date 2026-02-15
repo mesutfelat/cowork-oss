@@ -33,6 +33,50 @@ export interface MemoryFeaturesSettings {
   heartbeatMaintenanceEnabled: boolean;
 }
 
+export type UserFactCategory =
+  | 'identity'
+  | 'preference'
+  | 'bio'
+  | 'work'
+  | 'goal'
+  | 'constraint'
+  | 'other';
+
+export interface UserFact {
+  id: string;
+  category: UserFactCategory;
+  value: string;
+  confidence: number; // 0..1
+  source: 'conversation' | 'feedback' | 'manual';
+  pinned?: boolean;
+  firstSeenAt: number;
+  lastUpdatedAt: number;
+  lastTaskId?: string;
+}
+
+export interface UserProfile {
+  summary?: string;
+  facts: UserFact[];
+  updatedAt: number;
+}
+
+export interface AddUserFactRequest {
+  category: UserFactCategory;
+  value: string;
+  confidence?: number;
+  source?: 'conversation' | 'feedback' | 'manual';
+  pinned?: boolean;
+  taskId?: string;
+}
+
+export interface UpdateUserFactRequest {
+  id: string;
+  category?: UserFactCategory;
+  value?: string;
+  confidence?: number;
+  pinned?: boolean;
+}
+
 // Workspace Kit (.cowork) helpers (workspace-scoped, file-based context)
 export interface WorkspaceKitFileStatus {
   relPath: string;
@@ -448,6 +492,7 @@ export interface SuccessCriteria {
  * - 'parallel': Independent agent that can run alongside main agents
  */
 export type AgentType = 'main' | 'sub' | 'parallel';
+export type ConversationMode = 'task' | 'chat' | 'hybrid';
 
 /**
  * Per-task agent configuration for customizing LLM and personality
@@ -464,6 +509,8 @@ export interface AgentConfig {
   gatewayContext?: GatewayContextType;
   /** Additional tool restrictions for this task (e.g., per-channel DM/group policies) */
   toolRestrictions?: string[];
+  /** Optional origin channel that created the task (used for channel-aware gating) */
+  originChannel?: ChannelType;
   /** Maximum number of LLM turns before forcing completion (for sub-agents) */
   maxTurns?: number;
   /** Maximum tokens budget for this agent */
@@ -478,6 +525,18 @@ export interface AgentConfig {
   bypassQueue?: boolean;
   /** Whether this task may pause and wait for user input (default: true) */
   allowUserInput?: boolean;
+  /**
+   * For group/public gateway contexts, allow read-only memory context injection
+   * only when explicitly trusted/opted in at the channel level.
+   */
+  allowSharedContextMemory?: boolean;
+  /**
+   * Conversation behavior preference:
+   * - task: full tool/plan execution loops
+   * - chat: conversational single-turn replies
+   * - hybrid: infer per-turn using prompt intent
+   */
+  conversationMode?: ConversationMode;
   /** Whether to run with reduced friction in autonomous mode (auto-approve approval-gated tools) */
   autonomousMode?: boolean;
   /**
@@ -1786,6 +1845,7 @@ export const IPC_CHANNELS = {
   APP_UPDATE_PROGRESS: 'app:updateProgress',
   APP_UPDATE_DOWNLOADED: 'app:updateDownloaded',
   APP_UPDATE_ERROR: 'app:updateError',
+  SYSTEM_OPEN_SETTINGS: 'system:openSettings',
 
   // Guardrails
   GUARDRAIL_GET_SETTINGS: 'guardrail:getSettings',
@@ -1977,6 +2037,15 @@ export const IPC_CHANNELS = {
   MEMORY_GET_IMPORTED_STATS: 'memory:getImportedStats',
   MEMORY_FIND_IMPORTED: 'memory:findImported',
   MEMORY_DELETE_IMPORTED: 'memory:deleteImported',
+  MEMORY_GET_USER_PROFILE: 'memory:getUserProfile',
+  MEMORY_ADD_USER_FACT: 'memory:addUserFact',
+  MEMORY_UPDATE_USER_FACT: 'memory:updateUserFact',
+  MEMORY_DELETE_USER_FACT: 'memory:deleteUserFact',
+  MEMORY_RELATIONSHIP_LIST: 'memory:relationshipList',
+  MEMORY_RELATIONSHIP_UPDATE: 'memory:relationshipUpdate',
+  MEMORY_RELATIONSHIP_DELETE: 'memory:relationshipDelete',
+  MEMORY_COMMITMENTS_GET: 'memory:commitmentsGet',
+  MEMORY_COMMITMENTS_DUE_SOON: 'memory:commitmentsDueSoon',
 
   // Memory Features (Global Toggles)
   MEMORY_FEATURES_GET_SETTINGS: 'memoryFeatures:getSettings',
@@ -2231,7 +2300,12 @@ export interface ChannelData {
   createdAt: number;
   config?: {
     selfChatMode?: boolean;
+    groupRoutingMode?: 'all' | 'mentionsOnly' | 'mentionsOrCommands' | 'commandsOnly';
+    trustedGroupMemoryOptIn?: boolean;
+    sendReadReceipts?: boolean;
+    deduplicationEnabled?: boolean;
     responsePrefix?: string;
+    ingestNonSelfChatsInSelfChatMode?: boolean;
     [key: string]: unknown;
   };
 }
@@ -2267,6 +2341,10 @@ export interface AddChannelRequest {
   // WhatsApp-specific fields
   allowedNumbers?: string[];
   selfChatMode?: boolean;
+  groupRoutingMode?: 'all' | 'mentionsOnly' | 'mentionsOrCommands' | 'commandsOnly';
+  trustedGroupMemoryOptIn?: boolean;
+  sendReadReceipts?: boolean;
+  deduplicationEnabled?: boolean;
   responsePrefix?: string;
   ingestNonSelfChatsInSelfChatMode?: boolean;
   // iMessage-specific fields
@@ -2281,7 +2359,6 @@ export interface AddChannelRequest {
   dataDir?: string;
   mode?: 'native' | 'json-rpc' | 'dbus';
   trustMode?: 'always' | 'on-first-use' | 'never';
-  sendReadReceipts?: boolean;
   sendTypingIndicators?: boolean;
   // Mattermost-specific fields
   mattermostServerUrl?: string;
@@ -2335,7 +2412,12 @@ export interface UpdateChannelRequest {
   securityMode?: SecurityMode;
   config?: {
     selfChatMode?: boolean;
+    groupRoutingMode?: 'all' | 'mentionsOnly' | 'mentionsOrCommands' | 'commandsOnly';
+    trustedGroupMemoryOptIn?: boolean;
+    sendReadReceipts?: boolean;
+    deduplicationEnabled?: boolean;
     responsePrefix?: string;
+    ingestNonSelfChatsInSelfChatMode?: boolean;
     [key: string]: unknown;
   };
 }
@@ -2815,10 +2897,21 @@ export interface ToastNotification {
   title: string;
   message?: string;
   taskId?: string;
+  approvalId?: string;
+  persistent?: boolean;
+  durationMs?: number;
   action?: {
     label: string;
     callback: () => void;
+    variant?: 'primary' | 'secondary' | 'danger';
+    dismissOnClick?: boolean;
   };
+  actions?: Array<{
+    label: string;
+    callback: () => void;
+    variant?: 'primary' | 'secondary' | 'danger';
+    dismissOnClick?: boolean;
+  }>;
 }
 
 // Custom User Skills
@@ -3031,6 +3124,7 @@ export interface HooksSettingsData {
   presets: string[];
   mappings: HookMappingData[];
   gmail?: GmailHooksSettingsData;
+  resend?: ResendHooksSettingsData;
 }
 
 export interface HookMappingData {
@@ -3038,6 +3132,7 @@ export interface HookMappingData {
   match?: {
     path?: string;
     source?: string;
+    type?: string;
   };
   action?: 'wake' | 'agent';
   wakeMode?: 'now' | 'next-heartbeat';
@@ -3075,6 +3170,11 @@ export interface GmailHooksSettingsData {
     path?: string;
     target?: string;
   };
+}
+
+export interface ResendHooksSettingsData {
+  webhookSecret?: string;
+  allowUnsafeExternalContent?: boolean;
 }
 
 export interface HooksStatus {

@@ -10,7 +10,7 @@ import { BrowserView } from './components/BrowserView';
 import { ToastContainer } from './components/Toast';
 import { QuickTaskFAB } from './components/QuickTaskFAB';
 import { NotificationPanel } from './components/NotificationPanel';
-import { Task, Workspace, TaskEvent, LLMModelInfo, LLMProviderInfo, UpdateInfo, ThemeMode, VisualTheme, AccentColor, QueueStatus, ToastNotification, isTempWorkspaceId } from '../shared/types';
+import { Task, Workspace, TaskEvent, LLMModelInfo, LLMProviderInfo, UpdateInfo, ThemeMode, VisualTheme, AccentColor, QueueStatus, ToastNotification, ApprovalRequest, isTempWorkspaceId } from '../shared/types';
 import { applyPersistedLanguage } from './i18n';
 
 
@@ -24,10 +24,24 @@ function getEffectiveTheme(themeMode: ThemeMode): 'light' | 'dark' {
 
 type AppView = 'main' | 'settings' | 'browser';
 const MAX_RENDERER_TASK_EVENTS = 600;
+const APPROVAL_TOAST_PREFIX = 'approval-request-';
+const APPROVAL_WARNING_TOAST_ID = 'approval-auto-approve-warning';
 
 function capTaskEvents(events: TaskEvent[]): TaskEvent[] {
   if (events.length <= MAX_RENDERER_TASK_EVENTS) return events;
   return events.slice(-MAX_RENDERER_TASK_EVENTS);
+}
+
+function getApprovalToastId(approvalId: string): string {
+  return `${APPROVAL_TOAST_PREFIX}${approvalId}`;
+}
+
+function extractApprovalId(event: TaskEvent): string | null {
+  const direct = event.payload?.approvalId;
+  if (typeof direct === 'string' && direct.length > 0) return direct;
+  const nested = event.payload?.approval?.id;
+  if (typeof nested === 'string' && nested.length > 0) return nested;
+  return null;
 }
 
 export function App() {
@@ -56,6 +70,7 @@ export function App() {
   // Queue state
   const [queueStatus, setQueueStatus] = useState<QueueStatus | null>(null);
   const [toasts, setToasts] = useState<ToastNotification[]>([]);
+  const [sessionAutoApproveAll, setSessionAutoApproveAll] = useState(false);
 
   // Sidebar collapse state
   const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(false);
@@ -63,6 +78,8 @@ export function App() {
 
   // Ref to track current tasks for use in event handlers (avoids stale closure)
   const tasksRef = useRef<Task[]>([]);
+  const sessionAutoApproveAllRef = useRef(false);
+  const pendingApprovalsRef = useRef<Map<string, ApprovalRequest>>(new Map());
 
   // Disclaimer state (null = loading)
   const [disclaimerAccepted, setDisclaimerAccepted] = useState<boolean | null>(null);
@@ -88,6 +105,19 @@ export function App() {
     });
     setOnboardingCompleted(true); // Always allow proceeding to main app
     setOnboardingCompletedAt(timestamp);
+
+    // Sync any onboarding-time appearance changes (e.g. light/dark toggle)
+    window.electronAPI
+      .getAppearanceSettings()
+      .then((settings) => {
+        setThemeMode(settings.themeMode);
+        setVisualTheme(settings.visualTheme || 'warm');
+        setAccentColor(settings.accentColor);
+      })
+      .catch((error) => {
+        console.error('Failed to refresh appearance settings after onboarding:', error);
+      });
+
     // Refresh LLM config after onboarding (user may have configured a provider)
     loadLLMConfig();
   };
@@ -346,17 +376,92 @@ export function App() {
     });
   }, [currentWorkspace?.id]);
 
+  useEffect(() => {
+    sessionAutoApproveAllRef.current = sessionAutoApproveAll;
+  }, [sessionAutoApproveAll]);
+
   // Toast helper functions
-  const addToast = (toast: Omit<ToastNotification, 'id'>) => {
-    const id = `toast-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  const addToast = (toast: Omit<ToastNotification, 'id'> & { id?: string }) => {
+    const id = toast.id || `toast-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const newToast: ToastNotification = { ...toast, id };
-    setToasts(prev => [...prev, newToast]);
-    // Auto-dismiss after 5 seconds
-    setTimeout(() => dismissToast(id), 5000);
+    setToasts(prev => (prev.some((t) => t.id === id) ? prev : [...prev, newToast]));
+
+    const durationMs = toast.persistent ? null : (toast.durationMs ?? 5000);
+    if (durationMs !== null && durationMs > 0) {
+      setTimeout(() => dismissToast(id), durationMs);
+    }
+
+    return id;
   };
 
   const dismissToast = (id: string) => {
     setToasts(prev => prev.filter(t => t.id !== id));
+  };
+
+  const handleApprovalResponse = async (approvalId: string, approved: boolean) => {
+    let handled = false;
+    try {
+      await window.electronAPI.respondToApproval({
+        approvalId,
+        approved,
+      });
+      handled = true;
+    } catch (error) {
+      console.error('Failed to respond to approval:', error);
+      addToast({
+        type: 'error',
+        title: 'Approval action failed',
+        message: 'Could not send your approval decision. Please try again.',
+      });
+    }
+
+    if (handled) {
+      pendingApprovalsRef.current.delete(approvalId);
+      dismissToast(getApprovalToastId(approvalId));
+    }
+  };
+
+  const handleSessionApproveAllConfirm = () => {
+    setSessionAutoApproveAll(true);
+    dismissToast(APPROVAL_WARNING_TOAST_ID);
+
+    const pendingApprovalIds = Array.from(pendingApprovalsRef.current.keys());
+    for (const approvalId of pendingApprovalIds) {
+      void handleApprovalResponse(approvalId, true);
+    }
+
+    addToast({
+      type: 'info',
+      title: 'Session auto-approve enabled',
+      message: 'Approvals will be accepted automatically for the rest of this app session.',
+      durationMs: 7000,
+    });
+  };
+
+  const showApproveAllWarning = () => {
+    addToast({
+      id: APPROVAL_WARNING_TOAST_ID,
+      type: 'error',
+      title: 'Warning: approve all requests?',
+      message: 'This will auto-approve every future request in this session. Only enable this if you fully trust the active tasks.',
+      persistent: true,
+      actions: [
+        {
+          label: 'I Understand',
+          variant: 'danger',
+          callback: () => {
+            handleSessionApproveAllConfirm();
+          },
+        },
+        {
+          label: 'Cancel',
+          variant: 'secondary',
+          callback: () => {
+            dismissToast(APPROVAL_WARNING_TOAST_ID);
+          },
+        },
+      ],
+    });
   };
 
   // Keep tasksRef in sync with tasks state
@@ -396,10 +501,66 @@ export function App() {
 
       const newStatus = event.type === 'task_status' ? event.payload?.status : statusMap[event.type];
       const isAutoApprovalRequested = event.type === 'approval_requested' && event.payload?.autoApproved === true;
-      if (newStatus && !isAutoApprovalRequested) {
+      const isSessionAutoApproval = event.type === 'approval_requested' && sessionAutoApproveAllRef.current;
+      const skipBlockedStateForAutoApproval = isAutoApprovalRequested || isSessionAutoApproval;
+      if (newStatus && !skipBlockedStateForAutoApproval) {
         setTasks(prev => prev.map(t =>
           t.id === event.taskId ? { ...t, status: newStatus } : t
         ));
+      }
+
+      if (event.type === 'approval_requested' && !isAutoApprovalRequested) {
+        const approval = event.payload?.approval as ApprovalRequest | undefined;
+        if (approval?.id) {
+          pendingApprovalsRef.current.set(approval.id, approval);
+
+          if (sessionAutoApproveAllRef.current) {
+            void handleApprovalResponse(approval.id, true);
+          } else {
+            addToast({
+              id: getApprovalToastId(approval.id),
+              type: 'info',
+              title: 'Approval needed',
+              message: approval.description || 'A task is waiting for your approval.',
+              taskId: event.taskId,
+              approvalId: approval.id,
+              persistent: true,
+              actions: [
+                {
+                  label: 'Approve',
+                  dismissOnClick: false,
+                  callback: () => {
+                    void handleApprovalResponse(approval.id, true);
+                  },
+                },
+                {
+                  label: 'Deny',
+                  variant: 'secondary',
+                  dismissOnClick: false,
+                  callback: () => {
+                    void handleApprovalResponse(approval.id, false);
+                  },
+                },
+                {
+                  label: 'Approve all',
+                  variant: 'danger',
+                  dismissOnClick: false,
+                  callback: () => {
+                    showApproveAllWarning();
+                  },
+                },
+              ],
+            });
+          }
+        }
+      }
+
+      if (event.type === 'approval_granted' || event.type === 'approval_denied') {
+        const approvalId = extractApprovalId(event);
+        if (approvalId) {
+          pendingApprovalsRef.current.delete(approvalId);
+          dismissToast(getApprovalToastId(approvalId));
+        }
       }
 
       if (event.type === 'workspace_permissions_updated') {
@@ -428,7 +589,7 @@ export function App() {
         void window.electronAPI.resumeTask(event.taskId);
       }
 
-      if (event.type === 'task_paused' || (event.type === 'approval_requested' && !isAutoApprovalRequested)) {
+      if (event.type === 'task_paused' || (event.type === 'approval_requested' && !skipBlockedStateForAutoApproval)) {
         const isApproval = event.type === 'approval_requested';
         const task = tasksRef.current.find(t => t.id === event.taskId);
         const baseTitle = isApproval ? 'Approval needed' : 'Quick check-in';
@@ -466,7 +627,7 @@ export function App() {
         })();
       }
 
-      if (event.type === 'task_resumed' || event.type === 'approval_granted') {
+      if (event.type === 'task_resumed' || event.type === 'approval_granted' || event.type === 'approval_denied') {
         void (async () => {
           try {
             const existing = await window.electronAPI.listNotifications();

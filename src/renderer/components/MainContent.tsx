@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo, Fragment, Children }
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
-import { Task, TaskEvent, Workspace, ApprovalRequest, LLMModelInfo, CustomSkill, EventType, DEFAULT_QUIRKS, CanvasSession, isTempWorkspaceId } from '../../shared/types';
+import { Task, TaskEvent, Workspace, LLMModelInfo, CustomSkill, EventType, DEFAULT_QUIRKS, CanvasSession, isTempWorkspaceId } from '../../shared/types';
 import { isVerificationStepDescription } from '../../shared/plan-utils';
 import type { AgentRoleData } from '../../electron/preload';
 import { useVoiceInput } from '../hooks/useVoiceInput';
@@ -207,7 +207,6 @@ type MentionOption = {
 
 const normalizeMentionSearch = (value: string): string =>
   value.toLowerCase().replace(/[^a-z0-9]/g, '');
-import { ApprovalDialog } from './ApprovalDialog';
 import { SkillParameterModal } from './SkillParameterModal';
 import { FileViewer } from './FileViewer';
 import { ThemeIcon } from './ThemeIcon';
@@ -944,7 +943,6 @@ interface ActiveCommand {
 export function MainContent({ task, selectedTaskId, workspace, events, onSendMessage, onCreateTask, onChangeWorkspace, onSelectWorkspace, onOpenSettings, onStopTask, onOpenBrowserView, selectedModel, availableModels, onModelChange }: MainContentProps) {
   // Agent personality context for personalized messages
   const agentContext = useAgentContext();
-  const [pendingApproval, setPendingApproval] = useState<ApprovalRequest | null>(null);
   const [inputValue, setInputValue] = useState('');
   const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
@@ -1651,46 +1649,6 @@ export function MainContent({ task, selectedTaskId, workspace, events, onSendMes
       setActiveCommand(null);
     }
   }, [events, task?.id, task?.status, dismissedCommandOutputs]);
-
-  // Check for approval requests in events
-  useEffect(() => {
-    // Get all approval IDs that have been resolved (granted or denied)
-    const resolvedApprovalIds = new Set(
-      events
-        .filter(e => e.type === 'approval_granted' || e.type === 'approval_denied')
-        .map(e => e.payload?.approvalId || e.payload?.approval?.id)
-        .filter(Boolean)
-    );
-
-    // Find an approval request that hasn't been resolved yet
-    const pendingApprovalEvent = events.find(e => {
-      const isAutoApprovalRequested = e.type === 'approval_requested' && e.payload?.autoApproved === true;
-      if (e.type !== 'approval_requested' || isAutoApprovalRequested || !e.payload?.approval) return false;
-      const approvalId = e.payload.approval.id;
-      // Only show if not already resolved
-      return !resolvedApprovalIds.has(approvalId);
-    });
-
-    if (pendingApprovalEvent) {
-      setPendingApproval(pendingApprovalEvent.payload.approval);
-    } else {
-      // No pending approvals - clear the state
-      setPendingApproval(null);
-    }
-  }, [events]);
-
-  const handleApprovalResponse = async (approved: boolean) => {
-    if (!pendingApproval) return;
-    try {
-      await window.electronAPI.respondToApproval({
-        approvalId: pendingApproval.id,
-        approved,
-      });
-      setPendingApproval(null);
-    } catch (error) {
-      console.error('Failed to respond to approval:', error);
-    }
-  };
 
   const reportAttachmentError = (message: string) => {
     setAttachmentError(message);
@@ -3143,14 +3101,6 @@ export function MainContent({ task, selectedTaskId, workspace, events, onSendMes
           {agentContext.getMessage('disclaimer')}
         </div>
       </div>
-
-      {pendingApproval && (
-        <ApprovalDialog
-          approval={pendingApproval}
-          onApprove={() => handleApprovalResponse(true)}
-          onDeny={() => handleApprovalResponse(false)}
-        />
-      )}
 
       {selectedSkillForParams && (
         <SkillParameterModal
