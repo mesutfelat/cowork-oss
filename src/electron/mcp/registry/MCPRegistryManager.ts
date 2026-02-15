@@ -735,11 +735,13 @@ export class MCPRegistryManager {
     }
 
     // Create server config from registry entry
+    const enabledByDefault = entry.installMethod !== 'manual';
     const config: MCPServerConfig = {
       id: uuidv4(),
       name: entry.name,
       description: entry.description,
-      enabled: true,
+      // Manual/local connectors usually require credentials first.
+      enabled: enabledByDefault,
       transport: entry.transport,
       command: entry.defaultCommand || entry.installCommand,
       args: [...(entry.defaultArgs || []), ...(extraArgs || [])],

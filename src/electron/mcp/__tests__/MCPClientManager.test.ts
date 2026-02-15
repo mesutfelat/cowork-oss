@@ -14,12 +14,14 @@ const testState = {
   endBatchCalled: false,
 };
 
-const mockServers = [
+const defaultMockServers = [
   { id: 'server-1', name: 'Server 1', enabled: true },
   { id: 'server-2', name: 'Server 2', enabled: true },
   { id: 'server-3', name: 'Server 3', enabled: true },
   { id: 'server-4', name: 'Server 4', enabled: false },
 ];
+
+let mockServers: any[] = defaultMockServers.map((s) => ({ ...s }));
 
 // Mock electron
 vi.mock('electron', () => ({
@@ -82,6 +84,7 @@ vi.mock('../settings', () => ({
       reconnectDelayMs: 1000,
     })),
     getServer: vi.fn((id: string) => mockServers.find((s) => s.id === id)),
+    updateServer: vi.fn(),
     saveSettings: vi.fn(() => {
       if (!testState.batchModeActive) testState.saveCallCount++;
     }),
@@ -107,6 +110,7 @@ vi.mock('../settings', () => ({
 
 // Import after mocks
 import { MCPClientManager } from '../client/MCPClientManager';
+import { MCPSettingsManager } from '../settings';
 
 function resetState() {
   testState.batchModeActive = false;
@@ -121,6 +125,7 @@ describe('MCPClientManager startup optimizations', () => {
   beforeEach(() => {
     resetState();
     vi.clearAllMocks();
+    mockServers = defaultMockServers.map((s) => ({ ...s }));
     // @ts-expect-error - reset singleton
     MCPClientManager.instance = null;
     manager = MCPClientManager.getInstance();
@@ -161,6 +166,70 @@ describe('MCPClientManager startup optimizations', () => {
       const server4 = status.find((s) => s.id === 'server-4');
 
       expect(server4?.status).not.toBe('connected');
+    });
+
+    it('should skip unconfigured enterprise connectors during auto-connect', async () => {
+      mockServers = [
+        {
+          id: 'salesforce-1',
+          name: 'Salesforce',
+          enabled: true,
+          transport: 'stdio',
+          command: process.execPath,
+          args: ['--runAsNode', '/tmp/connectors/salesforce-mcp/dist/index.js'],
+          env: {
+            SALESFORCE_INSTANCE_URL: '',
+            SALESFORCE_ACCESS_TOKEN: '',
+          },
+        },
+        {
+          id: 'jira-1',
+          name: 'Jira',
+          enabled: true,
+          transport: 'stdio',
+          command: process.execPath,
+          args: ['--runAsNode', '/tmp/connectors/jira-mcp/dist/index.js'],
+          env: {
+            JIRA_BASE_URL: '',
+            JIRA_ACCESS_TOKEN: '',
+          },
+        },
+        {
+          id: 'server-1',
+          name: 'Server 1',
+          enabled: true,
+        },
+      ];
+
+      await manager.initialize();
+      const status = manager.getStatus();
+
+      expect(status.find((s) => s.id === 'salesforce-1')?.status).toBe('disconnected');
+      expect(status.find((s) => s.id === 'jira-1')?.status).toBe('disconnected');
+      expect(status.find((s) => s.id === 'server-1')?.status).toBe('connected');
+      expect(MCPSettingsManager.updateServer).toHaveBeenCalledWith('salesforce-1', { enabled: false });
+      expect(MCPSettingsManager.updateServer).toHaveBeenCalledWith('jira-1', { enabled: false });
+    });
+
+    it('should auto-connect configured enterprise connectors', async () => {
+      mockServers = [
+        {
+          id: 'salesforce-1',
+          name: 'Salesforce',
+          enabled: true,
+          transport: 'stdio',
+          command: process.execPath,
+          args: ['--runAsNode', '/tmp/connectors/salesforce-mcp/dist/index.js'],
+          env: {
+            SALESFORCE_INSTANCE_URL: 'https://example.my.salesforce.com',
+            SALESFORCE_ACCESS_TOKEN: 'token',
+          },
+        },
+      ];
+
+      await manager.initialize();
+      const status = manager.getStatus();
+      expect(status.find((s) => s.id === 'salesforce-1')?.status).toBe('connected');
     });
   });
 
