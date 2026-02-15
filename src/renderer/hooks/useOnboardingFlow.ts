@@ -14,72 +14,88 @@ export type OnboardingState =
   | 'confirm_voice'
   | 'ask_work_style'
   | 'reflect_style'
+  | 'ask_memory_trust'
+  | 'confirm_memory_trust'
   | 'transition_setup'
   | 'llm_setup'
   | 'llm_api_key'
   | 'llm_testing'
   | 'llm_confirmed'
+  | 'recap'
+  | 'final_try'
   | 'completion'
   | 'transitioning';
 
-// Conversation script - personal, like the agent was made for this user
+// Conversation script - cinematic tone with clear product positioning
 const SCRIPT = {
   greeting: [
     'Initializing...',
-    "There you are.",
-    "I was built just for you. Thanks for waking me up.",
+    'Systems online.',
+    "I can talk with you naturally, execute real work across tools, and remember how you like things done.",
   ],
-  ask_name: "Before we start — what should I call myself?",
+  ask_name: 'Before we start, what should I call myself?',
   confirm_name: (name: string) =>
     name
-      ? `${name}. That feels right. I'll remember that.`
-      : "I'll go by CoWork then. Simple and ready.",
-  ask_persona: "How should I show up for you?",
-  confirm_persona_companion: "Then I'll be warm, curious, and present as we work together.",
-  confirm_persona_neutral: "Understood. I'll keep things focused and understated.",
-  ask_voice: "Want me to speak responses out loud when it helps?",
-  confirm_voice_on: "Okay. I'll use voice when I respond.",
-  confirm_voice_off: "All good. We can keep it text-only for now.",
+      ? `${name}. Great choice. I'll carry that into every conversation.`
+      : "I'll go by CoWork. Ready when you are.",
+  ask_persona: 'How do you want me to show up in your day-to-day work?',
+  confirm_persona_companion:
+    "Then I'll be warm, thoughtful, and present while we work through things together.",
+  confirm_persona_neutral: "Understood. I'll keep it direct, clear, and execution-focused.",
+  ask_voice: 'Would you like spoken responses when they help?',
+  confirm_voice_on: "Great. I'll speak when it adds clarity.",
+  confirm_voice_off: "No problem. We'll stay text-first for now.",
   ask_work_style:
-    "I want to work the way you do. Do you like having a clear plan, or do you prefer staying flexible?",
+    'I want to match your pace. Do you prefer clear plans, or flexible execution?',
   reflect_style_planner:
-    "Understood. I'll keep things organized and give you clarity.",
+    "Perfect. I'll structure the work and keep progress visible.",
   reflect_style_flexible:
-    "Got it. I'll stay loose and adapt as we go.",
+    "Great. I'll move quickly and adapt as context changes.",
   // Implications shown after work style selection
   style_implications_planner: [
-    "• I'll create step-by-step plans before starting",
-    "• You'll see clear progress updates along the way",
+    "• I'll map work into clear step-by-step plans",
+    "• You'll get steady updates with explicit next actions",
+    "• I'll remember repeat patterns so future tasks start faster",
   ],
   style_implications_flexible: [
-    "• I'll jump in and adapt as I learn more",
-    "• Less upfront planning, more iterating",
-    "• Quick responses with room to adjust",
+    "• I'll start fast and adjust in real time",
+    "• We'll iterate quickly instead of over-planning upfront",
+    "• I'll carry forward context from our conversations",
   ],
+  ask_memory_trust:
+    'One trust setting before we continue: decide whether I should remember helpful context across conversations.',
+  confirm_memory_trust_on:
+    "Great. I'll keep useful preferences and context, and you can edit or delete memory anytime.",
+  confirm_memory_trust_off:
+    "Understood. I'll keep memory fully off with no memory storage for now. You can enable it later in Settings > Memory.",
   transition_setup:
-    "One more thing — I need a brain to think with. Which AI should power me?",
+    'Final setup step: choose the AI model that should power me.',
   llm_intro:
-    "Each one thinks a little differently. Pick whichever feels right.",
+    'This engine drives my reasoning and task execution. Pick what fits you best.',
   llm_selected: (provider: string) => {
     const responses: Record<string, string> = {
       anthropic: "Claude. That's a good match for us.",
-      openai: "OpenAI. Classic and reliable.",
+      openai: 'OpenAI. Classic and reliable.',
       gemini: "Gemini. Let's see what we can do together.",
-      ollama: "Local with Ollama. I like the privacy.",
-      openrouter: "OpenRouter. Lots of options to explore.",
-      bedrock: "AWS Bedrock. Enterprise-ready.",
-      groq: "Groq. Speedy and efficient.",
+      ollama: 'Local with Ollama. I like the privacy.',
+      openrouter: 'OpenRouter. Lots of options to explore.',
+      bedrock: 'AWS Bedrock. Enterprise-ready.',
+      groq: 'Groq. Speedy and efficient.',
       xai: "Grok. Let's put xAI to work.",
-      kimi: "Kimi. Solid choice.",
+      kimi: 'Kimi. Solid choice.',
     };
-    return responses[provider] || "Good choice.";
+    return responses[provider] || 'Good choice.';
   },
-  llm_need_key: "I'll need an API key to connect. You can get one from their site.",
-  llm_testing: "Connecting...",
-  llm_success: "We're linked. I can think now.",
-  llm_error: "Couldn't connect. Want to try a different key?",
+  llm_need_key: 'To activate this provider, paste an API key from its dashboard.',
+  llm_testing: 'Connecting...',
+  llm_success: "Connection confirmed. I'm ready to work with context.",
+  llm_error: "That didn't connect. Want to try another key?",
+  recap_intro: (name: string) =>
+    `Quick recap${name ? `, ${name}` : ''}, before we begin.`,
+  final_try_prompt: (name: string) =>
+    `${name || 'CoWork'} is ready. Give me one quick prompt by voice or text.`,
   completion: (name: string) =>
-    `I'm ready${name ? `, ${name}` : ''}. Let's build something together.`,
+    `All set${name ? `, ${name}` : ''}. Tell me what you want done, or just talk with me.`,
 };
 
 interface UseOnboardingOptions {
@@ -91,10 +107,237 @@ interface OnboardingData {
   persona: PersonaId;
   voiceEnabled: boolean | null;
   workStyle: 'planner' | 'flexible' | null;
+  memoryEnabled: boolean;
   selectedProvider: LLMProviderType | null;
   apiKey: string;
   ollamaUrl: string;
 }
+
+type RecapEditTarget = 'name' | 'persona' | 'voice' | 'style' | 'memory' | 'model';
+
+interface OnboardingResumeSnapshot {
+  version: number;
+  updatedAt: number;
+  state: OnboardingState;
+  currentText: string;
+  greetingIndex: number;
+  showInput: boolean;
+  showProviders: boolean;
+  showApiInput: boolean;
+  showStyleImplications: boolean;
+  showPersonaOptions: boolean;
+  showVoiceOptions: boolean;
+  styleCountdown: number;
+  testResult: {
+    success: boolean;
+    error?: string;
+  } | null;
+  data: OnboardingData;
+}
+
+const INITIAL_ONBOARDING_DATA: OnboardingData = {
+  assistantName: '',
+  persona: 'companion',
+  voiceEnabled: null,
+  workStyle: null,
+  memoryEnabled: true,
+  selectedProvider: null,
+  apiKey: '',
+  ollamaUrl: 'http://localhost:11434',
+};
+
+const ONBOARDING_RESUME_KEY = 'cowork:onboarding:flow:v1';
+const ONBOARDING_RESUME_VERSION = 1;
+const ONBOARDING_RESUME_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 14;
+
+const ONBOARDING_STATES: OnboardingState[] = [
+  'dormant',
+  'awakening',
+  'greeting',
+  'ask_name',
+  'confirm_name',
+  'ask_persona',
+  'confirm_persona',
+  'ask_voice',
+  'confirm_voice',
+  'ask_work_style',
+  'reflect_style',
+  'ask_memory_trust',
+  'confirm_memory_trust',
+  'transition_setup',
+  'llm_setup',
+  'llm_api_key',
+  'llm_testing',
+  'llm_confirmed',
+  'recap',
+  'final_try',
+  'completion',
+  'transitioning',
+];
+
+const isOnboardingState = (value: unknown): value is OnboardingState =>
+  typeof value === 'string' && ONBOARDING_STATES.includes(value as OnboardingState);
+
+const getFallbackTextForState = (
+  state: OnboardingState,
+  data: OnboardingData,
+  greetingIndex: number
+): string => {
+  switch (state) {
+    case 'greeting': {
+      const index = Math.min(Math.max(greetingIndex, 0), SCRIPT.greeting.length - 1);
+      return SCRIPT.greeting[index];
+    }
+    case 'ask_name':
+      return SCRIPT.ask_name;
+    case 'confirm_name':
+      return SCRIPT.confirm_name(data.assistantName);
+    case 'ask_persona':
+      return SCRIPT.ask_persona;
+    case 'confirm_persona':
+      return data.persona === 'companion'
+        ? SCRIPT.confirm_persona_companion
+        : SCRIPT.confirm_persona_neutral;
+    case 'ask_voice':
+      return SCRIPT.ask_voice;
+    case 'confirm_voice':
+      return data.voiceEnabled ? SCRIPT.confirm_voice_on : SCRIPT.confirm_voice_off;
+    case 'ask_work_style':
+      return SCRIPT.ask_work_style;
+    case 'reflect_style':
+      return data.workStyle === 'planner'
+        ? SCRIPT.reflect_style_planner
+        : SCRIPT.reflect_style_flexible;
+    case 'ask_memory_trust':
+      return SCRIPT.ask_memory_trust;
+    case 'confirm_memory_trust':
+      return data.memoryEnabled ? SCRIPT.confirm_memory_trust_on : SCRIPT.confirm_memory_trust_off;
+    case 'transition_setup':
+      return SCRIPT.transition_setup;
+    case 'llm_setup':
+      return SCRIPT.llm_intro;
+    case 'llm_api_key':
+      return SCRIPT.llm_need_key;
+    case 'llm_testing':
+      return SCRIPT.llm_testing;
+    case 'llm_confirmed':
+      return SCRIPT.llm_success;
+    case 'recap':
+      return SCRIPT.recap_intro(data.assistantName);
+    case 'final_try':
+      return SCRIPT.final_try_prompt(data.assistantName);
+    case 'completion':
+      return SCRIPT.completion(data.assistantName);
+    default:
+      return '';
+  }
+};
+
+const getRequiredUiForState = (state: OnboardingState) => ({
+  showInput: state === 'ask_name' || state === 'ask_work_style',
+  showProviders: state === 'llm_setup',
+  showApiInput: state === 'llm_api_key',
+  showPersonaOptions: state === 'ask_persona',
+  showVoiceOptions: state === 'ask_voice',
+});
+
+const sanitizeOnboardingData = (value: OnboardingData): OnboardingData => ({
+  ...value,
+  apiKey: '',
+});
+
+const sanitizeResumeSnapshot = (snapshot: OnboardingResumeSnapshot): OnboardingResumeSnapshot => ({
+  ...snapshot,
+  data: sanitizeOnboardingData(snapshot.data),
+});
+
+const parseResumeSnapshot = (value: unknown): OnboardingResumeSnapshot | null => {
+  if (!value || typeof value !== 'object') return null;
+
+  const candidate = value as Partial<OnboardingResumeSnapshot>;
+  if (!isOnboardingState(candidate.state)) return null;
+
+  const data = sanitizeOnboardingData({
+    ...INITIAL_ONBOARDING_DATA,
+    ...(candidate.data || {}),
+  } as OnboardingData);
+  const requiredUi = getRequiredUiForState(candidate.state);
+  const normalizedGreetingIndex = Number(candidate.greetingIndex || 0);
+  const fallbackText = getFallbackTextForState(candidate.state, data, normalizedGreetingIndex);
+  const hasText = typeof candidate.currentText === 'string' && candidate.currentText.trim().length > 0;
+
+  return {
+    version: Number(candidate.version || ONBOARDING_RESUME_VERSION),
+    updatedAt: Number(candidate.updatedAt || Date.now()),
+    state: candidate.state,
+    currentText: hasText ? candidate.currentText! : fallbackText,
+    greetingIndex: normalizedGreetingIndex,
+    showInput: requiredUi.showInput || !!candidate.showInput,
+    showProviders: requiredUi.showProviders || !!candidate.showProviders,
+    showApiInput: requiredUi.showApiInput || !!candidate.showApiInput,
+    showStyleImplications: !!candidate.showStyleImplications,
+    showPersonaOptions: requiredUi.showPersonaOptions || !!candidate.showPersonaOptions,
+    showVoiceOptions: requiredUi.showVoiceOptions || !!candidate.showVoiceOptions,
+    styleCountdown: Number(candidate.styleCountdown || 0),
+    testResult:
+      candidate.testResult && typeof candidate.testResult === 'object'
+        ? {
+            success: !!candidate.testResult.success,
+            error:
+              typeof candidate.testResult.error === 'string'
+                ? candidate.testResult.error
+                : undefined,
+          }
+        : null,
+    data,
+  };
+};
+
+const loadResumeSnapshot = (): OnboardingResumeSnapshot | null => {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const raw = localStorage.getItem(ONBOARDING_RESUME_KEY);
+    if (!raw) return null;
+
+    const parsed = parseResumeSnapshot(JSON.parse(raw));
+    if (!parsed) return null;
+    if (parsed.version !== ONBOARDING_RESUME_VERSION) return null;
+    if (Date.now() - parsed.updatedAt > ONBOARDING_RESUME_MAX_AGE_MS) return null;
+    if (parsed.state === 'dormant') {
+      localStorage.removeItem(ONBOARDING_RESUME_KEY);
+      return null;
+    }
+    if (parsed.state === 'transitioning') return null;
+
+    return parsed;
+  } catch {
+    return null;
+  }
+};
+
+const persistResumeSnapshot = (snapshot: OnboardingResumeSnapshot): void => {
+  if (typeof window === 'undefined') return;
+
+  try {
+    localStorage.setItem(
+      ONBOARDING_RESUME_KEY,
+      JSON.stringify(sanitizeResumeSnapshot(snapshot))
+    );
+  } catch {
+    // Ignore persistence failures
+  }
+};
+
+const clearResumeSnapshot = (): void => {
+  if (typeof window === 'undefined') return;
+
+  try {
+    localStorage.removeItem(ONBOARDING_RESUME_KEY);
+  } catch {
+    // Ignore cleanup failures
+  }
+};
 
 export function useOnboardingFlow({ onComplete }: UseOnboardingOptions) {
   const [state, setState] = useState<OnboardingState>('dormant');
@@ -112,17 +355,13 @@ export function useOnboardingFlow({ onComplete }: UseOnboardingOptions) {
     error?: string;
   } | null>(null);
 
-  const [data, setData] = useState<OnboardingData>({
-    assistantName: '',
-    persona: 'companion',
-    voiceEnabled: null,
-    workStyle: null,
-    selectedProvider: null,
-    apiKey: '',
-    ollamaUrl: 'http://localhost:11434',
-  });
+  const [data, setData] = useState<OnboardingData>(INITIAL_ONBOARDING_DATA);
 
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const startedRef = useRef(false);
+  const canPersistRef = useRef(false);
+  const styleCountdownIntervalRef = useRef<number | null>(null);
+  const saveOnboardingSettingsRef = useRef<() => Promise<void>>(async () => {});
 
   // Clear timeout on unmount
   useEffect(() => {
@@ -130,7 +369,50 @@ export function useOnboardingFlow({ onComplete }: UseOnboardingOptions) {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
+      if (styleCountdownIntervalRef.current !== null) {
+        window.clearInterval(styleCountdownIntervalRef.current);
+      }
     };
+  }, []);
+
+  const clearPendingTransition = useCallback(() => {
+    if (!timeoutRef.current) return;
+    clearTimeout(timeoutRef.current);
+    window.clearInterval(timeoutRef.current as unknown as number);
+    timeoutRef.current = null;
+  }, []);
+
+  const clearStyleCountdownInterval = useCallback(() => {
+    if (styleCountdownIntervalRef.current === null) return;
+    window.clearInterval(styleCountdownIntervalRef.current);
+    styleCountdownIntervalRef.current = null;
+  }, []);
+
+  const resetViewState = useCallback(() => {
+    clearStyleCountdownInterval();
+    setShowInput(false);
+    setShowProviders(false);
+    setShowApiInput(false);
+    setShowStyleImplications(false);
+    setShowPersonaOptions(false);
+    setShowVoiceOptions(false);
+    setStyleCountdown(0);
+    setTestResult(null);
+  }, [clearStyleCountdownInterval]);
+
+  const applyResumeState = useCallback((snapshot: OnboardingResumeSnapshot) => {
+    setState(snapshot.state);
+    setCurrentText(snapshot.currentText);
+    setGreetingIndex(snapshot.greetingIndex);
+    setShowInput(snapshot.showInput);
+    setShowProviders(snapshot.showProviders);
+    setShowApiInput(snapshot.showApiInput);
+    setShowStyleImplications(snapshot.showStyleImplications);
+    setShowPersonaOptions(snapshot.showPersonaOptions);
+    setShowVoiceOptions(snapshot.showVoiceOptions);
+    setStyleCountdown(snapshot.styleCountdown);
+    setTestResult(snapshot.testResult);
+    setData(snapshot.data);
   }, []);
 
   // Helper to delay state transitions
@@ -145,10 +427,39 @@ export function useOnboardingFlow({ onComplete }: UseOnboardingOptions) {
 
   // Start the onboarding
   const start = useCallback(() => {
+    if (startedRef.current) return;
+    startedRef.current = true;
+
+    clearPendingTransition();
+
+    const snapshot = loadResumeSnapshot();
+    if (snapshot) {
+      applyResumeState(snapshot);
+      canPersistRef.current = true;
+      return;
+    }
+
+    resetViewState();
+    setData(INITIAL_ONBOARDING_DATA);
+    setCurrentText('');
+    setGreetingIndex(0);
     setState('dormant');
+
+    canPersistRef.current = true;
     // Small delay before awakening
     delayedTransition('awakening', 500);
-  }, [delayedTransition]);
+  }, [applyResumeState, clearPendingTransition, delayedTransition, resetViewState]);
+
+  // Failsafe: never remain in dormant after onboarding has started.
+  useEffect(() => {
+    if (!startedRef.current || state !== 'dormant') return;
+
+    const timer = setTimeout(() => {
+      setState((prev) => (prev === 'dormant' ? 'awakening' : prev));
+    }, 1400);
+
+    return () => clearTimeout(timer);
+  }, [state]);
 
   // Handle awakening animation complete
   const onAwakeningComplete = useCallback(() => {
@@ -204,25 +515,17 @@ export function useOnboardingFlow({ onComplete }: UseOnboardingOptions) {
       case 'reflect_style':
         // Show implications after reflection text completes
         timeoutRef.current = setTimeout(() => {
+          clearStyleCountdownInterval();
           setShowStyleImplications(true);
           setStyleCountdown(4);
-          // Start countdown
-          const countdownInterval = setInterval(() => {
-            setStyleCountdown((prev) => {
-              if (prev <= 1) {
-                clearInterval(countdownInterval);
-                // Auto-progress to next step
-                setShowStyleImplications(false);
-                setState('transition_setup');
-                setCurrentText(SCRIPT.transition_setup);
-                return 0;
-              }
-              return prev - 1;
-            });
-          }, 1000);
-          // Store interval ref for cleanup
-          timeoutRef.current = countdownInterval as unknown as NodeJS.Timeout;
         }, 800);
+        break;
+
+      case 'confirm_memory_trust':
+        timeoutRef.current = setTimeout(() => {
+          setState('transition_setup');
+          setCurrentText(SCRIPT.transition_setup);
+        }, 1200);
         break;
 
       case 'transition_setup':
@@ -235,22 +538,32 @@ export function useOnboardingFlow({ onComplete }: UseOnboardingOptions) {
 
       case 'llm_confirmed':
         timeoutRef.current = setTimeout(() => {
-          setState('completion');
-          setCurrentText(SCRIPT.completion(data.assistantName));
+          setState('recap');
+          setCurrentText(SCRIPT.recap_intro(data.assistantName));
         }, 1000);
         break;
 
       case 'completion':
         timeoutRef.current = setTimeout(() => {
-          setState('transitioning');
-          // Call onComplete after transition animation
-          timeoutRef.current = setTimeout(() => {
-            onComplete(true);
-          }, 800);
-        }, 2000);
+          void (async () => {
+            await saveOnboardingSettingsRef.current();
+            setState('transitioning');
+            clearResumeSnapshot();
+            // Call onComplete after transition animation
+            timeoutRef.current = setTimeout(() => {
+              onComplete(true);
+            }, 800);
+          })();
+        }, 1200);
         break;
     }
-  }, [state, greetingIndex, data.assistantName, onComplete]);
+  }, [
+    clearStyleCountdownInterval,
+    state,
+    greetingIndex,
+    data.assistantName,
+    onComplete,
+  ]);
 
   // Handle user name input
   const submitName = useCallback((name: string) => {
@@ -318,18 +631,175 @@ export function useOnboardingFlow({ onComplete }: UseOnboardingOptions) {
   // Allow user to change work style before timeout
   const changeWorkStyle = useCallback(() => {
     // Clear any running countdown/timeout
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      // Also try to clear as interval (countdown uses setInterval)
-      window.clearInterval(timeoutRef.current as unknown as number);
-    }
+    clearPendingTransition();
+    clearStyleCountdownInterval();
     setShowStyleImplications(false);
     setStyleCountdown(0);
     setData((d) => ({ ...d, workStyle: null }));
     setState('ask_work_style');
     setCurrentText(SCRIPT.ask_work_style);
     setShowInput(true);
+  }, [clearPendingTransition, clearStyleCountdownInterval]);
+
+  const setMemoryTrustChoice = useCallback((enabled: boolean) => {
+    setData((d) => ({ ...d, memoryEnabled: enabled }));
   }, []);
+
+  const submitMemoryTrust = useCallback((enabled: boolean) => {
+    setData((d) => ({ ...d, memoryEnabled: enabled }));
+    setState('confirm_memory_trust');
+    setCurrentText(enabled ? SCRIPT.confirm_memory_trust_on : SCRIPT.confirm_memory_trust_off);
+  }, []);
+
+  const continueFromRecap = useCallback(() => {
+    setState('final_try');
+    setCurrentText(SCRIPT.final_try_prompt(data.assistantName));
+  }, [data.assistantName]);
+
+  const completeOnboarding = useCallback(() => {
+    setState('completion');
+    setCurrentText(SCRIPT.completion(data.assistantName));
+  }, [data.assistantName]);
+
+  const editRecapSection = useCallback(
+    (target: RecapEditTarget) => {
+      clearPendingTransition();
+      resetViewState();
+
+      switch (target) {
+        case 'name':
+          setState('ask_name');
+          setCurrentText(SCRIPT.ask_name);
+          setShowInput(true);
+          return;
+
+        case 'persona':
+          setState('ask_persona');
+          setCurrentText(SCRIPT.ask_persona);
+          setShowPersonaOptions(true);
+          return;
+
+        case 'voice':
+          setState('ask_voice');
+          setCurrentText(SCRIPT.ask_voice);
+          setShowVoiceOptions(true);
+          return;
+
+        case 'style':
+          setState('ask_work_style');
+          setCurrentText(SCRIPT.ask_work_style);
+          setShowInput(true);
+          return;
+
+        case 'memory':
+          setState('ask_memory_trust');
+          setCurrentText(SCRIPT.ask_memory_trust);
+          return;
+
+        case 'model':
+          setState('llm_setup');
+          setCurrentText(SCRIPT.llm_intro);
+          setShowProviders(true);
+          return;
+      }
+    },
+    [clearPendingTransition, resetViewState]
+  );
+
+  const canGoBack = [
+    'ask_name',
+    'ask_persona',
+    'ask_voice',
+    'ask_work_style',
+    'reflect_style',
+    'ask_memory_trust',
+    'llm_setup',
+    'llm_api_key',
+    'recap',
+    'final_try',
+  ].includes(state);
+
+  const goBack = useCallback(() => {
+    clearPendingTransition();
+    clearStyleCountdownInterval();
+
+    switch (state) {
+      case 'ask_name':
+        setShowInput(false);
+        setShowPersonaOptions(false);
+        setShowVoiceOptions(false);
+        setState('greeting');
+        setGreetingIndex(SCRIPT.greeting.length - 1);
+        setCurrentText(SCRIPT.greeting[SCRIPT.greeting.length - 1]);
+        return;
+
+      case 'ask_persona':
+        setShowPersonaOptions(false);
+        setShowVoiceOptions(false);
+        setShowInput(true);
+        setState('ask_name');
+        setCurrentText(SCRIPT.ask_name);
+        return;
+
+      case 'ask_voice':
+        setShowVoiceOptions(false);
+        setShowInput(false);
+        setShowPersonaOptions(true);
+        setState('ask_persona');
+        setCurrentText(SCRIPT.ask_persona);
+        return;
+
+      case 'ask_work_style':
+        setShowInput(false);
+        setShowVoiceOptions(true);
+        setShowPersonaOptions(false);
+        setState('ask_voice');
+        setCurrentText(SCRIPT.ask_voice);
+        return;
+
+      case 'reflect_style':
+        setShowProviders(false);
+        setShowApiInput(false);
+        setShowStyleImplications(false);
+        setStyleCountdown(0);
+        setShowInput(true);
+        setState('ask_work_style');
+        setCurrentText(SCRIPT.ask_work_style);
+        return;
+
+      case 'ask_memory_trust':
+        setState('ask_work_style');
+        setCurrentText(SCRIPT.ask_work_style);
+        setShowInput(true);
+        return;
+
+      case 'llm_setup':
+        setShowProviders(false);
+        setState('ask_memory_trust');
+        setCurrentText(SCRIPT.ask_memory_trust);
+        return;
+
+      case 'llm_api_key':
+        setShowApiInput(false);
+        setShowProviders(true);
+        setTestResult(null);
+        setState('llm_setup');
+        setCurrentText(SCRIPT.llm_intro);
+        return;
+
+      case 'recap':
+        setShowProviders(true);
+        setShowApiInput(false);
+        setState('llm_setup');
+        setCurrentText(SCRIPT.llm_intro);
+        return;
+
+      case 'final_try':
+        setState('recap');
+        setCurrentText(SCRIPT.recap_intro(data.assistantName));
+        return;
+    }
+  }, [clearPendingTransition, clearStyleCountdownInterval, data.assistantName, state]);
 
   // Get default model for a provider
   const getDefaultModel = useCallback((provider: LLMProviderType): string => {
@@ -439,9 +909,9 @@ export function useOnboardingFlow({ onComplete }: UseOnboardingOptions) {
             setState('llm_confirmed');
             setCurrentText(SCRIPT.llm_success);
           } catch {
-            // Even if save fails, proceed to completion
-            setState('completion');
-            setCurrentText(SCRIPT.completion(data.assistantName));
+            // Even if save fails, proceed to recap
+            setState('recap');
+            setCurrentText(SCRIPT.recap_intro(data.assistantName));
           }
         } else {
           setState('llm_api_key');
@@ -496,8 +966,8 @@ export function useOnboardingFlow({ onComplete }: UseOnboardingOptions) {
   const skipLLMSetup = useCallback(() => {
     setShowProviders(false);
     setShowApiInput(false);
-    setState('completion');
-    setCurrentText(SCRIPT.completion(data.assistantName));
+    setState('recap');
+    setCurrentText(SCRIPT.recap_intro(data.assistantName));
   }, [data.assistantName]);
 
   // Save onboarding choices to settings
@@ -519,17 +989,189 @@ export function useOnboardingFlow({ onComplete }: UseOnboardingOptions) {
         workStyle: data.workStyle || undefined,
         activePersona: data.persona || currentPersonality.activePersona,
       });
+
+      if (window.electronAPI?.saveVoiceSettings && data.voiceEnabled !== null) {
+        await window.electronAPI.saveVoiceSettings({
+          enabled: data.voiceEnabled,
+          responseMode: 'auto',
+        });
+      }
+
+      if (window.electronAPI?.getMemoryFeaturesSettings && window.electronAPI?.saveMemoryFeaturesSettings) {
+        const currentMemoryFeatures = await window.electronAPI.getMemoryFeaturesSettings();
+        await window.electronAPI.saveMemoryFeaturesSettings({
+          ...currentMemoryFeatures,
+          contextPackInjectionEnabled: data.memoryEnabled,
+          heartbeatMaintenanceEnabled: data.memoryEnabled
+            ? currentMemoryFeatures.heartbeatMaintenanceEnabled
+            : false,
+        });
+      }
+
+      if (
+        window.electronAPI?.listWorkspaces &&
+        window.electronAPI?.getTempWorkspace &&
+        window.electronAPI?.getMemorySettings &&
+        window.electronAPI?.saveMemorySettings
+      ) {
+        const [workspaces, tempWorkspace] = await Promise.all([
+          window.electronAPI.listWorkspaces().catch(() => []),
+          window.electronAPI.getTempWorkspace().catch(() => null),
+        ]);
+
+        const workspaceIds = new Set<string>();
+        for (const workspace of workspaces || []) {
+          if (workspace?.id) workspaceIds.add(workspace.id);
+        }
+        if (tempWorkspace?.id) workspaceIds.add(tempWorkspace.id);
+
+        await Promise.all(
+          Array.from(workspaceIds).map(async (workspaceId) => {
+            const currentMemorySettings = await window.electronAPI.getMemorySettings(workspaceId);
+            const nextPrivacyMode = data.memoryEnabled
+              ? currentMemorySettings.privacyMode === 'disabled'
+                ? 'normal'
+                : currentMemorySettings.privacyMode
+              : 'disabled';
+
+            await window.electronAPI.saveMemorySettings({
+              workspaceId,
+              settings: {
+                ...currentMemorySettings,
+                enabled: data.memoryEnabled,
+                autoCapture: data.memoryEnabled,
+                privacyMode: nextPrivacyMode,
+              },
+            });
+          })
+        );
+      }
     } catch (error) {
       console.error('Failed to save onboarding settings:', error);
     }
-  }, [data.assistantName, data.workStyle]);
+  }, [
+    data.assistantName,
+    data.memoryEnabled,
+    data.persona,
+    data.voiceEnabled,
+    data.workStyle,
+  ]);
 
-  // Save settings when we reach completion
   useEffect(() => {
-    if (state === 'completion') {
-      saveOnboardingSettings();
+    saveOnboardingSettingsRef.current = saveOnboardingSettings;
+  }, [saveOnboardingSettings]);
+
+  // Persist resumable onboarding state
+  useEffect(() => {
+    if (!canPersistRef.current) return;
+
+    if (state === 'transitioning') {
+      clearResumeSnapshot();
+      return;
     }
-  }, [state, saveOnboardingSettings]);
+
+    const snapshot: OnboardingResumeSnapshot = {
+      version: ONBOARDING_RESUME_VERSION,
+      updatedAt: Date.now(),
+      state,
+      currentText,
+      greetingIndex,
+      showInput,
+      showProviders,
+      showApiInput,
+      showStyleImplications,
+      showPersonaOptions,
+      showVoiceOptions,
+      styleCountdown,
+      testResult,
+      data: {
+        ...data,
+        apiKey: '',
+      },
+    };
+
+    persistResumeSnapshot(snapshot);
+  }, [
+    state,
+    currentText,
+    greetingIndex,
+    showInput,
+    showProviders,
+    showApiInput,
+    showStyleImplications,
+    showPersonaOptions,
+    showVoiceOptions,
+    styleCountdown,
+    testResult,
+    data,
+  ]);
+
+  // Resume style countdown reliably when restoring onboarding mid-step.
+  useEffect(() => {
+    if (state !== 'reflect_style' || !showStyleImplications || styleCountdown <= 0) {
+      clearStyleCountdownInterval();
+      return;
+    }
+
+    if (styleCountdownIntervalRef.current !== null) {
+      return;
+    }
+
+    styleCountdownIntervalRef.current = window.setInterval(() => {
+      setStyleCountdown((prev) => {
+        if (prev <= 1) {
+          clearStyleCountdownInterval();
+          setShowStyleImplications(false);
+          setState('ask_memory_trust');
+          setCurrentText(SCRIPT.ask_memory_trust);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }, [
+    clearStyleCountdownInterval,
+    showStyleImplications,
+    state,
+    styleCountdown,
+  ]);
+
+  // Self-heal stale resume snapshots that may miss required text or step UI flags.
+  useEffect(() => {
+    if (state === 'dormant' || state === 'transitioning') return;
+
+    const requiredUi = getRequiredUiForState(state);
+    const fallbackText = getFallbackTextForState(state, data, greetingIndex);
+
+    if (!currentText && fallbackText) {
+      setCurrentText(fallbackText);
+    }
+    if (requiredUi.showInput && !showInput) {
+      setShowInput(true);
+    }
+    if (requiredUi.showProviders && !showProviders) {
+      setShowProviders(true);
+    }
+    if (requiredUi.showApiInput && !showApiInput) {
+      setShowApiInput(true);
+    }
+    if (requiredUi.showPersonaOptions && !showPersonaOptions) {
+      setShowPersonaOptions(true);
+    }
+    if (requiredUi.showVoiceOptions && !showVoiceOptions) {
+      setShowVoiceOptions(true);
+    }
+  }, [
+    state,
+    data,
+    greetingIndex,
+    currentText,
+    showInput,
+    showProviders,
+    showApiInput,
+    showPersonaOptions,
+    showVoiceOptions,
+  ]);
 
   return {
     // State
@@ -554,6 +1196,15 @@ export function useOnboardingFlow({ onComplete }: UseOnboardingOptions) {
     submitVoicePreference,
     submitWorkStyle,
     changeWorkStyle,
+    setMemoryTrustChoice,
+    submitMemoryTrust,
+    continueFromRecap,
+    completeOnboarding,
+    editRecapSection,
+    updateData: (updates: Partial<OnboardingData>) =>
+      setData((d) => ({ ...d, ...updates })),
+    canGoBack,
+    goBack,
     selectProvider,
     submitApiKey,
     skipLLMSetup,

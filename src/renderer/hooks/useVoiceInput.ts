@@ -1,6 +1,133 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 
 export type VoiceInputState = 'idle' | 'recording' | 'processing';
+type VoiceProvider = 'elevenlabs' | 'openai' | 'azure' | 'local';
+type TranscriptionMode = 'provider' | 'local_preferred';
+
+interface VoiceSettingsSnapshot {
+  enabled: boolean;
+  sttProvider: VoiceProvider;
+  openaiApiKey?: string;
+  azureApiKey?: string;
+  azureEndpoint?: string;
+  azureSttDeploymentName?: string;
+  language?: string;
+}
+
+interface BrowserSpeechRecognition {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  maxAlternatives: number;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onerror: ((event: SpeechRecognitionErrorEventLike) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+}
+
+interface SpeechRecognitionAlternativeLike {
+  transcript: string;
+}
+
+interface SpeechRecognitionResultLike {
+  isFinal: boolean;
+  [index: number]: SpeechRecognitionAlternativeLike;
+}
+
+interface SpeechRecognitionResultListLike {
+  length: number;
+  [index: number]: SpeechRecognitionResultLike;
+}
+
+interface SpeechRecognitionEventLike {
+  resultIndex: number;
+  results: SpeechRecognitionResultListLike;
+}
+
+interface SpeechRecognitionErrorEventLike {
+  error?: string;
+}
+
+type BrowserSpeechRecognitionCtor = new () => BrowserSpeechRecognition;
+
+const getSpeechRecognitionCtor = (): BrowserSpeechRecognitionCtor | null => {
+  const speechWindow = window as Window & {
+    SpeechRecognition?: BrowserSpeechRecognitionCtor;
+    webkitSpeechRecognition?: BrowserSpeechRecognitionCtor;
+  };
+  return speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition || null;
+};
+
+const isLocalSpeechRecognitionSupported = (): boolean => getSpeechRecognitionCtor() !== null;
+const LOCAL_RECOGNITION_FATAL_ERRORS = new Set(['not-allowed', 'service-not-allowed', 'audio-capture']);
+
+const mapSpeechRecognitionError = (errorCode?: string): string => {
+  switch (errorCode) {
+    case 'not-allowed':
+    case 'service-not-allowed':
+      return 'Microphone access is blocked. Enable microphone permission for this app, then try again.';
+    case 'audio-capture':
+      return 'No usable microphone was found. Check your input device and try again.';
+    case 'no-speech':
+      return 'No speech was detected. Try speaking again.';
+    case 'network':
+      return 'Speech recognition service is unavailable right now. Try again.';
+    case 'aborted':
+      return 'Speech recognition was interrupted. Please try again.';
+    default:
+      return errorCode
+        ? `Speech recognition error: ${errorCode}`
+        : 'Speech recognition error occurred';
+  }
+};
+
+const mapMicrophoneAccessError = (error: unknown): string => {
+  if (error instanceof DOMException) {
+    if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+      return 'Microphone access is blocked. Enable microphone permission for this app, then try again.';
+    }
+    if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+      return 'No microphone was detected. Connect a microphone and try again.';
+    }
+  }
+  return error instanceof Error ? error.message : 'Failed to access microphone';
+};
+
+const canUseRemoteTranscription = (settings: VoiceSettingsSnapshot): boolean => {
+  switch (settings.sttProvider) {
+    case 'openai':
+      return !!settings.openaiApiKey;
+    case 'azure':
+      return !!(settings.azureApiKey && settings.azureEndpoint && settings.azureSttDeploymentName);
+    case 'elevenlabs':
+      // ElevenLabs has no STT API, so we rely on OpenAI/Azure credentials.
+      return (
+        !!settings.openaiApiKey ||
+        !!(settings.azureApiKey && settings.azureEndpoint && settings.azureSttDeploymentName)
+      );
+    case 'local':
+      return false;
+    default:
+      return false;
+  }
+};
+
+const canUseConfiguredTranscription = (
+  settings: VoiceSettingsSnapshot,
+  localSupported: boolean
+): boolean => {
+  if (!settings.enabled) {
+    return false;
+  }
+
+  if (settings.sttProvider === 'local') {
+    return localSupported;
+  }
+
+  return canUseRemoteTranscription(settings);
+};
 
 interface UseVoiceInputOptions {
   /** Callback when transcription is complete */
@@ -11,6 +138,8 @@ interface UseVoiceInputOptions {
   onNotConfigured?: () => void;
   /** Auto-stop recording after this many milliseconds (default: 30000) */
   maxDuration?: number;
+  /** Transcription strategy */
+  transcriptionMode?: TranscriptionMode;
 }
 
 interface UseVoiceInputReturn {
@@ -35,7 +164,13 @@ interface UseVoiceInputReturn {
 }
 
 export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInputReturn {
-  const { onTranscript, onError, onNotConfigured, maxDuration = 30000 } = options;
+  const {
+    onTranscript,
+    onError,
+    onNotConfigured,
+    maxDuration = 30000,
+    transcriptionMode = 'provider',
+  } = options;
 
   const [state, setState] = useState<VoiceInputState>('idle');
   const [isAvailable, setIsAvailable] = useState(true);
@@ -44,30 +179,47 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
   const [error, setError] = useState<string | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
+  const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
+  const disableLocalRecognitionRef = useRef(false);
+  const canFallbackToProviderRef = useRef(false);
+  const localTranscriptRef = useRef<string[]>([]);
+  const localDiscardRef = useRef(false);
   const animationFrameRef = useRef<number | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  const refreshVoiceConfiguration = useCallback(async (): Promise<VoiceSettingsSnapshot | null> => {
+    try {
+      const settings = (await window.electronAPI.getVoiceSettings()) as VoiceSettingsSnapshot;
+      const normalized: VoiceSettingsSnapshot = {
+        ...settings,
+        sttProvider: settings.sttProvider || 'openai',
+      };
+
+      const localSupported = isLocalSpeechRecognitionSupported();
+      const configuredByProvider = canUseConfiguredTranscription(normalized, localSupported);
+      const localUsable = localSupported && !disableLocalRecognitionRef.current;
+      const configured =
+        transcriptionMode === 'local_preferred'
+          ? localUsable || configuredByProvider
+          : configuredByProvider;
+
+      setIsConfigured(configured);
+      setIsAvailable(true);
+      return normalized;
+    } catch {
+      setIsConfigured(false);
+      return null;
+    }
+  }, [transcriptionMode]);
+
   // Check if voice settings are configured on mount
   useEffect(() => {
-    const checkVoiceSettings = async () => {
-      try {
-        const settings = await window.electronAPI.getVoiceSettings();
-        // Check if STT provider is configured with necessary credentials
-        const hasCredentials =
-          (settings.sttProvider === 'azure' && !!settings.azureApiKey && !!settings.azureEndpoint) ||
-          (settings.sttProvider === 'openai' && !!settings.openaiApiKey) ||
-          (settings.sttProvider === 'elevenlabs' && !!settings.elevenLabsApiKey) ||
-          settings.sttProvider === 'local';
-        setIsConfigured(settings.enabled && hasCredentials);
-      } catch {
-        setIsConfigured(false);
-      }
-    };
-    checkVoiceSettings();
-  }, []);
+    void refreshVoiceConfiguration();
+  }, [refreshVoiceConfiguration]);
 
   const cleanup = useCallback(() => {
     // Stop animation frame
@@ -88,17 +240,111 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
     }
     mediaRecorderRef.current = null;
 
+    // Close analysis context
+    if (audioContextRef.current) {
+      void audioContextRef.current.close().catch(() => {});
+      audioContextRef.current = null;
+    }
+
     // Stop stream tracks
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
     }
 
+    // Stop local speech recognition
+    if (recognitionRef.current) {
+      recognitionRef.current.onresult = null;
+      recognitionRef.current.onerror = null;
+      recognitionRef.current.onend = null;
+      try {
+        recognitionRef.current.abort();
+      } catch {
+        // ignore
+      }
+      recognitionRef.current = null;
+    }
+
     // Reset analyser
     analyserRef.current = null;
     audioChunksRef.current = [];
+    localTranscriptRef.current = [];
+    localDiscardRef.current = false;
     setAudioLevel(0);
   }, []);
+
+  const startLocalRecognition = useCallback(
+    (language: string) => {
+      const RecognitionCtor = getSpeechRecognitionCtor();
+      if (!RecognitionCtor) {
+        throw new Error('System speech recognition is not available in this environment');
+      }
+
+      const recognition = new RecognitionCtor();
+      localTranscriptRef.current = [];
+      localDiscardRef.current = false;
+
+      recognition.lang = language || 'en-US';
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.maxAlternatives = 1;
+
+      recognition.onresult = (event: SpeechRecognitionEventLike) => {
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const result = event.results[i];
+          if (result.isFinal && result[0]?.transcript) {
+            localTranscriptRef.current.push(result[0].transcript.trim());
+          }
+        }
+      };
+
+      recognition.onerror = (event: SpeechRecognitionErrorEventLike) => {
+        const errorCode = event?.error;
+        const shouldFallbackToProvider = errorCode === 'network' && canFallbackToProviderRef.current;
+        const message = shouldFallbackToProvider
+          ? 'System speech recognition is unavailable. Tap the mic again to use provider transcription.'
+          : mapSpeechRecognitionError(errorCode);
+
+        if (errorCode === 'not-allowed' || errorCode === 'service-not-allowed') {
+          setIsAvailable(false);
+        }
+
+        if (shouldFallbackToProvider) {
+          disableLocalRecognitionRef.current = true;
+        }
+
+        setError(message);
+        onError?.(message);
+
+        if (errorCode && LOCAL_RECOGNITION_FATAL_ERRORS.has(errorCode)) {
+          localDiscardRef.current = true;
+          cleanup();
+          setState('idle');
+        }
+      };
+
+      recognition.onend = () => {
+        const discarded = localDiscardRef.current;
+        const transcript = localTranscriptRef.current.join(' ').trim();
+
+        recognitionRef.current = null;
+        localTranscriptRef.current = [];
+        localDiscardRef.current = false;
+        setAudioLevel(0);
+
+        if (!discarded && transcript) {
+          onTranscript?.(transcript);
+        }
+
+        setState('idle');
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+      setState('recording');
+    },
+    [onError, onTranscript, cleanup]
+  );
 
   const updateAudioLevel = useCallback(() => {
     if (!analyserRef.current) return;
@@ -111,7 +357,12 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
     const level = Math.min(100, (average / 128) * 100);
     setAudioLevel(level);
 
-    if (state === 'recording') {
+    const isActiveCapture =
+      recognitionRef.current !== null ||
+      mediaRecorderRef.current?.state === 'recording' ||
+      state === 'recording';
+
+    if (isActiveCapture) {
       animationFrameRef.current = requestAnimationFrame(updateAudioLevel);
     }
   }, [state]);
@@ -119,16 +370,55 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
   const startRecording = useCallback(async () => {
     if (state !== 'idle') return;
 
-    // Check if voice is configured
-    if (!isConfigured) {
-      onNotConfigured?.();
-      return;
-    }
-
     setError(null);
     audioChunksRef.current = [];
 
     try {
+      const settings = await refreshVoiceConfiguration();
+      if (!settings) {
+        onNotConfigured?.();
+        return;
+      }
+
+      const localSupported = isLocalSpeechRecognitionSupported();
+      const providerConfigured = canUseConfiguredTranscription(settings, localSupported);
+      canFallbackToProviderRef.current = providerConfigured;
+
+      const useLocalPreferred =
+        transcriptionMode === 'local_preferred' &&
+        localSupported &&
+        !disableLocalRecognitionRef.current;
+      const useConfiguredLocalProvider = settings.enabled && settings.sttProvider === 'local' && localSupported;
+
+      if (useLocalPreferred || useConfiguredLocalProvider) {
+        // Warm up microphone permission explicitly so local recognition is less likely to fail with not-allowed.
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            sampleRate: 16000,
+          },
+        });
+        streamRef.current = stream;
+
+        const audioContext = new AudioContext();
+        audioContextRef.current = audioContext;
+        const source = audioContext.createMediaStreamSource(stream);
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        source.connect(analyser);
+        analyserRef.current = analyser;
+        updateAudioLevel();
+
+        startLocalRecognition(settings.language || 'en-US');
+        return;
+      }
+
+      if (!providerConfigured) {
+        onNotConfigured?.();
+        return;
+      }
+
       // Request microphone access
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -141,6 +431,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
 
       // Set up audio analyser for visualization
       const audioContext = new AudioContext();
+      audioContextRef.current = audioContext;
       const source = audioContext.createMediaStreamSource(stream);
       const analyser = audioContext.createAnalyser();
       analyser.fftSize = 256;
@@ -219,25 +510,69 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
       }, maxDuration);
 
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to access microphone';
+      const errorMessage = mapMicrophoneAccessError(err);
       setError(errorMessage);
       onError?.(errorMessage);
       setIsAvailable(false);
       cleanup();
       setState('idle');
     }
-  }, [state, maxDuration, onTranscript, onError, onNotConfigured, isConfigured, cleanup, updateAudioLevel]);
+  }, [
+    state,
+    maxDuration,
+    onTranscript,
+    onError,
+    onNotConfigured,
+    cleanup,
+    updateAudioLevel,
+    refreshVoiceConfiguration,
+    startLocalRecognition,
+    transcriptionMode,
+  ]);
 
   const stopRecording = useCallback(() => {
-    if (state !== 'recording' || !mediaRecorderRef.current) return;
+    if (state !== 'recording') return;
+
+    if (recognitionRef.current) {
+      setState('processing');
+      try {
+        recognitionRef.current.stop();
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Failed to stop speech recognition';
+        setError(errorMessage);
+        onError?.(errorMessage);
+        cleanup();
+        setState('idle');
+      }
+      return;
+    }
+
+    if (!mediaRecorderRef.current) return;
 
     if (mediaRecorderRef.current.state === 'recording') {
       mediaRecorderRef.current.stop();
     }
-  }, [state]);
+  }, [state, cleanup, onError]);
 
   const cancelRecording = useCallback(() => {
     if (state !== 'recording') return;
+
+    if (recognitionRef.current) {
+      localDiscardRef.current = true;
+      recognitionRef.current.onresult = null;
+      recognitionRef.current.onerror = null;
+      recognitionRef.current.onend = null;
+      try {
+        recognitionRef.current.abort();
+      } catch {
+        // ignore
+      }
+      recognitionRef.current = null;
+      localTranscriptRef.current = [];
+      setAudioLevel(0);
+      setState('idle');
+      return;
+    }
 
     // Clear chunks so onstop doesn't process them
     audioChunksRef.current = [];
