@@ -2504,6 +2504,74 @@ export class MemoryRepository {
   }
 
   /**
+   * List workspace IDs that currently have at least one memory.
+   */
+  listWorkspaceIds(limit = 5000): string[] {
+    const stmt = this.db.prepare(`
+      SELECT DISTINCT workspace_id
+      FROM memories
+      ORDER BY workspace_id ASC
+      LIMIT ?
+    `);
+    const rows = stmt.all(limit) as Array<{ workspace_id: string }>;
+    return rows.map((row) => row.workspace_id).filter((id) => typeof id === 'string' && id.length > 0);
+  }
+
+  /**
+   * Approximate storage in bytes (UTF-8 length proxy via SQLite length()).
+   */
+  getApproxStorageBytes(workspaceId: string): number {
+    const stmt = this.db.prepare(`
+      SELECT COALESCE(SUM(length(content) + COALESCE(length(summary), 0)), 0) as total_bytes
+      FROM memories
+      WHERE workspace_id = ?
+    `);
+    const row = stmt.get(workspaceId) as { total_bytes?: number } | undefined;
+    const total = Number(row?.total_bytes || 0);
+    return Number.isFinite(total) ? total : 0;
+  }
+
+  /**
+   * Get oldest memories first, including approximate row bytes for cleanup decisions.
+   */
+  getOldestForWorkspace(
+    workspaceId: string,
+    limit = 200
+  ): Array<{ id: string; createdAt: number; approxBytes: number }> {
+    const stmt = this.db.prepare(`
+      SELECT id, created_at, (length(content) + COALESCE(length(summary), 0)) as approx_bytes
+      FROM memories
+      WHERE workspace_id = ?
+      ORDER BY created_at ASC
+      LIMIT ?
+    `);
+    const rows = stmt.all(workspaceId, limit) as Array<{
+      id: string;
+      created_at: number;
+      approx_bytes: number;
+    }>;
+    return rows.map((row) => ({
+      id: row.id,
+      createdAt: row.created_at,
+      approxBytes: Number.isFinite(row.approx_bytes) ? row.approx_bytes : 0,
+    }));
+  }
+
+  /**
+   * Delete a specific set of memory IDs from a workspace.
+   */
+  deleteByIds(workspaceId: string, ids: string[]): number {
+    if (!ids.length) return 0;
+    const placeholders = ids.map(() => '?').join(', ');
+    const stmt = this.db.prepare(`
+      DELETE FROM memories
+      WHERE workspace_id = ? AND id IN (${placeholders})
+    `);
+    const result = stmt.run(workspaceId, ...ids);
+    return result.changes;
+  }
+
+  /**
    * Find memories by workspace
    */
   findByWorkspace(workspaceId: string, limit = 100, offset = 0): Memory[] {
@@ -2809,6 +2877,17 @@ export class MemoryEmbeddingRepository {
   deleteByWorkspace(workspaceId: string): number {
     const stmt = this.db.prepare('DELETE FROM memory_embeddings WHERE workspace_id = ?');
     const result = stmt.run(workspaceId);
+    return result.changes;
+  }
+
+  deleteByMemoryIds(ids: string[]): number {
+    if (!ids.length) return 0;
+    const placeholders = ids.map(() => '?').join(', ');
+    const stmt = this.db.prepare(`
+      DELETE FROM memory_embeddings
+      WHERE memory_id IN (${placeholders})
+    `);
+    const result = stmt.run(...ids);
     return result.changes;
   }
 

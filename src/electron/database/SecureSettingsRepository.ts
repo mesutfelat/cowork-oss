@@ -57,7 +57,9 @@ export type SettingsCategory =
   | 'onedrive'
   | 'google-drive'
   | 'dropbox'
-  | 'sharepoint';
+  | 'sharepoint'
+  | 'user-profile'
+  | 'relationship-memory';
 
 interface SecureSettingsRow {
   id: string;

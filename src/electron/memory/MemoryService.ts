@@ -228,6 +228,9 @@ export class MemoryService {
     // Emit event
     memoryEvents.emit('memoryChanged', { type: 'created', workspaceId });
 
+    // Enforce per-workspace storage cap (best-effort).
+    this.enforceStorageLimit(workspaceId, settings.maxStorageMb);
+
     return memory;
   }
 
@@ -790,14 +793,8 @@ Summary:`,
     if (!this.initialized) return;
 
     try {
-      // Get all workspaces with memories
-      const workspacesWithMemories = new Set<string>();
-
-      // Find unique workspace IDs from recent memories
-      const recentMemories = this.memoryRepo.getUncompressed(1000);
-      for (const memory of recentMemories) {
-        workspacesWithMemories.add(memory.workspaceId);
-      }
+      // Get all workspaces that have any memories (compressed or not).
+      const workspacesWithMemories = this.memoryRepo.listWorkspaceIds(5000);
 
       // Process each workspace
       for (const workspaceId of workspacesWithMemories) {
@@ -809,9 +806,47 @@ Summary:`,
         if (deleted > 0) {
           console.log(`[MemoryService] Cleaned up ${deleted} old memories for workspace ${workspaceId}`);
         }
+
+        this.enforceStorageLimit(workspaceId, settings.maxStorageMb);
       }
     } catch (error) {
       console.error('[MemoryService] Cleanup failed:', error);
+    }
+  }
+
+  private static enforceStorageLimit(workspaceId: string, maxStorageMb: number): void {
+    const maxBytes = Math.max(0, Math.floor(maxStorageMb * 1024 * 1024));
+    if (maxBytes <= 0) return;
+
+    let totalBytes = this.memoryRepo.getApproxStorageBytes(workspaceId);
+    if (totalBytes <= maxBytes) return;
+
+    let loopGuard = 0;
+    while (totalBytes > maxBytes && loopGuard < 20) {
+      loopGuard += 1;
+      const oldest = this.memoryRepo.getOldestForWorkspace(workspaceId, 200);
+      if (!oldest.length) break;
+
+      let reclaimed = 0;
+      const idsToDelete: string[] = [];
+      const needToFree = totalBytes - maxBytes;
+      for (const row of oldest) {
+        idsToDelete.push(row.id);
+        reclaimed += Math.max(1, row.approxBytes);
+        if (reclaimed >= needToFree) break;
+      }
+
+      if (!idsToDelete.length) break;
+
+      const deleted = this.memoryRepo.deleteByIds(workspaceId, idsToDelete);
+      if (deleted > 0) {
+        this.embeddingRepo.deleteByMemoryIds(idsToDelete);
+        memoryEvents.emit('memoryChanged', { type: 'pruned', workspaceId });
+      } else {
+        break;
+      }
+
+      totalBytes = this.memoryRepo.getApproxStorageBytes(workspaceId);
     }
   }
 
