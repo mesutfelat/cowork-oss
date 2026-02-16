@@ -54,6 +54,7 @@ button:focus-visible,
   --color-purple: #a78bfa;
   --sidebar-width: 240px;
   --right-panel-width: 280px;
+  --title-bar-height: 38px;
   --header-height: 56px;
   --radius-sm: 8px;
   --radius-md: 10px;
@@ -1034,8 +1035,8 @@ body {
 
 /* Draggable title bar for window movement */
 .title-bar {
-  height: 38px;
-  min-height: 38px;
+  height: var(--title-bar-height);
+  min-height: var(--title-bar-height);
   width: 100%;
   -webkit-app-region: drag;
   background: transparent;
@@ -1223,7 +1224,7 @@ a,
   flex-shrink: 0;
   overflow: hidden;
   position: relative;
-  padding-top: 38px;
+  padding-top: var(--title-bar-height);
 }
 
 /* Removed: double-border effect - using single border only */
@@ -1573,7 +1574,7 @@ a,
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   min-width: 0;
   position: relative;
-  padding-top: 32px;
+  padding-top: var(--title-bar-height);
   /* Space for title bar */
 }
 
@@ -1688,6 +1689,45 @@ a,
   background: var(--color-accent-subtle);
   border: 1px solid var(--color-accent);
   border-bottom-right-radius: 4px;
+  max-height: 150px;
+  overflow: hidden;
+  position: relative;
+  cursor: pointer;
+}
+
+.chat-bubble.user-bubble.expanded {
+  max-height: none;
+  cursor: default;
+}
+
+/* Gradient fade overlay when collapsed */
+.chat-bubble.user-bubble:not(.expanded) .user-bubble-fade {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 50px;
+  background: linear-gradient(transparent, var(--color-accent-subtle));
+  pointer-events: none;
+}
+
+/* "Show more" button outside the bubble */
+.user-bubble-expand-btn {
+  background: none;
+  border: none;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-accent);
+  cursor: pointer;
+  padding: 4px 0;
+  margin-top: 2px;
+  opacity: 0.85;
+  transition: opacity 0.15s ease;
+}
+
+.user-bubble-expand-btn:hover {
+  opacity: 1;
+  text-decoration: underline;
 }
 
 .chat-bubble.user-bubble p {
@@ -3313,7 +3353,7 @@ a,
   overflow-x: hidden;
   overflow-y: auto;
   position: relative;
-  padding-top: 38px;
+  padding-top: var(--title-bar-height);
 }
 
 /* Removed: double-border effect - using single border only */
@@ -8037,7 +8077,7 @@ button {
   flex-direction: column;
   height: 100%;
   background: var(--color-bg-primary);
-  padding-top: 38px;
+  padding-top: var(--title-bar-height);
   /* Space for title bar buttons */
 }
 

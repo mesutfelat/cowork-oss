@@ -27,6 +27,40 @@ interface ImportedStats {
   totalTokens: number;
 }
 
+type UserFactCategory = 'identity' | 'preference' | 'bio' | 'work' | 'goal' | 'constraint' | 'other';
+
+interface UserFact {
+  id: string;
+  category: UserFactCategory;
+  value: string;
+  confidence: number;
+  source: 'conversation' | 'feedback' | 'manual';
+  pinned?: boolean;
+  firstSeenAt: number;
+  lastUpdatedAt: number;
+  lastTaskId?: string;
+}
+
+interface UserProfile {
+  summary?: string;
+  facts: UserFact[];
+  updatedAt: number;
+}
+
+type RelationshipLayer = 'identity' | 'preferences' | 'context' | 'history' | 'commitments';
+
+interface RelationshipMemoryItem {
+  id: string;
+  layer: RelationshipLayer;
+  text: string;
+  confidence: number;
+  source: 'conversation' | 'feedback' | 'task';
+  createdAt: number;
+  updatedAt: number;
+  status?: 'open' | 'done';
+  dueAt?: number;
+}
+
 interface MemoryItem {
   id: string;
   content: string;
@@ -66,6 +100,13 @@ export function MemorySettings({ workspaceId, onSettingsChanged }: MemorySetting
   const [importedHasMore, setImportedHasMore] = useState(false);
   const [loadingImported, setLoadingImported] = useState(false);
   const [deletingImported, setDeletingImported] = useState(false);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [newFact, setNewFact] = useState('');
+  const [newFactCategory, setNewFactCategory] = useState<UserFactCategory>('preference');
+  const [savingFact, setSavingFact] = useState(false);
+  const [relationshipItems, setRelationshipItems] = useState<RelationshipMemoryItem[]>([]);
+  const [dueSoonItems, setDueSoonItems] = useState<RelationshipMemoryItem[]>([]);
+  const [dueSoonReminder, setDueSoonReminder] = useState('');
 
   useEffect(() => {
     if (workspaceId) {
@@ -76,14 +117,21 @@ export function MemorySettings({ workspaceId, onSettingsChanged }: MemorySetting
   const loadData = async () => {
     try {
       setLoading(true);
-      const [loadedSettings, loadedStats, loadedImportedStats] = await Promise.all([
+      const [loadedSettings, loadedStats, loadedImportedStats, loadedUserProfile, loadedRelationshipItems, loadedDueSoon] = await Promise.all([
         window.electronAPI.getMemorySettings(workspaceId),
         window.electronAPI.getMemoryStats(workspaceId),
         window.electronAPI.getImportedMemoryStats(workspaceId),
+        window.electronAPI.getUserProfile(),
+        window.electronAPI.listRelationshipMemory({ limit: 80, includeDone: false }),
+        window.electronAPI.getDueSoonCommitments(72),
       ]);
       setSettings(loadedSettings);
       setStats(loadedStats);
       setImportedStats(loadedImportedStats);
+      setUserProfile(loadedUserProfile);
+      setRelationshipItems(Array.isArray(loadedRelationshipItems) ? loadedRelationshipItems : []);
+      setDueSoonItems(Array.isArray(loadedDueSoon?.items) ? loadedDueSoon.items : []);
+      setDueSoonReminder(typeof loadedDueSoon?.reminderText === 'string' ? loadedDueSoon.reminderText : '');
     } catch (error) {
       console.error('Failed to load memory settings:', error);
     } finally {
@@ -172,6 +220,111 @@ export function MemorySettings({ workspaceId, onSettingsChanged }: MemorySetting
     }
   };
 
+  const handleAddFact = async () => {
+    const trimmed = newFact.trim();
+    if (!trimmed) return;
+    try {
+      setSavingFact(true);
+      const created = await window.electronAPI.addUserFact({
+        category: newFactCategory,
+        value: trimmed,
+        source: 'manual',
+        confidence: 1,
+      });
+      setUserProfile((prev) => ({
+        summary: prev?.summary,
+        updatedAt: Date.now(),
+        facts: [created, ...(prev?.facts || [])],
+      }));
+      setNewFact('');
+    } catch (error) {
+      console.error('Failed to add user fact:', error);
+    } finally {
+      setSavingFact(false);
+    }
+  };
+
+  const handleDeleteFact = async (factId: string) => {
+    try {
+      await window.electronAPI.deleteUserFact(factId);
+      setUserProfile((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          facts: prev.facts.filter((fact) => fact.id !== factId),
+          updatedAt: Date.now(),
+        };
+      });
+    } catch (error) {
+      console.error('Failed to delete user fact:', error);
+    }
+  };
+
+  const handleToggleFactPin = async (fact: UserFact) => {
+    try {
+      const updated = await window.electronAPI.updateUserFact({
+        id: fact.id,
+        pinned: !fact.pinned,
+      });
+      if (!updated) return;
+      setUserProfile((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          updatedAt: Date.now(),
+          facts: prev.facts.map((existing) => (existing.id === updated.id ? updated : existing)),
+        };
+      });
+    } catch (error) {
+      console.error('Failed to update user fact:', error);
+    }
+  };
+
+  const handleDeleteRelationship = async (itemId: string) => {
+    try {
+      await window.electronAPI.deleteRelationshipMemory(itemId);
+      setRelationshipItems((prev) => prev.filter((item) => item.id !== itemId));
+      setDueSoonItems((prev) => prev.filter((item) => item.id !== itemId));
+    } catch (error) {
+      console.error('Failed to delete relationship memory:', error);
+    }
+  };
+
+  const handleToggleCommitmentStatus = async (item: RelationshipMemoryItem) => {
+    try {
+      const nextStatus = item.status === 'done' ? 'open' : 'done';
+      const updated = await window.electronAPI.updateRelationshipMemory({
+        id: item.id,
+        status: nextStatus,
+      });
+      if (!updated) return;
+      setRelationshipItems((prev) => prev.map((entry) => (entry.id === item.id ? updated : entry)));
+      if (nextStatus === 'done') {
+        setDueSoonItems((prev) => prev.filter((entry) => entry.id !== item.id));
+      }
+    } catch (error) {
+      console.error('Failed to update commitment status:', error);
+    }
+  };
+
+  const handleEditRelationship = async (item: RelationshipMemoryItem) => {
+    const nextText = prompt('Edit memory item', item.text);
+    if (nextText == null) return;
+    const trimmed = nextText.trim();
+    if (!trimmed) return;
+    try {
+      const updated = await window.electronAPI.updateRelationshipMemory({
+        id: item.id,
+        text: trimmed,
+      });
+      if (!updated) return;
+      setRelationshipItems((prev) => prev.map((entry) => (entry.id === item.id ? updated : entry)));
+      setDueSoonItems((prev) => prev.map((entry) => (entry.id === item.id ? updated : entry)));
+    } catch (error) {
+      console.error('Failed to edit relationship memory:', error);
+    }
+  };
+
   if (loading || !settings) {
     return (
       <div className="settings-section">
@@ -198,6 +351,212 @@ export function MemorySettings({ workspaceId, onSettingsChanged }: MemorySetting
         Captures observations during task execution for cross-session context. Memories help the AI remember
         what it learned in previous sessions.
       </p>
+
+      {/* User Profile Facts */}
+      <div className="settings-form-group" style={{ marginBottom: '20px', paddingBottom: '16px', borderBottom: '1px solid var(--color-border)' }}>
+        <div style={{ fontWeight: 500, color: 'var(--color-text-primary)', marginBottom: '4px' }}>User Memory Facts</div>
+        <p className="settings-form-hint" style={{ marginTop: 0 }}>
+          Curate what the assistant remembers about preferences and context.
+        </p>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr auto', gap: '8px', marginBottom: '10px' }}>
+          <select
+            className="settings-select"
+            value={newFactCategory}
+            onChange={(e) => setNewFactCategory(e.target.value as UserFactCategory)}
+            disabled={savingFact}
+          >
+            <option value="identity">Identity</option>
+            <option value="preference">Preference</option>
+            <option value="bio">Profile</option>
+            <option value="work">Work</option>
+            <option value="goal">Goal</option>
+            <option value="constraint">Constraint</option>
+            <option value="other">Other</option>
+          </select>
+          <input
+            className="settings-input"
+            type="text"
+            value={newFact}
+            onChange={(e) => setNewFact(e.target.value)}
+            placeholder="Add a fact (for example: Prefers concise responses)"
+            disabled={savingFact}
+          />
+          <button
+            className="settings-button"
+            onClick={handleAddFact}
+            disabled={savingFact || !newFact.trim()}
+            style={{ minWidth: '74px' }}
+          >
+            {savingFact ? 'Saving...' : 'Add'}
+          </button>
+        </div>
+
+        <div style={{ border: '1px solid var(--color-border)', borderRadius: '6px', maxHeight: '220px', overflowY: 'auto' }}>
+          {(!userProfile?.facts || userProfile.facts.length === 0) && (
+            <div style={{ padding: '12px', color: 'var(--color-text-secondary)', fontSize: '13px' }}>
+              No user facts stored yet.
+            </div>
+          )}
+
+          {(userProfile?.facts || [])
+            .slice()
+            .sort((a, b) => {
+              if ((a.pinned ? 1 : 0) !== (b.pinned ? 1 : 0)) return (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0);
+              if (a.confidence !== b.confidence) return b.confidence - a.confidence;
+              return b.lastUpdatedAt - a.lastUpdatedAt;
+            })
+            .map((fact) => (
+              <div
+                key={fact.id}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr auto',
+                  gap: '8px',
+                  alignItems: 'center',
+                  padding: '10px 12px',
+                  borderBottom: '1px solid var(--color-border)',
+                }}
+              >
+                <div>
+                  <div style={{ color: 'var(--color-text-primary)', fontSize: '13px' }}>{fact.value}</div>
+                  <div style={{ color: 'var(--color-text-tertiary)', fontSize: '11px', marginTop: '2px' }}>
+                    {fact.category} • {Math.round(fact.confidence * 100)}% confidence
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <button
+                    onClick={() => handleToggleFactPin(fact)}
+                    style={{
+                      border: '1px solid var(--color-border)',
+                      background: fact.pinned ? 'var(--color-bg-tertiary)' : 'transparent',
+                      borderRadius: '6px',
+                      color: 'var(--color-text-secondary)',
+                      cursor: 'pointer',
+                      fontSize: '11px',
+                      padding: '4px 8px',
+                    }}
+                  >
+                    {fact.pinned ? 'Pinned' : 'Pin'}
+                  </button>
+                  <button
+                    onClick={() => handleDeleteFact(fact.id)}
+                    style={{
+                      border: '1px solid var(--color-border)',
+                      background: 'transparent',
+                      borderRadius: '6px',
+                      color: 'var(--color-error)',
+                      cursor: 'pointer',
+                      fontSize: '11px',
+                      padding: '4px 8px',
+                    }}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+        </div>
+      </div>
+
+      {/* Relationship Memory */}
+      <div className="settings-form-group" style={{ marginBottom: '20px', paddingBottom: '16px', borderBottom: '1px solid var(--color-border)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+          <div style={{ fontWeight: 500, color: 'var(--color-text-primary)' }}>Relationship Memory</div>
+          <button className="settings-button" style={{ padding: '4px 10px' }} onClick={() => loadData()}>
+            Refresh
+          </button>
+        </div>
+        <p className="settings-form-hint" style={{ marginTop: 0 }}>
+          Continuity memory across identity, preferences, context, history, and commitments.
+        </p>
+
+        <div style={{ marginBottom: '8px', fontSize: '12px', color: 'var(--color-text-secondary)' }}>
+          {dueSoonReminder || 'No commitments due soon.'}
+        </div>
+
+        <div style={{ border: '1px solid var(--color-border)', borderRadius: '6px', maxHeight: '260px', overflowY: 'auto' }}>
+          {relationshipItems.length === 0 && (
+            <div style={{ padding: '12px', color: 'var(--color-text-secondary)', fontSize: '13px' }}>
+              No relationship memory items stored yet.
+            </div>
+          )}
+          {relationshipItems.map((item) => (
+            <div
+              key={item.id}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr auto',
+                gap: '8px',
+                alignItems: 'center',
+                padding: '10px 12px',
+                borderBottom: '1px solid var(--color-border)',
+              }}
+            >
+              <div>
+                <div style={{ color: 'var(--color-text-primary)', fontSize: '13px' }}>{item.text}</div>
+                <div style={{ color: 'var(--color-text-tertiary)', fontSize: '11px', marginTop: '2px' }}>
+                  {item.layer} • {Math.round(item.confidence * 100)}% confidence
+                  {item.status ? ` • ${item.status}` : ''}
+                  {item.dueAt ? ` • due ${new Date(item.dueAt).toLocaleDateString()}` : ''}
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '6px' }}>
+                {item.layer === 'commitments' && (
+                  <button
+                    onClick={() => handleToggleCommitmentStatus(item)}
+                    style={{
+                      border: '1px solid var(--color-border)',
+                      background: item.status === 'done' ? 'var(--color-bg-tertiary)' : 'transparent',
+                      borderRadius: '6px',
+                      color: 'var(--color-text-secondary)',
+                      cursor: 'pointer',
+                      fontSize: '11px',
+                      padding: '4px 8px',
+                    }}
+                  >
+                    {item.status === 'done' ? 'Reopen' : 'Done'}
+                  </button>
+                )}
+                <button
+                  onClick={() => handleEditRelationship(item)}
+                  style={{
+                    border: '1px solid var(--color-border)',
+                    background: 'transparent',
+                    borderRadius: '6px',
+                    color: 'var(--color-text-secondary)',
+                    cursor: 'pointer',
+                    fontSize: '11px',
+                    padding: '4px 8px',
+                  }}
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleDeleteRelationship(item.id)}
+                  style={{
+                    border: '1px solid var(--color-border)',
+                    background: 'transparent',
+                    borderRadius: '6px',
+                    color: 'var(--color-error)',
+                    cursor: 'pointer',
+                    fontSize: '11px',
+                    padding: '4px 8px',
+                  }}
+                >
+                  Forget
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {dueSoonItems.length > 0 && (
+          <div style={{ marginTop: '10px', fontSize: '12px', color: 'var(--color-text-secondary)' }}>
+            Due soon: {dueSoonItems.slice(0, 3).map((item) => item.text).join(' • ')}
+          </div>
+        )}
+      </div>
 
       {/* Stats Display */}
       {stats && (
@@ -466,6 +825,27 @@ export function MemorySettings({ workspaceId, onSettingsChanged }: MemorySetting
             </select>
             <p className="settings-form-hint">
               Memories older than this will be automatically deleted.
+            </p>
+          </div>
+
+          {/* Storage Cap */}
+          <div className="settings-form-group">
+            <label className="settings-label">Storage Cap (MB)</label>
+            <input
+              type="number"
+              min={10}
+              max={5000}
+              step={10}
+              value={settings.maxStorageMb}
+              onChange={(e) => {
+                const value = Math.max(10, Math.min(5000, parseInt(e.target.value || '0', 10) || 100));
+                handleSave({ maxStorageMb: value });
+              }}
+              disabled={saving}
+              className="settings-input"
+            />
+            <p className="settings-form-hint">
+              Oldest memories are pruned automatically when this limit is exceeded.
             </p>
           </div>
 

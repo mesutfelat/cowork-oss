@@ -2,6 +2,8 @@ import { ipcMain, shell, BrowserWindow, app } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import * as fsSync from 'fs';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
 import mammoth from 'mammoth';
 import mime from 'mime-types';
 import { getUserDataDir } from '../utils/user-data-dir';
@@ -59,6 +61,8 @@ import {
   WorkspaceKitStatus,
   WorkspaceKitInitRequest,
   WorkspaceKitProjectCreateRequest,
+  AddUserFactRequest,
+  UpdateUserFactRequest,
   isTempWorkspaceId,
   AgentConfig,
 } from '../../shared/types';
@@ -142,7 +146,14 @@ import {
   HookMappingSchema,
 } from '../utils/validation';
 import { NotificationService } from '../notifications';
-import type { NotificationType, HooksSettingsData, HookMappingData, GmailHooksSettingsData, HooksStatus } from '../../shared/types';
+import type {
+  NotificationType,
+  HooksSettingsData,
+  HookMappingData,
+  GmailHooksSettingsData,
+  ResendHooksSettingsData,
+  HooksStatus,
+} from '../../shared/types';
 import {
   HooksSettingsManager,
   HooksServer,
@@ -154,6 +165,8 @@ import {
   DEFAULT_HOOKS_PORT,
 } from '../hooks';
 import { MemoryService } from '../memory/MemoryService';
+import { UserProfileService } from '../memory/UserProfileService';
+import { RelationshipMemoryService } from '../memory/RelationshipMemoryService';
 import type { MemorySettings } from '../database/repositories';
 import { VoiceSettingsManager } from '../voice/voice-settings-manager';
 import { getVoiceService } from '../voice/VoiceService';
@@ -167,6 +180,75 @@ type FileViewerRequestOptions = {
   enableImageOcr?: boolean;
   imageOcrMaxChars?: number;
   includeImageContent?: boolean;
+};
+type MacSystemSettingsTarget = 'microphone' | 'dictation';
+
+const execFileAsync = promisify(execFile);
+
+const isMacSystemSettingsTarget = (value: unknown): value is MacSystemSettingsTarget =>
+  value === 'microphone' || value === 'dictation';
+
+const openMacSystemSettings = async (target: MacSystemSettingsTarget): Promise<void> => {
+  const urlCandidates =
+    target === 'microphone'
+      ? [
+          'x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone',
+          'x-apple.systempreferences:com.apple.preference.security?Privacy',
+        ]
+      : [
+          'x-apple.systempreferences:com.apple.Keyboard-Settings.extension?Dictation',
+          'x-apple.systempreferences:com.apple.preference.keyboard?Dictation',
+          'x-apple.systempreferences:com.apple.preference.keyboard',
+        ];
+
+  for (const url of urlCandidates) {
+    try {
+      await shell.openExternal(url);
+      return;
+    } catch {
+      // Try next URL candidate.
+    }
+  }
+
+  const appleScriptCandidates: string[][] =
+    target === 'microphone'
+      ? [
+          [
+            'tell application "System Settings" to activate',
+            'tell application "System Settings" to reveal pane id "com.apple.preference.security"',
+          ],
+          [
+            'tell application "System Preferences" to activate',
+            'tell application "System Preferences" to reveal pane id "com.apple.preference.security"',
+          ],
+        ]
+      : [
+          [
+            'tell application "System Settings" to activate',
+            'tell application "System Settings" to reveal pane id "com.apple.Keyboard-Settings.extension"',
+          ],
+          [
+            'tell application "System Settings" to activate',
+            'tell application "System Settings" to reveal pane id "com.apple.preference.keyboard"',
+          ],
+          [
+            'tell application "System Preferences" to activate',
+            'tell application "System Preferences" to reveal pane id "com.apple.preference.keyboard"',
+          ],
+        ];
+
+  let lastError: Error | null = null;
+  for (const scriptLines of appleScriptCandidates) {
+    try {
+      const args = scriptLines.flatMap((line) => ['-e', line]);
+      await execFileAsync('/usr/bin/osascript', args);
+      return;
+    } catch (error) {
+      lastError = error as Error;
+    }
+  }
+
+  throw lastError ?? new Error('Unable to open System Settings');
 };
 
 // Global notification service instance
@@ -254,6 +336,11 @@ rateLimiter.configure(IPC_CHANNELS.REVIEW_GENERATE, RATE_LIMIT_CONFIGS.limited);
 rateLimiter.configure(IPC_CHANNELS.REVIEW_DELETE, RATE_LIMIT_CONFIGS.limited);
 rateLimiter.configure(IPC_CHANNELS.KIT_INIT, RATE_LIMIT_CONFIGS.limited);
 rateLimiter.configure(IPC_CHANNELS.KIT_PROJECT_CREATE, RATE_LIMIT_CONFIGS.limited);
+rateLimiter.configure(IPC_CHANNELS.MEMORY_ADD_USER_FACT, RATE_LIMIT_CONFIGS.limited);
+rateLimiter.configure(IPC_CHANNELS.MEMORY_UPDATE_USER_FACT, RATE_LIMIT_CONFIGS.limited);
+rateLimiter.configure(IPC_CHANNELS.MEMORY_DELETE_USER_FACT, RATE_LIMIT_CONFIGS.limited);
+rateLimiter.configure(IPC_CHANNELS.MEMORY_RELATIONSHIP_UPDATE, RATE_LIMIT_CONFIGS.limited);
+rateLimiter.configure(IPC_CHANNELS.MEMORY_RELATIONSHIP_DELETE, RATE_LIMIT_CONFIGS.limited);
 
 // Helper function to get the main window
 function getMainWindow(): BrowserWindow | null {
@@ -447,6 +534,24 @@ export async function setupIpcHandlers(
       await shell.openExternal(url);
     } catch (error: any) {
       throw new Error(`Failed to open URL: ${error.message}`);
+    }
+  });
+
+  // Open macOS System Settings panes (with AppleScript fallback for reliability)
+  ipcMain.handle(IPC_CHANNELS.SYSTEM_OPEN_SETTINGS, async (_, target: unknown) => {
+    if (process.platform !== 'darwin') {
+      return { success: false, error: 'System settings shortcuts are only available on macOS.' };
+    }
+
+    if (!isMacSystemSettingsTarget(target)) {
+      return { success: false, error: 'Unknown settings target.' };
+    }
+
+    try {
+      await openMacSystemSettings(target);
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error?.message || 'Failed to open System Settings.' };
     }
   });
 
@@ -1879,6 +1984,10 @@ export async function setupIpcHandlers(
           ambientMode: validated.ambientMode ?? false,
           silentUnauthorized: validated.silentUnauthorized ?? false,
           ingestNonSelfChatsInSelfChatMode: validated.ingestNonSelfChatsInSelfChatMode ?? false,
+          trustedGroupMemoryOptIn: validated.trustedGroupMemoryOptIn ?? false,
+          sendReadReceipts: validated.sendReadReceipts,
+          deduplicationEnabled: validated.deduplicationEnabled,
+          groupRoutingMode: validated.groupRoutingMode,
         }
       );
 
@@ -3664,6 +3773,7 @@ async function setupHooksHandlers(agentDaemon: AgentDaemon): Promise<void> {
       presets: settings.presets,
       mappings: settings.mappings as HookMappingData[],
       gmail: settings.gmail as GmailHooksSettingsData | undefined,
+      resend: settings.resend as ResendHooksSettingsData | undefined,
     };
   });
 
@@ -3672,15 +3782,43 @@ async function setupHooksHandlers(agentDaemon: AgentDaemon): Promise<void> {
     checkRateLimit(IPC_CHANNELS.HOOKS_SAVE_SETTINGS, RATE_LIMIT_CONFIGS.limited);
 
     const currentSettings = HooksSettingsManager.loadSettings();
+    const MASKED_SECRET = '***configured***';
+
+    const mergedGmail = data.gmail
+      ? {
+          ...currentSettings.gmail,
+          ...data.gmail,
+          pushToken:
+            data.gmail.pushToken === MASKED_SECRET
+              ? currentSettings.gmail?.pushToken
+              : data.gmail.pushToken ?? currentSettings.gmail?.pushToken,
+        }
+      : currentSettings.gmail;
+
+    const mergedResend = data.resend
+      ? {
+          ...currentSettings.resend,
+          ...data.resend,
+          webhookSecret:
+            data.resend.webhookSecret === MASKED_SECRET
+              ? currentSettings.resend?.webhookSecret
+              : data.resend.webhookSecret ?? currentSettings.resend?.webhookSecret,
+        }
+      : currentSettings.resend;
+
     const updated = HooksSettingsManager.updateConfig({
       ...currentSettings,
       enabled: data.enabled ?? currentSettings.enabled,
-      token: data.token ?? currentSettings.token,
+      token:
+        data.token === MASKED_SECRET
+          ? currentSettings.token
+          : (data.token ?? currentSettings.token),
       path: data.path ?? currentSettings.path,
       maxBodyBytes: data.maxBodyBytes ?? currentSettings.maxBodyBytes,
       presets: data.presets ?? currentSettings.presets,
       mappings: data.mappings ?? currentSettings.mappings,
-      gmail: data.gmail ?? currentSettings.gmail,
+      gmail: mergedGmail,
+      resend: mergedResend,
     });
 
     // Restart hooks server if needed
@@ -3698,6 +3836,7 @@ async function setupHooksHandlers(agentDaemon: AgentDaemon): Promise<void> {
       presets: updated.presets,
       mappings: updated.mappings as HookMappingData[],
       gmail: updated.gmail as GmailHooksSettingsData | undefined,
+      resend: updated.resend as ResendHooksSettingsData | undefined,
     };
   });
 
@@ -4746,6 +4885,127 @@ function setupMemoryHandlers(): void {
       throw error;
     }
   });
+
+  ipcMain.handle(IPC_CHANNELS.MEMORY_GET_USER_PROFILE, async () => {
+    try {
+      return UserProfileService.getProfile();
+    } catch (error) {
+      console.error('[Memory] Failed to get user profile:', error);
+      return { facts: [], updatedAt: Date.now() };
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.MEMORY_ADD_USER_FACT, async (_, request: AddUserFactRequest) => {
+    checkRateLimit(IPC_CHANNELS.MEMORY_ADD_USER_FACT, RATE_LIMIT_CONFIGS.limited);
+    try {
+      return UserProfileService.addFact(request);
+    } catch (error) {
+      console.error('[Memory] Failed to add user fact:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.MEMORY_UPDATE_USER_FACT, async (_, request: UpdateUserFactRequest) => {
+    checkRateLimit(IPC_CHANNELS.MEMORY_UPDATE_USER_FACT, RATE_LIMIT_CONFIGS.limited);
+    try {
+      return UserProfileService.updateFact(request);
+    } catch (error) {
+      console.error('[Memory] Failed to update user fact:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.MEMORY_DELETE_USER_FACT, async (_, id: string) => {
+    checkRateLimit(IPC_CHANNELS.MEMORY_DELETE_USER_FACT, RATE_LIMIT_CONFIGS.limited);
+    try {
+      return { success: UserProfileService.deleteFact(id) };
+    } catch (error) {
+      console.error('[Memory] Failed to delete user fact:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle(
+    IPC_CHANNELS.MEMORY_RELATIONSHIP_LIST,
+    async (_, data?: { layer?: 'identity' | 'preferences' | 'context' | 'history' | 'commitments'; includeDone?: boolean; limit?: number }) => {
+      try {
+        return RelationshipMemoryService.listItems({
+          layer: data?.layer,
+          includeDone: data?.includeDone,
+          limit: data?.limit,
+        });
+      } catch (error) {
+        console.error('[Memory] Failed to list relationship memory:', error);
+        return [];
+      }
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.MEMORY_RELATIONSHIP_UPDATE,
+    async (_, data: { id: string; text?: string; confidence?: number; status?: 'open' | 'done'; dueAt?: number | null }) => {
+      checkRateLimit(IPC_CHANNELS.MEMORY_RELATIONSHIP_UPDATE, RATE_LIMIT_CONFIGS.limited);
+      try {
+        if (!data?.id || typeof data.id !== 'string') {
+          throw new Error('id is required');
+        }
+        return RelationshipMemoryService.updateItem(data.id, {
+          text: data.text,
+          confidence: data.confidence,
+          status: data.status,
+          dueAt: data.dueAt,
+        });
+      } catch (error) {
+        console.error('[Memory] Failed to update relationship memory:', error);
+        throw error;
+      }
+    }
+  );
+
+  ipcMain.handle(IPC_CHANNELS.MEMORY_RELATIONSHIP_DELETE, async (_, id: string) => {
+    checkRateLimit(IPC_CHANNELS.MEMORY_RELATIONSHIP_DELETE, RATE_LIMIT_CONFIGS.limited);
+    try {
+      if (!id || typeof id !== 'string') {
+        throw new Error('id is required');
+      }
+      return { success: RelationshipMemoryService.deleteItem(id) };
+    } catch (error) {
+      console.error('[Memory] Failed to delete relationship memory item:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle(
+    IPC_CHANNELS.MEMORY_COMMITMENTS_GET,
+    async (_, data?: { limit?: number }) => {
+      try {
+        const limit = typeof data?.limit === 'number' && Number.isFinite(data.limit) ? data.limit : 25;
+        return RelationshipMemoryService.listOpenCommitments(limit);
+      } catch (error) {
+        console.error('[Memory] Failed to list open commitments:', error);
+        return [];
+      }
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.MEMORY_COMMITMENTS_DUE_SOON,
+    async (_, data?: { windowHours?: number }) => {
+      try {
+        const windowHours = typeof data?.windowHours === 'number' && Number.isFinite(data.windowHours)
+          ? data.windowHours
+          : 72;
+        const items = RelationshipMemoryService.listDueSoonCommitments(windowHours);
+        const reminderText = items.length > 0
+          ? `You have ${items.length} commitment(s) due soon.`
+          : 'No commitments due soon.';
+        return { items, reminderText };
+      } catch (error) {
+        console.error('[Memory] Failed to list due soon commitments:', error);
+        return { items: [], reminderText: 'No commitments due soon.' };
+      }
+    }
+  );
 
   // ChatGPT Import handler
   let activeImportAbort: AbortController | null = null;

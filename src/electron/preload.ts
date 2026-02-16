@@ -128,6 +128,7 @@ const IPC_CHANNELS = {
   APP_UPDATE_PROGRESS: 'app:updateProgress',
   APP_UPDATE_DOWNLOADED: 'app:updateDownloaded',
   APP_UPDATE_ERROR: 'app:updateError',
+  SYSTEM_OPEN_SETTINGS: 'system:openSettings',
   // Guardrails
   GUARDRAIL_GET_SETTINGS: 'guardrail:getSettings',
   GUARDRAIL_SAVE_SETTINGS: 'guardrail:saveSettings',
@@ -316,6 +317,15 @@ const IPC_CHANNELS = {
   MEMORY_GET_IMPORTED_STATS: 'memory:getImportedStats',
   MEMORY_FIND_IMPORTED: 'memory:findImported',
   MEMORY_DELETE_IMPORTED: 'memory:deleteImported',
+  MEMORY_GET_USER_PROFILE: 'memory:getUserProfile',
+  MEMORY_ADD_USER_FACT: 'memory:addUserFact',
+  MEMORY_UPDATE_USER_FACT: 'memory:updateUserFact',
+  MEMORY_DELETE_USER_FACT: 'memory:deleteUserFact',
+  MEMORY_RELATIONSHIP_LIST: 'memory:relationshipList',
+  MEMORY_RELATIONSHIP_UPDATE: 'memory:relationshipUpdate',
+  MEMORY_RELATIONSHIP_DELETE: 'memory:relationshipDelete',
+  MEMORY_COMMITMENTS_GET: 'memory:commitmentsGet',
+  MEMORY_COMMITMENTS_DUE_SOON: 'memory:commitmentsDueSoon',
 
   // Memory Features (global toggles)
   MEMORY_FEATURES_GET_SETTINGS: 'memoryFeatures:getSettings',
@@ -909,6 +919,26 @@ interface Memory {
   updatedAt: number;
 }
 
+type UserFactCategory = 'identity' | 'preference' | 'bio' | 'work' | 'goal' | 'constraint' | 'other';
+
+interface UserFact {
+  id: string;
+  category: UserFactCategory;
+  value: string;
+  confidence: number;
+  source: 'conversation' | 'feedback' | 'manual';
+  pinned?: boolean;
+  firstSeenAt: number;
+  lastUpdatedAt: number;
+  lastTaskId?: string;
+}
+
+interface UserProfile {
+  summary?: string;
+  facts: UserFact[];
+  updatedAt: number;
+}
+
 type MemorySearchResult =
   | {
       id: string;
@@ -987,6 +1017,7 @@ interface HooksSettings {
   presets: string[];
   mappings: HookMapping[];
   gmail?: GmailHooksConfig;
+  resend?: ResendHooksConfig;
 }
 
 interface HookMapping {
@@ -994,6 +1025,7 @@ interface HookMapping {
   match?: {
     path?: string;
     source?: string;
+    type?: string;
   };
   action?: 'wake' | 'agent';
   wakeMode?: 'now' | 'next-heartbeat';
@@ -1031,6 +1063,11 @@ interface GmailHooksConfig {
     path?: string;
     target?: string;
   };
+}
+
+interface ResendHooksConfig {
+  webhookSecret?: string;
+  allowUnsafeExternalContent?: boolean;
 }
 
 interface HooksStatus {
@@ -1582,6 +1619,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Shell APIs
   openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url),
+  openSystemSettings: (target: 'microphone' | 'dictation') =>
+    ipcRenderer.invoke(IPC_CHANNELS.SYSTEM_OPEN_SETTINGS, target),
 
   // Task APIs
   createTask: (data: any) => ipcRenderer.invoke(IPC_CHANNELS.TASK_CREATE, data),
@@ -2094,6 +2133,43 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke(IPC_CHANNELS.MEMORY_FIND_IMPORTED, data),
   deleteImportedMemories: (workspaceId: string) =>
     ipcRenderer.invoke(IPC_CHANNELS.MEMORY_DELETE_IMPORTED, workspaceId),
+  getUserProfile: () =>
+    ipcRenderer.invoke(IPC_CHANNELS.MEMORY_GET_USER_PROFILE),
+  addUserFact: (data: {
+    category: UserFactCategory;
+    value: string;
+    confidence?: number;
+    source?: 'conversation' | 'feedback' | 'manual';
+    pinned?: boolean;
+    taskId?: string;
+  }) => ipcRenderer.invoke(IPC_CHANNELS.MEMORY_ADD_USER_FACT, data),
+  updateUserFact: (data: {
+    id: string;
+    category?: UserFactCategory;
+    value?: string;
+    confidence?: number;
+    pinned?: boolean;
+  }) => ipcRenderer.invoke(IPC_CHANNELS.MEMORY_UPDATE_USER_FACT, data),
+  deleteUserFact: (id: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.MEMORY_DELETE_USER_FACT, id),
+  listRelationshipMemory: (data?: {
+    layer?: 'identity' | 'preferences' | 'context' | 'history' | 'commitments';
+    includeDone?: boolean;
+    limit?: number;
+  }) => ipcRenderer.invoke(IPC_CHANNELS.MEMORY_RELATIONSHIP_LIST, data || {}),
+  updateRelationshipMemory: (data: {
+    id: string;
+    text?: string;
+    confidence?: number;
+    status?: 'open' | 'done';
+    dueAt?: number | null;
+  }) => ipcRenderer.invoke(IPC_CHANNELS.MEMORY_RELATIONSHIP_UPDATE, data),
+  deleteRelationshipMemory: (id: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.MEMORY_RELATIONSHIP_DELETE, id),
+  getOpenCommitments: (limit?: number) =>
+    ipcRenderer.invoke(IPC_CHANNELS.MEMORY_COMMITMENTS_GET, { limit }),
+  getDueSoonCommitments: (windowHours?: number) =>
+    ipcRenderer.invoke(IPC_CHANNELS.MEMORY_COMMITMENTS_DUE_SOON, { windowHours }),
 
   // Memory Features APIs
   getMemoryFeaturesSettings: () => ipcRenderer.invoke(IPC_CHANNELS.MEMORY_FEATURES_GET_SETTINGS),
@@ -2498,6 +2574,7 @@ export interface ElectronAPI {
   importFilesToWorkspace: (data: { workspaceId: string; files: string[] }) => Promise<Array<{ relativePath: string; fileName: string; size: number; mimeType?: string }>>;
   importDataToWorkspace: (data: { workspaceId: string; files: Array<{ name: string; data: string; mimeType?: string }> }) => Promise<Array<{ relativePath: string; fileName: string; size: number; mimeType?: string }>>;
   openExternal: (url: string) => Promise<void>;
+  openSystemSettings: (target: 'microphone' | 'dictation') => Promise<{ success: boolean; error?: string }>;
   createTask: (data: any) => Promise<any>;
   getTask: (id: string) => Promise<any>;
   listTasks: () => Promise<any[]>;
@@ -2554,8 +2631,22 @@ export interface ElectronAPI {
   getBedrockModels: (config?: { region?: string; accessKeyId?: string; secretAccessKey?: string; profile?: string }) => Promise<Array<{ id: string; name: string; provider: string; description: string }>>;
   // Gateway / Channel APIs
   getGatewayChannels: () => Promise<any[]>;
-  addGatewayChannel: (data: { type: string; name: string; botToken?: string; securityMode?: string; ambientMode?: boolean; silentUnauthorized?: boolean; applicationId?: string; guildIds?: string[]; appToken?: string; signingSecret?: string; allowedNumbers?: string[]; selfChatMode?: boolean; responsePrefix?: string; ingestNonSelfChatsInSelfChatMode?: boolean; cliPath?: string; dbPath?: string; allowedContacts?: string[]; dmPolicy?: string; groupPolicy?: string; captureSelfMessages?: boolean; phoneNumber?: string; dataDir?: string; mode?: string; trustMode?: string; sendReadReceipts?: boolean; sendTypingIndicators?: boolean; mattermostServerUrl?: string; mattermostToken?: string; mattermostTeamId?: string; matrixHomeserver?: string; matrixUserId?: string; matrixAccessToken?: string; matrixDeviceId?: string; matrixRoomIds?: string[]; twitchUsername?: string; twitchOauthToken?: string; twitchChannels?: string[]; twitchAllowWhispers?: boolean; lineChannelAccessToken?: string; lineChannelSecret?: string; lineWebhookPort?: number; lineWebhookPath?: string; blueBubblesServerUrl?: string; blueBubblesPassword?: string; blueBubblesWebhookPort?: number; blueBubblesAllowedContacts?: string[]; emailAddress?: string; emailPassword?: string; emailImapHost?: string; emailImapPort?: number; emailSmtpHost?: string; emailSmtpPort?: number; emailDisplayName?: string; emailAllowedSenders?: string[]; emailSubjectFilter?: string; appId?: string; appPassword?: string; tenantId?: string; webhookPort?: number; serviceAccountKeyPath?: string; projectId?: string; webhookPath?: string }) => Promise<any>;
-  updateGatewayChannel: (data: { id: string; name?: string; securityMode?: string; config?: { selfChatMode?: boolean; responsePrefix?: string; [key: string]: unknown } }) => Promise<void>;
+  addGatewayChannel: (data: { type: string; name: string; botToken?: string; securityMode?: string; ambientMode?: boolean; silentUnauthorized?: boolean; applicationId?: string; guildIds?: string[]; appToken?: string; signingSecret?: string; allowedNumbers?: string[]; selfChatMode?: boolean; responsePrefix?: string; ingestNonSelfChatsInSelfChatMode?: boolean; groupRoutingMode?: string; trustedGroupMemoryOptIn?: boolean; cliPath?: string; dbPath?: string; allowedContacts?: string[]; dmPolicy?: string; groupPolicy?: string; captureSelfMessages?: boolean; phoneNumber?: string; dataDir?: string; mode?: string; trustMode?: string; sendReadReceipts?: boolean; deduplicationEnabled?: boolean; sendTypingIndicators?: boolean; mattermostServerUrl?: string; mattermostToken?: string; mattermostTeamId?: string; matrixHomeserver?: string; matrixUserId?: string; matrixAccessToken?: string; matrixDeviceId?: string; matrixRoomIds?: string[]; twitchUsername?: string; twitchOauthToken?: string; twitchChannels?: string[]; twitchAllowWhispers?: boolean; lineChannelAccessToken?: string; lineChannelSecret?: string; lineWebhookPort?: number; lineWebhookPath?: string; blueBubblesServerUrl?: string; blueBubblesPassword?: string; blueBubblesWebhookPort?: number; blueBubblesAllowedContacts?: string[]; emailAddress?: string; emailPassword?: string; emailImapHost?: string; emailImapPort?: number; emailSmtpHost?: string; emailSmtpPort?: number; emailDisplayName?: string; emailAllowedSenders?: string[]; emailSubjectFilter?: string; appId?: string; appPassword?: string; tenantId?: string; webhookPort?: number; serviceAccountKeyPath?: string; projectId?: string; webhookPath?: string }) => Promise<any>;
+  updateGatewayChannel: (data: {
+    id: string;
+    name?: string;
+    securityMode?: string;
+    config?: {
+      selfChatMode?: boolean;
+      responsePrefix?: string;
+      ingestNonSelfChatsInSelfChatMode?: boolean;
+      groupRoutingMode?: string;
+      trustedGroupMemoryOptIn?: boolean;
+      sendReadReceipts?: boolean;
+      deduplicationEnabled?: boolean;
+      [key: string]: unknown;
+    };
+  }) => Promise<void>;
   removeGatewayChannel: (id: string) => Promise<void>;
   enableGatewayChannel: (id: string) => Promise<void>;
   disableGatewayChannel: (id: string) => Promise<void>;
@@ -3052,6 +3143,38 @@ export interface ElectronAPI {
   getImportedMemoryStats: (workspaceId: string) => Promise<{ count: number; totalTokens: number }>;
   findImportedMemories: (data: { workspaceId: string; limit?: number; offset?: number }) => Promise<Memory[]>;
   deleteImportedMemories: (workspaceId: string) => Promise<{ success: boolean; deleted: number }>;
+  getUserProfile: () => Promise<UserProfile>;
+  addUserFact: (data: {
+    category: UserFactCategory;
+    value: string;
+    confidence?: number;
+    source?: 'conversation' | 'feedback' | 'manual';
+    pinned?: boolean;
+    taskId?: string;
+  }) => Promise<UserFact>;
+  updateUserFact: (data: {
+    id: string;
+    category?: UserFactCategory;
+    value?: string;
+    confidence?: number;
+    pinned?: boolean;
+  }) => Promise<UserFact | null>;
+  deleteUserFact: (id: string) => Promise<{ success: boolean }>;
+  listRelationshipMemory: (data?: {
+    layer?: 'identity' | 'preferences' | 'context' | 'history' | 'commitments';
+    includeDone?: boolean;
+    limit?: number;
+  }) => Promise<any[]>;
+  updateRelationshipMemory: (data: {
+    id: string;
+    text?: string;
+    confidence?: number;
+    status?: 'open' | 'done';
+    dueAt?: number | null;
+  }) => Promise<any | null>;
+  deleteRelationshipMemory: (id: string) => Promise<{ success: boolean }>;
+  getOpenCommitments: (limit?: number) => Promise<any[]>;
+  getDueSoonCommitments: (windowHours?: number) => Promise<{ items: any[]; reminderText: string }>;
 
   // Memory Features (global toggles)
   getMemoryFeaturesSettings: () => Promise<MemoryFeaturesSettings>;

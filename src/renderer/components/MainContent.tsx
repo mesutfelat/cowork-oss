@@ -318,6 +318,39 @@ function MessageCopyButton({ text }: { text: string }) {
   );
 }
 
+// Collapsible user message bubble - limits height and expands on click
+function CollapsibleUserBubble({ children }: { children: React.ReactNode }) {
+  const [expanded, setExpanded] = useState(false);
+  const [needsCollapse, setNeedsCollapse] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (contentRef.current) {
+      setNeedsCollapse(contentRef.current.scrollHeight > 150);
+    }
+  }, [children]);
+
+  const collapsed = needsCollapse && !expanded;
+
+  return (
+    <>
+      <div
+        ref={contentRef}
+        className={`chat-bubble user-bubble markdown-content${!collapsed ? ' expanded' : ''}`}
+        onClick={() => { if (collapsed) setExpanded(true); }}
+      >
+        {children}
+        {collapsed && <div className="user-bubble-fade" />}
+      </div>
+      {collapsed && (
+        <button className="user-bubble-expand-btn" onClick={() => setExpanded(true)}>
+          Show more
+        </button>
+      )}
+    </>
+  );
+}
+
 // Global audio state to ensure only one audio plays at a time
 let currentAudioContext: AudioContext | null = null;
 let currentAudioSource: AudioBufferSourceNode | null = null;
@@ -1007,6 +1040,7 @@ export function MainContent({ task, selectedTaskId, workspace, events, onSendMes
     },
     onError: (error) => {
       console.error('Talk mode error:', error);
+      setShowVoiceNotConfigured(true);
     },
   });
   const [viewerFilePath, setViewerFilePath] = useState<string | null>(null);
@@ -2597,11 +2631,11 @@ export function MainContent({ task, selectedTaskId, workspace, events, onSendMes
         <div className="task-content">
           {/* User Prompt - Right aligned like chat */}
           <div className="chat-message user-message">
-            <div className="chat-bubble user-bubble markdown-content">
+            <CollapsibleUserBubble>
               <ReactMarkdown remarkPlugins={userMarkdownPlugins} components={markdownComponents}>
                 {task.prompt}
               </ReactMarkdown>
-            </div>
+            </CollapsibleUserBubble>
             <MessageCopyButton text={task.prompt} />
           </div>
 
@@ -2668,11 +2702,11 @@ export function MainContent({ task, selectedTaskId, workspace, events, onSendMes
                   return (
                     <Fragment key={event.id || `event-${item.eventIndex}`}>
                       <div className="chat-message user-message">
-                        <div className="chat-bubble user-bubble markdown-content">
+                        <CollapsibleUserBubble>
                           <ReactMarkdown remarkPlugins={userMarkdownPlugins} components={markdownComponents}>
                             {messageText}
                           </ReactMarkdown>
-                        </div>
+                        </CollapsibleUserBubble>
                         <MessageCopyButton text={messageText} />
                       </div>
                       {shouldRenderCommandOutput && (
