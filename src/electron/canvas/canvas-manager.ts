@@ -195,11 +195,12 @@ export class CanvasManager {
         // Only restore active sessions with valid directories
         if (session.status === 'active' && existsSync(session.sessionDir)) {
           this.sessions.set(session.id, session);
-          console.log(`[CanvasManager] Restored session ${session.id} for task ${session.taskId}`);
         }
       }
 
-      console.log(`[CanvasManager] Restored ${this.sessions.size} sessions from disk`);
+      if (this.sessions.size > 0) {
+        console.log(`[CanvasManager] Restored ${this.sessions.size} sessions from disk`);
+      }
     } catch (error) {
       console.error('[CanvasManager] Failed to restore sessions:', error);
     }

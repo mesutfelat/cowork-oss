@@ -80,11 +80,8 @@ export class PluginRegistry extends EventEmitter {
       return;
     }
 
-    console.log('Initializing plugin registry...');
-
     // Discover plugins
     const discovered = await discoverPlugins(extensionDirs);
-    console.log(`Discovered ${discovered.length} plugins`);
 
     // Load and register each plugin
     for (const { path: pluginPath, manifest } of discovered) {
@@ -92,7 +89,10 @@ export class PluginRegistry extends EventEmitter {
     }
 
     this.initialized = true;
-    console.log(`Plugin registry initialized with ${this.plugins.size} plugins`);
+
+    if (this.plugins.size > 0) {
+      console.log(`[PluginRegistry] Initialized with ${this.plugins.size} plugins`);
+    }
   }
 
   /**

@@ -89,7 +89,6 @@ export class TailscaleSettingsManager {
       }
 
       if (!fs.existsSync(this.legacySettingsPath)) {
-        console.log('[Tailscale Settings] No legacy settings file found');
         this.migrationCompleted = true;
         return;
       }

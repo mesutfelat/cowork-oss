@@ -563,7 +563,10 @@ app.whenReady().then(async () => {
   try {
     const pluginRegistry = getPluginRegistry();
     await pluginRegistry.initialize();
-    console.log(`[Main] Plugin registry initialized (${pluginRegistry.getPlugins().length} plugins)`);
+    const pluginCount = pluginRegistry.getPlugins().length;
+    if (pluginCount > 0) {
+      console.log(`[Main] Plugin registry initialized (${pluginCount} plugins)`);
+    }
   } catch (error) {
     console.error('[Main] Failed to initialize Plugin Registry:', error);
     // Don't fail app startup if plugin init fails

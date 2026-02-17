@@ -88,7 +88,7 @@ export class StdioTransport extends EventEmitter implements MCPTransport {
         // Handle stderr (logging/errors from server)
         this.process.stderr?.on('data', (data: Buffer) => {
           const text = data.toString();
-          console.log(`[MCP StdioTransport] Server stderr: ${text}`);
+          console.debug(`[MCP StdioTransport] Server stderr: ${text}`);
           // Capture stderr for better error messages (limit to last 1000 chars)
           this.stderrBuffer += text;
           if (this.stderrBuffer.length > 1000) {
