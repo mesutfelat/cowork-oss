@@ -4,11 +4,13 @@
 export type ThemeMode = 'light' | 'dark' | 'system';
 export type VisualTheme = 'terminal' | 'warm' | 'oblivion';
 export type AccentColor = 'cyan' | 'blue' | 'purple' | 'pink' | 'rose' | 'orange' | 'green' | 'teal' | 'coral';
+export type UiDensity = 'focused' | 'full';
 
 export interface AppearanceSettings {
   themeMode: ThemeMode;
   visualTheme: VisualTheme;
   accentColor: AccentColor;
+  uiDensity?: UiDensity;
   language?: string; // Persisted language preference (e.g. 'en', 'ja', 'zh')
   disclaimerAccepted?: boolean;
   onboardingCompleted?: boolean;
@@ -580,6 +582,22 @@ export interface Task {
   estimatedMinutes?: number;    // Estimated time in minutes
   actualMinutes?: number;       // Actual time spent in minutes
   mentionedAgentRoleIds?: string[]; // Agent roles mentioned in this task
+}
+
+/** Image attachment for sending images with messages */
+export interface ImageAttachment {
+  /** Base64-encoded image data (legacy path). Prefer filePath when possible. */
+  data?: string;
+  /** Absolute path to image file on disk (preferred to avoid IPC payload copies). */
+  filePath?: string;
+  /** MIME type of the image */
+  mimeType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
+  /** Original filename (for display) */
+  filename?: string;
+  /** File size in bytes */
+  sizeBytes: number;
+  /** Internal hint when filePath points to a file generated in-process and may be ephemeral */
+  tempFile?: boolean;
 }
 
 export interface TaskEvent {
@@ -1570,6 +1588,76 @@ export interface MentionListQuery {
   offset?: number;
 }
 
+// ============ Conway Terminal Types ============
+
+export type ConwaySetupState = 'not_installed' | 'installing' | 'installed' | 'initializing' | 'ready' | 'error';
+
+export interface ConwayWalletInfo {
+  address: string;
+  publicKey: string;
+  network: string;
+}
+
+export interface ConwayCreditsBalance {
+  balance: string;
+  balanceUsd: number;
+  lastUpdated: number;
+}
+
+export interface ConwayCreditHistoryEntry {
+  id: string;
+  type: 'credit' | 'debit';
+  amount: string;
+  description: string;
+  service: string;
+  timestamp: number;
+}
+
+export interface ConwaySetupStatus {
+  state: ConwaySetupState;
+  walletInfo?: ConwayWalletInfo;
+  balance?: ConwayCreditsBalance;
+  mcpServerId?: string;
+  mcpConnectionStatus?: 'disconnected' | 'connecting' | 'connected' | 'error';
+  toolCount?: number;
+  error?: string;
+  version?: string;
+  /** Whether ~/.conway/wallet.json exists on disk */
+  walletFileExists?: boolean;
+}
+
+export interface ConwaySettings {
+  enabled: boolean;
+  autoConnect: boolean;
+  showWalletInSidebar: boolean;
+  balanceRefreshIntervalMs: number;
+  enabledToolCategories: {
+    sandbox: boolean;
+    inference: boolean;
+    domains: boolean;
+    payments: boolean;
+  };
+  /** Backed-up wallet address (public only — stored in encrypted db for recovery reference) */
+  walletAddressBackup?: string;
+  /** Wallet network at time of backup */
+  walletNetworkBackup?: string;
+  /** Timestamp when wallet was first seen */
+  walletBackupTimestamp?: number;
+}
+
+export const DEFAULT_CONWAY_SETTINGS: ConwaySettings = {
+  enabled: false,
+  autoConnect: true,
+  showWalletInSidebar: true,
+  balanceRefreshIntervalMs: 300000,
+  enabledToolCategories: {
+    sandbox: true,
+    inference: true,
+    domains: true,
+    payments: true,
+  },
+};
+
 // IPC Channel names
 export const IPC_CHANNELS = {
   // Task operations
@@ -1907,6 +1995,19 @@ export const IPC_CHANNELS = {
 
   // MCP Events
   MCP_SERVER_STATUS_CHANGE: 'mcp:serverStatusChange',
+
+  // Conway Terminal
+  CONWAY_GET_STATUS: 'conway:getStatus',
+  CONWAY_GET_SETTINGS: 'conway:getSettings',
+  CONWAY_SAVE_SETTINGS: 'conway:saveSettings',
+  CONWAY_SETUP: 'conway:setup',
+  CONWAY_GET_BALANCE: 'conway:getBalance',
+  CONWAY_GET_WALLET: 'conway:getWallet',
+  CONWAY_GET_CREDIT_HISTORY: 'conway:getCreditHistory',
+  CONWAY_CONNECT: 'conway:connect',
+  CONWAY_DISCONNECT: 'conway:disconnect',
+  CONWAY_RESET: 'conway:reset',
+  CONWAY_STATUS_CHANGE: 'conway:statusChange',
 
   // Artifact Reputation
   REPUTATION_GET_SETTINGS: 'reputation:getSettings',
@@ -2388,6 +2489,7 @@ export interface AddChannelRequest {
   blueBubblesWebhookPort?: number;
   blueBubblesAllowedContacts?: string[];
   // Email-specific fields
+  emailProtocol?: 'imap-smtp' | 'loom';
   emailAddress?: string;
   emailPassword?: string;
   emailImapHost?: string;
@@ -2397,6 +2499,11 @@ export interface AddChannelRequest {
   emailDisplayName?: string;
   emailAllowedSenders?: string[];
   emailSubjectFilter?: string;
+  emailLoomBaseUrl?: string;
+  emailLoomAccessToken?: string;
+  emailLoomIdentity?: string;
+  emailLoomMailboxFolder?: string;
+  emailLoomPollInterval?: number;
   // Teams-specific fields
   appId?: string;
   appPassword?: string;

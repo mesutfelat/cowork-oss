@@ -38,6 +38,7 @@ import { AppearanceManager } from './settings/appearance-manager';
 import { MemoryFeaturesManager } from './settings/memory-features-manager';
 import { PersonalityManager } from './settings/personality-manager';
 import { MCPClientManager } from './mcp/client/MCPClientManager';
+import { ConwayManager } from './conway/conway-manager';
 import { trayManager } from './tray';
 import { CronService, setCronService, getCronStorePath } from './cron';
 import { MemoryService } from './memory/MemoryService';
@@ -326,6 +327,15 @@ app.whenReady().then(async () => {
   } catch (error) {
     console.error('[Main] Failed to initialize MCP Client Manager:', error);
     // Don't fail app startup if MCP init fails
+  }
+
+  // Initialize Conway Terminal Manager - restores state and auto-connects if enabled
+  try {
+    await ConwayManager.getInstance().initialize();
+    console.log('[Main] Conway Manager initialized');
+  } catch (error) {
+    console.error('[Main] Failed to initialize Conway Manager:', error);
+    // Don't fail app startup if Conway init fails
   }
 
   // Initialize Cron Service for scheduled task execution

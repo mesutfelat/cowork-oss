@@ -79,6 +79,7 @@ import { SearchProviderFactory, SearchSettings, SearchProviderType } from '../ag
 import { ChannelGateway } from '../gateway';
 import { updateManager } from '../updater';
 import { rateLimiter, RATE_LIMIT_CONFIGS } from '../utils/rate-limiter';
+import { toPublicChannel } from './channel-config-sanitizer';
 import { buildTaskExportJson } from '../reports/task-export';
 import {
   validateInput,
@@ -104,6 +105,8 @@ import {
   RevokeAccessSchema,
   GeneratePairingSchema,
   GuardrailSettingsSchema,
+  ConwaySettingsSchema,
+  EmailChannelConfigSchema,
   UUIDSchema,
   StringIdSchema,
   MCPConnectorOAuthSchema,
@@ -136,6 +139,7 @@ import { CustomSkill } from '../../shared/types';
 import { MCPSettingsManager } from '../mcp/settings';
 import { MCPClientManager } from '../mcp/client/MCPClientManager';
 import { MCPRegistryManager } from '../mcp/registry/MCPRegistryManager';
+import { getChannelRegistry } from '../gateway/channel-registry';
 import type { MCPSettings, MCPServerConfig } from '../mcp/types';
 import { MCPHostServer } from '../mcp/host/MCPHostServer';
 import { BuiltinToolsSettingsManager } from '../agent/tools/builtin-settings';
@@ -167,6 +171,8 @@ import {
 } from '../hooks';
 import { MemoryService } from '../memory/MemoryService';
 import { UserProfileService } from '../memory/UserProfileService';
+import { ConwayManager } from '../conway/conway-manager';
+import { ConwaySettingsManager } from '../conway/conway-settings';
 import { RelationshipMemoryService } from '../memory/RelationshipMemoryService';
 import type { MemorySettings } from '../database/repositories';
 import { VoiceSettingsManager } from '../voice/voice-settings-manager';
@@ -391,6 +397,56 @@ export async function setupIpcHandlers(
     const relative = path.relative(normalizedWorkspace, normalizedFile);
     // If relative path starts with '..' or is absolute, it's outside workspace
     return !relative.startsWith('..') && !path.isAbsolute(relative);
+  };
+
+  const MANAGED_IMAGE_TEMP_PREFIX = 'cowork-image-';
+
+  const isManagedImageTempFile = (filePath: string): boolean => {
+    if (!path.isAbsolute(filePath)) {
+      return false;
+    }
+
+    const normalizedTmpDir = path.normalize(os.tmpdir());
+    const normalizedFile = path.normalize(filePath);
+    const tmpPrefix = normalizedTmpDir.endsWith(path.sep) ? normalizedTmpDir : `${normalizedTmpDir}${path.sep}`;
+    if (!normalizedFile.startsWith(tmpPrefix)) {
+      return false;
+    }
+
+    return path.basename(filePath).startsWith(MANAGED_IMAGE_TEMP_PREFIX);
+  };
+
+  const cleanupTaskImageTempFiles = async (images?: Array<{
+    filePath?: string;
+    tempFile?: boolean;
+  }>): Promise<void> => {
+    if (!Array.isArray(images)) {
+      return;
+    }
+
+    const paths = new Set<string>();
+    for (const image of images) {
+      if (!image || typeof image !== 'object') {
+        continue;
+      }
+
+      const isManagedTemp = image.tempFile === true;
+      if (!isManagedTemp) {
+        continue;
+      }
+      if (!image.filePath || !isManagedImageTempFile(image.filePath)) {
+        continue;
+      }
+      paths.add(image.filePath);
+    }
+
+    for (const filePath of paths) {
+      try {
+        await fs.unlink(filePath);
+      } catch {
+        // Ignore cleanup failures; images are best effort.
+      }
+    }
   };
 
   const tempWorkspaceRoot = path.join(os.tmpdir(), TEMP_WORKSPACE_ROOT_DIR_NAME);
@@ -1172,7 +1228,12 @@ export async function setupIpcHandlers(
   ipcMain.handle(IPC_CHANNELS.TASK_SEND_MESSAGE, async (_, data) => {
     checkRateLimit(IPC_CHANNELS.TASK_SEND_MESSAGE);
     const validated = validateInput(TaskMessageSchema, data, 'task message');
-    await agentDaemon.sendMessage(validated.taskId, validated.message);
+    const validatedImages = validated.images;
+    try {
+      await agentDaemon.sendMessage(validated.taskId, validated.message, validatedImages);
+    } finally {
+      await cleanupTaskImageTempFiles(validatedImages);
+    }
   });
 
   // Approval handlers
@@ -1947,17 +2008,7 @@ export async function setupIpcHandlers(
   // Gateway / Channel handlers
   ipcMain.handle(IPC_CHANNELS.GATEWAY_GET_CHANNELS, async () => {
     if (!gateway) return [];
-    return gateway.getChannels().map(ch => ({
-      id: ch.id,
-      type: ch.type,
-      name: ch.name,
-      enabled: ch.enabled,
-      status: ch.status,
-      botUsername: ch.botUsername,
-      securityMode: ch.securityConfig.mode,
-      createdAt: ch.createdAt,
-      config: ch.config,
-    }));
+    return gateway.getChannels().map(toPublicChannel);
   });
 
   ipcMain.handle(IPC_CHANNELS.GATEWAY_ADD_CHANNEL, async (_, data) => {
@@ -1972,15 +2023,7 @@ export async function setupIpcHandlers(
         validated.botToken,
         validated.securityMode || 'pairing'
       );
-      return {
-        id: channel.id,
-        type: channel.type,
-        name: channel.name,
-        enabled: channel.enabled,
-        status: channel.status,
-        securityMode: channel.securityConfig.mode,
-        createdAt: channel.createdAt,
-      };
+      return toPublicChannel(channel);
     }
 
     if (validated.type === 'discord') {
@@ -1991,15 +2034,7 @@ export async function setupIpcHandlers(
         validated.guildIds,
         validated.securityMode || 'pairing'
       );
-      return {
-        id: channel.id,
-        type: channel.type,
-        name: channel.name,
-        enabled: channel.enabled,
-        status: channel.status,
-        securityMode: channel.securityConfig.mode,
-        createdAt: channel.createdAt,
-      };
+      return toPublicChannel(channel);
     }
 
     if (validated.type === 'slack') {
@@ -2010,15 +2045,7 @@ export async function setupIpcHandlers(
         validated.signingSecret,
         validated.securityMode || 'pairing'
       );
-      return {
-        id: channel.id,
-        type: channel.type,
-        name: channel.name,
-        enabled: channel.enabled,
-        status: channel.status,
-        securityMode: channel.securityConfig.mode,
-        createdAt: channel.createdAt,
-      };
+      return toPublicChannel(channel);
     }
 
     if (validated.type === 'whatsapp') {
@@ -2045,16 +2072,7 @@ export async function setupIpcHandlers(
         console.error('Failed to enable WhatsApp channel:', err);
       });
 
-      return {
-        id: channel.id,
-        type: channel.type,
-        name: channel.name,
-        enabled: channel.enabled,
-        status: 'connecting', // Indicate we're connecting
-        securityMode: channel.securityConfig.mode,
-        createdAt: channel.createdAt,
-        config: channel.config,
-      };
+      return toPublicChannel(channel, 'connecting');
     }
 
     if (validated.type === 'imessage') {
@@ -2078,16 +2096,7 @@ export async function setupIpcHandlers(
         console.error('Failed to enable iMessage channel:', err);
       });
 
-      return {
-        id: channel.id,
-        type: channel.type,
-        name: channel.name,
-        enabled: channel.enabled,
-        status: 'connecting', // Indicate we're connecting
-        securityMode: channel.securityConfig.mode,
-        createdAt: channel.createdAt,
-        config: channel.config,
-      };
+      return toPublicChannel(channel, 'connecting');
     }
 
     if (validated.type === 'signal') {
@@ -2109,16 +2118,7 @@ export async function setupIpcHandlers(
         console.error('Failed to enable Signal channel:', err);
       });
 
-      return {
-        id: channel.id,
-        type: channel.type,
-        name: channel.name,
-        enabled: channel.enabled,
-        status: 'connecting', // Indicate we're connecting
-        securityMode: channel.securityConfig.mode,
-        createdAt: channel.createdAt,
-        config: channel.config,
-      };
+      return toPublicChannel(channel, 'connecting');
     }
 
     if (validated.type === 'mattermost') {
@@ -2135,16 +2135,7 @@ export async function setupIpcHandlers(
         console.error('Failed to enable Mattermost channel:', err);
       });
 
-      return {
-        id: channel.id,
-        type: channel.type,
-        name: channel.name,
-        enabled: channel.enabled,
-        status: 'connecting',
-        securityMode: channel.securityConfig.mode,
-        createdAt: channel.createdAt,
-        config: channel.config,
-      };
+      return toPublicChannel(channel, 'connecting');
     }
 
     if (validated.type === 'matrix') {
@@ -2163,16 +2154,7 @@ export async function setupIpcHandlers(
         console.error('Failed to enable Matrix channel:', err);
       });
 
-      return {
-        id: channel.id,
-        type: channel.type,
-        name: channel.name,
-        enabled: channel.enabled,
-        status: 'connecting',
-        securityMode: channel.securityConfig.mode,
-        createdAt: channel.createdAt,
-        config: channel.config,
-      };
+      return toPublicChannel(channel, 'connecting');
     }
 
     if (validated.type === 'twitch') {
@@ -2190,16 +2172,7 @@ export async function setupIpcHandlers(
         console.error('Failed to enable Twitch channel:', err);
       });
 
-      return {
-        id: channel.id,
-        type: channel.type,
-        name: channel.name,
-        enabled: channel.enabled,
-        status: 'connecting',
-        securityMode: channel.securityConfig.mode,
-        createdAt: channel.createdAt,
-        config: channel.config,
-      };
+      return toPublicChannel(channel, 'connecting');
     }
 
     if (validated.type === 'line') {
@@ -2216,16 +2189,7 @@ export async function setupIpcHandlers(
         console.error('Failed to enable LINE channel:', err);
       });
 
-      return {
-        id: channel.id,
-        type: channel.type,
-        name: channel.name,
-        enabled: channel.enabled,
-        status: 'connecting',
-        securityMode: channel.securityConfig.mode,
-        createdAt: channel.createdAt,
-        config: channel.config,
-      };
+      return toPublicChannel(channel, 'connecting');
     }
 
     if (validated.type === 'bluebubbles') {
@@ -2248,29 +2212,31 @@ export async function setupIpcHandlers(
         console.error('Failed to enable BlueBubbles channel:', err);
       });
 
-      return {
-        id: channel.id,
-        type: channel.type,
-        name: channel.name,
-        enabled: channel.enabled,
-        status: 'connecting',
-        securityMode: channel.securityConfig.mode,
-        createdAt: channel.createdAt,
-        config: channel.config,
-      };
+      return toPublicChannel(channel, 'connecting');
     }
 
     if (validated.type === 'email') {
+      const emailProtocol = validated.emailProtocol || 'imap-smtp';
       const channel = await gateway.addEmailChannel(
         validated.name,
-        validated.emailAddress!,
-        validated.emailPassword!,
-        validated.emailImapHost!,
-        validated.emailSmtpHost!,
+        validated.emailAddress,
+        validated.emailPassword,
+        validated.emailImapHost,
+        validated.emailSmtpHost,
         validated.emailDisplayName,
         validated.emailAllowedSenders,
         validated.emailSubjectFilter,
-        validated.securityMode || 'pairing'
+        validated.securityMode || 'pairing',
+        {
+          protocol: emailProtocol,
+          imapPort: validated.emailImapPort,
+          smtpPort: validated.emailSmtpPort,
+          loomBaseUrl: validated.emailLoomBaseUrl,
+          loomAccessToken: validated.emailLoomAccessToken,
+          loomIdentity: validated.emailLoomIdentity,
+          loomMailboxFolder: validated.emailLoomMailboxFolder,
+          loomPollInterval: validated.emailLoomPollInterval,
+        }
       );
 
       // Automatically enable and connect Email
@@ -2278,16 +2244,7 @@ export async function setupIpcHandlers(
         console.error('Failed to enable Email channel:', err);
       });
 
-      return {
-        id: channel.id,
-        type: channel.type,
-        name: channel.name,
-        enabled: channel.enabled,
-        status: 'connecting',
-        securityMode: channel.securityConfig.mode,
-        createdAt: channel.createdAt,
-        config: channel.config,
-      };
+      return toPublicChannel(channel, 'connecting');
     }
 
     // TypeScript exhaustiveness check - should never reach here due to discriminated union
@@ -2307,7 +2264,17 @@ export async function setupIpcHandlers(
       updates.securityConfig = { ...channel.securityConfig, mode: validated.securityMode };
     }
     if (validated.config !== undefined) {
-      updates.config = { ...channel.config, ...validated.config };
+      const mergedConfig = { ...channel.config, ...validated.config };
+
+      if (channel.type === 'email') {
+        updates.config = validateInput(
+          EmailChannelConfigSchema,
+          mergedConfig,
+          'email channel update'
+        );
+      } else {
+        updates.config = mergedConfig;
+      }
     }
 
     gateway.updateChannel(validated.id, updates);
@@ -3214,6 +3181,9 @@ export async function setupIpcHandlers(
   // MCP handlers
   setupMCPHandlers();
 
+  // Conway Terminal handlers
+  setupConwayHandlers();
+
   // Notification handlers
   setupNotificationHandlers();
 
@@ -3447,6 +3417,68 @@ function setupMCPHandlers(): void {
   // Cron (Scheduled Tasks) Handlers
   // =====================
   setupCronHandlers();
+}
+
+/**
+ * Set up Conway Terminal IPC handlers
+ */
+function setupConwayHandlers(): void {
+  rateLimiter.configure(IPC_CHANNELS.CONWAY_SAVE_SETTINGS, RATE_LIMIT_CONFIGS.limited);
+  rateLimiter.configure(IPC_CHANNELS.CONWAY_SETUP, RATE_LIMIT_CONFIGS.expensive);
+  rateLimiter.configure(IPC_CHANNELS.CONWAY_CONNECT, RATE_LIMIT_CONFIGS.expensive);
+  rateLimiter.configure(IPC_CHANNELS.CONWAY_DISCONNECT, RATE_LIMIT_CONFIGS.expensive);
+  rateLimiter.configure(IPC_CHANNELS.CONWAY_RESET, RATE_LIMIT_CONFIGS.expensive);
+
+  ipcMain.handle(IPC_CHANNELS.CONWAY_GET_STATUS, async () => {
+    return ConwayManager.getInstance().getStatus();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.CONWAY_GET_SETTINGS, async () => {
+    return ConwaySettingsManager.loadSettings();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.CONWAY_SAVE_SETTINGS, async (_, settings) => {
+    checkRateLimit(IPC_CHANNELS.CONWAY_SAVE_SETTINGS);
+    const validated = validateInput(ConwaySettingsSchema, settings, 'Conway settings');
+    ConwaySettingsManager.saveSettings(validated);
+    ConwaySettingsManager.clearCache();
+    return { success: true };
+  });
+
+  ipcMain.handle(IPC_CHANNELS.CONWAY_SETUP, async () => {
+    checkRateLimit(IPC_CHANNELS.CONWAY_SETUP);
+    return ConwayManager.getInstance().setup();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.CONWAY_GET_BALANCE, async () => {
+    return ConwayManager.getInstance().getBalance();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.CONWAY_GET_WALLET, async () => {
+    return ConwayManager.getInstance().getWalletInfo();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.CONWAY_GET_CREDIT_HISTORY, async () => {
+    return ConwayManager.getInstance().getCreditHistory();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.CONWAY_CONNECT, async () => {
+    checkRateLimit(IPC_CHANNELS.CONWAY_CONNECT);
+    await ConwayManager.getInstance().connect();
+    return { success: true };
+  });
+
+  ipcMain.handle(IPC_CHANNELS.CONWAY_DISCONNECT, async () => {
+    checkRateLimit(IPC_CHANNELS.CONWAY_DISCONNECT);
+    await ConwayManager.getInstance().disconnect();
+    return { success: true };
+  });
+
+  ipcMain.handle(IPC_CHANNELS.CONWAY_RESET, async () => {
+    checkRateLimit(IPC_CHANNELS.CONWAY_RESET);
+    await ConwayManager.getInstance().reset();
+    return { success: true };
+  });
 }
 
 /**

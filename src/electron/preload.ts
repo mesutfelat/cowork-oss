@@ -1,4 +1,8 @@
+import * as path from 'node:path';
 import { contextBridge, ipcRenderer } from 'electron';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import { randomBytes } from 'node:crypto';
 import type {
   AgentTeam,
   AgentTeamItem,
@@ -6,10 +10,16 @@ import type {
   AgentTeamRun,
   AgentPerformanceReview,
   AgentReviewGenerateRequest,
+  ConwayCreditHistoryEntry,
+  ConwayCreditsBalance,
+  ConwaySettings,
+  ConwaySetupStatus,
+  ConwayWalletInfo,
   CreateAgentTeamItemRequest,
   CreateAgentTeamMemberRequest,
   CreateAgentTeamRequest,
   CreateAgentTeamRunRequest,
+  ImageAttachment,
   LLMProviderType,
   MemoryFeaturesSettings,
   WorkspaceKitInitRequest,
@@ -18,8 +28,181 @@ import type {
   UpdateAgentTeamItemRequest,
   UpdateAgentTeamMemberRequest,
   UpdateAgentTeamRequest,
+  AddChannelRequest,
   Workspace,
 } from '../shared/types';
+
+const ALLOWED_MESSAGE_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'] as const;
+const ALLOWED_IMAGE_FILE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp']);
+const MAX_IMAGES_PER_MESSAGE = 5;
+const MAX_TOTAL_TASK_IMAGE_BYTES = 125 * 1024 * 1024;
+const MAX_IMAGE_ATTACHMENT_BYTES = 25 * 1024 * 1024;
+const MANAGED_IMAGE_TEMP_PREFIX = 'cowork-image-';
+const MIME_TYPE_EXTENSION_MAP: Record<string, string> = {
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/gif': '.gif',
+  'image/webp': '.webp',
+};
+
+const isManagedImageTempFile = (filePath: string): boolean => {
+  if (!path.isAbsolute(filePath)) {
+    return false;
+  }
+
+  const normalizedDir = path.normalize(os.tmpdir());
+  const normalizedTarget = path.normalize(filePath);
+  const tmpPrefix = normalizedDir.endsWith(path.sep) ? normalizedDir : `${normalizedDir}${path.sep}`;
+  if (!normalizedTarget.startsWith(tmpPrefix)) {
+    return false;
+  }
+
+  return path.basename(filePath).startsWith(MANAGED_IMAGE_TEMP_PREFIX);
+};
+
+const deleteTempFiles = (paths: string[]): void => {
+  for (const filePath of paths) {
+    if (!isManagedImageTempFile(filePath)) {
+      continue;
+    }
+    try {
+      fs.unlinkSync(filePath);
+    } catch {
+      // Best-effort cleanup.
+    }
+  }
+};
+
+const normalizeAttachmentName = (value: unknown): string => {
+  const base = typeof value === 'string' ? value.trim() : '';
+  if (!base) {
+    return 'image';
+  }
+  const noExt = path.parse(base).name;
+  const sanitized = noExt
+    .replace(/[^\w.\-]/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^\.+|\.{2,}+/g, '_')
+    .slice(0, 80);
+  return sanitized || 'image';
+};
+
+const writeBase64ImageToTempFile = (imageData: string, mimeType: string, filename?: string): string => {
+  const extension = MIME_TYPE_EXTENSION_MAP[mimeType] || '.img';
+  const safeName = normalizeAttachmentName(filename);
+  const random = randomBytes(12).toString('hex');
+  const fileName = `${MANAGED_IMAGE_TEMP_PREFIX}${safeName}-${random}${extension}`;
+  const filePath = path.join(os.tmpdir(), fileName);
+  const buffer = Buffer.from(imageData, 'base64');
+  if (!buffer.length) {
+    throw new Error('Image data could not be decoded.');
+  }
+  if (buffer.length > MAX_IMAGE_ATTACHMENT_BYTES) {
+    throw new Error('Image attachment exceeds maximum size.');
+  }
+  fs.writeFileSync(filePath, buffer, { mode: 0o600 });
+  return filePath;
+};
+
+const isAbsoluteImagePath = (value: unknown): value is string =>
+  typeof value === 'string' && value.trim().length > 0;
+
+function validateSendMessageAttachments(images?: ImageAttachment[]): ImageAttachment[] | undefined {
+  if (images === undefined) {
+    return undefined;
+  }
+
+  if (!Array.isArray(images)) {
+    throw new Error('Invalid images payload. Must be an array.');
+  }
+
+  if (images.length > MAX_IMAGES_PER_MESSAGE) {
+    throw new Error(`Too many image attachments. Maximum allowed is ${MAX_IMAGES_PER_MESSAGE}.`);
+  }
+
+  let totalBytes = 0;
+  const createdTempFiles: string[] = [];
+
+  try {
+    return images.map((image, index) => {
+      if (!image || typeof image !== 'object') {
+        throw new Error(`Invalid image attachment at index ${index}.`);
+      }
+
+      const mimeType = image.mimeType;
+      if (!ALLOWED_MESSAGE_IMAGE_TYPES.includes(mimeType)) {
+        throw new Error(`Image attachment at index ${index} has unsupported mime type: ${String(mimeType)}.`);
+      }
+
+      const hasData = typeof image.data === 'string' && image.data.trim().length > 0;
+      const hasFilePath = isAbsoluteImagePath(image.filePath);
+      if (hasData === hasFilePath) {
+        throw new Error(`Image attachment at index ${index} must provide exactly one of data or filePath.`);
+      }
+
+      let data: string | undefined;
+      let filePath: string | undefined;
+      let resolvedFileSize: number | undefined;
+      if (hasFilePath) {
+        if (!path.isAbsolute(image.filePath)) {
+          throw new Error(`Image attachment at index ${index} filePath must be an absolute path.`);
+        }
+        const extension = path.extname(image.filePath).toLowerCase();
+        if (!ALLOWED_IMAGE_FILE_EXTENSIONS.has(extension)) {
+          throw new Error(`Image attachment at index ${index} has unsupported file extension: ${extension}.`);
+        }
+        let stat: fs.Stats;
+        try {
+          stat = fs.statSync(image.filePath);
+        } catch (error) {
+          throw new Error(`Image attachment at index ${index} filePath could not be read: ${String((error as Error).message)}`);
+        }
+        if (!stat.isFile()) {
+          throw new Error(`Image attachment at index ${index} filePath must point to a regular file.`);
+        }
+        if (stat.size === 0 || !Number.isInteger(stat.size) || stat.size <= 0 || stat.size > MAX_IMAGE_ATTACHMENT_BYTES) {
+          throw new Error(`Image attachment at index ${index} file size is invalid.`);
+        }
+        resolvedFileSize = stat.size;
+        filePath = image.filePath;
+      } else {
+        data = image.data as string;
+        const tempFile = writeBase64ImageToTempFile(data, mimeType, image.filename);
+        createdTempFiles.push(tempFile);
+        filePath = tempFile;
+        data = undefined;
+      }
+
+      const sizeBytes = Number(image.sizeBytes);
+      if (hasFilePath && typeof resolvedFileSize === 'number' && sizeBytes !== resolvedFileSize) {
+        throw new Error(`Image attachment at index ${index} sizeBytes must match attachment size.`);
+      }
+      if (!Number.isFinite(sizeBytes) || sizeBytes <= 0 || !Number.isInteger(sizeBytes)) {
+        throw new Error(`Image attachment at index ${index} has invalid sizeBytes.`);
+      }
+      if (sizeBytes > MAX_IMAGE_ATTACHMENT_BYTES) {
+        throw new Error(`Image attachment at index ${index} exceeds ${MAX_IMAGE_ATTACHMENT_BYTES} bytes.`);
+      }
+
+      totalBytes += sizeBytes;
+      if (totalBytes > MAX_TOTAL_TASK_IMAGE_BYTES) {
+        throw new Error('Total image payload exceeds 125MB limit.');
+      }
+
+      return {
+        data,
+        filePath,
+        tempFile: hasData ? true : false,
+        mimeType,
+        sizeBytes,
+        filename: image.filename,
+      };
+    });
+  } catch (error) {
+    deleteTempFiles(createdTempFiles);
+    throw error;
+  }
+}
 
 // IPC Channel names - inlined to avoid require() issues in sandboxed preload
 const IPC_CHANNELS = {
@@ -201,6 +384,18 @@ const IPC_CHANNELS = {
   MCP_HOST_START: 'mcp:hostStart',
   MCP_HOST_STOP: 'mcp:hostStop',
   MCP_HOST_GET_STATUS: 'mcp:hostGetStatus',
+  // Conway Terminal
+  CONWAY_GET_STATUS: 'conway:getStatus',
+  CONWAY_GET_SETTINGS: 'conway:getSettings',
+  CONWAY_SAVE_SETTINGS: 'conway:saveSettings',
+  CONWAY_SETUP: 'conway:setup',
+  CONWAY_GET_BALANCE: 'conway:getBalance',
+  CONWAY_GET_WALLET: 'conway:getWallet',
+  CONWAY_GET_CREDIT_HISTORY: 'conway:getCreditHistory',
+  CONWAY_CONNECT: 'conway:connect',
+  CONWAY_DISCONNECT: 'conway:disconnect',
+  CONWAY_RESET: 'conway:reset',
+  CONWAY_STATUS_CHANGE: 'conway:statusChange',
   // Built-in Tools Settings
   BUILTIN_TOOLS_GET_SETTINGS: 'builtinTools:getSettings',
   BUILTIN_TOOLS_SAVE_SETTINGS: 'builtinTools:saveSettings',
@@ -1647,9 +1842,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Task event history (load from DB)
   getTaskEvents: (taskId: string) => ipcRenderer.invoke(IPC_CHANNELS.TASK_EVENTS, taskId),
 
-  // Send follow-up message to a task
-  sendMessage: (taskId: string, message: string) =>
-    ipcRenderer.invoke(IPC_CHANNELS.TASK_SEND_MESSAGE, { taskId, message }),
+  // Send follow-up message to a task (optionally with image attachments)
+  sendMessage: (taskId: string, message: string, images?: ImageAttachment[]) => {
+    const validatedImages = validateSendMessageAttachments(images);
+    return ipcRenderer.invoke(IPC_CHANNELS.TASK_SEND_MESSAGE, {
+      taskId,
+      message,
+      images: validatedImages,
+    });
+  },
 
   // Workspace APIs
   createWorkspace: (data: any) => ipcRenderer.invoke(IPC_CHANNELS.WORKSPACE_CREATE, data),
@@ -1696,7 +1897,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Gateway / Channel APIs
   getGatewayChannels: () => ipcRenderer.invoke(IPC_CHANNELS.GATEWAY_GET_CHANNELS),
-  addGatewayChannel: (data: any) => ipcRenderer.invoke(IPC_CHANNELS.GATEWAY_ADD_CHANNEL, data),
+  addGatewayChannel: (data: AddChannelRequest) => ipcRenderer.invoke(IPC_CHANNELS.GATEWAY_ADD_CHANNEL, data),
   updateGatewayChannel: (data: any) => ipcRenderer.invoke(IPC_CHANNELS.GATEWAY_UPDATE_CHANNEL, data),
   removeGatewayChannel: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.GATEWAY_REMOVE_CHANNEL, id),
   enableGatewayChannel: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.GATEWAY_ENABLE_CHANNEL, id),
@@ -1912,6 +2113,23 @@ contextBridge.exposeInMainWorld('electronAPI', {
   startMCPHost: (port?: number) => ipcRenderer.invoke(IPC_CHANNELS.MCP_HOST_START, port),
   stopMCPHost: () => ipcRenderer.invoke(IPC_CHANNELS.MCP_HOST_STOP),
   getMCPHostStatus: () => ipcRenderer.invoke(IPC_CHANNELS.MCP_HOST_GET_STATUS),
+
+  // Conway Terminal APIs
+  conwayGetStatus: () => ipcRenderer.invoke(IPC_CHANNELS.CONWAY_GET_STATUS),
+  conwayGetSettings: () => ipcRenderer.invoke(IPC_CHANNELS.CONWAY_GET_SETTINGS),
+  conwaySaveSettings: (settings: ConwaySettings) => ipcRenderer.invoke(IPC_CHANNELS.CONWAY_SAVE_SETTINGS, settings),
+  conwaySetup: () => ipcRenderer.invoke(IPC_CHANNELS.CONWAY_SETUP),
+  conwayGetBalance: () => ipcRenderer.invoke(IPC_CHANNELS.CONWAY_GET_BALANCE),
+  conwayGetWallet: () => ipcRenderer.invoke(IPC_CHANNELS.CONWAY_GET_WALLET),
+  conwayGetCreditHistory: () => ipcRenderer.invoke(IPC_CHANNELS.CONWAY_GET_CREDIT_HISTORY),
+  conwayConnect: () => ipcRenderer.invoke(IPC_CHANNELS.CONWAY_CONNECT),
+  conwayDisconnect: () => ipcRenderer.invoke(IPC_CHANNELS.CONWAY_DISCONNECT),
+  conwayReset: () => ipcRenderer.invoke(IPC_CHANNELS.CONWAY_RESET),
+  onConwayStatusChange: (callback: (status: ConwaySetupStatus) => void) => {
+    const subscription = (_: unknown, status: ConwaySetupStatus) => callback(status);
+    ipcRenderer.on(IPC_CHANNELS.CONWAY_STATUS_CHANGE, subscription);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.CONWAY_STATUS_CHANGE, subscription);
+  },
 
   // Built-in Tools Settings APIs
   getBuiltinToolsSettings: () => ipcRenderer.invoke(IPC_CHANNELS.BUILTIN_TOOLS_GET_SETTINGS),
@@ -2592,7 +2810,7 @@ export interface ElectronAPI {
   deleteTask: (id: string) => Promise<void>;
   onTaskEvent: (callback: (event: any) => void) => () => void;
   getTaskEvents: (taskId: string) => Promise<any[]>;
-  sendMessage: (taskId: string, message: string) => Promise<void>;
+  sendMessage: (taskId: string, message: string, images?: ImageAttachment[]) => Promise<void>;
   createWorkspace: (data: any) => Promise<Workspace>;
   listWorkspaces: () => Promise<Workspace[]>;
   selectWorkspace: (id: string) => Promise<Workspace>;
@@ -2637,7 +2855,7 @@ export interface ElectronAPI {
   getBedrockModels: (config?: { region?: string; accessKeyId?: string; secretAccessKey?: string; profile?: string }) => Promise<Array<{ id: string; name: string; provider: string; description: string }>>;
   // Gateway / Channel APIs
   getGatewayChannels: () => Promise<any[]>;
-  addGatewayChannel: (data: { type: string; name: string; botToken?: string; securityMode?: string; ambientMode?: boolean; silentUnauthorized?: boolean; applicationId?: string; guildIds?: string[]; appToken?: string; signingSecret?: string; allowedNumbers?: string[]; selfChatMode?: boolean; responsePrefix?: string; ingestNonSelfChatsInSelfChatMode?: boolean; groupRoutingMode?: string; trustedGroupMemoryOptIn?: boolean; cliPath?: string; dbPath?: string; allowedContacts?: string[]; dmPolicy?: string; groupPolicy?: string; captureSelfMessages?: boolean; phoneNumber?: string; dataDir?: string; mode?: string; trustMode?: string; sendReadReceipts?: boolean; deduplicationEnabled?: boolean; sendTypingIndicators?: boolean; mattermostServerUrl?: string; mattermostToken?: string; mattermostTeamId?: string; matrixHomeserver?: string; matrixUserId?: string; matrixAccessToken?: string; matrixDeviceId?: string; matrixRoomIds?: string[]; twitchUsername?: string; twitchOauthToken?: string; twitchChannels?: string[]; twitchAllowWhispers?: boolean; lineChannelAccessToken?: string; lineChannelSecret?: string; lineWebhookPort?: number; lineWebhookPath?: string; blueBubblesServerUrl?: string; blueBubblesPassword?: string; blueBubblesWebhookPort?: number; blueBubblesAllowedContacts?: string[]; emailAddress?: string; emailPassword?: string; emailImapHost?: string; emailImapPort?: number; emailSmtpHost?: string; emailSmtpPort?: number; emailDisplayName?: string; emailAllowedSenders?: string[]; emailSubjectFilter?: string; appId?: string; appPassword?: string; tenantId?: string; webhookPort?: number; serviceAccountKeyPath?: string; projectId?: string; webhookPath?: string }) => Promise<any>;
+  addGatewayChannel: (data: AddChannelRequest) => Promise<any>;
   updateGatewayChannel: (data: {
     id: string;
     name?: string;
@@ -2843,6 +3061,7 @@ export interface ElectronAPI {
     themeMode: 'light' | 'dark' | 'system';
     visualTheme: 'terminal' | 'warm' | 'oblivion';
     accentColor: 'cyan' | 'blue' | 'purple' | 'pink' | 'rose' | 'orange' | 'green' | 'teal' | 'coral';
+    uiDensity?: 'focused' | 'full';
     language?: string;
     disclaimerAccepted?: boolean;
     onboardingCompleted?: boolean;
@@ -2853,6 +3072,7 @@ export interface ElectronAPI {
     themeMode?: 'light' | 'dark' | 'system';
     visualTheme?: 'terminal' | 'warm' | 'oblivion';
     accentColor?: 'cyan' | 'blue' | 'purple' | 'pink' | 'rose' | 'orange' | 'green' | 'teal' | 'coral';
+    uiDensity?: 'focused' | 'full';
     language?: string;
     disclaimerAccepted?: boolean;
     onboardingCompleted?: boolean;
@@ -3016,6 +3236,18 @@ export interface ElectronAPI {
   startMCPHost: (port?: number) => Promise<{ success: boolean; port?: number }>;
   stopMCPHost: () => Promise<void>;
   getMCPHostStatus: () => Promise<{ running: boolean; port?: number }>;
+  // Conway Terminal
+  conwayGetStatus: () => Promise<ConwaySetupStatus>;
+  conwayGetSettings: () => Promise<ConwaySettings>;
+  conwaySaveSettings: (settings: ConwaySettings) => Promise<{ success: boolean }>;
+  conwaySetup: () => Promise<ConwaySetupStatus>;
+  conwayGetBalance: () => Promise<ConwayCreditsBalance | null>;
+  conwayGetWallet: () => Promise<ConwayWalletInfo | null>;
+  conwayGetCreditHistory: () => Promise<ConwayCreditHistoryEntry[]>;
+  conwayConnect: () => Promise<{ success: boolean }>;
+  conwayDisconnect: () => Promise<{ success: boolean }>;
+  conwayReset: () => Promise<{ success: boolean }>;
+  onConwayStatusChange: (callback: (status: ConwaySetupStatus) => void) => () => void;
   // Built-in Tools Settings
   getBuiltinToolsSettings: () => Promise<BuiltinToolsSettings>;
   saveBuiltinToolsSettings: (settings: BuiltinToolsSettings) => Promise<{ success: boolean }>;
