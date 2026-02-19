@@ -121,10 +121,15 @@ export function App() {
   const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
   // Timestamp of when onboarding was completed
   const [onboardingCompletedAt, setOnboardingCompletedAt] = useState<string | undefined>(undefined);
+  const hasElectronAPI = typeof window !== "undefined" && !!window.electronAPI;
 
   const handleDisclaimerAccept = (dontShowAgain: boolean) => {
     // Save to main process for persistence
-    window.electronAPI.saveAppearanceSettings({ disclaimerAccepted: dontShowAgain });
+    window.electronAPI
+      ?.saveAppearanceSettings?.({ disclaimerAccepted: dontShowAgain })
+      ?.catch((error) => {
+        console.error("Failed to save disclaimer setting:", error);
+      });
     setDisclaimerAccepted(true);
   };
 
@@ -133,17 +138,22 @@ export function App() {
     // Save to main process for persistence
     // If dontShowAgain is true, mark as completed with timestamp
     // If false, just save the timestamp but don't mark as completed (user can see it again next time)
-    window.electronAPI.saveAppearanceSettings({
-      onboardingCompleted: dontShowAgain,
-      onboardingCompletedAt: timestamp,
-    });
+    window.electronAPI
+      ?.saveAppearanceSettings?.({
+        onboardingCompleted: dontShowAgain,
+        onboardingCompletedAt: timestamp,
+      })
+      ?.catch((error) => {
+        console.error("Failed to save onboarding state:", error);
+      });
     setOnboardingCompleted(true); // Always allow proceeding to main app
     setOnboardingCompletedAt(timestamp);
 
     // Sync any onboarding-time appearance changes (e.g. light/dark toggle)
     window.electronAPI
-      .getAppearanceSettings()
+      ?.getAppearanceSettings?.()
       .then((settings) => {
+        if (!settings) return;
         setThemeMode(settings.themeMode);
         setVisualTheme(settings.visualTheme || "warm");
         setAccentColor(settings.accentColor);
@@ -170,8 +180,10 @@ export function App() {
 
   // Load LLM config status
   const loadLLMConfig = async () => {
+    if (!window.electronAPI?.getLLMConfigStatus) return;
     try {
       const config = await window.electronAPI.getLLMConfigStatus();
+      if (!config) return;
       setSelectedModel(config.currentModel);
       setAvailableModels(config.models);
       setAvailableProviders(config.providers);
@@ -197,8 +209,20 @@ export function App() {
   // Load appearance settings on mount
   useEffect(() => {
     const loadAppearanceSettings = async () => {
+      if (!window.electronAPI?.getAppearanceSettings) {
+        setDisclaimerAccepted(true);
+        setOnboardingCompleted(true);
+        setOnboardingCompletedAt(undefined);
+        return;
+      }
       try {
         const settings = await window.electronAPI.getAppearanceSettings();
+        if (!settings) {
+          setDisclaimerAccepted(true);
+          setOnboardingCompleted(true);
+          setOnboardingCompletedAt(undefined);
+          return;
+        }
         setThemeMode(settings.themeMode);
         setVisualTheme(settings.visualTheme || "warm");
         setAccentColor(settings.accentColor);
@@ -222,6 +246,8 @@ export function App() {
   // and encrypted credentials (API keys) need to be re-entered
   const migrationCheckDone = useRef(false);
   useEffect(() => {
+    if (!window.electronAPI?.getMigrationStatus) return;
+
     // Prevent double execution in React StrictMode
     if (migrationCheckDone.current) return;
     migrationCheckDone.current = true;
@@ -255,7 +281,7 @@ export function App() {
           }, 30000);
 
           // Mark notification as dismissed so it only shows once
-          await window.electronAPI.dismissMigrationNotification();
+          await window.electronAPI.dismissMigrationNotification?.();
         }
       } catch (error) {
         console.error("Failed to check migration status:", error);
@@ -266,6 +292,8 @@ export function App() {
 
   // Load queue status and subscribe to updates
   useEffect(() => {
+    if (!window.electronAPI?.getQueueStatus || !window.electronAPI?.onQueueUpdate) return;
+
     const loadQueueStatus = async () => {
       try {
         const status = await window.electronAPI.getQueueStatus();
@@ -281,11 +309,13 @@ export function App() {
       setQueueStatus(status);
     });
 
-    return unsubscribe;
+    return typeof unsubscribe === "function" ? unsubscribe : undefined;
   }, []);
 
   // Check for updates on mount
   useEffect(() => {
+    if (!window.electronAPI?.checkForUpdates) return;
+
     const checkUpdates = async () => {
       try {
         const info = await window.electronAPI.checkForUpdates();
@@ -376,6 +406,8 @@ export function App() {
 
   // Auto-load temp workspace on mount if no workspace is selected
   useEffect(() => {
+    if (!window.electronAPI?.getTempWorkspace) return;
+
     const initWorkspace = async () => {
       if (!currentWorkspace) {
         try {
@@ -398,6 +430,7 @@ export function App() {
 
   // Sync current workspace to the selected task's workspace
   useEffect(() => {
+    if (!window.electronAPI?.selectWorkspace || !window.electronAPI?.getTempWorkspace) return;
     if (!selectedTaskId) return;
     const task = tasks.find((t) => t.id === selectedTaskId);
     if (!task) return;
@@ -427,6 +460,7 @@ export function App() {
 
   // Track recency when the active workspace changes
   useEffect(() => {
+    if (!window.electronAPI?.touchWorkspace) return;
     if (!currentWorkspace || currentWorkspace.isTemp || isTempWorkspaceId(currentWorkspace.id))
       return;
     window.electronAPI.touchWorkspace(currentWorkspace.id).catch((error: unknown) => {
@@ -533,6 +567,8 @@ export function App() {
 
   // Restore session auto-approve state from main process (survives HMR and renderer resets)
   useEffect(() => {
+    if (!window.electronAPI?.getSessionAutoApprove) return;
+
     window.electronAPI
       .getSessionAutoApprove()
       .then((enabled: boolean) => {
@@ -548,6 +584,8 @@ export function App() {
 
   // Subscribe to all task events to update task status
   useEffect(() => {
+    if (!window.electronAPI?.onTaskEvent) return;
+
     const unsubscribe = window.electronAPI.onTaskEvent((event: TaskEvent) => {
       // Update task status based on event type
       const statusMap: Record<string, Task["status"]> = {
@@ -756,6 +794,16 @@ export function App() {
           message: task?.title || "Task encountered an error",
           taskId: event.taskId,
         });
+      } else if (event.type === "follow_up_failed") {
+        const task = tasksRef.current.find((t) => t.id === event.taskId);
+        const fallbackMessage = task?.title || "A follow-up message failed";
+        const reason = String(event.payload?.userMessage || event.payload?.error || "").trim();
+        addToast({
+          type: "error",
+          title: "Follow-up Failed",
+          message: reason ? `${fallbackMessage}: ${reason}` : fallbackMessage,
+          taskId: event.taskId,
+        });
       }
 
       // Add event to events list if it's for the selected task
@@ -764,7 +812,7 @@ export function App() {
       }
     });
 
-    return unsubscribe;
+    return typeof unsubscribe === "function" ? unsubscribe : undefined;
   }, [selectedTaskId]);
 
   // Load historical events when task is selected
@@ -775,6 +823,11 @@ export function App() {
     }
 
     // Load historical events from database
+    if (!window.electronAPI?.getTaskEvents) {
+      setEvents([]);
+      return;
+    }
+
     const loadHistoricalEvents = async () => {
       try {
         const historicalEvents = await window.electronAPI.getTaskEvents(selectedTaskId);
@@ -789,6 +842,10 @@ export function App() {
   }, [selectedTaskId]);
 
   const loadTasks = async () => {
+    if (!window.electronAPI?.listTasks) {
+      setTasks([]);
+      return;
+    }
     try {
       const loadedTasks = await window.electronAPI.listTasks();
       setTasks(loadedTasks);
@@ -961,7 +1018,7 @@ export function App() {
   const handleModelChange = (modelKey: string) => {
     setSelectedModel(modelKey);
     // Persist to main process
-    window.electronAPI.setLLMModel(modelKey);
+    void window.electronAPI?.setLLMModel?.(modelKey);
     // When model changes during a task, clear the current task to start fresh
     if (selectedTaskId) {
       setSelectedTaskId(null);
@@ -972,24 +1029,36 @@ export function App() {
   const handleThemeChange = (theme: ThemeMode) => {
     setThemeMode(theme);
     // Persist to main process
-    window.electronAPI.saveAppearanceSettings({ themeMode: theme, visualTheme, accentColor });
+    void window.electronAPI?.saveAppearanceSettings?.({
+      themeMode: theme,
+      visualTheme,
+      accentColor,
+    });
   };
 
   const handleVisualThemeChange = (visual: VisualTheme) => {
     setVisualTheme(visual);
     // Persist to main process
-    window.electronAPI.saveAppearanceSettings({ themeMode, visualTheme: visual, accentColor });
+    void window.electronAPI?.saveAppearanceSettings?.({
+      themeMode,
+      visualTheme: visual,
+      accentColor,
+    });
   };
 
   const handleAccentChange = (accent: AccentColor) => {
     setAccentColor(accent);
     // Persist to main process
-    window.electronAPI.saveAppearanceSettings({ themeMode, visualTheme, accentColor: accent });
+    void window.electronAPI?.saveAppearanceSettings?.({
+      themeMode,
+      visualTheme,
+      accentColor: accent,
+    });
   };
 
   const handleUiDensityChange = (density: UiDensity) => {
     setUiDensity(density);
-    window.electronAPI.saveAppearanceSettings({
+    void window.electronAPI?.saveAppearanceSettings?.({
       themeMode,
       visualTheme,
       accentColor,
@@ -1000,6 +1069,21 @@ export function App() {
   // Smart right panel visibility: auto-collapse on welcome screen in focused mode
   const effectiveRightCollapsed =
     uiDensity === "full" ? rightSidebarCollapsed : !selectedTaskId ? true : rightSidebarCollapsed;
+
+  if (!hasElectronAPI) {
+    return (
+      <div className="app">
+        <div className="title-bar" />
+        <div className="empty-state">
+          <h2>Desktop bridge unavailable</h2>
+          <p>
+            CoWork OS is running without Electron preload APIs. Start it with `npm run dev` (not
+            only `npm run dev:react`) or relaunch the desktop app.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   // Show loading state while checking disclaimer/onboarding status
   if (disclaimerAccepted === null || onboardingCompleted === null) {

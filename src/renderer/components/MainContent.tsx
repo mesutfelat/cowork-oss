@@ -217,6 +217,15 @@ type MentionOption = {
   color?: string;
 };
 
+type SlashCommandOption = {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  hasParams: boolean;
+  skill: CustomSkill;
+};
+
 const normalizeMentionSearch = (value: string): string =>
   value.toLowerCase().replace(/[^a-z0-9]/g, "");
 import { SkillParameterModal } from "./SkillParameterModal";
@@ -246,6 +255,7 @@ import {
 import { CommandOutput } from "./CommandOutput";
 import { CanvasPreview } from "./CanvasPreview";
 import { InlineImagePreview } from "./InlineImagePreview";
+import { InlineSpreadsheetPreview } from "./InlineSpreadsheetPreview";
 
 // Code block component with copy button
 interface CodeBlockProps {
@@ -997,7 +1007,20 @@ function ModelDropdown({
         }}
         onKeyDown={handleKeyDown}
       >
-        {selectedModelInfo?.displayName || "Select Model"}
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" />
+          <path d="M18 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3z" />
+        </svg>
+        <span>{selectedModelInfo?.displayName || "Select Model"}</span>
         <svg
           width="12"
           height="12"
@@ -1005,6 +1028,7 @@ function ModelDropdown({
           fill="none"
           stroke="currentColor"
           strokeWidth="2"
+          className={isOpen ? "chevron-up" : ""}
         >
           <path d="M6 9l6 6 6-6" />
         </svg>
@@ -1537,6 +1561,10 @@ export function MainContent({
   const [mentionTarget, setMentionTarget] = useState<{ start: number; end: number } | null>(null);
   const [mentionOpen, setMentionOpen] = useState(false);
   const [mentionSelectedIndex, setMentionSelectedIndex] = useState(0);
+  const [slashOpen, setSlashOpen] = useState(false);
+  const [slashQuery, setSlashQuery] = useState("");
+  const [slashTarget, setSlashTarget] = useState<{ start: number; end: number } | null>(null);
+  const [slashSelectedIndex, setSlashSelectedIndex] = useState(0);
   // Focused mode card pool - pick random 6 on mount
   const focusedCards = useMemo(() => pickFocusedCards(FOCUSED_CARD_POOL, CARDS_TO_SHOW), []);
 
@@ -2205,9 +2233,16 @@ export function MainContent({
     );
   };
 
+  const isSpreadsheetFileEvent = (event: TaskEvent): boolean => {
+    if (event.type !== "file_created" && event.type !== "file_modified") return false;
+    const filePath = String(event.payload?.path || event.payload?.from || "");
+    return event.payload?.type === "spreadsheet" || /\.xlsx?$/i.test(filePath);
+  };
+
   // Check if an event has details to show
   const hasEventDetails = (event: TaskEvent): boolean => {
     if (isImageFileEvent(event)) return true;
+    if (isSpreadsheetFileEvent(event)) return true;
     if (
       event.type === "file_created" &&
       (event.payload?.contentPreview || event.payload?.copiedFrom)
@@ -2233,6 +2268,7 @@ export function MainContent({
   // Verbose events (tool calls/results) should be collapsed
   const shouldDefaultExpand = (event: TaskEvent): boolean => {
     if (isImageFileEvent(event)) return true;
+    if (isSpreadsheetFileEvent(event)) return true;
     // Code previews: expand by default unless user opted for collapsed
     if (codePreviewsExpanded) {
       if (
@@ -2822,6 +2858,80 @@ export function MainContent({
     mentionTargetRef.current = mentionTarget;
   }, [mentionTarget]);
 
+  // Slash command refs (mirrors mention refs pattern)
+  const slashOpenRef = useRef(slashOpen);
+  const slashQueryRef = useRef(slashQuery);
+  const slashTargetRef = useRef(slashTarget);
+  const slashDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    slashOpenRef.current = slashOpen;
+  }, [slashOpen]);
+
+  useEffect(() => {
+    slashQueryRef.current = slashQuery;
+  }, [slashQuery]);
+
+  useEffect(() => {
+    slashTargetRef.current = slashTarget;
+  }, [slashTarget]);
+
+  // Close slash dropdown on outside click
+  useEffect(() => {
+    if (!slashOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (mentionContainerRef.current && !mentionContainerRef.current.contains(e.target as Node)) {
+        setSlashOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [slashOpen]);
+
+  // Reset slash selected index when options change
+  useEffect(() => {
+    if (slashSelectedIndex >= slashOptions.length) {
+      setSlashSelectedIndex(0);
+    }
+  }, [slashOptions, slashSelectedIndex]);
+
+  const findSlashAtCursor = (value: string, cursor: number | null) => {
+    if (cursor === null) return null;
+    const uptoCursor = value.slice(0, cursor);
+    // Find the last `/` before cursor
+    const slashIndex = uptoCursor.lastIndexOf("/");
+    if (slashIndex === -1) return null;
+    // `/` must be at position 0 or preceded by a newline
+    if (slashIndex > 0 && uptoCursor[slashIndex - 1] !== "\n") return null;
+    const query = uptoCursor.slice(slashIndex + 1);
+    // No spaces or newlines allowed in query
+    if (query.includes(" ") || query.includes("\n") || query.includes("\r")) return null;
+    return { query, start: slashIndex, end: cursor };
+  };
+
+  const slashOptions = useMemo<SlashCommandOption[]>(() => {
+    if (!slashOpen) return [];
+    const query = slashQuery.toLowerCase();
+    return customSkills
+      .filter((skill) => {
+        if (!query) return true;
+        return (
+          skill.name.toLowerCase().includes(query) ||
+          skill.id.toLowerCase().includes(query) ||
+          (skill.description || "").toLowerCase().includes(query)
+        );
+      })
+      .slice(0, 10)
+      .map((skill) => ({
+        id: skill.id,
+        name: skill.name,
+        description: skill.description,
+        icon: skill.icon,
+        hasParams: !!(skill.parameters && skill.parameters.length > 0),
+        skill,
+      }));
+  }, [slashOpen, slashQuery, customSkills]);
+
   const updateMentionState = useCallback((value: string, cursor: number | null) => {
     const mention = findMentionAtCursor(value, cursor);
     if (!mention) {
@@ -2831,6 +2941,8 @@ export function MainContent({
       if (mentionTargetRef.current !== null) setMentionTarget(null);
       return;
     }
+    // Close slash if mention opens
+    if (slashOpenRef.current) setSlashOpen(false);
     if (!mentionOpenRef.current) setMentionOpen(true);
     if (mentionQueryRef.current !== mention.query) setMentionQuery(mention.query);
     const prev = mentionTargetRef.current;
@@ -2840,19 +2952,62 @@ export function MainContent({
     setMentionSelectedIndex(0);
   }, []);
 
+  const updateSlashState = useCallback((value: string, cursor: number | null) => {
+    const slash = findSlashAtCursor(value, cursor);
+    if (!slash) {
+      if (slashOpenRef.current) setSlashOpen(false);
+      if (slashQueryRef.current !== "") setSlashQuery("");
+      if (slashTargetRef.current !== null) setSlashTarget(null);
+      return;
+    }
+    // Close mention if slash opens
+    if (mentionOpenRef.current) setMentionOpen(false);
+    if (!slashOpenRef.current) setSlashOpen(true);
+    if (slashQueryRef.current !== slash.query) setSlashQuery(slash.query);
+    const prev = slashTargetRef.current;
+    if (!prev || prev.start !== slash.start || prev.end !== slash.end) {
+      setSlashTarget({ start: slash.start, end: slash.end });
+    }
+    setSlashSelectedIndex(0);
+  }, []);
+
+  const handleSlashSelect = (option: SlashCommandOption) => {
+    if (!slashTarget) return;
+    setSlashOpen(false);
+    setSlashQuery("");
+    setSlashTarget(null);
+
+    if (option.hasParams) {
+      // Show parameter modal
+      setInputValue("");
+      setSelectedSkillForParams(option.skill);
+    } else {
+      // No parameters — create task directly with skill prompt
+      setInputValue("");
+      if (onCreateTask) {
+        const title = buildTaskTitle(option.skill.prompt);
+        onCreateTask(title, option.skill.prompt);
+      }
+    }
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
     setInputValue(value);
     updateMentionState(value, e.target.selectionStart);
+    updateSlashState(value, e.target.selectionStart);
   };
 
   const handleInputClick = (e: React.MouseEvent<HTMLTextAreaElement>) => {
     updateMentionState(inputValue, e.currentTarget.selectionStart);
+    updateSlashState(inputValue, e.currentTarget.selectionStart);
   };
 
   const handleInputKeyUp = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(e.key)) {
-      updateMentionState(inputValue, (e.currentTarget as HTMLTextAreaElement).selectionStart);
+      const cursor = (e.currentTarget as HTMLTextAreaElement).selectionStart;
+      updateMentionState(inputValue, cursor);
+      updateSlashState(inputValue, cursor);
     }
   };
 
@@ -2913,6 +3068,35 @@ export function MainContent({
     );
   };
 
+  const renderSlashDropdown = () => {
+    if (!slashOpen || slashOptions.length === 0) return null;
+    return (
+      <div className="mention-autocomplete-dropdown slash-autocomplete-dropdown" ref={slashDropdownRef}>
+        {slashOptions.map((option, index) => (
+          <button
+            key={option.id}
+            className={`mention-autocomplete-item ${index === slashSelectedIndex ? "selected" : ""}`}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              handleSlashSelect(option);
+            }}
+            onMouseEnter={() => setSlashSelectedIndex(index)}
+          >
+            <span className="mention-autocomplete-icon slash-command-icon">
+              {option.icon}
+            </span>
+            <div className="mention-autocomplete-details">
+              <span className="mention-autocomplete-name">/{option.name}</span>
+              {option.description && (
+                <span className="mention-autocomplete-desc">{option.description}</span>
+              )}
+            </div>
+          </button>
+        ))}
+      </div>
+    );
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (mentionOpen && mentionOptions.length > 0) {
       switch (e.key) {
@@ -2934,6 +3118,30 @@ export function MainContent({
         case "Escape":
           e.preventDefault();
           setMentionOpen(false);
+          return;
+      }
+    }
+
+    if (slashOpen && slashOptions.length > 0) {
+      switch (e.key) {
+        case "ArrowDown":
+          e.preventDefault();
+          setSlashSelectedIndex((prev) => (prev + 1) % slashOptions.length);
+          return;
+        case "ArrowUp":
+          e.preventDefault();
+          setSlashSelectedIndex(
+            (prev) => (prev - 1 + slashOptions.length) % slashOptions.length,
+          );
+          return;
+        case "Enter":
+        case "Tab":
+          e.preventDefault();
+          handleSlashSelect(slashOptions[slashSelectedIndex]);
+          return;
+        case "Escape":
+          e.preventDefault();
+          setSlashOpen(false);
           return;
       }
     }
@@ -3564,6 +3772,12 @@ export function MainContent({
                         </svg>
                         <span>Shell {shellEnabled ? "ON" : "OFF"}</span>
                       </button>
+                      <ModelDropdown
+                        models={availableModels}
+                        selectedModel={selectedModel}
+                        onModelChange={onModelChange}
+                        onOpenSettings={onOpenSettings}
+                      />
                     </>
                   )}
                 </div>
@@ -3670,12 +3884,6 @@ export function MainContent({
                     </>
                   ) : (
                     <>
-                      <ModelDropdown
-                        models={availableModels}
-                        selectedModel={selectedModel}
-                        onModelChange={onModelChange}
-                        onOpenSettings={onOpenSettings}
-                      />
                       {/* Skills Menu Button */}
                       <div className="skills-menu-container" ref={skillsMenuRef}>
                         <button
@@ -4158,6 +4366,7 @@ export function MainContent({
                 const showEvenWithoutSteps =
                   alwaysVisibleEvents.has(event.type) ||
                   isImageFileEvent(event) ||
+                  isSpreadsheetFileEvent(event) ||
                   (event.type === "tool_result" && event.payload?.tool === "schedule_task");
                 if (!showSteps && !showEvenWithoutSteps) {
                   // Even if we're not showing steps, we may still need to render CommandOutput here
@@ -4359,12 +4568,34 @@ export function MainContent({
               {renderMentionDropdown()}
             </div>
             <div className="input-actions">
-              <ModelDropdown
-                models={availableModels}
-                selectedModel={selectedModel}
-                onModelChange={onModelChange}
-                onOpenSettings={onOpenSettings}
-              />
+              {uiDensity === "focused" && (
+                <div className="model-label-container" ref={modelLabelRef}>
+                  <button
+                    className="model-label-subtle"
+                    onClick={() => setShowModelDropdownFromLabel(!showModelDropdownFromLabel)}
+                    title="Change model"
+                  >
+                    {availableModels.find((m) => m.key === selectedModel)?.displayName ||
+                      selectedModel}
+                  </button>
+                  {showModelDropdownFromLabel && (
+                    <div className="model-label-dropdown">
+                      {availableModels.map((m) => (
+                        <button
+                          key={m.key}
+                          className={`model-label-dropdown-item ${m.key === selectedModel ? "active" : ""}`}
+                          onClick={() => {
+                            onModelChange(m.key);
+                            setShowModelDropdownFromLabel(false);
+                          }}
+                        >
+                          {m.displayName}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
               <button
                 className={`voice-input-btn ${voiceInput.state}`}
                 onClick={voiceInput.toggleRecording}
@@ -4515,6 +4746,12 @@ export function MainContent({
             </div>
           </div>
           <div className="input-below-actions">
+            <ModelDropdown
+              models={availableModels}
+              selectedModel={selectedModel}
+              onModelChange={onModelChange}
+              onOpenSettings={onOpenSettings}
+            />
             <div className="workspace-dropdown-container" ref={workspaceDropdownRef}>
               <button
                 className="folder-selector"
@@ -5057,6 +5294,21 @@ function renderEventDetails(
         return (
           <div className="event-details event-details-file-preview">
             <InlineImagePreview
+              filePath={fcPath}
+              workspacePath={workspacePath}
+              onOpenViewer={onOpenViewer}
+            />
+          </div>
+        );
+      }
+
+      // Spreadsheet preview
+      const fcIsSpreadsheet =
+        fcPayload?.type === "spreadsheet" || /\.xlsx?$/i.test(String(fcPath || ""));
+      if (fcIsSpreadsheet && fcPath && workspacePath) {
+        return (
+          <div className="event-details event-details-file-preview">
+            <InlineSpreadsheetPreview
               filePath={fcPath}
               workspacePath={workspacePath}
               onOpenViewer={onOpenViewer}

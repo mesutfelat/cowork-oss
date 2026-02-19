@@ -2317,6 +2317,225 @@ a,
   color: var(--color-text-muted);
 }
 
+/* Inline Spreadsheet Preview (ChatGPT-style) */
+.inline-spreadsheet-preview {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  overflow: hidden;
+  max-width: 100%;
+  background: var(--color-bg-secondary);
+}
+
+.inline-spreadsheet-loading,
+.inline-spreadsheet-error {
+  padding: 16px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.inline-spreadsheet-error {
+  color: var(--color-error);
+}
+
+.inline-spreadsheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.inline-spreadsheet-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.inline-spreadsheet-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: #1d6f42;
+  color: #fff;
+}
+
+.inline-spreadsheet-filename {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.inline-spreadsheet-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.inline-spreadsheet-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.inline-spreadsheet-action-btn:hover {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text);
+}
+
+.inline-spreadsheet-table-wrapper {
+  overflow-x: auto;
+  max-height: 480px;
+  overflow-y: auto;
+}
+
+.inline-spreadsheet-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 12px;
+  table-layout: auto;
+}
+
+.inline-spreadsheet-table th,
+.inline-spreadsheet-table td {
+  padding: 4px 10px;
+  border: 1px solid var(--color-border);
+  text-align: left;
+  white-space: nowrap;
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.inline-spreadsheet-corner {
+  background: var(--color-bg-tertiary);
+  width: 36px;
+  min-width: 36px;
+  position: sticky;
+  left: 0;
+  z-index: 2;
+}
+
+.inline-spreadsheet-col-header {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-muted);
+  font-weight: 500;
+  text-align: center;
+  font-size: 11px;
+  padding: 3px 10px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.inline-spreadsheet-row-number {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-muted);
+  font-size: 11px;
+  text-align: center;
+  font-weight: 400;
+  width: 36px;
+  min-width: 36px;
+  position: sticky;
+  left: 0;
+  z-index: 1;
+}
+
+.inline-spreadsheet-header-row .inline-spreadsheet-row-number {
+  z-index: 3;
+  position: sticky;
+  top: 0;
+  left: 0;
+}
+
+.inline-spreadsheet-data-header {
+  background: var(--color-bg-tertiary);
+  font-weight: 600;
+  color: var(--color-text);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.inline-spreadsheet-table tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.inline-spreadsheet-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.theme-light .inline-spreadsheet-table tbody tr:nth-child(even) {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.theme-light .inline-spreadsheet-table tbody tr:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.inline-spreadsheet-truncated {
+  padding: 6px 12px;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  text-align: center;
+  border-top: 1px solid var(--color-border);
+}
+
+.inline-spreadsheet-tabs {
+  display: flex;
+  gap: 0;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-bg-tertiary);
+  overflow-x: auto;
+}
+
+.inline-spreadsheet-tab {
+  padding: 6px 16px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: none;
+  border-right: 1px solid var(--color-border);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.inline-spreadsheet-tab:hover {
+  background: var(--color-bg-secondary);
+  color: var(--color-text);
+}
+
+.inline-spreadsheet-tab.active {
+  color: var(--color-text);
+  background: var(--color-bg-secondary);
+  border-bottom: 2px solid var(--color-accent, #1d6f42);
+}
+
 /* Markdown content styling */
 .markdown-content h1 {
   font-size: 1.5em;
@@ -2884,11 +3103,10 @@ a,
 .model-selector {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 0 10px;
-  height: 36px;
-  background: transparent;
-  border: none;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border-subtle);
   color: var(--color-text-secondary);
   font-size: 12px;
   cursor: pointer;
@@ -2899,6 +3117,10 @@ a,
 .model-selector:hover {
   background: var(--color-bg-hover);
   color: var(--color-text);
+}
+
+.model-selector .chevron-up {
+  transform: rotate(180deg);
 }
 
 /* Voice Input Button */
@@ -3115,7 +3337,7 @@ a,
 .model-dropdown {
   position: absolute;
   bottom: calc(100% + 8px);
-  right: 0;
+  left: 0;
   min-width: 280px;
   background: var(--color-bg-elevated);
   backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
@@ -3286,8 +3508,9 @@ a,
 }
 
 .model-selector.open {
-  background: var(--color-bg-glass-hover);
+  background: var(--color-bg-hover);
   border-color: var(--color-accent);
+  color: var(--color-text);
 }
 
 .send-btn {
@@ -18975,15 +19198,11 @@ button {
 .density-focused .verbose-toggle-btn {
   display: none;
 }
-/* Hide model dropdown in task input — one less thing to look at */
-.density-focused .input-actions .model-dropdown-container {
-  display: none;
-}
 /* Hide talk mode button — advanced feature */
 .density-focused .talk-mode-btn {
   display: none;
 }
-/* Hide the entire below-actions row (workspace, shell, keyboard hint) */
+/* Hide the entire below-actions row in focused mode (model is shown inline instead) */
 .density-focused .input-below-actions {
   display: none;
 }
