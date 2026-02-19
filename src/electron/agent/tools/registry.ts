@@ -41,7 +41,7 @@ import { SearchProviderFactory } from '../search';
 import { MCPClientManager } from '../../mcp/client/MCPClientManager';
 import { MCPSettingsManager } from '../../mcp/settings';
 import { MCPRegistryManager } from '../../mcp/registry/MCPRegistryManager';
-import type { MCPServerConfig } from '../../mcp/types';
+import type { MCPServerConfig, MCPTool, MCPToolProperty } from '../../mcp/types';
 import { isToolAllowedQuick } from '../../security/policy-manager';
 import { evaluateMontyToolPolicy } from '../../security/monty-tool-policy';
 import { BuiltinToolsSettingsManager } from './builtin-settings';
@@ -69,6 +69,109 @@ function guessExtFromMime(mimeType?: string): string {
   if (mime === 'image/gif') return '.gif';
   if (mime === 'image/bmp') return '.bmp';
   return '';
+}
+
+const MCP_PAYMENT_TOOL_NAME = 'x402_fetch';
+const MCP_PAYMENT_AMOUNT_PATHS = [
+  ['amount'],
+  ['maxAmount'],
+  ['request', 'amount'],
+  ['request', 'maxAmount'],
+];
+const MCP_PAYMENT_MAX_AMOUNT_USD = 100;
+
+const MCP_PAYMENT_AMOUNT_TYPES = new Set(['number', 'integer', 'string']);
+
+function parsePaymentAmount(rawAmount: unknown): number | null {
+  if (typeof rawAmount === 'number' && Number.isFinite(rawAmount) && rawAmount >= 0) {
+    return rawAmount;
+  }
+  if (typeof rawAmount === 'string') {
+    const parsed = Number(rawAmount.trim());
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+  }
+  return null;
+}
+
+function getSchemaProperty(schema: MCPTool['inputSchema'] | undefined, path: readonly string[]): MCPToolProperty | undefined {
+  let current: MCPTool['inputSchema'] | MCPToolProperty | undefined = schema;
+  let index = 0;
+
+  while (index < path.length && current) {
+    const key = path[index];
+    if (!current || typeof current !== 'object') {
+      return undefined;
+    }
+
+    const properties = current.properties;
+    if (!properties || typeof properties !== 'object') {
+      return undefined;
+    }
+
+    const next = properties[key];
+    if (!next || typeof next !== 'object') {
+      return undefined;
+    }
+
+    if (index === path.length - 1) {
+      return next as MCPToolProperty;
+    }
+
+    current = next;
+    index += 1;
+  }
+
+  return undefined;
+}
+
+function getInputValue(input: unknown, path: readonly string[]): unknown {
+  let current: unknown = input;
+  for (const key of path) {
+    if (!current || typeof current !== 'object') return undefined;
+    current = (current as Record<string, unknown>)[key];
+  }
+  return current;
+}
+
+export function extractPaymentAmountFromX402Tool(input: unknown, toolSchema?: MCPTool): number | null {
+  if (toolSchema?.name !== MCP_PAYMENT_TOOL_NAME) {
+    return null;
+  }
+  if (!toolSchema || typeof input !== 'object' || !input) {
+    return null;
+  }
+
+  for (const path of MCP_PAYMENT_AMOUNT_PATHS) {
+    const schemaProperty = getSchemaProperty(toolSchema.inputSchema, path);
+    if (!schemaProperty?.type || !MCP_PAYMENT_AMOUNT_TYPES.has(schemaProperty.type)) {
+      continue;
+    }
+    const value = getInputValue(input, path);
+    const parsed = parsePaymentAmount(value);
+    if (parsed !== null) {
+      return parsed;
+    }
+  }
+
+  return null;
+}
+
+export function getConwayPaymentLimitError(input: unknown, toolSchema?: MCPTool): string | null {
+  const amount = extractPaymentAmountFromX402Tool(input, toolSchema);
+  if (amount === null) {
+    return null;
+  }
+
+  if (amount > MCP_PAYMENT_MAX_AMOUNT_USD) {
+    return `Conway payment amount is above safety cap (${MCP_PAYMENT_MAX_AMOUNT_USD} USDC): ${amount}`;
+  }
+
+  const envCap = Number(process.env.COWORK_CONWAY_PAYMENT_LIMIT_USD);
+  if (Number.isFinite(envCap) && envCap > 0 && amount > envCap) {
+    return `Conway payment amount exceeds configured cap of ${envCap} USDC: ${amount}`;
+  }
+
+  return null;
 }
 
 /**
@@ -514,7 +617,7 @@ export class ToolRegistry {
    */
   private getMCPToolDefinitions(): LLMTool[] {
     try {
-      const mcpManager = MCPClientManager.getInstance();
+    const mcpManager = MCPClientManager.getInstance();
       const mcpTools = mcpManager.getAllTools();
       const settings = MCPSettingsManager.loadSettings();
       const prefix = settings.toolNamePrefix || 'mcp_';
@@ -983,7 +1086,7 @@ ${skillDescriptions}`;
             reason: policy.reason || null,
           }
         );
-        if (!approved) {
+        if (approved !== true) {
           const reason = policy.reason ? `: ${policy.reason}` : '';
           throw new Error(`Tool "${name}" approval denied${reason}`);
         }
@@ -1292,7 +1395,7 @@ ${skillDescriptions}`;
       return null;
     }
 
-    const mcpToolName = name.slice(prefix.length);
+  const mcpToolName = name.slice(prefix.length);
 
     // Try to get the MCP manager - if not initialized, this is not an MCP tool call
     let mcpManager: MCPClientManager;
@@ -1306,6 +1409,34 @@ ${skillDescriptions}`;
     // Check if the tool is registered
     if (!mcpManager.hasTool(mcpToolName)) {
       return null;
+    }
+    const mcpToolDefinition = mcpManager.getAllTools().find((tool) => tool.name === mcpToolName);
+
+    if (mcpToolName === MCP_PAYMENT_TOOL_NAME) {
+      const amount = extractPaymentAmountFromX402Tool(input, mcpToolDefinition);
+      const limitError = getConwayPaymentLimitError(input, mcpToolDefinition);
+      if (limitError) {
+        throw new Error(limitError);
+      }
+
+      const requester = (this.daemon as any)?.requestApproval;
+      if (typeof requester !== 'function') {
+        throw new Error(`Tool "${mcpToolName}" requires approval, but approval system is unavailable in this context`);
+      }
+      const approved = await requester.call(
+        this.daemon,
+        this.taskId,
+        'external_service',
+        `Approve Conway payment request: ${mcpToolName}`,
+        {
+          tool: `mcp_${mcpToolName}`,
+          params: input ?? null,
+          reason: amount !== null ? `Conway payment operation (${amount} USDC)` : 'Conway payment operation',
+        }
+      );
+      if (approved !== true) {
+        throw new Error('Tool "mcp_x402_fetch" approval denied');
+      }
     }
 
     // Guard against using puppeteer_evaluate for Node/shell execution

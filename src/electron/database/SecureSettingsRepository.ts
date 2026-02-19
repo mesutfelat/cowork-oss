@@ -59,7 +59,8 @@ export type SettingsCategory =
   | 'dropbox'
   | 'sharepoint'
   | 'user-profile'
-  | 'relationship-memory';
+  | 'relationship-memory'
+  | 'conway';
 
 interface SecureSettingsRow {
   id: string;
