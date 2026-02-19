@@ -173,8 +173,8 @@ export class EmailAdapter implements ChannelAdapter {
         this.config.loomIdentity;
 
       // Set up event handlers
-      this.client.on("message", (message: EmailMessage) => {
-        this.handleIncomingMessage(message);
+      this.client.on("message", (message: unknown) => {
+        this.handleIncomingMessage(message as EmailMessage);
       });
 
       this.client.on("error", (error: Error) => {

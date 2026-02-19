@@ -58,5 +58,6 @@ export const toPublicChannel = (
   botUsername: channel.botUsername,
   securityMode: channel.securityConfig?.mode,
   createdAt: channel.createdAt,
+  updatedAt: channel.updatedAt,
   config: sanitizeChannelConfig(channel.type, channel.config),
 });

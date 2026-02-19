@@ -2192,19 +2192,25 @@ export async function setupIpcHandlers(
   // Gateway / Channel handlers
   ipcMain.handle(IPC_CHANNELS.GATEWAY_GET_CHANNELS, async () => {
     if (!gateway) return [];
-    return gateway.getChannels().map(toPublicChannel);
+    return gateway.getChannels().map((ch) => toPublicChannel(ch));
   });
 
   ipcMain.handle(IPC_CHANNELS.GATEWAY_ADD_CHANNEL, async (_, data) => {
     checkRateLimit(IPC_CHANNELS.GATEWAY_ADD_CHANNEL);
     if (!gateway) throw new Error("Gateway not initialized");
 
-    const validated = validateInput(AddChannelSchema, data, "channel");
+    // Cast through AddChannelRequest — Zod v4 discriminatedUnion doesn't
+    // narrow member types, but the schema already validates the shape.
+    const validated = validateInput(
+      AddChannelSchema,
+      data,
+      "channel",
+    ) as unknown as AddChannelRequest;
 
     if (validated.type === "telegram") {
       const channel = await gateway.addTelegramChannel(
         validated.name,
-        validated.botToken,
+        validated.botToken!,
         validated.securityMode || "pairing",
       );
       return toPublicChannel(channel);
@@ -2213,8 +2219,8 @@ export async function setupIpcHandlers(
     if (validated.type === "discord") {
       const channel = await gateway.addDiscordChannel(
         validated.name,
-        validated.botToken,
-        validated.applicationId,
+        validated.botToken!,
+        validated.applicationId!,
         validated.guildIds,
         validated.securityMode || "pairing",
       );
@@ -2224,8 +2230,8 @@ export async function setupIpcHandlers(
     if (validated.type === "slack") {
       const channel = await gateway.addSlackChannel(
         validated.name,
-        validated.botToken,
-        validated.appToken,
+        validated.botToken!,
+        validated.appToken!,
         validated.signingSecret,
         validated.securityMode || "pairing",
       );
@@ -2286,11 +2292,11 @@ export async function setupIpcHandlers(
     if (validated.type === "signal") {
       const channel = await gateway.addSignalChannel(
         validated.name,
-        validated.phoneNumber,
+        validated.phoneNumber!,
         validated.dataDir,
         validated.securityMode || "pairing",
-        validated.mode || "native",
-        validated.trustMode || "tofu",
+        (validated.mode || "native") as "native" | "daemon",
+        (validated.trustMode || "tofu") as "tofu" | "always" | "manual",
         validated.dmPolicy || "pairing",
         validated.groupPolicy || "allowlist",
         validated.sendReadReceipts ?? true,
@@ -4591,8 +4597,8 @@ function setupKitHandlers(workspaceRepo: WorkspaceRepository): void {
           `## Hard Rules\n` +
           `- Never open with Great question, I'd be happy to help, or Absolutely. Just answer.\n` +
           `- Brevity is mandatory. If the answer fits in one sentence, one sentence is what I get.\n` +
-          `- No corporate filler. No \"as an AI\". No throat-clearing. No recap of my question.\n` +
-          `- \"It depends\" is allowed only if you immediately name the dependency that changes the decision, then commit to a default.\n\n` +
+          `- No corporate filler. No "as an AI". No throat-clearing. No recap of my question.\n` +
+          `- "It depends" is allowed only if you immediately name the dependency that changes the decision, then commit to a default.\n\n` +
           `## Callouts\n` +
           `- If I'm about to do something dumb, say so and offer the better move.\n` +
           `- If something is excellent, say so. If it's bad, say it's bad.\n\n` +
@@ -4657,16 +4663,16 @@ function setupKitHandlers(workspaceRepo: WorkspaceRepository): void {
           `- \`.cowork/router/rules.monty\`\n\n` +
           `This runs before a message is forwarded to the agent (regular messages only, not slash commands).\n` +
           `It can be used to:\n` +
-          `- ignore low-signal messages (\"ok\", \"thanks\")\n` +
+          `- ignore low-signal messages ("ok", "thanks")\n` +
           `- auto-reply with deterministic responses\n` +
           `- rewrite/normalize messages before creating a task\n` +
           `- switch workspace for a session\n\n` +
           `Return a dict as the last expression:\n` +
-          `- {\"action\": \"pass\"}\n` +
-          `- {\"action\": \"ignore\"}\n` +
-          `- {\"action\": \"reply\", \"text\": \"...\"}\n` +
-          `- {\"action\": \"rewrite\", \"text\": \"...\"}\n` +
-          `- {\"action\": \"set_workspace\", \"workspaceId\": \"...\", \"text\": \"optional rewrite\"}\n`,
+          `- {"action": "pass"}\n` +
+          `- {"action": "ignore"}\n` +
+          `- {"action": "reply", "text": "..."}\n` +
+          `- {"action": "rewrite", "text": "..."}\n` +
+          `- {"action": "set_workspace", "workspaceId": "...", "text": "optional rewrite"}\n`,
       },
       {
         relPath: path.join(kitDirName, "router", "rules.monty"),
@@ -4675,7 +4681,7 @@ function setupKitHandlers(workspaceRepo: WorkspaceRepository): void {
           `# Input is available as \`input\`.\n` +
           `# Return a dict as the last expression.\n\n` +
           `# Default: do nothing\n` +
-          `{\"action\": \"pass\"}\n`,
+          `{"action": "pass"}\n`,
       },
       {
         relPath: path.join(kitDirName, "policy", "README.md"),
@@ -4688,18 +4694,18 @@ function setupKitHandlers(workspaceRepo: WorkspaceRepository): void {
           `- input['tool'] (tool name)\n` +
           `- input['params'] (tool input object)\n` +
           `- input['workspace'] (id/name/path/permissions)\n` +
-          `- input['gatewayContext'] (\"private\" | \"group\" | \"public\" | null)\n\n` +
+          `- input['gatewayContext'] ("private" | "group" | "public" | null)\n\n` +
           `Return a dict as the last expression:\n` +
-          `- {\"decision\": \"pass\"}\n` +
-          `- {\"decision\": \"deny\", \"reason\": \"...\"}\n` +
-          `- {\"decision\": \"require_approval\", \"reason\": \"...\"}\n`,
+          `- {"decision": "pass"}\n` +
+          `- {"decision": "deny", "reason": "..."}\n` +
+          `- {"decision": "require_approval", "reason": "..."}\n`,
       },
       {
         relPath: path.join(kitDirName, "policy", "tools.monty"),
         content:
           `# Workspace-local tool policy hook\n` +
           `# Default: allow.\n` +
-          `{\"decision\": \"pass\"}\n`,
+          `{"decision": "pass"}\n`,
       },
       {
         relPath: path.join(kitDirName, "MEMORY.md"),

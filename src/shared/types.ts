@@ -2496,8 +2496,8 @@ export interface AddChannelRequest {
   // Signal-specific fields
   phoneNumber?: string;
   dataDir?: string;
-  mode?: "native" | "json-rpc" | "dbus";
-  trustMode?: "always" | "on-first-use" | "never";
+  mode?: "native" | "daemon";
+  trustMode?: "tofu" | "always" | "manual";
   sendTypingIndicators?: boolean;
   // Mattermost-specific fields
   mattermostServerUrl?: string;

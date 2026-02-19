@@ -135,7 +135,7 @@ const ImageAttachmentSchema = z
       return;
     }
 
-    if (hasFilePath) {
+    if (hasFilePath && data.filePath) {
       if (!path.isAbsolute(data.filePath)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -687,9 +687,7 @@ const EMAIL_TRANSPORT_BASE_SHAPES: Record<EmailSchemaMode, z.ZodRawShape> = {
   },
 };
 
-const createEmailTransportSchema = (
-  mode: EmailSchemaMode,
-): z.ZodObject<z.ZodRawShape, "strip", z.ZodTypeAny> => {
+const createEmailTransportSchema = (mode: EmailSchemaMode): z.ZodObject<z.ZodRawShape> => {
   const fieldMap = EMAIL_FIELD_KEY_MAP[mode];
   return z.object(EMAIL_TRANSPORT_BASE_SHAPES[mode]).superRefine((data, ctx) => {
     validateEmailChannelConfigByProtocol(data as Record<string, unknown>, ctx, fieldMap);
@@ -763,7 +761,7 @@ const validateEmailChannelConfigByProtocol = (
       });
     } else if (
       typeof data[fieldMap.loomBaseUrl] === "string" &&
-      !isSecureOrLocalLoomUrl(data[fieldMap.loomBaseUrl])
+      !isSecureOrLocalLoomUrl(data[fieldMap.loomBaseUrl] as string)
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
