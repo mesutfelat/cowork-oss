@@ -5,6 +5,9 @@ import {
   TaskCreateSchema,
   ApprovalResponseSchema,
   GuardrailSettingsSchema,
+  ChannelConfigSchema,
+  EmailChannelConfigSchema,
+  AddEmailChannelSchema,
 } from '../validation';
 import { z } from 'zod';
 
@@ -207,5 +210,155 @@ describe('GuardrailSettingsSchema', () => {
       customBlockedPatterns: ['rm -rf', 'DROP TABLE'],
     });
     expect(result.success).toBe(true);
+  });
+});
+
+describe('EmailChannelConfigSchema', () => {
+  it('accepts valid IMAP/SMTP configuration', () => {
+    const result = EmailChannelConfigSchema.safeParse({
+      protocol: 'imap-smtp',
+      email: 'agent@example.com',
+      password: 'secret',
+      imapHost: 'imap.example.com',
+      smtpHost: 'smtp.example.com',
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts unknown legacy keys for forward compatibility', () => {
+    const result = EmailChannelConfigSchema.safeParse({
+      protocol: 'imap-smtp',
+      email: 'agent@example.com',
+      password: 'secret',
+      imapHost: 'imap.example.com',
+      smtpHost: 'smtp.example.com',
+      pluginMetadata: 'legacy-plugin-state',
+      legacyFlag: true,
+    });
+
+    expect(result.success).toBe(true);
+    expect((result.data as Record<string, unknown>).pluginMetadata).toBe('legacy-plugin-state');
+    expect((result.data as Record<string, unknown>).legacyFlag).toBe(true);
+  });
+
+  it('requires credentials for IMAP/SMTP mode', () => {
+    const result = EmailChannelConfigSchema.safeParse({
+      protocol: 'imap-smtp',
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it('requires LOOM base URL over HTTPS or localhost', () => {
+    const result = EmailChannelConfigSchema.safeParse({
+      protocol: 'loom',
+      loomAccessToken: 'token',
+      loomBaseUrl: 'http://example.com',
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it('validates LOOM mailbox folder characters', () => {
+    const result = EmailChannelConfigSchema.safeParse({
+      protocol: 'loom',
+      loomBaseUrl: 'http://127.0.0.1:8787',
+      loomAccessToken: 'token',
+      loomMailboxFolder: 'INBOX/../Work',
+    });
+
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('AddEmailChannelSchema', () => {
+  it('validates IMAP/SMTP add payload using prefixed fields', () => {
+    const result = AddEmailChannelSchema.safeParse({
+      type: 'email',
+      name: 'Mailbox',
+      emailProtocol: 'imap-smtp',
+      emailAddress: 'agent@example.com',
+      emailPassword: 'secret',
+      emailImapHost: 'imap.example.com',
+      emailSmtpHost: 'smtp.example.com',
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('defaults IMAP/SMTP protocol on add when protocol is omitted', () => {
+    const result = AddEmailChannelSchema.safeParse({
+      type: 'email',
+      name: 'Mailbox',
+      emailAddress: 'agent@example.com',
+      emailPassword: 'secret',
+      emailImapHost: 'imap.example.com',
+      emailSmtpHost: 'smtp.example.com',
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('validates LOOM add payload requiring LOOM fields and optional display alias', () => {
+    const result = AddEmailChannelSchema.safeParse({
+      type: 'email',
+      name: 'Mailbox',
+      emailProtocol: 'loom',
+      emailLoomBaseUrl: 'https://mail.example.com',
+      emailLoomAccessToken: 'token',
+      emailLoomMailboxFolder: 'INBOX',
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('validates LOOM add mailbox folder path characters', () => {
+    const result = AddEmailChannelSchema.safeParse({
+      type: 'email',
+      name: 'Mailbox',
+      emailProtocol: 'loom',
+      emailLoomBaseUrl: 'https://mail.example.com',
+      emailLoomAccessToken: 'token',
+      emailLoomMailboxFolder: 'INBOX/../Work',
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects IMAP/SMTP add payload missing required mapped hosts and credentials', () => {
+    const result = AddEmailChannelSchema.safeParse({
+      type: 'email',
+      name: 'Mailbox',
+      emailProtocol: 'imap-smtp',
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it('shares protocol validation behavior with update schema for IMAP/SMTP mode', () => {
+    const result = AddEmailChannelSchema.safeParse({
+      type: 'email',
+      name: 'Mailbox',
+      emailProtocol: 'imap-smtp',
+      emailAddress: 'agent@example.com',
+      emailPassword: 'secret',
+      emailImapHost: 'imap.example.com',
+    });
+
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('ChannelConfigSchema', () => {
+  it('allows extra keys from future channel plugins', () => {
+    const result = ChannelConfigSchema.safeParse({
+      selfChatMode: true,
+      trustedGroupMemoryOptIn: false,
+      pluginVersion: '2.0',
+    });
+
+    expect(result.success).toBe(true);
+    expect((result.data as Record<string, unknown>).pluginVersion).toBe('2.0');
   });
 });

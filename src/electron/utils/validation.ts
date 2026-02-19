@@ -6,12 +6,16 @@
 import * as path from 'path';
 import { z } from 'zod';
 import { LLM_PROVIDER_TYPES, isTempWorkspaceId, PersonalityId } from '../../shared/types';
+import { assertSafeLoomMailboxFolder, isSecureOrLocalLoomUrl } from './loom';
 
 // Common validation patterns
 const MAX_STRING_LENGTH = 10000;
 const MAX_PATH_LENGTH = 4096;
 const MAX_TITLE_LENGTH = 500;
 const MAX_PROMPT_LENGTH = 500000; // ~125K tokens; fits within 200K-token model context
+const MAX_IMAGES_PER_MESSAGE = 5;
+const MAX_TOTAL_TASK_IMAGE_BYTES = 125 * 1024 * 1024;
+const LOOM_MAILBOX_FOLDER_ERROR = 'LOOM mailbox folder contains invalid characters';
 
 const PersonalityIdSchema = z.preprocess(
   (value) => (typeof value === 'string' ? value.trim() : value),
@@ -103,9 +107,68 @@ export const TaskRenameSchema = z.object({
   title: z.string().min(1).max(MAX_TITLE_LENGTH),
 });
 
+const ImageAttachmentSchema = z.object({
+  data: z.string().trim().min(1).optional(),
+  filePath: z.string().trim().max(MAX_PATH_LENGTH).optional(),
+  mimeType: z.enum(['image/jpeg', 'image/png', 'image/gif', 'image/webp']),
+  filename: z.string().max(255).optional(),
+  sizeBytes: z.number().int().positive().max(25 * 1024 * 1024), // 25MB absolute max
+  tempFile: z.boolean().optional(),
+}).superRefine((data, ctx) => {
+  const hasData = typeof data.data === 'string' && data.data.trim().length > 0;
+  const hasFilePath = typeof data.filePath === 'string' && data.filePath.trim().length > 0;
+  if (hasData === hasFilePath) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['data'],
+      message: 'Image attachment must provide exactly one of "data" or "filePath".',
+    });
+    return;
+  }
+
+  if (hasFilePath) {
+    if (!path.isAbsolute(data.filePath)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['filePath'],
+        message: 'Image attachment file path must be an absolute path.',
+      });
+      return;
+    }
+
+    const ext = path.extname(data.filePath).toLowerCase();
+    const supportedExtensions = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp']);
+    if (!supportedExtensions.has(ext)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['filePath'],
+        message: `Unsupported image extension "${ext}".`,
+      });
+    }
+  }
+});
+
 export const TaskMessageSchema = z.object({
   taskId: z.string().uuid(),
   message: z.string().min(1).max(MAX_PROMPT_LENGTH),
+  images: z.array(ImageAttachmentSchema).max(MAX_IMAGES_PER_MESSAGE).optional(),
+}).superRefine((data, ctx) => {
+  if (!data.images || data.images.length === 0) {
+    return;
+  }
+
+  const totalImageBytes = data.images.reduce((sum, image) => {
+    const sizeBytes = Number(image.sizeBytes);
+    return Number.isFinite(sizeBytes) && sizeBytes > 0 ? sum + sizeBytes : sum;
+  }, 0);
+
+  if (totalImageBytes > MAX_TOTAL_TASK_IMAGE_BYTES) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['images'],
+      message: `Total image payload exceeds ${MAX_TOTAL_TASK_IMAGE_BYTES} bytes`,
+    });
+  }
 });
 
 export const FileImportSchema = z.object({
@@ -357,6 +420,24 @@ export const GuardrailSettingsSchema = z.object({
   iterationLimitEnabled: z.boolean().default(true),
 });
 
+// ============ Conway Settings Schema ============
+
+export const ConwaySettingsSchema = z.object({
+  enabled: z.boolean(),
+  autoConnect: z.boolean(),
+  showWalletInSidebar: z.boolean(),
+  balanceRefreshIntervalMs: z.number().int().min(10_000).max(24 * 60 * 60 * 1000),
+  enabledToolCategories: z.object({
+    sandbox: z.boolean(),
+    inference: z.boolean(),
+    domains: z.boolean(),
+    payments: z.boolean(),
+  }),
+  walletAddressBackup: z.string().max(200).optional(),
+  walletNetworkBackup: z.string().max(100).optional(),
+  walletBackupTimestamp: z.number().int().min(0).optional(),
+}).strict();
+
 // ============ Gateway/Channel Schemas ============
 
 export const SecurityModeSchema = z.enum(['pairing', 'allowlist', 'open']);
@@ -488,20 +569,202 @@ export const AddBlueBubblesChannelSchema = z.object({
   captureSelfMessages: z.boolean().optional(),
 });
 
-export const AddEmailChannelSchema = z.object({
-  type: z.literal('email'),
-  name: z.string().min(1).max(MAX_TITLE_LENGTH),
-  emailAddress: z.string().email().min(1).max(200),
-  emailPassword: z.string().min(1).max(500),
-  emailImapHost: z.string().min(1).max(200),
-  emailImapPort: z.number().int().min(1).max(65535).optional(),
-  emailSmtpHost: z.string().min(1).max(200),
-  emailSmtpPort: z.number().int().min(1).max(65535).optional(),
+const getOptionalString = (value: unknown): string | undefined => {
+  return typeof value === 'string' ? value.trim() || undefined : undefined;
+};
+
+const isSafeLoomMailboxFolder = (value: unknown): boolean => {
+  if (value === undefined) return true;
+  if (typeof value !== 'string') return false;
+  try {
+    assertSafeLoomMailboxFolder(value);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const EMAIL_FIELD_KEY_MAP = {
+  add: {
+    protocol: 'emailProtocol',
+    email: 'emailAddress',
+    password: 'emailPassword',
+    imapHost: 'emailImapHost',
+    imapPort: 'emailImapPort',
+    smtpHost: 'emailSmtpHost',
+    smtpPort: 'emailSmtpPort',
+    loomBaseUrl: 'emailLoomBaseUrl',
+    loomAccessToken: 'emailLoomAccessToken',
+  } as const,
+  update: {
+    protocol: 'protocol',
+    email: 'email',
+    password: 'password',
+    imapHost: 'imapHost',
+    imapPort: 'imapPort',
+    smtpHost: 'smtpHost',
+    smtpPort: 'smtpPort',
+    loomBaseUrl: 'loomBaseUrl',
+    loomAccessToken: 'loomAccessToken',
+  } as const,
+} as const;
+
+type EmailSchemaMode = keyof typeof EMAIL_FIELD_KEY_MAP;
+type EmailFieldKeys = typeof EMAIL_FIELD_KEY_MAP[EmailSchemaMode];
+
+const EMAIL_TRANSPORT_BASE_SHAPES: Record<EmailSchemaMode, z.ZodRawShape> = {
+  add: {
+    [EMAIL_FIELD_KEY_MAP.add.protocol]: z.enum(['imap-smtp', 'loom']).optional(),
+    [EMAIL_FIELD_KEY_MAP.add.email]: z.string().email().min(1).max(200).optional(),
+    [EMAIL_FIELD_KEY_MAP.add.password]: z.string().min(1).max(500).optional(),
+    [EMAIL_FIELD_KEY_MAP.add.imapHost]: z.string().min(1).max(200).optional(),
+    [EMAIL_FIELD_KEY_MAP.add.imapPort]: z.number().int().min(1).max(65535).optional(),
+    [EMAIL_FIELD_KEY_MAP.add.smtpHost]: z.string().min(1).max(200).optional(),
+    [EMAIL_FIELD_KEY_MAP.add.smtpPort]: z.number().int().min(1).max(65535).optional(),
+    [EMAIL_FIELD_KEY_MAP.add.loomBaseUrl]: z.string().url().max(500).optional(),
+    [EMAIL_FIELD_KEY_MAP.add.loomAccessToken]: z.string().min(1).max(4000).optional(),
+  },
+  update: {
+    [EMAIL_FIELD_KEY_MAP.update.protocol]: z.enum(['imap-smtp', 'loom']).optional(),
+    [EMAIL_FIELD_KEY_MAP.update.email]: z.string().email().min(1).max(200).optional(),
+    [EMAIL_FIELD_KEY_MAP.update.password]: z.string().min(1).max(500).optional(),
+    [EMAIL_FIELD_KEY_MAP.update.imapHost]: z.string().min(1).max(200).optional(),
+    [EMAIL_FIELD_KEY_MAP.update.imapPort]: z.number().int().min(1).max(65535).optional(),
+    [EMAIL_FIELD_KEY_MAP.update.smtpHost]: z.string().min(1).max(200).optional(),
+    [EMAIL_FIELD_KEY_MAP.update.smtpPort]: z.number().int().min(1).max(65535).optional(),
+    [EMAIL_FIELD_KEY_MAP.update.loomBaseUrl]: z.string().url().max(500).optional(),
+    [EMAIL_FIELD_KEY_MAP.update.loomAccessToken]: z.string().min(1).max(4000).optional(),
+  },
+};
+
+const createEmailTransportSchema = (mode: EmailSchemaMode): z.ZodObject<z.ZodRawShape, 'strip', z.ZodTypeAny> => {
+  const fieldMap = EMAIL_FIELD_KEY_MAP[mode];
+  return z.object(EMAIL_TRANSPORT_BASE_SHAPES[mode]).superRefine((data, ctx) => {
+    validateEmailChannelConfigByProtocol(data as Record<string, unknown>, ctx, fieldMap);
+  });
+};
+
+const createEmailAddExtras = (): z.ZodRawShape => ({
   emailDisplayName: z.string().max(100).optional(),
   emailAllowedSenders: z.array(z.string().max(200)).max(100).optional(),
   emailSubjectFilter: z.string().max(200).optional(),
-  securityMode: SecurityModeSchema.optional(),
+  emailLoomIdentity: z.string().max(300).optional(),
+  emailLoomMailboxFolder: z.string().max(100).optional().refine(
+    isSafeLoomMailboxFolder,
+    { message: LOOM_MAILBOX_FOLDER_ERROR }
+  ),
+  emailLoomPollInterval: z.number().int().min(1000).max(300000).optional(),
 });
+
+const createEmailUpdateExtras = (): z.ZodRawShape => ({
+  emailDisplayName: z.string().max(100).optional(),
+  displayName: z.string().max(100).optional(),
+  allowedSenders: z.array(z.string().max(200)).max(100).optional(),
+  subjectFilter: z.string().max(200).optional(),
+  loomIdentity: z.string().max(300).optional(),
+  loomMailboxFolder: z.string().max(100).optional().refine(
+    isSafeLoomMailboxFolder,
+    { message: LOOM_MAILBOX_FOLDER_ERROR }
+  ),
+  loomPollInterval: z.number().int().min(1000).max(300000).optional(),
+  pollInterval: z.number().int().min(1000).max(300000).optional(),
+  mailbox: z.string().max(100).optional(),
+  markAsRead: z.boolean().optional(),
+  deduplicationEnabled: z.boolean().optional(),
+  responsePrefix: z.string().max(100).optional(),
+  sendReadReceipts: z.boolean().optional(),
+  groupRoutingMode: z.enum(['all', 'mentionsOnly', 'mentionsOrCommands', 'commandsOnly']).optional(),
+  selfChatMode: z.boolean().optional(),
+  ambientMode: z.boolean().optional(),
+  silentUnauthorized: z.boolean().optional(),
+  securityMode: z.enum(['pairing', 'allowlist', 'open']).optional(),
+  allowedUsers: z.array(z.string()).optional(),
+  pairingCodeTTL: z.number().int().optional(),
+  maxPairingAttempts: z.number().int().optional(),
+  rateLimitPerMinute: z.number().int().optional(),
+});
+
+const validateEmailChannelConfigByProtocol = (
+  data: Record<string, unknown>,
+  ctx: z.RefinementCtx,
+  fieldMap: {
+    protocol: 'protocol' | 'emailProtocol';
+    email: string;
+    password: string;
+    imapHost: string;
+    smtpHost: string;
+    loomBaseUrl: string;
+    loomAccessToken: string;
+  }
+): void => {
+  const protocol = getOptionalString(data[fieldMap.protocol]) || 'imap-smtp';
+  if (protocol === 'loom') {
+    if (!getOptionalString(data[fieldMap.loomBaseUrl])) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [fieldMap.loomBaseUrl],
+        message: `LOOM base URL is required when ${fieldMap.protocol === 'protocol' ? 'protocol' : 'emailProtocol'} is "loom"`,
+      });
+    } else if (typeof data[fieldMap.loomBaseUrl] === 'string' && !isSecureOrLocalLoomUrl(data[fieldMap.loomBaseUrl])) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [fieldMap.loomBaseUrl],
+        message: 'LOOM base URL must use HTTPS unless it points to localhost/127.0.0.1/::1',
+      });
+    }
+
+    if (!getOptionalString(data[fieldMap.loomAccessToken])) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [fieldMap.loomAccessToken],
+        message: `LOOM access token is required when ${fieldMap.protocol === 'protocol' ? 'protocol' : 'emailProtocol'} is "loom"`,
+      });
+    }
+
+    return;
+  }
+
+  if (!getOptionalString(data[fieldMap.email])) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: [fieldMap.email],
+      message: 'Email address is required for IMAP/SMTP mode',
+    });
+  }
+  if (!getOptionalString(data[fieldMap.password])) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: [fieldMap.password],
+      message: 'Email password is required for IMAP/SMTP mode',
+    });
+  }
+  if (!getOptionalString(data[fieldMap.imapHost])) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: [fieldMap.imapHost],
+      message: 'IMAP host is required for IMAP/SMTP mode',
+    });
+  }
+  if (!getOptionalString(data[fieldMap.smtpHost])) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: [fieldMap.smtpHost],
+      message: 'SMTP host is required for IMAP/SMTP mode',
+    });
+  }
+};
+
+export const AddEmailChannelSchema = createEmailTransportSchema('add')
+  .extend({
+    type: z.literal('email'),
+    name: z.string().min(1).max(MAX_TITLE_LENGTH),
+    ...createEmailAddExtras(),
+    securityMode: SecurityModeSchema.optional(),
+  });
+
+export const EmailChannelConfigSchema = createEmailTransportSchema('update')
+  .passthrough()
+  .extend(createEmailUpdateExtras());
 
 export const AddChannelSchema = z.discriminatedUnion('type', [
   AddTelegramChannelSchema,
@@ -522,7 +785,7 @@ export const ChannelConfigSchema = z.object({
   selfChatMode: z.boolean().optional(),
   responsePrefix: z.string().max(20).optional(),
   trustedGroupMemoryOptIn: z.boolean().optional(),
-}).passthrough(); // Allow additional properties
+}).passthrough();
 
 export const UpdateChannelSchema = z.object({
   id: z.string().uuid(),
