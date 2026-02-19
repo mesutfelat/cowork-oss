@@ -19,7 +19,7 @@ describe("agent-preferences", () => {
     });
 
     it("maps sonnet and opus", () => {
-      expect(resolveModelPreferenceToModelKey("sonnet")).toBe("sonnet-4-5");
+      expect(resolveModelPreferenceToModelKey("sonnet")).toBe("sonnet-4-6");
       expect(resolveModelPreferenceToModelKey("opus")).toBe("opus-4-5");
       expect(resolveModelPreferenceToModelKey("smarter")).toBe("opus-4-5");
     });

@@ -222,7 +222,37 @@ export class TaskExecutor {
       if (afterIdx >= 0) insertAt = afterIdx + 1;
     }
 
+    insertAt = this.resolveSafePinnedInsertIndex(messages, insertAt);
     messages.splice(insertAt, 0, { role: "user", content: opts.content });
+  }
+
+  private resolveSafePinnedInsertIndex(messages: LLMMessage[], desiredIndex: number): number {
+    let insertAt = Math.max(0, Math.min(desiredIndex, messages.length));
+
+    while (insertAt > 0 && insertAt < messages.length) {
+      const prev = messages[insertAt - 1];
+      const next = messages[insertAt];
+      const splitsToolPair =
+        prev?.role === "assistant" &&
+        this.messageHasToolUse(prev) &&
+        next?.role === "user" &&
+        this.messageHasToolResult(next);
+
+      if (!splitsToolPair) break;
+      insertAt++;
+    }
+
+    return insertAt;
+  }
+
+  private messageHasToolUse(message: LLMMessage | undefined): boolean {
+    if (!message || !Array.isArray(message.content)) return false;
+    return message.content.some((block: any) => block?.type === "tool_use");
+  }
+
+  private messageHasToolResult(message: LLMMessage | undefined): boolean {
+    if (!message || !Array.isArray(message.content)) return false;
+    return message.content.some((block: any) => block?.type === "tool_result");
   }
 
   private removePinnedUserBlock(messages: LLMMessage[], tag: string): void {
@@ -260,14 +290,14 @@ export class TaskExecutor {
         const sizeText = approxSizeBytes ? ` (~${Math.ceil(approxSizeBytes / 1024)}KB)` : "";
 
         return {
-          type: "text",
+          type: "text" as const,
           text: `[Image attachment removed from conversation memory: ${mimeType}${sizeText}]`,
         };
       });
 
       return {
         ...message,
-        content: compactedContent,
+        content: compactedContent as LLMContent[],
       };
     });
   }
@@ -1199,7 +1229,24 @@ ${transcript}
     const roleContext = this.getRoleContextPrompt();
     const profileContext = this.buildUserProfileBlock(10);
 
-    const recent = this.conversationHistory.slice(-8);
+    // Strip tool_use / tool_result blocks from history so we can send to
+    // the LLM without a toolConfig (Bedrock rejects the call otherwise).
+    const recent = this.conversationHistory.slice(-8).reduce<LLMMessage[]>((acc, msg) => {
+      if (!Array.isArray(msg.content)) {
+        acc.push(msg);
+        return acc;
+      }
+      const filtered: LLMContent[] = [];
+      for (const b of msg.content) {
+        if ("type" in b && (b.type === "text" || b.type === "image")) {
+          filtered.push(b as LLMContent);
+        }
+      }
+      if (filtered.length > 0) {
+        acc.push({ ...msg, content: filtered });
+      }
+      return acc;
+    }, []);
     const messages: LLMMessage[] = [
       ...recent,
       { role: "user", content: [{ type: "text", text: message }] },
@@ -1283,7 +1330,7 @@ ${transcript}
       this.lastNonVerificationOutput = fallback;
       this.lastAssistantText = fallback;
       this.updateConversationHistory([
-        ...this.conversationHistory.slice(-8),
+        ...recent,
         { role: "user", content: [{ type: "text", text: message }] },
         { role: "assistant", content: [{ type: "text", text: fallback }] },
       ]);
@@ -8424,7 +8471,7 @@ TASK / CONVERSATION HISTORY:
         } else {
           imageContent = {
             type: "image",
-            data: img.data,
+            data: img.data || "",
             mimeType: img.mimeType as LLMImageMimeType,
             originalSizeBytes: img.sizeBytes,
           };
@@ -8690,6 +8737,25 @@ TASK / CONVERSATION HISTORY:
     return this.buildCanvasFallbackHtml(
       prompt,
       "Auto-generation failed, showing a fallback canvas preview.",
+    );
+  }
+
+  private buildFollowUpFailureMessage(error: any): string {
+    const raw = String(error?.message || "Unknown error");
+    const lower = raw.toLowerCase();
+
+    if (lower.includes("toolresult") && lower.includes("tooluse")) {
+      return (
+        "I hit an internal tool-call transcript mismatch while processing your follow-up. " +
+        "I kept your context and repaired the conversation state. Please send your follow-up again."
+      );
+    }
+
+    const compact = raw.length > 220 ? `${raw.slice(0, 220)}...` : raw;
+    return (
+      "I hit an internal error while processing your follow-up: " +
+      compact +
+      " Please retry and I’ll continue from the same context."
     );
   }
 
@@ -10138,8 +10204,6 @@ TASK / CONVERSATION HISTORY:
       }
 
       console.error("sendMessage failed:", error);
-      // Save conversation snapshot even on failure for potential recovery
-      this.saveConversationSnapshot();
       if (resumeAttempted) {
         this.daemon.updateTask(this.task.id, {
           status: "failed",
@@ -10150,18 +10214,28 @@ TASK / CONVERSATION HISTORY:
           message: error.message,
           stack: error.stack,
         });
+        this.saveConversationSnapshot();
         return;
       }
       // Restore previous status, but never restore 'executing' (would leave spinner stuck)
       const safeRestoreStatus =
         previousStatus && previousStatus !== "executing" ? previousStatus : "completed";
       this.daemon.updateTaskStatus(this.task.id, safeRestoreStatus as any);
+      const userFacingError = this.buildFollowUpFailureMessage(error);
+      this.daemon.logEvent(this.task.id, "assistant_message", {
+        message: userFacingError,
+      });
+      this.appendConversationHistory({
+        role: "assistant",
+        content: [{ type: "text", text: userFacingError }],
+      });
       this.daemon.logEvent(this.task.id, "log", {
         message: `Follow-up failed: ${error.message}`,
       });
-      // Emit follow_up_failed event for the gateway (this doesn't trigger toast)
+      this.saveConversationSnapshot();
       this.daemon.logEvent(this.task.id, "follow_up_failed", {
         error: error.message,
+        userMessage: userFacingError,
       });
       // Note: Don't re-throw - we've fully handled the error above (status updated, events emitted)
     }
