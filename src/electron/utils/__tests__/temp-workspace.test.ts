@@ -1,9 +1,9 @@
-import { afterEach, describe, expect, it } from 'vitest';
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
-import { TEMP_WORKSPACE_ID_PREFIX, TEMP_WORKSPACE_NAME } from '../../../shared/types';
-import { pruneTempWorkspaces } from '../temp-workspace';
+import { afterEach, describe, expect, it } from "vitest";
+import fs from "fs";
+import os from "os";
+import path from "path";
+import { TEMP_WORKSPACE_ID_PREFIX, TEMP_WORKSPACE_NAME } from "../../../shared/types";
+import { pruneTempWorkspaces } from "../temp-workspace";
 
 type WorkspaceRow = {
   id: string;
@@ -31,11 +31,18 @@ class MockDb {
   tasks: TaskRow[] = [];
   sessions: SessionRow[] = [];
 
-  prepare(sql: string): { all?: (...args: any[]) => any[]; get?: (...args: any[]) => any; run?: (...args: any[]) => any } {
-    if (sql.includes('FROM workspaces') && sql.includes('ORDER BY COALESCE(last_used_at, created_at) DESC')) {
+  prepare(sql: string): {
+    all?: (...args: any[]) => any[];
+    get?: (...args: any[]) => any;
+    run?: (...args: any[]) => any;
+  } {
+    if (
+      sql.includes("FROM workspaces") &&
+      sql.includes("ORDER BY COALESCE(last_used_at, created_at) DESC")
+    ) {
       return {
         all: (legacyId: string, _prefixLength: number, prefixValue: string) => {
-          const prefix = String(prefixValue || '');
+          const prefix = String(prefixValue || "");
           return this.workspaces
             .filter((row) => row.id === legacyId || row.id.startsWith(prefix))
             .map((row) => ({
@@ -49,10 +56,13 @@ class MockDb {
       };
     }
 
-    if (sql.includes('FROM tasks') && sql.includes('workspace_id = ? OR substr(workspace_id, 1, ?) = ?')) {
+    if (
+      sql.includes("FROM tasks") &&
+      sql.includes("workspace_id = ? OR substr(workspace_id, 1, ?) = ?")
+    ) {
       return {
         all: (legacyId: string, _prefixLength: number, prefixValue: string) => {
-          const prefix = String(prefixValue || '');
+          const prefix = String(prefixValue || "");
           const seen = new Set<string>();
           const rows: Array<{ workspace_id: string }> = [];
           for (const task of this.tasks) {
@@ -66,15 +76,19 @@ class MockDb {
       };
     }
 
-    if (sql.includes('FROM channel_sessions') && sql.includes('workspace_id = ? OR substr(workspace_id, 1, ?) = ?')) {
+    if (
+      sql.includes("FROM channel_sessions") &&
+      sql.includes("workspace_id = ? OR substr(workspace_id, 1, ?) = ?")
+    ) {
       return {
         all: (legacyId: string, _prefixLength: number, prefixValue: string) => {
-          const prefix = String(prefixValue || '');
+          const prefix = String(prefixValue || "");
           const seen = new Set<string>();
           const rows: Array<{ workspace_id: string }> = [];
           for (const session of this.sessions) {
             if (!session.workspace_id) continue;
-            if (!(session.workspace_id === legacyId || session.workspace_id.startsWith(prefix))) continue;
+            if (!(session.workspace_id === legacyId || session.workspace_id.startsWith(prefix)))
+              continue;
             if (seen.has(session.workspace_id)) continue;
             seen.add(session.workspace_id);
             rows.push({ workspace_id: session.workspace_id });
@@ -84,19 +98,20 @@ class MockDb {
       };
     }
 
-    if (sql.includes('SELECT 1 FROM tasks WHERE workspace_id = ? LIMIT 1')) {
+    if (sql.includes("SELECT 1 FROM tasks WHERE workspace_id = ? LIMIT 1")) {
       return {
         get: (workspaceId: string) => this.tasks.find((task) => task.workspace_id === workspaceId),
       };
     }
 
-    if (sql.includes('SELECT 1 FROM channel_sessions WHERE workspace_id = ? LIMIT 1')) {
+    if (sql.includes("SELECT 1 FROM channel_sessions WHERE workspace_id = ? LIMIT 1")) {
       return {
-        get: (workspaceId: string) => this.sessions.find((session) => session.workspace_id === workspaceId),
+        get: (workspaceId: string) =>
+          this.sessions.find((session) => session.workspace_id === workspaceId),
       };
     }
 
-    if (sql.includes('DELETE FROM workspaces WHERE id = ?')) {
+    if (sql.includes("DELETE FROM workspaces WHERE id = ?")) {
       return {
         run: (workspaceId: string) => {
           this.workspaces = this.workspaces.filter((workspace) => workspace.id !== workspaceId);
@@ -108,7 +123,7 @@ class MockDb {
   }
 }
 
-describe('pruneTempWorkspaces', () => {
+describe("pruneTempWorkspaces", () => {
   const tempDirsToCleanup: string[] = [];
 
   afterEach(() => {
@@ -123,12 +138,17 @@ describe('pruneTempWorkspaces', () => {
   });
 
   const createTempRoot = (): string => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cowork-temp-prune-test-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "cowork-temp-prune-test-"));
     tempDirsToCleanup.push(root);
     return root;
   };
 
-  const insertTempWorkspace = (db: MockDb, root: string, idSuffix: string, lastUsedAt: number): { id: string; dir: string } => {
+  const insertTempWorkspace = (
+    db: MockDb,
+    root: string,
+    idSuffix: string,
+    lastUsedAt: number,
+  ): { id: string; dir: string } => {
     const id = `${TEMP_WORKSPACE_ID_PREFIX}${idSuffix}`;
     const dir = path.join(root, idSuffix);
     fs.mkdirSync(dir, { recursive: true });
@@ -152,16 +172,16 @@ describe('pruneTempWorkspaces', () => {
     return { id, dir };
   };
 
-  it('removes old temp workspaces but keeps current and active ones', () => {
+  it("removes old temp workspaces but keeps current and active ones", () => {
     const db = new MockDb();
     const root = createTempRoot();
     const nowMs = 2_000_000;
 
-    const recent = insertTempWorkspace(db, root, 'recent', nowMs - 100);
-    const activeOld = insertTempWorkspace(db, root, 'active-old', nowMs - 20_000);
-    const old = insertTempWorkspace(db, root, 'old', nowMs - 20_000);
+    const recent = insertTempWorkspace(db, root, "recent", nowMs - 100);
+    const activeOld = insertTempWorkspace(db, root, "active-old", nowMs - 20_000);
+    const old = insertTempWorkspace(db, root, "old", nowMs - 20_000);
 
-    db.tasks.push({ id: 't1', workspace_id: activeOld.id, status: 'executing' });
+    db.tasks.push({ id: "t1", workspace_id: activeOld.id, status: "executing" });
 
     const result = pruneTempWorkspaces({
       db: db as any,
@@ -182,13 +202,13 @@ describe('pruneTempWorkspaces', () => {
     expect(db.workspaces.some((workspace) => workspace.id === old.id)).toBe(false);
   });
 
-  it('enforces hard limit by deleting oldest temp workspaces when needed', () => {
+  it("enforces hard limit by deleting oldest temp workspaces when needed", () => {
     const db = new MockDb();
     const root = createTempRoot();
     const nowMs = 3_000_000;
 
     const workspaces = Array.from({ length: 6 }, (_, index) =>
-      insertTempWorkspace(db, root, `w${index}`, nowMs - index * 100)
+      insertTempWorkspace(db, root, `w${index}`, nowMs - index * 100),
     );
 
     const result = pruneTempWorkspaces({
@@ -211,13 +231,13 @@ describe('pruneTempWorkspaces', () => {
     expect(remainingIds.has(workspaces[2].id)).toBe(true);
   });
 
-  it('keeps temp workspace referenced by idle session', () => {
+  it("keeps temp workspace referenced by idle session", () => {
     const db = new MockDb();
     const root = createTempRoot();
     const nowMs = 4_000_000;
 
-    const idleReferenced = insertTempWorkspace(db, root, 'idle-ref', nowMs - 50_000);
-    db.sessions.push({ id: 's1', workspace_id: idleReferenced.id, state: 'idle' });
+    const idleReferenced = insertTempWorkspace(db, root, "idle-ref", nowMs - 50_000);
+    db.sessions.push({ id: "s1", workspace_id: idleReferenced.id, state: "idle" });
 
     const result = pruneTempWorkspaces({
       db: db as any,
@@ -235,17 +255,17 @@ describe('pruneTempWorkspaces', () => {
     expect(db.workspaces.some((workspace) => workspace.id === idleReferenced.id)).toBe(true);
   });
 
-  it('prunes orphan temp directories that have no DB workspace rows', () => {
+  it("prunes orphan temp directories that have no DB workspace rows", () => {
     const db = new MockDb();
     const root = createTempRoot();
     const nowMs = Date.now();
 
-    const orphanDir = path.join(root, 'orphan-old');
+    const orphanDir = path.join(root, "orphan-old");
     fs.mkdirSync(orphanDir, { recursive: true });
     const oldDate = new Date(nowMs - 30 * 24 * 60 * 60 * 1000);
     fs.utimesSync(orphanDir, oldDate, oldDate);
 
-    const freshOrphanDir = path.join(root, 'orphan-fresh');
+    const freshOrphanDir = path.join(root, "orphan-fresh");
     fs.mkdirSync(freshOrphanDir, { recursive: true });
 
     const result = pruneTempWorkspaces({
@@ -264,24 +284,24 @@ describe('pruneTempWorkspaces', () => {
     expect(fs.existsSync(freshOrphanDir)).toBe(true);
   });
 
-  it('does not treat wildcard-like IDs as temp workspace IDs', () => {
+  it("does not treat wildcard-like IDs as temp workspace IDs", () => {
     const db = new MockDb();
     const root = createTempRoot();
     const nowMs = 5_000_000;
 
-    const falsePositiveId = 'abtempcworkspacede:looks-like-like-match';
-    const falsePositiveDir = path.join(root, 'false-positive');
+    const falsePositiveId = "abtempcworkspacede:looks-like-like-match";
+    const falsePositiveDir = path.join(root, "false-positive");
     fs.mkdirSync(falsePositiveDir, { recursive: true });
     db.workspaces.push({
       id: falsePositiveId,
-      name: 'Not Temp',
+      name: "Not Temp",
       path: falsePositiveDir,
       created_at: nowMs - 100_000,
       last_used_at: nowMs - 100_000,
-      permissions: '{}',
+      permissions: "{}",
     });
 
-    const oldTemp = insertTempWorkspace(db, root, 'real-temp', nowMs - 100_000);
+    const oldTemp = insertTempWorkspace(db, root, "real-temp", nowMs - 100_000);
 
     const result = pruneTempWorkspaces({
       db: db as any,
@@ -301,20 +321,20 @@ describe('pruneTempWorkspaces', () => {
     expect(fs.existsSync(oldTemp.dir)).toBe(false);
   });
 
-  it('prunes stale temp workspace DB rows even when temp root does not exist', () => {
+  it("prunes stale temp workspace DB rows even when temp root does not exist", () => {
     const db = new MockDb();
-    const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cowork-temp-prune-missing-root-'));
+    const base = fs.mkdtempSync(path.join(os.tmpdir(), "cowork-temp-prune-missing-root-"));
     tempDirsToCleanup.push(base);
-    const missingRoot = path.join(base, 'missing-root');
+    const missingRoot = path.join(base, "missing-root");
     const nowMs = 6_000_000;
 
     db.workspaces.push({
       id: `${TEMP_WORKSPACE_ID_PREFIX}stale-no-root`,
       name: TEMP_WORKSPACE_NAME,
-      path: path.join(missingRoot, 'stale-no-root'),
+      path: path.join(missingRoot, "stale-no-root"),
       created_at: nowMs - 100_000,
       last_used_at: nowMs - 100_000,
-      permissions: '{}',
+      permissions: "{}",
     });
 
     const result = pruneTempWorkspaces({

@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import { FolderIcon } from './LineIcons';
-import { Workspace } from '../../shared/types';
+import { useState, useEffect } from "react";
+import { FolderIcon } from "./LineIcons";
+import { Workspace } from "../../shared/types";
 
 interface WorkspaceSelectorProps {
   onWorkspaceSelected: (workspace: Workspace) => void;
@@ -8,7 +8,7 @@ interface WorkspaceSelectorProps {
 
 export function WorkspaceSelector({ onWorkspaceSelected }: WorkspaceSelectorProps) {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
-  const [appVersion, setAppVersion] = useState<string>('');
+  const [appVersion, setAppVersion] = useState<string>("");
 
   useEffect(() => {
     loadWorkspaces();
@@ -20,7 +20,7 @@ export function WorkspaceSelector({ onWorkspaceSelected }: WorkspaceSelectorProp
       const versionInfo = await window.electronAPI.getAppVersion();
       setAppVersion(versionInfo.version);
     } catch (error) {
-      console.error('Failed to load version:', error);
+      console.error("Failed to load version:", error);
     }
   };
 
@@ -29,7 +29,7 @@ export function WorkspaceSelector({ onWorkspaceSelected }: WorkspaceSelectorProp
       const loaded = await window.electronAPI.listWorkspaces();
       setWorkspaces(loaded);
     } catch (error) {
-      console.error('Failed to load workspaces:', error);
+      console.error("Failed to load workspaces:", error);
     }
   };
 
@@ -38,7 +38,7 @@ export function WorkspaceSelector({ onWorkspaceSelected }: WorkspaceSelectorProp
       const folderPath = await window.electronAPI.selectFolder();
       if (!folderPath) return;
 
-      const folderName = folderPath.split('/').pop() || 'Workspace';
+      const folderName = folderPath.split("/").pop() || "Workspace";
 
       const workspace = await window.electronAPI.createWorkspace({
         name: folderName,
@@ -54,7 +54,7 @@ export function WorkspaceSelector({ onWorkspaceSelected }: WorkspaceSelectorProp
 
       onWorkspaceSelected(workspace);
     } catch (error) {
-      console.error('Failed to create workspace:', error);
+      console.error("Failed to create workspace:", error);
     }
   };
 
@@ -73,11 +73,7 @@ export function WorkspaceSelector({ onWorkspaceSelected }: WorkspaceSelectorProp
 
         {/* Logo Section */}
         <div className="cli-logo-section">
-          <img
-            src="./cowork-os-logo.png"
-            alt="CoWork OS"
-            className="cli-mascot-logo"
-          />
+          <img src="./cowork-os-logo.png" alt="CoWork OS" className="cli-mascot-logo" />
           <pre className="cli-ascii-logo terminal-only">{`
   ██████╗ ██████╗ ██╗    ██╗ ██████╗ ██████╗ ██╗  ██╗       ██████╗ ███████╗
  ██╔════╝██╔═══██╗██║    ██║██╔═══██╗██╔══██╗██║ ██╔╝      ██╔═══██╗██╔════╝
@@ -85,7 +81,7 @@ export function WorkspaceSelector({ onWorkspaceSelected }: WorkspaceSelectorProp
  ██║     ██║   ██║██║███╗██║██║   ██║██╔══██╗██╔═██╗ ╚════╝██║   ██║╚════██║
  ╚██████╗╚██████╔╝╚███╔███╔╝╚██████╔╝██║  ██║██║  ██╗      ╚██████╔╝███████║
   ╚═════╝ ╚═════╝  ╚══╝╚══╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝       ╚═════╝ ╚══════╝`}</pre>
-          <div className="cli-version">{appVersion ? `v${appVersion}` : ''}</div>
+          <div className="cli-version">{appVersion ? `v${appVersion}` : ""}</div>
           <div className="workspace-modern-title modern-only">Choose a workspace</div>
           <div className="workspace-modern-subtitle modern-only">Pick a folder to get started.</div>
         </div>
@@ -102,8 +98,12 @@ export function WorkspaceSelector({ onWorkspaceSelected }: WorkspaceSelectorProp
           <div className="cli-line">
             <span className="cli-prompt">$</span>
             <span className="cli-text">
-              <span className="terminal-only">Select a workspace folder to initialize your environment</span>
-              <span className="modern-only">Select a workspace folder to initialize your environment</span>
+              <span className="terminal-only">
+                Select a workspace folder to initialize your environment
+              </span>
+              <span className="modern-only">
+                Select a workspace folder to initialize your environment
+              </span>
             </span>
           </div>
           <div className="cli-line cli-blink">
@@ -132,10 +132,12 @@ export function WorkspaceSelector({ onWorkspaceSelected }: WorkspaceSelectorProp
                 className="cli-workspace-item"
                 onClick={() => onWorkspaceSelected(workspace)}
               >
-                <span className="cli-item-num">{String(index + 1).padStart(2, '0')}</span>
+                <span className="cli-item-num">{String(index + 1).padStart(2, "0")}</span>
                 <span className="cli-item-icon">
                   <span className="terminal-only">[dir]</span>
-                  <span className="modern-only"><FolderIcon size={16} /></span>
+                  <span className="modern-only">
+                    <FolderIcon size={16} />
+                  </span>
                 </span>
                 <div className="cli-item-info">
                   <span className="cli-item-name">{workspace.name}/</span>

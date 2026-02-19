@@ -6,15 +6,15 @@
  * This enables web-based MCP servers.
  */
 
-import { EventEmitter } from 'events';
-import { EventSource } from 'eventsource';
+import { EventEmitter } from "events";
+import { EventSource } from "eventsource";
 import {
   MCPTransport,
   MCPServerConfig,
   JSONRPCRequest,
   JSONRPCResponse,
   JSONRPCNotification,
-} from '../../types';
+} from "../../types";
 
 interface PendingRequest {
   resolve: (result: any) => void;
@@ -43,24 +43,28 @@ export class SSETransport extends EventEmitter implements MCPTransport {
    */
   async connect(): Promise<void> {
     if (this.connected || this.eventSource) {
-      throw new Error('Already connected');
+      throw new Error("Already connected");
     }
 
     const { url } = this.config;
 
     if (!url) {
-      throw new Error('No URL specified for SSE transport');
+      throw new Error("No URL specified for SSE transport");
     }
 
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         this.cleanup();
-        reject(new Error(`Connection timeout: server did not respond within ${this.config.connectionTimeout || 30000}ms`));
+        reject(
+          new Error(
+            `Connection timeout: server did not respond within ${this.config.connectionTimeout || 30000}ms`,
+          ),
+        );
       }, this.config.connectionTimeout || 30000);
 
       try {
         // Build SSE URL with auth headers if needed
-        const sseUrl = this.buildUrl(url, '/sse');
+        const sseUrl = this.buildUrl(url, "/sse");
         console.log(`[MCP SSETransport] Connecting to: ${sseUrl}`);
 
         // Create EventSource for server-to-client messages
@@ -82,26 +86,25 @@ export class SSETransport extends EventEmitter implements MCPTransport {
           console.error(`[MCP SSETransport] EventSource error:`, error);
           if (!this.connected) {
             clearTimeout(timeout);
-            reject(new Error('Failed to connect to SSE endpoint'));
+            reject(new Error("Failed to connect to SSE endpoint"));
           } else {
-            this.errorHandler?.(new Error('SSE connection error'));
-            this.closeHandler?.(new Error('SSE connection lost'));
+            this.errorHandler?.(new Error("SSE connection error"));
+            this.closeHandler?.(new Error("SSE connection lost"));
           }
           this.cleanup();
         };
 
         // Handle named events (some servers use event types)
-        this.eventSource.addEventListener('message', (event) => {
+        this.eventSource.addEventListener("message", (event) => {
           this.handleMessage(event.data);
         });
 
-        this.eventSource.addEventListener('error', () => {
+        this.eventSource.addEventListener("error", () => {
           if (this.connected) {
-            this.closeHandler?.(new Error('SSE stream closed'));
+            this.closeHandler?.(new Error("SSE stream closed"));
             this.cleanup();
           }
         });
-
       } catch (error) {
         clearTimeout(timeout);
         console.error(`[MCP SSETransport] Failed to connect:`, error);
@@ -122,7 +125,7 @@ export class SSETransport extends EventEmitter implements MCPTransport {
     // Reject all pending requests
     for (const [id, pending] of this.pendingRequests) {
       clearTimeout(pending.timeout);
-      pending.reject(new Error('Transport disconnected'));
+      pending.reject(new Error("Transport disconnected"));
     }
     this.pendingRequests.clear();
 
@@ -134,12 +137,12 @@ export class SSETransport extends EventEmitter implements MCPTransport {
    */
   async sendRequest(method: string, params?: Record<string, any>): Promise<any> {
     if (!this.connected) {
-      throw new Error('Not connected');
+      throw new Error("Not connected");
     }
 
     const id = ++this.requestId;
     const request: JSONRPCRequest = {
-      jsonrpc: '2.0',
+      jsonrpc: "2.0",
       id,
       method,
       params,
@@ -167,7 +170,7 @@ export class SSETransport extends EventEmitter implements MCPTransport {
    */
   async send(message: JSONRPCRequest | JSONRPCNotification): Promise<void> {
     if (!this.connected) {
-      throw new Error('Not connected');
+      throw new Error("Not connected");
     }
 
     await this.postMessage(message);
@@ -179,15 +182,15 @@ export class SSETransport extends EventEmitter implements MCPTransport {
   private async postMessage(message: JSONRPCRequest | JSONRPCNotification): Promise<void> {
     const { url } = this.config;
     if (!url) {
-      throw new Error('No URL configured');
+      throw new Error("No URL configured");
     }
 
-    const postUrl = this.buildUrl(url, '/message');
+    const postUrl = this.buildUrl(url, "/message");
     this.abortController = new AbortController();
 
     try {
       const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         ...this.config.headers,
       };
 
@@ -195,7 +198,7 @@ export class SSETransport extends EventEmitter implements MCPTransport {
       this.addAuthHeaders(headers);
 
       const response = await fetch(postUrl, {
-        method: 'POST',
+        method: "POST",
         headers,
         body: JSON.stringify(message),
         signal: this.abortController.signal,
@@ -206,16 +209,16 @@ export class SSETransport extends EventEmitter implements MCPTransport {
       }
 
       // Some servers return the response in the HTTP response body
-      const contentType = response.headers.get('content-type');
-      if (contentType?.includes('application/json')) {
+      const contentType = response.headers.get("content-type");
+      if (contentType?.includes("application/json")) {
         const responseData = await response.json();
-        if (responseData && typeof responseData === 'object' && 'id' in responseData) {
+        if (responseData && typeof responseData === "object" && "id" in responseData) {
           this.handleJsonRpcResponse(responseData);
         }
       }
     } catch (error: any) {
-      if (error.name === 'AbortError') {
-        throw new Error('Request aborted');
+      if (error.name === "AbortError") {
+        throw new Error("Request aborted");
       }
       throw error;
     }
@@ -267,14 +270,14 @@ export class SSETransport extends EventEmitter implements MCPTransport {
    */
   private handleJsonRpcResponse(message: any): void {
     // Check if this is a response to a pending request
-    if ('id' in message && message.id !== null) {
+    if ("id" in message && message.id !== null) {
       const pending = this.pendingRequests.get(message.id);
       if (pending) {
         this.pendingRequests.delete(message.id);
         clearTimeout(pending.timeout);
 
-        if ('error' in message && message.error) {
-          pending.reject(new Error(message.error.message || 'Unknown error'));
+        if ("error" in message && message.error) {
+          pending.reject(new Error(message.error.message || "Unknown error"));
         } else {
           pending.resolve(message.result);
         }
@@ -294,15 +297,15 @@ export class SSETransport extends EventEmitter implements MCPTransport {
 
     // Append path if base URL doesn't already have it
     if (!url.pathname.endsWith(path)) {
-      url.pathname = url.pathname.replace(/\/$/, '') + path;
+      url.pathname = url.pathname.replace(/\/$/, "") + path;
     }
 
     // Add auth params for SSE (since EventSource doesn't support headers)
     if (this.config.auth) {
-      if (this.config.auth.type === 'bearer' && this.config.auth.token) {
-        url.searchParams.set('token', this.config.auth.token);
-      } else if (this.config.auth.type === 'api-key' && this.config.auth.apiKey) {
-        url.searchParams.set('api_key', this.config.auth.apiKey);
+      if (this.config.auth.type === "bearer" && this.config.auth.token) {
+        url.searchParams.set("token", this.config.auth.token);
+      } else if (this.config.auth.type === "api-key" && this.config.auth.apiKey) {
+        url.searchParams.set("api_key", this.config.auth.apiKey);
       }
     }
 
@@ -316,23 +319,23 @@ export class SSETransport extends EventEmitter implements MCPTransport {
     if (!this.config.auth) return;
 
     switch (this.config.auth.type) {
-      case 'bearer':
+      case "bearer":
         if (this.config.auth.token) {
-          headers['Authorization'] = `Bearer ${this.config.auth.token}`;
+          headers["Authorization"] = `Bearer ${this.config.auth.token}`;
         }
         break;
-      case 'api-key':
+      case "api-key":
         if (this.config.auth.apiKey) {
-          const headerName = this.config.auth.headerName || 'X-API-Key';
+          const headerName = this.config.auth.headerName || "X-API-Key";
           headers[headerName] = this.config.auth.apiKey;
         }
         break;
-      case 'basic':
+      case "basic":
         if (this.config.auth.username && this.config.auth.password) {
           const credentials = Buffer.from(
-            `${this.config.auth.username}:${this.config.auth.password}`
-          ).toString('base64');
-          headers['Authorization'] = `Basic ${credentials}`;
+            `${this.config.auth.username}:${this.config.auth.password}`,
+          ).toString("base64");
+          headers["Authorization"] = `Basic ${credentials}`;
         }
         break;
     }

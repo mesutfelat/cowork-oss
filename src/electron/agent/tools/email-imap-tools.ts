@@ -1,23 +1,23 @@
-import Database from 'better-sqlite3';
-import { AgentDaemon } from '../daemon';
-import { LLMTool } from '../llm/types';
-import { ChannelRepository } from '../../database/repositories';
-import { EmailClient } from '../../gateway/channels/email-client';
-import { LoomEmailClient } from '../../gateway/channels/loom-client';
-import { assertSafeLoomMailboxFolder } from '../../utils/loom';
+import Database from "better-sqlite3";
+import { AgentDaemon } from "../daemon";
+import { LLMTool } from "../llm/types";
+import { ChannelRepository } from "../../database/repositories";
+import { EmailClient } from "../../gateway/channels/email-client";
+import { LoomEmailClient } from "../../gateway/channels/loom-client";
+import { assertSafeLoomMailboxFolder } from "../../utils/loom";
 
 function asNonEmptyString(value: unknown): string | null {
-  if (typeof value !== 'string') return null;
+  if (typeof value !== "string") return null;
   const v = value.trim();
   return v.length > 0 ? v : null;
 }
 
 function asNumber(value: unknown): number | null {
-  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
 function asBoolean(value: unknown): boolean | null {
-  return typeof value === 'boolean' ? value : null;
+  return typeof value === "boolean" ? value : null;
 }
 
 export class EmailImapTools {
@@ -26,60 +26,60 @@ export class EmailImapTools {
   constructor(
     private db: Database.Database,
     private daemon: AgentDaemon,
-    private taskId: string
+    private taskId: string,
   ) {
     this.channelRepo = new ChannelRepository(db);
   }
 
   isAvailable(): boolean {
-    const channel = this.channelRepo.findByType('email');
+    const channel = this.channelRepo.findByType("email");
     if (!channel) return false;
     if (!channel.enabled) return false;
 
     const cfg = channel.config as any;
-    const protocol = asNonEmptyString(cfg?.protocol) === 'loom' ? 'loom' : 'imap-smtp';
-    if (protocol === 'loom') {
+    const protocol = asNonEmptyString(cfg?.protocol) === "loom" ? "loom" : "imap-smtp";
+    if (protocol === "loom") {
       return (
-        typeof cfg === 'object' &&
+        typeof cfg === "object" &&
         cfg !== null &&
-        typeof cfg.loomBaseUrl === 'string' &&
-        typeof cfg.loomAccessToken === 'string'
+        typeof cfg.loomBaseUrl === "string" &&
+        typeof cfg.loomAccessToken === "string"
       );
     }
 
     return (
-      typeof cfg === 'object' &&
+      typeof cfg === "object" &&
       cfg !== null &&
-      typeof cfg.imapHost === 'string' &&
-      typeof cfg.smtpHost === 'string' &&
-      typeof cfg.email === 'string' &&
-      typeof cfg.password === 'string'
+      typeof cfg.imapHost === "string" &&
+      typeof cfg.smtpHost === "string" &&
+      typeof cfg.email === "string" &&
+      typeof cfg.password === "string"
     );
   }
 
   static getToolDefinitions(): LLMTool[] {
     return [
       {
-        name: 'email_imap_unread',
+        name: "email_imap_unread",
         description:
-          'Fetch unread emails directly from the configured Email channel mailbox (IMAP/SMTP or LOOM mode). ' +
-          'Does not mark messages as read. Useful when Google Workspace (gmail_action) is unavailable.',
+          "Fetch unread emails directly from the configured Email channel mailbox (IMAP/SMTP or LOOM mode). " +
+          "Does not mark messages as read. Useful when Google Workspace (gmail_action) is unavailable.",
         input_schema: {
-          type: 'object',
+          type: "object",
           properties: {
             limit: {
-              type: 'number',
-              description: 'Max number of unread messages to return (default: 20, max: 50)',
+              type: "number",
+              description: "Max number of unread messages to return (default: 20, max: 50)",
             },
             mailbox: {
-              type: 'string',
+              type: "string",
               description:
                 'Mailbox/folder to query (default: channel config mailbox, usually "INBOX")',
             },
             max_body_chars: {
-              type: 'number',
+              type: "number",
               description:
-                'Max characters of body text to include per email (default: 1000, max: 5000)',
+                "Max characters of body text to include per email (default: 1000, max: 5000)",
             },
           },
           required: [],
@@ -99,18 +99,18 @@ export class EmailImapTools {
     const maxBodyCharsRaw = asNumber(input?.max_body_chars);
     const maxBodyChars = Math.min(Math.max(maxBodyCharsRaw ?? 1000, 0), 5000);
 
-    this.daemon.logEvent(this.taskId, 'tool_call', {
-      tool: 'email_imap_unread',
+    this.daemon.logEvent(this.taskId, "tool_call", {
+      tool: "email_imap_unread",
       limit,
       mailbox: mailboxOverride || undefined,
       max_body_chars: maxBodyChars,
     });
 
-    const channel = this.channelRepo.findByType('email');
+    const channel = this.channelRepo.findByType("email");
     if (!channel) {
       return {
         success: false,
-        error: 'Email channel is not configured. Configure it in Settings > Channels > Email.',
+        error: "Email channel is not configured. Configure it in Settings > Channels > Email.",
       };
     }
 
@@ -118,17 +118,17 @@ export class EmailImapTools {
       return {
         success: false,
         error:
-          'Email channel is configured but disabled. Enable it in Settings > Channels > Email.',
+          "Email channel is configured but disabled. Enable it in Settings > Channels > Email.",
       };
     }
 
     const cfg = channel.config as any;
-    const protocol = asNonEmptyString(cfg?.protocol) === 'loom' ? 'loom' : 'imap-smtp';
+    const protocol = asNonEmptyString(cfg?.protocol) === "loom" ? "loom" : "imap-smtp";
 
-    if (protocol === 'loom') {
+    if (protocol === "loom") {
       const loomBaseUrl = asNonEmptyString(cfg?.loomBaseUrl);
       const loomIdentity = asNonEmptyString(cfg?.loomIdentity) || undefined;
-      const mailbox = mailboxOverride ?? asNonEmptyString(cfg?.loomMailboxFolder) ?? 'INBOX';
+      const mailbox = mailboxOverride ?? asNonEmptyString(cfg?.loomMailboxFolder) ?? "INBOX";
       const pollInterval = asNumber(cfg?.loomPollInterval) ?? 30000;
 
       const getLoomAccessToken = () => asNonEmptyString(cfg?.loomAccessToken);
@@ -136,7 +136,7 @@ export class EmailImapTools {
         return {
           success: false,
           error:
-            'Email channel is missing required LOOM configuration (loomBaseUrl/loomAccessToken). Check Settings > Channels > Email.',
+            "Email channel is missing required LOOM configuration (loomBaseUrl/loomAccessToken). Check Settings > Channels > Email.",
         };
       }
 
@@ -145,30 +145,31 @@ export class EmailImapTools {
         accessTokenProvider: () => {
           const token = getLoomAccessToken();
           if (!token) {
-            throw new Error('LOOM access token is required');
+            throw new Error("LOOM access token is required");
           }
           return token;
         },
         identity: loomIdentity,
         folder: assertSafeLoomMailboxFolder(mailbox),
         pollInterval,
-        verbose: process.env.NODE_ENV === 'development',
+        verbose: process.env.NODE_ENV === "development",
       });
 
       const messages = await client.fetchUnreadEmails(limit);
 
       return {
         success: true,
-        protocol: 'loom',
+        protocol: "loom",
         account: loomIdentity || loomBaseUrl,
         mailbox,
         unread: messages.length,
         messages: messages.map((m) => {
-          const body = typeof m.text === 'string' ? m.text : '';
+          const body = typeof m.text === "string" ? m.text : "";
           const snippet =
             maxBodyChars <= 0
               ? undefined
-              : (body.length > maxBodyChars ? body.slice(0, maxBodyChars) + '...' : body) || undefined;
+              : (body.length > maxBodyChars ? body.slice(0, maxBodyChars) + "..." : body) ||
+                undefined;
           return {
             uid: m.uid,
             message_id: m.messageId,
@@ -191,7 +192,7 @@ export class EmailImapTools {
       return {
         success: false,
         error:
-          'Email channel is missing required IMAP/SMTP configuration (imapHost/smtpHost/email/password). Check Settings > Channels > Email.',
+          "Email channel is missing required IMAP/SMTP configuration (imapHost/smtpHost/email/password). Check Settings > Channels > Email.",
       };
     }
 
@@ -200,7 +201,7 @@ export class EmailImapTools {
     const smtpPort = asNumber(cfg?.smtpPort) ?? 587;
     const smtpSecure = asBoolean(cfg?.smtpSecure) ?? false;
     const displayName = asNonEmptyString(cfg?.displayName) || undefined;
-    const mailbox = mailboxOverride ?? asNonEmptyString(cfg?.mailbox) ?? 'INBOX';
+    const mailbox = mailboxOverride ?? asNonEmptyString(cfg?.mailbox) ?? "INBOX";
 
     const client = new EmailClient({
       imapHost,
@@ -214,23 +215,24 @@ export class EmailImapTools {
       displayName,
       mailbox,
       pollInterval: 30000,
-      verbose: process.env.NODE_ENV === 'development',
+      verbose: process.env.NODE_ENV === "development",
     });
 
     const messages = await client.fetchUnreadEmails(limit);
 
     return {
       success: true,
-      protocol: 'imap-smtp',
+      protocol: "imap-smtp",
       account: email,
       mailbox,
       unread: messages.length,
       messages: messages.map((m) => {
-        const body = typeof m.text === 'string' ? m.text : '';
+        const body = typeof m.text === "string" ? m.text : "";
         const snippet =
           maxBodyChars <= 0
             ? undefined
-            : (body.length > maxBodyChars ? body.slice(0, maxBodyChars) + '...' : body) || undefined;
+            : (body.length > maxBodyChars ? body.slice(0, maxBodyChars) + "..." : body) ||
+              undefined;
         return {
           uid: m.uid,
           message_id: m.messageId,

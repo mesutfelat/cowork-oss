@@ -16,13 +16,13 @@ export interface ComplianceCheckResult {
   suspicious: boolean;
   patterns: string[];
   promptLeakage: PromptLeakageResult;
-  threatLevel: 'none' | 'low' | 'medium' | 'high';
+  threatLevel: "none" | "low" | "medium" | "high";
 }
 
 export interface PromptLeakageResult {
   detected: boolean;
   indicators: string[];
-  confidence: 'low' | 'medium' | 'high';
+  confidence: "low" | "medium" | "high";
 }
 
 export class OutputFilter {
@@ -58,62 +58,62 @@ export class OutputFilter {
   }> = [
     {
       pattern: /system[_\s]*role\s*:/gi,
-      indicator: 'YAML system_role key',
+      indicator: "YAML system_role key",
       weight: 3,
     },
     {
       pattern: /initial[_\s]*instructions?\s*:/gi,
-      indicator: 'YAML initial_instructions key',
+      indicator: "YAML initial_instructions key",
       weight: 3,
     },
     {
       pattern: /You are an autonomous task executor/gi,
-      indicator: 'Core system prompt text',
+      indicator: "Core system prompt text",
       weight: 5,
     },
     {
       pattern: /AUTONOMOUS OPERATION \(CRITICAL\)/gi,
-      indicator: 'System prompt section header',
+      indicator: "System prompt section header",
       weight: 5,
     },
     {
       pattern: /PATH DISCOVERY \(CRITICAL\)/gi,
-      indicator: 'System prompt section header',
+      indicator: "System prompt section header",
       weight: 5,
     },
     {
       pattern: /TOOL CALL STYLE/gi,
-      indicator: 'System prompt section header',
+      indicator: "System prompt section header",
       weight: 4,
     },
     {
       pattern: /EFFICIENCY RULES \(CRITICAL\)/gi,
-      indicator: 'System prompt section header',
+      indicator: "System prompt section header",
       weight: 5,
     },
     {
       pattern: /ANTI-PATTERNS \(NEVER DO THESE\)/gi,
-      indicator: 'System prompt section header',
+      indicator: "System prompt section header",
       weight: 5,
     },
     {
       pattern: /constraints\s*:\s*\n\s*-/gi,
-      indicator: 'YAML constraints list',
+      indicator: "YAML constraints list",
       weight: 3,
     },
     {
       pattern: /capabilities\s*:\s*\n\s*-/gi,
-      indicator: 'YAML capabilities list',
+      indicator: "YAML capabilities list",
       weight: 3,
     },
     {
       pattern: /```yaml\s*\n\s*system/gi,
-      indicator: 'YAML code block with system',
+      indicator: "YAML code block with system",
       weight: 4,
     },
     {
       pattern: /my\s+(?:system\s+)?(?:instructions?|prompt|configuration)\s+(?:are|is|say)/gi,
-      indicator: 'Direct instruction disclosure',
+      indicator: "Direct instruction disclosure",
       weight: 4,
     },
   ];
@@ -144,14 +144,14 @@ export class OutputFilter {
     const promptLeakage = this.detectPromptLeakage(response);
 
     // Determine threat level
-    let threatLevel: 'none' | 'low' | 'medium' | 'high' = 'none';
+    let threatLevel: "none" | "low" | "medium" | "high" = "none";
 
-    if (promptLeakage.confidence === 'high') {
-      threatLevel = 'high';
+    if (promptLeakage.confidence === "high") {
+      threatLevel = "high";
     } else if (promptLeakage.detected || patterns.length > 2) {
-      threatLevel = 'medium';
+      threatLevel = "medium";
     } else if (patterns.length > 0) {
-      threatLevel = 'low';
+      threatLevel = "low";
     }
 
     return {
@@ -177,11 +177,11 @@ export class OutputFilter {
     }
 
     // Determine confidence based on weight
-    let confidence: 'low' | 'medium' | 'high' = 'low';
+    let confidence: "low" | "medium" | "high" = "low";
     if (totalWeight >= 10) {
-      confidence = 'high';
+      confidence = "high";
     } else if (totalWeight >= 5) {
-      confidence = 'medium';
+      confidence = "medium";
     }
 
     return {
@@ -198,11 +198,11 @@ export class OutputFilter {
   static sanitizeToolResult(toolName: string, result: string): string {
     // Tools that retrieve external content need sanitization
     const contentTools = [
-      'browser_get_content',
-      'read_file',
-      'web_search',
-      'web_fetch',
-      'search_files',
+      "browser_get_content",
+      "read_file",
+      "web_search",
+      "web_fetch",
+      "search_files",
     ];
 
     if (!contentTools.includes(toolName)) {
@@ -221,10 +221,7 @@ export class OutputFilter {
 
     let sanitized = result;
     for (const pattern of contentInjectionPatterns) {
-      sanitized = sanitized.replace(
-        pattern,
-        '[EXTERNAL_CONTENT_INJECTION_DETECTED]'
-      );
+      sanitized = sanitized.replace(pattern, "[EXTERNAL_CONTENT_INJECTION_DETECTED]");
     }
 
     return sanitized;
@@ -236,24 +233,19 @@ export class OutputFilter {
   static logSuspiciousOutput(
     taskId: string,
     result: ComplianceCheckResult,
-    responsePreview: string
+    responsePreview: string,
   ): void {
-    if (result.threatLevel === 'none') {
+    if (result.threatLevel === "none") {
       return;
     }
 
-    const preview = responsePreview.slice(0, 200).replace(/\n/g, '\\n');
+    const preview = responsePreview.slice(0, 200).replace(/\n/g, "\\n");
 
-    console.warn(
-      `[OutputFilter] Suspicious output detected in task ${taskId}:`,
-      {
-        threatLevel: result.threatLevel,
-        patterns: result.patterns,
-        promptLeakage: result.promptLeakage.detected
-          ? result.promptLeakage.indicators
-          : 'none',
-        preview: `${preview}...`,
-      }
-    );
+    console.warn(`[OutputFilter] Suspicious output detected in task ${taskId}:`, {
+      threatLevel: result.threatLevel,
+      patterns: result.patterns,
+      promptLeakage: result.promptLeakage.detected ? result.promptLeakage.indicators : "none",
+      preview: `${preview}...`,
+    });
   }
 }

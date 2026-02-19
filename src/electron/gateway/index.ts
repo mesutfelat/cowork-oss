@@ -5,14 +5,14 @@
  * Manages channel adapters, routing, and sessions.
  */
 
-import type { BrowserWindow } from 'electron';
-import Database from 'better-sqlite3';
-import * as fs from 'fs';
-import * as path from 'path';
-import { MessageRouter, RouterConfig } from './router';
-import { SecurityManager } from './security';
-import { SessionManager } from './session';
-import { getUserDataDir } from '../utils/user-data-dir';
+import type { BrowserWindow } from "electron";
+import Database from "better-sqlite3";
+import * as fs from "fs";
+import * as path from "path";
+import { MessageRouter, RouterConfig } from "./router";
+import { SecurityManager } from "./security";
+import { SessionManager } from "./session";
+import { getUserDataDir } from "../utils/user-data-dir";
 import {
   ChannelAdapter,
   ChannelType,
@@ -30,34 +30,34 @@ import {
   BlueBubblesConfig,
   EmailConfig,
   GatewayEventHandler,
-} from './channels/types';
-import { TelegramAdapter, createTelegramAdapter } from './channels/telegram';
-import { DiscordAdapter, createDiscordAdapter } from './channels/discord';
-import { SlackAdapter, createSlackAdapter } from './channels/slack';
-import { WhatsAppAdapter, createWhatsAppAdapter } from './channels/whatsapp';
-import { ImessageAdapter, createImessageAdapter } from './channels/imessage';
-import { SignalAdapter, createSignalAdapter } from './channels/signal';
-import { MattermostAdapter, createMattermostAdapter } from './channels/mattermost';
-import { MatrixAdapter, createMatrixAdapter } from './channels/matrix';
-import { TwitchAdapter, createTwitchAdapter } from './channels/twitch';
-import { LineAdapter, createLineAdapter } from './channels/line';
-import { BlueBubblesAdapter, createBlueBubblesAdapter } from './channels/bluebubbles';
-import { EmailAdapter, createEmailAdapter } from './channels/email';
+} from "./channels/types";
+import { TelegramAdapter, createTelegramAdapter } from "./channels/telegram";
+import { DiscordAdapter, createDiscordAdapter } from "./channels/discord";
+import { SlackAdapter, createSlackAdapter } from "./channels/slack";
+import { WhatsAppAdapter, createWhatsAppAdapter } from "./channels/whatsapp";
+import { ImessageAdapter, createImessageAdapter } from "./channels/imessage";
+import { SignalAdapter, createSignalAdapter } from "./channels/signal";
+import { MattermostAdapter, createMattermostAdapter } from "./channels/mattermost";
+import { MatrixAdapter, createMatrixAdapter } from "./channels/matrix";
+import { TwitchAdapter, createTwitchAdapter } from "./channels/twitch";
+import { LineAdapter, createLineAdapter } from "./channels/line";
+import { BlueBubblesAdapter, createBlueBubblesAdapter } from "./channels/bluebubbles";
+import { EmailAdapter, createEmailAdapter } from "./channels/email";
 import {
   ChannelRepository,
   ChannelUserRepository,
   ChannelSessionRepository,
   ChannelMessageRepository,
   Channel,
-} from '../database/repositories';
-import { AgentDaemon } from '../agent/daemon';
-import { PersonalityManager } from '../settings/personality-manager';
+} from "../database/repositories";
+import { AgentDaemon } from "../agent/daemon";
+import { PersonalityManager } from "../settings/personality-manager";
 import {
   getChannelMessage,
   DEFAULT_CHANNEL_CONTEXT,
   type ChannelMessageContext,
-} from '../../shared/channelMessages';
-import { DEFAULT_QUIRKS } from '../../shared/types';
+} from "../../shared/channelMessages";
+import { DEFAULT_QUIRKS } from "../../shared/types";
 
 export interface GatewayConfig {
   /** Router configuration */
@@ -118,16 +118,16 @@ export class ChannelGateway {
       if (PersonalityManager.isInitialized()) {
         const settings = PersonalityManager.loadSettings();
         return {
-          agentName: settings.agentName || 'CoWork',
+          agentName: settings.agentName || "CoWork",
           userName: settings.relationship?.userName,
-          personality: settings.activePersonality || 'professional',
+          personality: settings.activePersonality || "professional",
           persona: settings.activePersona,
-          emojiUsage: settings.responseStyle?.emojiUsage || 'minimal',
+          emojiUsage: settings.responseStyle?.emojiUsage || "minimal",
           quirks: settings.quirks || DEFAULT_QUIRKS,
         };
       }
     } catch (error) {
-      console.error('[ChannelGateway] Failed to load personality settings:', error);
+      console.error("[ChannelGateway] Failed to load personality settings:", error);
     }
     return DEFAULT_CHANNEL_CONTEXT;
   }
@@ -149,24 +149,25 @@ export class ChannelGateway {
     // the original task execution.
     const onUserMessage = (data: { taskId: string; message?: string }) => {
       followUpMessagesSent.set(data.taskId, false);
-      followUpLatestAssistantText.set(data.taskId, '');
+      followUpLatestAssistantText.set(data.taskId, "");
     };
-    agentDaemon.on('user_message', onUserMessage);
-    this.daemonListeners.push({ event: 'user_message', handler: onUserMessage });
+    agentDaemon.on("user_message", onUserMessage);
+    this.daemonListeners.push({ event: "user_message", handler: onUserMessage });
 
     // Listen for assistant messages (streaming responses)
     // Note: daemon emits { taskId, message } not { taskId, content }
     const onAssistantMessage = (data: { taskId: string; message?: string }) => {
-      const message = typeof data.message === 'string' ? data.message : '';
+      const message = typeof data.message === "string" ? data.message : "";
       const trimmed = message.trim();
       if (trimmed) {
         // Keep the BEST (longest substantive) answer, not just the last one
         // This prevents confused step messages from overwriting good answers
         const existingMessage = lastMessages.get(data.taskId);
-        const isConfusedMessage = trimmed.toLowerCase().includes("don't have") ||
-                                  trimmed.toLowerCase().includes("please provide") ||
-                                  trimmed.toLowerCase().includes("i cannot") ||
-                                  trimmed.toLowerCase().includes("not available");
+        const isConfusedMessage =
+          trimmed.toLowerCase().includes("don't have") ||
+          trimmed.toLowerCase().includes("please provide") ||
+          trimmed.toLowerCase().includes("i cannot") ||
+          trimmed.toLowerCase().includes("not available");
 
         // Only overwrite if new message is better (longer and not confused)
         if (!existingMessage || (!isConfusedMessage && trimmed.length >= existingMessage.length)) {
@@ -184,33 +185,43 @@ export class ChannelGateway {
         }
       }
     };
-    agentDaemon.on('assistant_message', onAssistantMessage);
-    this.daemonListeners.push({ event: 'assistant_message', handler: onAssistantMessage });
+    agentDaemon.on("assistant_message", onAssistantMessage);
+    this.daemonListeners.push({ event: "assistant_message", handler: onAssistantMessage });
 
-    const onTaskQueued = (data: { taskId: string; message?: string; position?: number; reason?: string }) => {
-      const explicit = typeof data.message === 'string' ? data.message.trim() : '';
-      const position = typeof data.position === 'number' && data.position > 0 ? data.position : undefined;
+    const onTaskQueued = (data: {
+      taskId: string;
+      message?: string;
+      position?: number;
+      reason?: string;
+    }) => {
+      const explicit = typeof data.message === "string" ? data.message.trim() : "";
+      const position =
+        typeof data.position === "number" && data.position > 0 ? data.position : undefined;
       const fallback = position
         ? `⏳ Queued (position ${position}). I’ll start as soon as a slot is free.`
-        : '⏳ Queued. I’ll start as soon as a slot is free.';
+        : "⏳ Queued. I’ll start as soon as a slot is free.";
       this.router.sendTaskUpdate(data.taskId, explicit || fallback);
     };
-    agentDaemon.on('task_queued', onTaskQueued);
-    this.daemonListeners.push({ event: 'task_queued', handler: onTaskQueued });
+    agentDaemon.on("task_queued", onTaskQueued);
+    this.daemonListeners.push({ event: "task_queued", handler: onTaskQueued });
 
     const onTaskDequeued = (data: { taskId: string; message?: string }) => {
-      const explicit = typeof data.message === 'string' ? data.message.trim() : '';
-      this.router.sendTaskUpdate(data.taskId, explicit || '▶️ Starting now.');
+      const explicit = typeof data.message === "string" ? data.message.trim() : "";
+      this.router.sendTaskUpdate(data.taskId, explicit || "▶️ Starting now.");
     };
-    agentDaemon.on('task_dequeued', onTaskDequeued);
-    this.daemonListeners.push({ event: 'task_dequeued', handler: onTaskDequeued });
+    agentDaemon.on("task_dequeued", onTaskDequeued);
+    this.daemonListeners.push({ event: "task_dequeued", handler: onTaskDequeued });
 
     // Listen for task completion
-    const onTaskCompleted = (data: { taskId: string; resultSummary?: string; message?: string }) => {
+    const onTaskCompleted = (data: {
+      taskId: string;
+      resultSummary?: string;
+      message?: string;
+    }) => {
       // Prefer an explicit result summary if provided by the daemon.
       // Otherwise, fall back to the best streamed assistant message.
       const messageResult =
-        typeof data.message === 'string' && data.message.trim() !== 'Task completed successfully'
+        typeof data.message === "string" && data.message.trim() !== "Task completed successfully"
           ? data.message
           : undefined;
       const result = (data.resultSummary || lastMessages.get(data.taskId) || messageResult)?.trim();
@@ -218,54 +229,59 @@ export class ChannelGateway {
       lastMessages.delete(data.taskId);
       followUpMessagesSent.delete(data.taskId);
     };
-    agentDaemon.on('task_completed', onTaskCompleted);
-    this.daemonListeners.push({ event: 'task_completed', handler: onTaskCompleted });
+    agentDaemon.on("task_completed", onTaskCompleted);
+    this.daemonListeners.push({ event: "task_completed", handler: onTaskCompleted });
 
     // Listen for task cancellation
     const onTaskCancelled = (data: { taskId: string; message?: string }) => {
-      const reason = typeof data.message === 'string' ? data.message.trim() : undefined;
+      const reason = typeof data.message === "string" ? data.message.trim() : undefined;
       this.router.handleTaskCancelled(data.taskId, reason);
       lastMessages.delete(data.taskId);
       followUpMessagesSent.delete(data.taskId);
     };
-    agentDaemon.on('task_cancelled', onTaskCancelled);
-    this.daemonListeners.push({ event: 'task_cancelled', handler: onTaskCancelled });
+    agentDaemon.on("task_cancelled", onTaskCancelled);
+    this.daemonListeners.push({ event: "task_cancelled", handler: onTaskCancelled });
 
     // Listen for task errors
     // Note: daemon emits { taskId, error } or { taskId, message }
     const onError = (data: { taskId: string; error?: string; message?: string }) => {
-      const errorMsg = data.error || data.message || 'Unknown error';
+      const errorMsg = data.error || data.message || "Unknown error";
       this.router.handleTaskFailure(data.taskId, errorMsg);
       lastMessages.delete(data.taskId);
       followUpMessagesSent.delete(data.taskId);
     };
-    agentDaemon.on('error', onError);
-    this.daemonListeners.push({ event: 'error', handler: onError });
+    agentDaemon.on("error", onError);
+    this.daemonListeners.push({ event: "error", handler: onError });
 
     // Listen for tool errors (individual tool execution failures)
     const onToolError = (data: { taskId: string; tool?: string; error?: string }) => {
-      const toolName = data.tool || 'Unknown tool';
-      const errorMsg = data.error || 'Unknown error';
+      const toolName = data.tool || "Unknown tool";
+      const errorMsg = data.error || "Unknown error";
       const normalizedTool = String(toolName).toLowerCase();
-      const isCanvasTool = normalizedTool.startsWith('canvas_');
+      const isCanvasTool = normalizedTool.startsWith("canvas_");
       const noisyCanvasError =
         isCanvasTool &&
         /content parameter is required|no non-placeholder HTML|placeholder|session_id|required session|no active canvas|session .*not found|canvas session|could not locate|not available in current context|not available|tool unavailable|temporarily unavailable|tool disabled/i.test(
-          errorMsg
+          errorMsg,
         );
       if (noisyCanvasError) {
-        console.log(`[ChannelGateway] Suppressed non-user-facing canvas tool error for task ${data.taskId}`);
+        console.log(
+          `[ChannelGateway] Suppressed non-user-facing canvas tool error for task ${data.taskId}`,
+        );
         return;
       }
-      const message = getChannelMessage('toolError', this.getMessageContext(), { tool: toolName, error: errorMsg });
+      const message = getChannelMessage("toolError", this.getMessageContext(), {
+        tool: toolName,
+        error: errorMsg,
+      });
       this.router.sendTaskUpdate(data.taskId, message);
     };
-    agentDaemon.on('tool_error', onToolError);
-    this.daemonListeners.push({ event: 'tool_error', handler: onToolError });
+    agentDaemon.on("tool_error", onToolError);
+    this.daemonListeners.push({ event: "tool_error", handler: onToolError });
 
     // Listen for follow-up message completion
     const onFollowUpCompleted = async (data: { taskId: string }) => {
-      const followUpText = (followUpLatestAssistantText.get(data.taskId) || '').trim();
+      const followUpText = (followUpLatestAssistantText.get(data.taskId) || "").trim();
       const sentAnyAssistant = followUpMessagesSent.get(data.taskId) === true;
 
       // Ensure any debounced buffers are flushed and Telegram draft streams are finalized
@@ -277,7 +293,7 @@ export class ChannelGateway {
 
       // If no assistant messages were sent during the follow-up, send a confirmation
       if (!sentAnyAssistant) {
-        const message = getChannelMessage('followUpProcessed', this.getMessageContext());
+        const message = getChannelMessage("followUpProcessed", this.getMessageContext());
         this.router.sendTaskUpdate(data.taskId, message);
       }
       followUpMessagesSent.delete(data.taskId);
@@ -286,14 +302,16 @@ export class ChannelGateway {
       // Send any artifacts (images, screenshots) created during the follow-up
       await this.router.sendArtifacts(data.taskId);
     };
-    agentDaemon.on('follow_up_completed', onFollowUpCompleted);
-    this.daemonListeners.push({ event: 'follow_up_completed', handler: onFollowUpCompleted });
+    agentDaemon.on("follow_up_completed", onFollowUpCompleted);
+    this.daemonListeners.push({ event: "follow_up_completed", handler: onFollowUpCompleted });
 
     // Listen for follow-up failures
     const onFollowUpFailed = async (data: { taskId: string; error?: string }) => {
-      const errorMsg = data.error || 'Unknown error';
-      const message = getChannelMessage('followUpFailed', this.getMessageContext(), { error: errorMsg });
-      const followUpText = (followUpLatestAssistantText.get(data.taskId) || '').trim();
+      const errorMsg = data.error || "Unknown error";
+      const message = getChannelMessage("followUpFailed", this.getMessageContext(), {
+        error: errorMsg,
+      });
+      const followUpText = (followUpLatestAssistantText.get(data.taskId) || "").trim();
       const sentAnyAssistant = followUpMessagesSent.get(data.taskId) === true;
 
       if (sentAnyAssistant && followUpText) {
@@ -309,14 +327,14 @@ export class ChannelGateway {
       followUpMessagesSent.delete(data.taskId);
       followUpLatestAssistantText.delete(data.taskId);
     };
-    agentDaemon.on('follow_up_failed', onFollowUpFailed);
-    this.daemonListeners.push({ event: 'follow_up_failed', handler: onFollowUpFailed });
+    agentDaemon.on("follow_up_failed", onFollowUpFailed);
+    this.daemonListeners.push({ event: "follow_up_failed", handler: onFollowUpFailed });
 
     // Listen for task pauses (usually when the assistant asks a question).
     // This is important for Telegram draft streaming: without a task_completed event,
     // the draft can remain with the typing cursor and the final question may not be persisted.
     const onTaskPaused = async (data: { taskId: string; message?: string; reason?: string }) => {
-      const explicit = typeof data.message === 'string' ? data.message.trim() : '';
+      const explicit = typeof data.message === "string" ? data.message.trim() : "";
       try {
         await this.router.flushStreamingUpdateForTask(data.taskId);
         if (explicit) {
@@ -326,8 +344,8 @@ export class ChannelGateway {
         // Best-effort only.
       }
     };
-    agentDaemon.on('task_paused', onTaskPaused);
-    this.daemonListeners.push({ event: 'task_paused', handler: onTaskPaused });
+    agentDaemon.on("task_paused", onTaskPaused);
+    this.daemonListeners.push({ event: "task_paused", handler: onTaskPaused });
 
     // Listen for approval requests - forward to Discord/Telegram
     const onApprovalRequested = (data: { taskId: string; approval: any }) => {
@@ -336,8 +354,8 @@ export class ChannelGateway {
       }
       this.router.sendApprovalRequest(data.taskId, data.approval);
     };
-    agentDaemon.on('approval_requested', onApprovalRequested);
-    this.daemonListeners.push({ event: 'approval_requested', handler: onApprovalRequested });
+    agentDaemon.on("approval_requested", onApprovalRequested);
+    this.daemonListeners.push({ event: "approval_requested", handler: onApprovalRequested });
   }
 
   /**
@@ -361,7 +379,7 @@ export class ChannelGateway {
     this.startPendingCleanup();
 
     this.initialized = true;
-    console.log('Channel Gateway initialized');
+    console.log("Channel Gateway initialized");
   }
 
   /**
@@ -386,7 +404,7 @@ export class ChannelGateway {
     await this.router.disconnectAll();
     this.stopPendingCleanup();
     this.initialized = false;
-    console.log('Channel Gateway shutdown');
+    console.log("Channel Gateway shutdown");
   }
 
   private startPendingCleanup(): void {
@@ -394,9 +412,12 @@ export class ChannelGateway {
     // Run once at startup to clear any stale entries.
     this.cleanupPendingUsers();
     // Then run every 10 minutes.
-    this.pendingCleanupInterval = setInterval(() => {
-      this.cleanupPendingUsers();
-    }, 10 * 60 * 1000);
+    this.pendingCleanupInterval = setInterval(
+      () => {
+        this.cleanupPendingUsers();
+      },
+      10 * 60 * 1000,
+    );
   }
 
   private stopPendingCleanup(): void {
@@ -419,7 +440,7 @@ export class ChannelGateway {
   private emitUsersUpdated(channel: Channel): void {
     const mainWindow = this.router.getMainWindow();
     if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('gateway:users-updated', {
+      mainWindow.webContents.send("gateway:users-updated", {
         channelId: channel.id,
         channelType: channel.type,
       });
@@ -434,17 +455,17 @@ export class ChannelGateway {
   async addTelegramChannel(
     name: string,
     botToken: string,
-    securityMode: 'open' | 'allowlist' | 'pairing' = 'pairing'
+    securityMode: "open" | "allowlist" | "pairing" = "pairing",
   ): Promise<Channel> {
     // Check if Telegram channel already exists
-    const existing = this.channelRepo.findByType('telegram');
+    const existing = this.channelRepo.findByType("telegram");
     if (existing) {
-      throw new Error('Telegram channel already configured. Update or remove it first.');
+      throw new Error("Telegram channel already configured. Update or remove it first.");
     }
 
     // Create channel record
     const channel = this.channelRepo.create({
-      type: 'telegram',
+      type: "telegram",
       name,
       enabled: false, // Don't enable until tested
       config: { botToken },
@@ -454,7 +475,7 @@ export class ChannelGateway {
         maxPairingAttempts: 5,
         rateLimitPerMinute: 30,
       },
-      status: 'disconnected',
+      status: "disconnected",
     });
 
     return channel;
@@ -468,17 +489,17 @@ export class ChannelGateway {
     botToken: string,
     applicationId: string,
     guildIds?: string[],
-    securityMode: 'open' | 'allowlist' | 'pairing' = 'pairing'
+    securityMode: "open" | "allowlist" | "pairing" = "pairing",
   ): Promise<Channel> {
     // Check if Discord channel already exists
-    const existing = this.channelRepo.findByType('discord');
+    const existing = this.channelRepo.findByType("discord");
     if (existing) {
-      throw new Error('Discord channel already configured. Update or remove it first.');
+      throw new Error("Discord channel already configured. Update or remove it first.");
     }
 
     // Create channel record
     const channel = this.channelRepo.create({
-      type: 'discord',
+      type: "discord",
       name,
       enabled: false, // Don't enable until tested
       config: { botToken, applicationId, guildIds },
@@ -488,7 +509,7 @@ export class ChannelGateway {
         maxPairingAttempts: 5,
         rateLimitPerMinute: 30,
       },
-      status: 'disconnected',
+      status: "disconnected",
     });
 
     return channel;
@@ -502,17 +523,17 @@ export class ChannelGateway {
     botToken: string,
     appToken: string,
     signingSecret?: string,
-    securityMode: 'open' | 'allowlist' | 'pairing' = 'pairing'
+    securityMode: "open" | "allowlist" | "pairing" = "pairing",
   ): Promise<Channel> {
     // Check if Slack channel already exists
-    const existing = this.channelRepo.findByType('slack');
+    const existing = this.channelRepo.findByType("slack");
     if (existing) {
-      throw new Error('Slack channel already configured. Update or remove it first.');
+      throw new Error("Slack channel already configured. Update or remove it first.");
     }
 
     // Create channel record
     const channel = this.channelRepo.create({
-      type: 'slack',
+      type: "slack",
       name,
       enabled: false, // Don't enable until tested
       config: { botToken, appToken, signingSecret },
@@ -522,7 +543,7 @@ export class ChannelGateway {
         maxPairingAttempts: 5,
         rateLimitPerMinute: 30,
       },
-      status: 'disconnected',
+      status: "disconnected",
     });
 
     return channel;
@@ -534,9 +555,9 @@ export class ChannelGateway {
   async addWhatsAppChannel(
     name: string,
     allowedNumbers?: string[],
-    securityMode: 'open' | 'allowlist' | 'pairing' = 'pairing',
+    securityMode: "open" | "allowlist" | "pairing" = "pairing",
     selfChatMode: boolean = true,
-    responsePrefix: string = '🤖',
+    responsePrefix: string = "🤖",
     opts?: {
       ambientMode?: boolean;
       silentUnauthorized?: boolean;
@@ -544,13 +565,13 @@ export class ChannelGateway {
       trustedGroupMemoryOptIn?: boolean;
       sendReadReceipts?: boolean;
       deduplicationEnabled?: boolean;
-      groupRoutingMode?: 'all' | 'mentionsOnly' | 'mentionsOrCommands' | 'commandsOnly';
-    }
+      groupRoutingMode?: "all" | "mentionsOnly" | "mentionsOrCommands" | "commandsOnly";
+    },
   ): Promise<Channel> {
     // Check if WhatsApp channel already exists
-    const existing = this.channelRepo.findByType('whatsapp');
+    const existing = this.channelRepo.findByType("whatsapp");
     if (existing) {
-      throw new Error('WhatsApp channel already configured. Update or remove it first.');
+      throw new Error("WhatsApp channel already configured. Update or remove it first.");
     }
 
     // Always clear any stale auth so a new QR is required for a new number.
@@ -558,20 +579,28 @@ export class ChannelGateway {
 
     // Create channel record
     const channel = this.channelRepo.create({
-      type: 'whatsapp',
+      type: "whatsapp",
       name,
       enabled: false, // Don't enable until QR code is scanned
       config: {
         allowedNumbers,
         selfChatMode,
         responsePrefix,
-        ...(opts?.sendReadReceipts !== undefined ? { sendReadReceipts: opts.sendReadReceipts } : {}),
-        ...(opts?.deduplicationEnabled !== undefined ? { deduplicationEnabled: opts.deduplicationEnabled } : {}),
+        ...(opts?.sendReadReceipts !== undefined
+          ? { sendReadReceipts: opts.sendReadReceipts }
+          : {}),
+        ...(opts?.deduplicationEnabled !== undefined
+          ? { deduplicationEnabled: opts.deduplicationEnabled }
+          : {}),
         ...(opts?.groupRoutingMode ? { groupRoutingMode: opts.groupRoutingMode } : {}),
-        ...(opts?.trustedGroupMemoryOptIn !== undefined ? { trustedGroupMemoryOptIn: opts.trustedGroupMemoryOptIn } : {}),
+        ...(opts?.trustedGroupMemoryOptIn !== undefined
+          ? { trustedGroupMemoryOptIn: opts.trustedGroupMemoryOptIn }
+          : {}),
         ...(opts?.ambientMode ? { ambientMode: true } : {}),
         ...(opts?.silentUnauthorized ? { silentUnauthorized: true } : {}),
-        ...(opts?.ingestNonSelfChatsInSelfChatMode ? { ingestNonSelfChatsInSelfChatMode: true } : {}),
+        ...(opts?.ingestNonSelfChatsInSelfChatMode
+          ? { ingestNonSelfChatsInSelfChatMode: true }
+          : {}),
       },
       securityConfig: {
         mode: securityMode,
@@ -580,7 +609,7 @@ export class ChannelGateway {
         maxPairingAttempts: 5,
         rateLimitPerMinute: 30,
       },
-      status: 'disconnected',
+      status: "disconnected",
     });
 
     return channel;
@@ -594,24 +623,24 @@ export class ChannelGateway {
     cliPath?: string,
     dbPath?: string,
     allowedContacts?: string[],
-    securityMode: 'open' | 'allowlist' | 'pairing' = 'pairing',
-    dmPolicy: 'open' | 'allowlist' | 'pairing' | 'disabled' = 'pairing',
-    groupPolicy: 'open' | 'allowlist' | 'disabled' = 'allowlist',
+    securityMode: "open" | "allowlist" | "pairing" = "pairing",
+    dmPolicy: "open" | "allowlist" | "pairing" | "disabled" = "pairing",
+    groupPolicy: "open" | "allowlist" | "disabled" = "allowlist",
     opts?: {
       ambientMode?: boolean;
       silentUnauthorized?: boolean;
       captureSelfMessages?: boolean;
-    }
+    },
   ): Promise<Channel> {
     // Check if iMessage channel already exists
-    const existing = this.channelRepo.findByType('imessage');
+    const existing = this.channelRepo.findByType("imessage");
     if (existing) {
-      throw new Error('iMessage channel already configured. Update or remove it first.');
+      throw new Error("iMessage channel already configured. Update or remove it first.");
     }
 
     // Create channel record
     const channel = this.channelRepo.create({
-      type: 'imessage',
+      type: "imessage",
       name,
       enabled: false, // Don't enable until connected
       config: {
@@ -631,7 +660,7 @@ export class ChannelGateway {
         maxPairingAttempts: 5,
         rateLimitPerMinute: 30,
       },
-      status: 'disconnected',
+      status: "disconnected",
     });
 
     return channel;
@@ -644,23 +673,23 @@ export class ChannelGateway {
     name: string,
     phoneNumber: string,
     dataDir?: string,
-    securityMode: 'open' | 'allowlist' | 'pairing' = 'pairing',
-    mode: 'native' | 'daemon' = 'native',
-    trustMode: 'tofu' | 'always' | 'manual' = 'tofu',
-    dmPolicy: 'open' | 'allowlist' | 'pairing' | 'disabled' = 'pairing',
-    groupPolicy: 'open' | 'allowlist' | 'disabled' = 'allowlist',
+    securityMode: "open" | "allowlist" | "pairing" = "pairing",
+    mode: "native" | "daemon" = "native",
+    trustMode: "tofu" | "always" | "manual" = "tofu",
+    dmPolicy: "open" | "allowlist" | "pairing" | "disabled" = "pairing",
+    groupPolicy: "open" | "allowlist" | "disabled" = "allowlist",
     sendReadReceipts: boolean = true,
-    sendTypingIndicators: boolean = true
+    sendTypingIndicators: boolean = true,
   ): Promise<Channel> {
     // Check if Signal channel already exists
-    const existing = this.channelRepo.findByType('signal');
+    const existing = this.channelRepo.findByType("signal");
     if (existing) {
-      throw new Error('Signal channel already configured. Update or remove it first.');
+      throw new Error("Signal channel already configured. Update or remove it first.");
     }
 
     // Create channel record
     const channel = this.channelRepo.create({
-      type: 'signal',
+      type: "signal",
       name,
       enabled: false, // Don't enable until connected
       config: {
@@ -680,7 +709,7 @@ export class ChannelGateway {
         maxPairingAttempts: 5,
         rateLimitPerMinute: 30,
       },
-      status: 'disconnected',
+      status: "disconnected",
     });
 
     return channel;
@@ -694,17 +723,17 @@ export class ChannelGateway {
     serverUrl: string,
     token: string,
     teamId?: string,
-    securityMode: 'open' | 'allowlist' | 'pairing' = 'pairing'
+    securityMode: "open" | "allowlist" | "pairing" = "pairing",
   ): Promise<Channel> {
     // Check if Mattermost channel already exists
-    const existing = this.channelRepo.findByType('mattermost');
+    const existing = this.channelRepo.findByType("mattermost");
     if (existing) {
-      throw new Error('Mattermost channel already configured. Update or remove it first.');
+      throw new Error("Mattermost channel already configured. Update or remove it first.");
     }
 
     // Create channel record
     const channel = this.channelRepo.create({
-      type: 'mattermost',
+      type: "mattermost",
       name,
       enabled: false, // Don't enable until connected
       config: {
@@ -719,7 +748,7 @@ export class ChannelGateway {
         maxPairingAttempts: 5,
         rateLimitPerMinute: 30,
       },
-      status: 'disconnected',
+      status: "disconnected",
     });
 
     return channel;
@@ -735,17 +764,17 @@ export class ChannelGateway {
     accessToken: string,
     deviceId?: string,
     roomIds?: string[],
-    securityMode: 'open' | 'allowlist' | 'pairing' = 'pairing'
+    securityMode: "open" | "allowlist" | "pairing" = "pairing",
   ): Promise<Channel> {
     // Check if Matrix channel already exists
-    const existing = this.channelRepo.findByType('matrix');
+    const existing = this.channelRepo.findByType("matrix");
     if (existing) {
-      throw new Error('Matrix channel already configured. Update or remove it first.');
+      throw new Error("Matrix channel already configured. Update or remove it first.");
     }
 
     // Create channel record
     const channel = this.channelRepo.create({
-      type: 'matrix',
+      type: "matrix",
       name,
       enabled: false, // Don't enable until connected
       config: {
@@ -762,7 +791,7 @@ export class ChannelGateway {
         maxPairingAttempts: 5,
         rateLimitPerMinute: 30,
       },
-      status: 'disconnected',
+      status: "disconnected",
     });
 
     return channel;
@@ -777,17 +806,17 @@ export class ChannelGateway {
     oauthToken: string,
     channels: string[],
     allowWhispers: boolean = false,
-    securityMode: 'open' | 'allowlist' | 'pairing' = 'pairing'
+    securityMode: "open" | "allowlist" | "pairing" = "pairing",
   ): Promise<Channel> {
     // Check if Twitch channel already exists
-    const existing = this.channelRepo.findByType('twitch');
+    const existing = this.channelRepo.findByType("twitch");
     if (existing) {
-      throw new Error('Twitch channel already configured. Update or remove it first.');
+      throw new Error("Twitch channel already configured. Update or remove it first.");
     }
 
     // Create channel record
     const channel = this.channelRepo.create({
-      type: 'twitch',
+      type: "twitch",
       name,
       enabled: false, // Don't enable until connected
       config: {
@@ -803,7 +832,7 @@ export class ChannelGateway {
         maxPairingAttempts: 5,
         rateLimitPerMinute: 30,
       },
-      status: 'disconnected',
+      status: "disconnected",
     });
 
     return channel;
@@ -817,17 +846,17 @@ export class ChannelGateway {
     channelAccessToken: string,
     channelSecret: string,
     webhookPort: number = 3100,
-    securityMode: 'open' | 'allowlist' | 'pairing' = 'pairing'
+    securityMode: "open" | "allowlist" | "pairing" = "pairing",
   ): Promise<Channel> {
     // Check if LINE channel already exists
-    const existing = this.channelRepo.findByType('line');
+    const existing = this.channelRepo.findByType("line");
     if (existing) {
-      throw new Error('LINE channel already configured. Update or remove it first.');
+      throw new Error("LINE channel already configured. Update or remove it first.");
     }
 
     // Create channel record
     const channel = this.channelRepo.create({
-      type: 'line',
+      type: "line",
       name,
       enabled: false, // Don't enable until connected
       config: {
@@ -842,7 +871,7 @@ export class ChannelGateway {
         maxPairingAttempts: 5,
         rateLimitPerMinute: 30,
       },
-      status: 'disconnected',
+      status: "disconnected",
     });
 
     return channel;
@@ -857,22 +886,22 @@ export class ChannelGateway {
     password: string,
     webhookPort: number = 3101,
     allowedContacts?: string[],
-    securityMode: 'open' | 'allowlist' | 'pairing' = 'pairing',
+    securityMode: "open" | "allowlist" | "pairing" = "pairing",
     opts?: {
       ambientMode?: boolean;
       silentUnauthorized?: boolean;
       captureSelfMessages?: boolean;
-    }
+    },
   ): Promise<Channel> {
     // Check if BlueBubbles channel already exists
-    const existing = this.channelRepo.findByType('bluebubbles');
+    const existing = this.channelRepo.findByType("bluebubbles");
     if (existing) {
-      throw new Error('BlueBubbles channel already configured. Update or remove it first.');
+      throw new Error("BlueBubbles channel already configured. Update or remove it first.");
     }
 
     // Create channel record
     const channel = this.channelRepo.create({
-      type: 'bluebubbles',
+      type: "bluebubbles",
       name,
       enabled: false, // Don't enable until connected
       config: {
@@ -891,7 +920,7 @@ export class ChannelGateway {
         maxPairingAttempts: 5,
         rateLimitPerMinute: 30,
       },
-      status: 'disconnected',
+      status: "disconnected",
     });
 
     return channel;
@@ -909,9 +938,9 @@ export class ChannelGateway {
     displayName?: string,
     allowedSenders?: string[],
     subjectFilter?: string,
-    securityMode: 'open' | 'allowlist' | 'pairing' = 'pairing',
+    securityMode: "open" | "allowlist" | "pairing" = "pairing",
     options?: {
-      protocol?: 'imap-smtp' | 'loom';
+      protocol?: "imap-smtp" | "loom";
       imapPort?: number;
       smtpPort?: number;
       loomBaseUrl?: string;
@@ -919,29 +948,29 @@ export class ChannelGateway {
       loomIdentity?: string;
       loomMailboxFolder?: string;
       loomPollInterval?: number;
-    }
+    },
   ): Promise<Channel> {
     // Check if Email channel already exists
-    const existing = this.channelRepo.findByType('email');
+    const existing = this.channelRepo.findByType("email");
     if (existing) {
-      throw new Error('Email channel already configured. Update or remove it first.');
+      throw new Error("Email channel already configured. Update or remove it first.");
     }
 
-    const protocol = options?.protocol === 'loom' ? 'loom' : 'imap-smtp';
+    const protocol = options?.protocol === "loom" ? "loom" : "imap-smtp";
 
     const config =
-      protocol === 'loom'
+      protocol === "loom"
         ? {
-            protocol: 'loom',
+            protocol: "loom",
             loomBaseUrl: options?.loomBaseUrl,
             loomAccessToken: options?.loomAccessToken,
             loomIdentity: options?.loomIdentity,
-            loomMailboxFolder: options?.loomMailboxFolder ?? 'INBOX',
+            loomMailboxFolder: options?.loomMailboxFolder ?? "INBOX",
             loomPollInterval: options?.loomPollInterval ?? 30000,
             displayName,
           }
         : {
-            protocol: 'imap-smtp',
+            protocol: "imap-smtp",
             email,
             password,
             imapHost,
@@ -957,18 +986,18 @@ export class ChannelGateway {
 
     // Create channel record
     const channel = this.channelRepo.create({
-      type: 'email',
+      type: "email",
       name,
       enabled: false, // Don't enable until connected
       config,
       securityConfig: {
         mode: securityMode,
-        allowedUsers: protocol === 'loom' ? [] : allowedSenders || [],
+        allowedUsers: protocol === "loom" ? [] : allowedSenders || [],
         pairingCodeTTL: 300,
         maxPairingAttempts: 5,
         rateLimitPerMinute: 30,
       },
-      status: 'disconnected',
+      status: "disconnected",
     });
 
     return channel;
@@ -997,7 +1026,7 @@ export class ChannelGateway {
   async enableChannel(channelId: string): Promise<void> {
     const channel = this.channelRepo.findById(channelId);
     if (!channel) {
-      throw new Error('Channel not found');
+      throw new Error("Channel not found");
     }
 
     // Create and register adapter if not already done
@@ -1020,7 +1049,7 @@ export class ChannelGateway {
   async disableChannel(channelId: string): Promise<void> {
     const channel = this.channelRepo.findById(channelId);
     if (!channel) {
-      throw new Error('Channel not found');
+      throw new Error("Channel not found");
     }
 
     const adapter = this.router.getAdapter(channel.type as ChannelType);
@@ -1028,7 +1057,7 @@ export class ChannelGateway {
       await adapter.disconnect();
     }
 
-    this.channelRepo.update(channelId, { enabled: false, status: 'disconnected' });
+    this.channelRepo.update(channelId, { enabled: false, status: "disconnected" });
   }
 
   /**
@@ -1037,12 +1066,12 @@ export class ChannelGateway {
    */
   async enableWhatsAppWithQRForwarding(channelId: string): Promise<void> {
     const channel = this.channelRepo.findById(channelId);
-    if (!channel || channel.type !== 'whatsapp') {
-      throw new Error('WhatsApp channel not found');
+    if (!channel || channel.type !== "whatsapp") {
+      throw new Error("WhatsApp channel not found");
     }
 
     // Create and register adapter if not already done
-    let adapter = this.router.getAdapter('whatsapp') as WhatsAppAdapter | undefined;
+    let adapter = this.router.getAdapter("whatsapp") as WhatsAppAdapter | undefined;
     if (!adapter) {
       adapter = this.createAdapterForChannel(channel) as WhatsAppAdapter;
       this.router.registerAdapter(adapter);
@@ -1052,35 +1081,35 @@ export class ChannelGateway {
     const mainWindow = this.router.getMainWindow();
     if (mainWindow && !mainWindow.isDestroyed()) {
       adapter.onQrCode((qr: string) => {
-        console.log('WhatsApp QR code received, forwarding to renderer');
+        console.log("WhatsApp QR code received, forwarding to renderer");
         if (!mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('whatsapp:qr-code', qr);
+          mainWindow.webContents.send("whatsapp:qr-code", qr);
         }
       });
 
       adapter.onStatusChange((status, error) => {
         console.log(`WhatsApp status changed to: ${status}`);
         if (!mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('whatsapp:status', { status, error: error?.message });
-          if (status === 'connected') {
-            mainWindow.webContents.send('whatsapp:connected');
+          mainWindow.webContents.send("whatsapp:status", { status, error: error?.message });
+          if (status === "connected") {
+            mainWindow.webContents.send("whatsapp:connected");
             // Update channel status in database
             this.channelRepo.update(channelId, {
               enabled: true,
-              status: 'connected',
+              status: "connected",
               botUsername: adapter?.botUsername,
             });
-          } else if (status === 'error') {
-            this.channelRepo.update(channelId, { status: 'error' });
-          } else if (status === 'disconnected') {
-            this.channelRepo.update(channelId, { status: 'disconnected' });
+          } else if (status === "error") {
+            this.channelRepo.update(channelId, { status: "error" });
+          } else if (status === "disconnected") {
+            this.channelRepo.update(channelId, { status: "disconnected" });
           }
         }
       });
     }
 
     // Update channel state to connecting
-    this.channelRepo.update(channelId, { enabled: true, status: 'connecting' });
+    this.channelRepo.update(channelId, { enabled: true, status: "connecting" });
 
     // Connect (this will trigger QR code generation)
     await adapter.connect();
@@ -1090,12 +1119,12 @@ export class ChannelGateway {
    * Get WhatsApp channel info including QR code
    */
   async getWhatsAppInfo(): Promise<{ qrCode?: string; phoneNumber?: string; status?: string }> {
-    const channel = this.channelRepo.findByType('whatsapp');
+    const channel = this.channelRepo.findByType("whatsapp");
     if (!channel) {
       return {};
     }
 
-    const adapter = this.router.getAdapter('whatsapp') as WhatsAppAdapter | undefined;
+    const adapter = this.router.getAdapter("whatsapp") as WhatsAppAdapter | undefined;
     if (!adapter) {
       return { status: channel.status };
     }
@@ -1111,16 +1140,20 @@ export class ChannelGateway {
    * Logout from WhatsApp and clear credentials
    */
   async whatsAppLogout(): Promise<void> {
-    const adapter = this.router.getAdapter('whatsapp') as WhatsAppAdapter | undefined;
+    const adapter = this.router.getAdapter("whatsapp") as WhatsAppAdapter | undefined;
     if (adapter) {
       await adapter.logout();
     } else {
       this.clearWhatsAppAuthDir();
     }
 
-    const channel = this.channelRepo.findByType('whatsapp');
+    const channel = this.channelRepo.findByType("whatsapp");
     if (channel) {
-      this.channelRepo.update(channel.id, { enabled: false, status: 'disconnected', botUsername: undefined });
+      this.channelRepo.update(channel.id, {
+        enabled: false,
+        status: "disconnected",
+        botUsername: undefined,
+      });
     }
   }
 
@@ -1131,8 +1164,8 @@ export class ChannelGateway {
     const channel = this.channelRepo.findById(channelId);
     if (!channel) return;
 
-    if (channel.type === 'whatsapp') {
-      const adapter = this.router.getAdapter('whatsapp') as WhatsAppAdapter | undefined;
+    if (channel.type === "whatsapp") {
+      const adapter = this.router.getAdapter("whatsapp") as WhatsAppAdapter | undefined;
       if (adapter) {
         await adapter.logout();
       } else {
@@ -1156,10 +1189,12 @@ export class ChannelGateway {
   /**
    * Test a channel connection without enabling it
    */
-  async testChannel(channelId: string): Promise<{ success: boolean; error?: string; botUsername?: string }> {
+  async testChannel(
+    channelId: string,
+  ): Promise<{ success: boolean; error?: string; botUsername?: string }> {
     const channel = this.channelRepo.findById(channelId);
     if (!channel) {
-      return { success: false, error: 'Channel not found' };
+      return { success: false, error: "Channel not found" };
     }
 
     try {
@@ -1209,7 +1244,7 @@ export class ChannelGateway {
   generatePairingCode(channelId: string, userId?: string, displayName?: string): string {
     const channel = this.channelRepo.findById(channelId);
     if (!channel) {
-      throw new Error('Channel not found');
+      throw new Error("Channel not found");
     }
     return this.securityManager.generatePairingCode(channel, userId, displayName);
   }
@@ -1246,7 +1281,7 @@ export class ChannelGateway {
     channelType: ChannelType,
     chatId: string,
     text: string,
-    options?: { replyTo?: string; parseMode?: 'text' | 'markdown' | 'html' }
+    options?: { replyTo?: string; parseMode?: "text" | "markdown" | "html" },
   ): Promise<string> {
     return this.router.sendMessage(channelType, {
       chatId,
@@ -1262,17 +1297,17 @@ export class ChannelGateway {
   async sendMessageToSession(
     sessionId: string,
     text: string,
-    options?: { replyTo?: string; parseMode?: 'text' | 'markdown' | 'html' }
+    options?: { replyTo?: string; parseMode?: "text" | "markdown" | "html" },
   ): Promise<string | null> {
     const session = this.sessionManager.getSession(sessionId);
     if (!session) {
-      console.error('Session not found:', sessionId);
+      console.error("Session not found:", sessionId);
       return null;
     }
 
     const channel = this.channelRepo.findById(session.channelId);
     if (!channel) {
-      console.error('Channel not found:', session.channelId);
+      console.error("Channel not found:", session.channelId);
       return null;
     }
 
@@ -1323,7 +1358,7 @@ export class ChannelGateway {
     if (configured && configured.trim()) {
       return configured;
     }
-    return path.join(getUserDataDir(), 'whatsapp-auth');
+    return path.join(getUserDataDir(), "whatsapp-auth");
   }
 
   private clearWhatsAppAuthDir(channel?: Channel): void {
@@ -1333,7 +1368,7 @@ export class ChannelGateway {
         fs.rmSync(authDir, { recursive: true, force: true });
       }
     } catch (error) {
-      console.error('Failed to clear WhatsApp auth directory:', error);
+      console.error("Failed to clear WhatsApp auth directory:", error);
     }
   }
 
@@ -1358,14 +1393,14 @@ export class ChannelGateway {
    */
   private createAdapterForChannel(channel: Channel): ChannelAdapter {
     switch (channel.type) {
-      case 'telegram':
+      case "telegram":
         return createTelegramAdapter({
           enabled: channel.enabled,
           botToken: channel.config.botToken as string,
           webhookUrl: channel.config.webhookUrl as string | undefined,
         });
 
-      case 'discord':
+      case "discord":
         return createDiscordAdapter({
           enabled: channel.enabled,
           botToken: channel.config.botToken as string,
@@ -1373,7 +1408,7 @@ export class ChannelGateway {
           guildIds: channel.config.guildIds as string[] | undefined,
         });
 
-      case 'slack':
+      case "slack":
         return createSlackAdapter({
           enabled: channel.enabled,
           botToken: channel.config.botToken as string,
@@ -1381,47 +1416,62 @@ export class ChannelGateway {
           signingSecret: channel.config.signingSecret as string | undefined,
         });
 
-      case 'whatsapp':
+      case "whatsapp":
         return createWhatsAppAdapter({
           enabled: channel.enabled,
           allowedNumbers: channel.config.allowedNumbers as string[] | undefined,
           printQrToTerminal: true, // For debugging
-          selfChatMode: channel.config.selfChatMode as boolean | undefined ?? true,
+          selfChatMode: (channel.config.selfChatMode as boolean | undefined) ?? true,
           sendReadReceipts: channel.config.sendReadReceipts as boolean | undefined,
           deduplicationEnabled: channel.config.deduplicationEnabled as boolean | undefined,
-          groupRoutingMode: channel.config.groupRoutingMode as 'all' | 'mentionsOnly' | 'mentionsOrCommands' | 'commandsOnly' | undefined,
-          responsePrefix: channel.config.responsePrefix as string | undefined ?? '🤖',
+          groupRoutingMode: channel.config.groupRoutingMode as
+            | "all"
+            | "mentionsOnly"
+            | "mentionsOrCommands"
+            | "commandsOnly"
+            | undefined,
+          responsePrefix: (channel.config.responsePrefix as string | undefined) ?? "🤖",
         });
 
-      case 'imessage':
+      case "imessage":
         return createImessageAdapter({
           enabled: channel.enabled,
           cliPath: channel.config.cliPath as string | undefined,
           dbPath: channel.config.dbPath as string | undefined,
-          dmPolicy: channel.config.dmPolicy as 'open' | 'allowlist' | 'pairing' | 'disabled' | undefined,
-          groupPolicy: channel.config.groupPolicy as 'open' | 'allowlist' | 'disabled' | undefined,
+          dmPolicy: channel.config.dmPolicy as
+            | "open"
+            | "allowlist"
+            | "pairing"
+            | "disabled"
+            | undefined,
+          groupPolicy: channel.config.groupPolicy as "open" | "allowlist" | "disabled" | undefined,
           allowedContacts: channel.config.allowedContacts as string[] | undefined,
           responsePrefix: channel.config.responsePrefix as string | undefined,
         });
 
-      case 'signal':
+      case "signal":
         return createSignalAdapter({
           enabled: channel.enabled,
           phoneNumber: channel.config.phoneNumber as string,
           cliPath: channel.config.cliPath as string | undefined,
           dataDir: channel.config.dataDir as string | undefined,
-          mode: channel.config.mode as 'native' | 'daemon' | undefined,
+          mode: channel.config.mode as "native" | "daemon" | undefined,
           socketPath: channel.config.socketPath as string | undefined,
-          trustMode: channel.config.trustMode as 'tofu' | 'always' | 'manual' | undefined,
-          dmPolicy: channel.config.dmPolicy as 'open' | 'allowlist' | 'pairing' | 'disabled' | undefined,
-          groupPolicy: channel.config.groupPolicy as 'open' | 'allowlist' | 'disabled' | undefined,
+          trustMode: channel.config.trustMode as "tofu" | "always" | "manual" | undefined,
+          dmPolicy: channel.config.dmPolicy as
+            | "open"
+            | "allowlist"
+            | "pairing"
+            | "disabled"
+            | undefined,
+          groupPolicy: channel.config.groupPolicy as "open" | "allowlist" | "disabled" | undefined,
           allowedNumbers: channel.config.allowedNumbers as string[] | undefined,
           sendReadReceipts: channel.config.sendReadReceipts as boolean | undefined,
           sendTypingIndicators: channel.config.sendTypingIndicators as boolean | undefined,
           responsePrefix: channel.config.responsePrefix as string | undefined,
         });
 
-      case 'mattermost':
+      case "mattermost":
         return createMattermostAdapter({
           enabled: channel.enabled,
           serverUrl: channel.config.serverUrl as string,
@@ -1430,7 +1480,7 @@ export class ChannelGateway {
           responsePrefix: channel.config.responsePrefix as string | undefined,
         });
 
-      case 'matrix':
+      case "matrix":
         return createMatrixAdapter({
           enabled: channel.enabled,
           homeserver: channel.config.homeserver as string,
@@ -1443,7 +1493,7 @@ export class ChannelGateway {
           responsePrefix: channel.config.responsePrefix as string | undefined,
         });
 
-      case 'twitch':
+      case "twitch":
         return createTwitchAdapter({
           enabled: channel.enabled,
           username: channel.config.username as string,
@@ -1453,7 +1503,7 @@ export class ChannelGateway {
           responsePrefix: channel.config.responsePrefix as string | undefined,
         });
 
-      case 'line':
+      case "line":
         return createLineAdapter({
           enabled: channel.enabled,
           channelAccessToken: channel.config.channelAccessToken as string,
@@ -1463,7 +1513,7 @@ export class ChannelGateway {
           responsePrefix: channel.config.responsePrefix as string | undefined,
         });
 
-      case 'bluebubbles':
+      case "bluebubbles":
         return createBlueBubblesAdapter({
           enabled: channel.enabled,
           serverUrl: channel.config.serverUrl as string,
@@ -1475,13 +1525,12 @@ export class ChannelGateway {
           responsePrefix: channel.config.responsePrefix as string | undefined,
         });
 
-      case 'email':
-        const loomStatePath = channel.type === 'email'
-          ? this.getLoomStatePath(channel.id)
-          : undefined;
+      case "email":
+        const loomStatePath =
+          channel.type === "email" ? this.getLoomStatePath(channel.id) : undefined;
         return createEmailAdapter({
           enabled: channel.enabled,
-          protocol: channel.config.protocol as 'imap-smtp' | 'loom' | undefined,
+          protocol: channel.config.protocol as "imap-smtp" | "loom" | undefined,
           imapHost: channel.config.imapHost as string,
           imapPort: channel.config.imapPort as number | undefined,
           imapSecure: channel.config.imapSecure as boolean | undefined,
@@ -1511,35 +1560,35 @@ export class ChannelGateway {
   }
 
   private getLoomStatePath(channelId: string): string {
-    return path.join(getUserDataDir(), 'loom', `${channelId}.json`);
+    return path.join(getUserDataDir(), "loom", `${channelId}.json`);
   }
 }
 
 // Re-export types and components
-export * from './channels/types';
-export * from './router';
-export * from './session';
-export * from './security';
-export * from './channel-registry';
-export { TelegramAdapter, createTelegramAdapter } from './channels/telegram';
-export { DiscordAdapter, createDiscordAdapter } from './channels/discord';
-export { SlackAdapter, createSlackAdapter } from './channels/slack';
-export { WhatsAppAdapter, createWhatsAppAdapter } from './channels/whatsapp';
-export { ImessageAdapter, createImessageAdapter } from './channels/imessage';
-export { SignalAdapter, createSignalAdapter } from './channels/signal';
-export { SignalClient } from './channels/signal-client';
-export { MattermostAdapter, createMattermostAdapter } from './channels/mattermost';
-export { MattermostClient } from './channels/mattermost-client';
-export { MatrixAdapter, createMatrixAdapter } from './channels/matrix';
-export { MatrixClient } from './channels/matrix-client';
-export { TwitchAdapter, createTwitchAdapter } from './channels/twitch';
-export { TwitchClient } from './channels/twitch-client';
-export { LineAdapter, createLineAdapter } from './channels/line';
-export { LineClient } from './channels/line-client';
-export { BlueBubblesAdapter, createBlueBubblesAdapter } from './channels/bluebubbles';
-export { BlueBubblesClient } from './channels/bluebubbles-client';
-export { EmailAdapter, createEmailAdapter } from './channels/email';
-export { EmailClient } from './channels/email-client';
-export { LoomEmailClient } from './channels/loom-client';
-export { TunnelManager, getAvailableTunnelProviders, createAutoTunnel } from './tunnel';
-export type { TunnelProvider, TunnelStatus, TunnelConfig, TunnelInfo } from './tunnel';
+export * from "./channels/types";
+export * from "./router";
+export * from "./session";
+export * from "./security";
+export * from "./channel-registry";
+export { TelegramAdapter, createTelegramAdapter } from "./channels/telegram";
+export { DiscordAdapter, createDiscordAdapter } from "./channels/discord";
+export { SlackAdapter, createSlackAdapter } from "./channels/slack";
+export { WhatsAppAdapter, createWhatsAppAdapter } from "./channels/whatsapp";
+export { ImessageAdapter, createImessageAdapter } from "./channels/imessage";
+export { SignalAdapter, createSignalAdapter } from "./channels/signal";
+export { SignalClient } from "./channels/signal-client";
+export { MattermostAdapter, createMattermostAdapter } from "./channels/mattermost";
+export { MattermostClient } from "./channels/mattermost-client";
+export { MatrixAdapter, createMatrixAdapter } from "./channels/matrix";
+export { MatrixClient } from "./channels/matrix-client";
+export { TwitchAdapter, createTwitchAdapter } from "./channels/twitch";
+export { TwitchClient } from "./channels/twitch-client";
+export { LineAdapter, createLineAdapter } from "./channels/line";
+export { LineClient } from "./channels/line-client";
+export { BlueBubblesAdapter, createBlueBubblesAdapter } from "./channels/bluebubbles";
+export { BlueBubblesClient } from "./channels/bluebubbles-client";
+export { EmailAdapter, createEmailAdapter } from "./channels/email";
+export { EmailClient } from "./channels/email-client";
+export { LoomEmailClient } from "./channels/loom-client";
+export { TunnelManager, getAvailableTunnelProviders, createAutoTunnel } from "./tunnel";
+export type { TunnelProvider, TunnelStatus, TunnelConfig, TunnelInfo } from "./tunnel";

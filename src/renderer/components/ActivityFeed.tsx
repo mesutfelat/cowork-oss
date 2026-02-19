@@ -1,12 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from "react";
 import {
   ActivityData,
   ActivityType,
   ActivityActorType,
   ActivityEvent,
-} from '../../electron/preload';
-import { ActivityFeedItem } from './ActivityFeedItem';
-import { useAgentContext } from '../hooks/useAgentContext';
+} from "../../electron/preload";
+import { ActivityFeedItem } from "./ActivityFeedItem";
+import { useAgentContext } from "../hooks/useAgentContext";
 
 interface ActivityFeedProps {
   workspaceId: string;
@@ -17,21 +17,21 @@ interface ActivityFeedProps {
 }
 
 const ACTIVITY_TYPE_LABELS: Partial<Record<ActivityType, string>> = {
-  task_created: 'Task Created',
-  task_started: 'Task Started',
-  task_completed: 'Task Completed',
-  task_failed: 'Task Failed',
-  task_paused: 'Decision checkpoint',
-  task_resumed: 'Task resumed',
-  comment: 'Comment',
-  file_created: 'File Created',
-  file_modified: 'File Modified',
-  command_executed: 'Command',
-  tool_used: 'Tool Used',
-  mention: 'Mention',
-  agent_assigned: 'Agent Assigned',
-  error: 'Error',
-  info: 'Info',
+  task_created: "Task Created",
+  task_started: "Task Started",
+  task_completed: "Task Completed",
+  task_failed: "Task Failed",
+  task_paused: "Decision checkpoint",
+  task_resumed: "Task resumed",
+  comment: "Comment",
+  file_created: "File Created",
+  file_modified: "File Modified",
+  command_executed: "Command",
+  tool_used: "Tool Used",
+  mention: "Mention",
+  agent_assigned: "Agent Assigned",
+  error: "Error",
+  info: "Info",
 };
 
 export function ActivityFeed({
@@ -44,8 +44,8 @@ export function ActivityFeed({
   const [activities, setActivities] = useState<ActivityData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filterType, setFilterType] = useState<ActivityType | ''>('');
-  const [filterActor, setFilterActor] = useState<ActivityActorType | ''>('');
+  const [filterType, setFilterType] = useState<ActivityType | "">("");
+  const [filterActor, setFilterActor] = useState<ActivityActorType | "">("");
   const [showUnreadOnly, setShowUnreadOnly] = useState(false);
   const agentContext = useAgentContext();
 
@@ -77,8 +77,8 @@ export function ActivityFeed({
       setActivities(result);
       setError(null);
     } catch (err: any) {
-      setError(err.message || 'Failed to load activities');
-      console.error('Failed to load activities:', err);
+      setError(err.message || "Failed to load activities");
+      console.error("Failed to load activities:", err);
     } finally {
       setLoading(false);
     }
@@ -92,31 +92,29 @@ export function ActivityFeed({
   useEffect(() => {
     const unsubscribe = window.electronAPI.onActivityEvent((event: ActivityEvent) => {
       switch (event.type) {
-        case 'created':
+        case "created":
           if (event.activity && event.activity.workspaceId === workspaceId) {
             setActivities((prev) => [event.activity!, ...prev].slice(0, maxItems));
           }
           break;
-        case 'read':
+        case "read":
           setActivities((prev) =>
-            prev.map((a) => (a.id === event.id ? { ...a, isRead: true } : a))
+            prev.map((a) => (a.id === event.id ? { ...a, isRead: true } : a)),
           );
           break;
-        case 'all_read':
+        case "all_read":
           if (event.workspaceId === workspaceId) {
             setActivities((prev) => prev.map((a) => ({ ...a, isRead: true })));
           }
           break;
-        case 'pinned':
+        case "pinned":
           if (event.activity) {
             setActivities((prev) =>
-              prev.map((a) =>
-                a.id === event.activity!.id ? event.activity! : a
-              )
+              prev.map((a) => (a.id === event.activity!.id ? event.activity! : a)),
             );
           }
           break;
-        case 'deleted':
+        case "deleted":
           setActivities((prev) => prev.filter((a) => a.id !== event.id));
           break;
       }
@@ -129,7 +127,7 @@ export function ActivityFeed({
     try {
       await window.electronAPI.markActivityRead(id);
     } catch (err) {
-      console.error('Failed to mark activity as read:', err);
+      console.error("Failed to mark activity as read:", err);
     }
   };
 
@@ -137,7 +135,7 @@ export function ActivityFeed({
     try {
       await window.electronAPI.pinActivity(id);
     } catch (err) {
-      console.error('Failed to pin activity:', err);
+      console.error("Failed to pin activity:", err);
     }
   };
 
@@ -145,7 +143,7 @@ export function ActivityFeed({
     try {
       await window.electronAPI.deleteActivity(id);
     } catch (err) {
-      console.error('Failed to delete activity:', err);
+      console.error("Failed to delete activity:", err);
     }
   };
 
@@ -153,7 +151,7 @@ export function ActivityFeed({
     try {
       await window.electronAPI.markAllActivitiesRead(workspaceId);
     } catch (err) {
-      console.error('Failed to mark all as read:', err);
+      console.error("Failed to mark all as read:", err);
     }
   };
 
@@ -164,7 +162,7 @@ export function ActivityFeed({
   const regularActivities = activities.filter((a) => !a.isPinned);
 
   if (loading && activities.length === 0) {
-    return <div className="activity-loading">{agentContext.getUiCopy('activityLoading')}</div>;
+    return <div className="activity-loading">{agentContext.getUiCopy("activityLoading")}</div>;
   }
 
   return (
@@ -172,18 +170,13 @@ export function ActivityFeed({
       {showFilters && (
         <div className="activity-feed-header">
           <div className="activity-feed-title">
-            <h4>{agentContext.getUiCopy('activityTitle')}</h4>
-            {unreadCount > 0 && (
-              <span className="unread-badge">{unreadCount}</span>
-            )}
+            <h4>{agentContext.getUiCopy("activityTitle")}</h4>
+            {unreadCount > 0 && <span className="unread-badge">{unreadCount}</span>}
           </div>
           <div className="activity-feed-actions">
             {unreadCount > 0 && (
-              <button
-                className="btn-text"
-                onClick={handleMarkAllRead}
-              >
-                {agentContext.getUiCopy('activityMarkAllRead')}
+              <button className="btn-text" onClick={handleMarkAllRead}>
+                {agentContext.getUiCopy("activityMarkAllRead")}
               </button>
             )}
           </div>
@@ -194,9 +187,9 @@ export function ActivityFeed({
         <div className="activity-filters">
           <select
             value={filterType}
-            onChange={(e) => setFilterType(e.target.value as ActivityType | '')}
+            onChange={(e) => setFilterType(e.target.value as ActivityType | "")}
           >
-            <option value="">{agentContext.getUiCopy('activityAllTypes')}</option>
+            <option value="">{agentContext.getUiCopy("activityAllTypes")}</option>
             {Object.entries(ACTIVITY_TYPE_LABELS).map(([type, label]) => (
               <option key={type} value={type}>
                 {label}
@@ -206,12 +199,12 @@ export function ActivityFeed({
 
           <select
             value={filterActor}
-            onChange={(e) => setFilterActor(e.target.value as ActivityActorType | '')}
+            onChange={(e) => setFilterActor(e.target.value as ActivityActorType | "")}
           >
-            <option value="">{agentContext.getUiCopy('activityAllActors')}</option>
-            <option value="agent">{agentContext.getUiCopy('activityActorAgent')}</option>
-            <option value="user">{agentContext.getUiCopy('activityActorUser')}</option>
-            <option value="system">{agentContext.getUiCopy('activityActorSystem')}</option>
+            <option value="">{agentContext.getUiCopy("activityAllActors")}</option>
+            <option value="agent">{agentContext.getUiCopy("activityActorAgent")}</option>
+            <option value="user">{agentContext.getUiCopy("activityActorUser")}</option>
+            <option value="system">{agentContext.getUiCopy("activityActorSystem")}</option>
           </select>
 
           <label className="filter-checkbox">
@@ -220,7 +213,7 @@ export function ActivityFeed({
               checked={showUnreadOnly}
               onChange={(e) => setShowUnreadOnly(e.target.checked)}
             />
-            {agentContext.getUiCopy('activityUnreadOnly')}
+            {agentContext.getUiCopy("activityUnreadOnly")}
           </label>
         </div>
       )}
@@ -230,7 +223,7 @@ export function ActivityFeed({
       <div className="activity-list">
         {pinnedActivities.length > 0 && (
           <div className="activity-group">
-            <div className="activity-group-title">{agentContext.getUiCopy('activityPinned')}</div>
+            <div className="activity-group-title">{agentContext.getUiCopy("activityPinned")}</div>
             {pinnedActivities.map((activity) => (
               <ActivityFeedItem
                 key={activity.id}
@@ -247,7 +240,7 @@ export function ActivityFeed({
         {regularActivities.length > 0 ? (
           <div className="activity-group">
             {pinnedActivities.length > 0 && (
-              <div className="activity-group-title">{agentContext.getUiCopy('activityRecent')}</div>
+              <div className="activity-group-title">{agentContext.getUiCopy("activityRecent")}</div>
             )}
             {regularActivities.map((activity) => (
               <ActivityFeedItem
@@ -263,10 +256,8 @@ export function ActivityFeed({
         ) : (
           pinnedActivities.length === 0 && (
             <div className="activity-empty">
-              <p>{agentContext.getUiCopy('activityEmptyTitle')}</p>
-              <p className="activity-empty-hint">
-                {agentContext.getUiCopy('activityEmptyHint')}
-              </p>
+              <p>{agentContext.getUiCopy("activityEmptyTitle")}</p>
+              <p className="activity-empty-hint">{agentContext.getUiCopy("activityEmptyHint")}</p>
             </div>
           )
         )}

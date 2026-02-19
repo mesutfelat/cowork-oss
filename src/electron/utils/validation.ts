@@ -3,10 +3,10 @@
  * Provides type-safe validation to prevent malformed input attacks
  */
 
-import * as path from 'path';
-import { z } from 'zod';
-import { LLM_PROVIDER_TYPES, isTempWorkspaceId, PersonalityId } from '../../shared/types';
-import { assertSafeLoomMailboxFolder, isSecureOrLocalLoomUrl } from './loom';
+import * as path from "path";
+import { z } from "zod";
+import { LLM_PROVIDER_TYPES, isTempWorkspaceId, PersonalityId } from "../../shared/types";
+import { assertSafeLoomMailboxFolder, isSecureOrLocalLoomUrl } from "./loom";
 
 // Common validation patterns
 const MAX_STRING_LENGTH = 10000;
@@ -15,39 +15,39 @@ const MAX_TITLE_LENGTH = 500;
 const MAX_PROMPT_LENGTH = 500000; // ~125K tokens; fits within 200K-token model context
 const MAX_IMAGES_PER_MESSAGE = 5;
 const MAX_TOTAL_TASK_IMAGE_BYTES = 125 * 1024 * 1024;
-const LOOM_MAILBOX_FOLDER_ERROR = 'LOOM mailbox folder contains invalid characters';
+const LOOM_MAILBOX_FOLDER_ERROR = "LOOM mailbox folder contains invalid characters";
 
 const PersonalityIdSchema = z.preprocess(
-  (value) => (typeof value === 'string' ? value.trim() : value),
+  (value) => (typeof value === "string" ? value.trim() : value),
   z.enum([
-    'professional',
-    'friendly',
-    'concise',
-    'creative',
-    'technical',
-    'casual',
-    'custom',
-  ] as const satisfies readonly PersonalityId[])
+    "professional",
+    "friendly",
+    "concise",
+    "creative",
+    "technical",
+    "casual",
+    "custom",
+  ] as const satisfies readonly PersonalityId[]),
 );
 
 const OriginChannelSchema = z.preprocess(
-  (value) => (typeof value === 'string' ? value.trim().toLowerCase() : value),
+  (value) => (typeof value === "string" ? value.trim().toLowerCase() : value),
   z.enum([
-    'telegram',
-    'discord',
-    'slack',
-    'whatsapp',
-    'imessage',
-    'signal',
-    'mattermost',
-    'matrix',
-    'twitch',
-    'line',
-    'bluebubbles',
-    'email',
-    'teams',
-    'googlechat',
-  ] as const)
+    "telegram",
+    "discord",
+    "slack",
+    "whatsapp",
+    "imessage",
+    "signal",
+    "mattermost",
+    "matrix",
+    "twitch",
+    "line",
+    "bluebubbles",
+    "email",
+    "teams",
+    "googlechat",
+  ] as const),
 );
 
 // ============ Workspace Schemas ============
@@ -55,37 +55,41 @@ const OriginChannelSchema = z.preprocess(
 export const WorkspaceCreateSchema = z.object({
   name: z.string().min(1).max(MAX_TITLE_LENGTH),
   path: z.string().min(1).max(MAX_PATH_LENGTH),
-  permissions: z.object({
-    read: z.boolean().default(true),
-    write: z.boolean().default(true),
-    delete: z.boolean().default(false),
-    network: z.boolean().default(false),
-    shell: z.boolean().default(false),
-    // Broader filesystem access
-    unrestrictedFileAccess: z.boolean().default(false),
-    allowedPaths: z.array(z.string().max(MAX_PATH_LENGTH)).max(50).optional(),
-  }).optional(),
+  permissions: z
+    .object({
+      read: z.boolean().default(true),
+      write: z.boolean().default(true),
+      delete: z.boolean().default(false),
+      network: z.boolean().default(false),
+      shell: z.boolean().default(false),
+      // Broader filesystem access
+      unrestrictedFileAccess: z.boolean().default(false),
+      allowedPaths: z.array(z.string().max(MAX_PATH_LENGTH)).max(50).optional(),
+    })
+    .optional(),
 });
 
 // ============ Task Schemas ============
 
-const AgentConfigSchema = z.object({
-  providerType: z.enum(LLM_PROVIDER_TYPES).optional(),
-  modelKey: z.string().max(200).optional(),
-  personalityId: PersonalityIdSchema.optional(),
-  gatewayContext: z.enum(['private', 'group', 'public']).optional(),
-  toolRestrictions: z.array(z.string().min(1).max(200)).max(50).optional(),
-  originChannel: OriginChannelSchema.optional(),
-  maxTurns: z.number().int().min(1).max(100).optional(),
-  maxTokens: z.number().int().min(1).max(1_000_000).optional(),
-  retainMemory: z.boolean().optional(),
-  bypassQueue: z.boolean().optional(),
-  allowUserInput: z.boolean().optional(),
-  allowSharedContextMemory: z.boolean().optional(),
-  conversationMode: z.enum(['task', 'chat', 'hybrid']).optional(),
-  autonomousMode: z.boolean().optional(),
-  qualityPasses: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
-}).strict();
+const AgentConfigSchema = z
+  .object({
+    providerType: z.enum(LLM_PROVIDER_TYPES).optional(),
+    modelKey: z.string().max(200).optional(),
+    personalityId: PersonalityIdSchema.optional(),
+    gatewayContext: z.enum(["private", "group", "public"]).optional(),
+    toolRestrictions: z.array(z.string().min(1).max(200)).max(50).optional(),
+    originChannel: OriginChannelSchema.optional(),
+    maxTurns: z.number().int().min(1).max(100).optional(),
+    maxTokens: z.number().int().min(1).max(1_000_000).optional(),
+    retainMemory: z.boolean().optional(),
+    bypassQueue: z.boolean().optional(),
+    allowUserInput: z.boolean().optional(),
+    allowSharedContextMemory: z.boolean().optional(),
+    conversationMode: z.enum(["task", "chat", "hybrid"]).optional(),
+    autonomousMode: z.boolean().optional(),
+    qualityPasses: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
+  })
+  .strict();
 
 const isValidWorkspaceId = (workspaceId: string): boolean =>
   isTempWorkspaceId(workspaceId) || z.string().uuid().safeParse(workspaceId).success;
@@ -93,10 +97,9 @@ const isValidWorkspaceId = (workspaceId: string): boolean =>
 export const TaskCreateSchema = z.object({
   title: z.string().min(1).max(MAX_TITLE_LENGTH),
   prompt: z.string().min(1).max(MAX_PROMPT_LENGTH),
-  workspaceId: z.string().refine(
-    isValidWorkspaceId,
-    { message: 'Must be a valid UUID or temp workspace ID' }
-  ),
+  workspaceId: z
+    .string()
+    .refine(isValidWorkspaceId, { message: "Must be a valid UUID or temp workspace ID" }),
   budgetTokens: z.number().int().positive().optional(),
   budgetCost: z.number().positive().optional(),
   agentConfig: AgentConfigSchema.optional(),
@@ -107,88 +110,99 @@ export const TaskRenameSchema = z.object({
   title: z.string().min(1).max(MAX_TITLE_LENGTH),
 });
 
-const ImageAttachmentSchema = z.object({
-  data: z.string().trim().min(1).optional(),
-  filePath: z.string().trim().max(MAX_PATH_LENGTH).optional(),
-  mimeType: z.enum(['image/jpeg', 'image/png', 'image/gif', 'image/webp']),
-  filename: z.string().max(255).optional(),
-  sizeBytes: z.number().int().positive().max(25 * 1024 * 1024), // 25MB absolute max
-  tempFile: z.boolean().optional(),
-}).superRefine((data, ctx) => {
-  const hasData = typeof data.data === 'string' && data.data.trim().length > 0;
-  const hasFilePath = typeof data.filePath === 'string' && data.filePath.trim().length > 0;
-  if (hasData === hasFilePath) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['data'],
-      message: 'Image attachment must provide exactly one of "data" or "filePath".',
-    });
-    return;
-  }
-
-  if (hasFilePath) {
-    if (!path.isAbsolute(data.filePath)) {
+const ImageAttachmentSchema = z
+  .object({
+    data: z.string().trim().min(1).optional(),
+    filePath: z.string().trim().max(MAX_PATH_LENGTH).optional(),
+    mimeType: z.enum(["image/jpeg", "image/png", "image/gif", "image/webp"]),
+    filename: z.string().max(255).optional(),
+    sizeBytes: z
+      .number()
+      .int()
+      .positive()
+      .max(25 * 1024 * 1024), // 25MB absolute max
+    tempFile: z.boolean().optional(),
+  })
+  .superRefine((data, ctx) => {
+    const hasData = typeof data.data === "string" && data.data.trim().length > 0;
+    const hasFilePath = typeof data.filePath === "string" && data.filePath.trim().length > 0;
+    if (hasData === hasFilePath) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ['filePath'],
-        message: 'Image attachment file path must be an absolute path.',
+        path: ["data"],
+        message: 'Image attachment must provide exactly one of "data" or "filePath".',
       });
       return;
     }
 
-    const ext = path.extname(data.filePath).toLowerCase();
-    const supportedExtensions = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp']);
-    if (!supportedExtensions.has(ext)) {
+    if (hasFilePath) {
+      if (!path.isAbsolute(data.filePath)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["filePath"],
+          message: "Image attachment file path must be an absolute path.",
+        });
+        return;
+      }
+
+      const ext = path.extname(data.filePath).toLowerCase();
+      const supportedExtensions = new Set([".jpg", ".jpeg", ".png", ".gif", ".webp"]);
+      if (!supportedExtensions.has(ext)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["filePath"],
+          message: `Unsupported image extension "${ext}".`,
+        });
+      }
+    }
+  });
+
+export const TaskMessageSchema = z
+  .object({
+    taskId: z.string().uuid(),
+    message: z.string().min(1).max(MAX_PROMPT_LENGTH),
+    images: z.array(ImageAttachmentSchema).max(MAX_IMAGES_PER_MESSAGE).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.images || data.images.length === 0) {
+      return;
+    }
+
+    const totalImageBytes = data.images.reduce((sum, image) => {
+      const sizeBytes = Number(image.sizeBytes);
+      return Number.isFinite(sizeBytes) && sizeBytes > 0 ? sum + sizeBytes : sum;
+    }, 0);
+
+    if (totalImageBytes > MAX_TOTAL_TASK_IMAGE_BYTES) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ['filePath'],
-        message: `Unsupported image extension "${ext}".`,
+        path: ["images"],
+        message: `Total image payload exceeds ${MAX_TOTAL_TASK_IMAGE_BYTES} bytes`,
       });
     }
-  }
-});
-
-export const TaskMessageSchema = z.object({
-  taskId: z.string().uuid(),
-  message: z.string().min(1).max(MAX_PROMPT_LENGTH),
-  images: z.array(ImageAttachmentSchema).max(MAX_IMAGES_PER_MESSAGE).optional(),
-}).superRefine((data, ctx) => {
-  if (!data.images || data.images.length === 0) {
-    return;
-  }
-
-  const totalImageBytes = data.images.reduce((sum, image) => {
-    const sizeBytes = Number(image.sizeBytes);
-    return Number.isFinite(sizeBytes) && sizeBytes > 0 ? sum + sizeBytes : sum;
-  }, 0);
-
-  if (totalImageBytes > MAX_TOTAL_TASK_IMAGE_BYTES) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['images'],
-      message: `Total image payload exceeds ${MAX_TOTAL_TASK_IMAGE_BYTES} bytes`,
-    });
-  }
-});
+  });
 
 export const FileImportSchema = z.object({
-  workspaceId: z.string().refine(
-    isValidWorkspaceId,
-    { message: 'Must be a valid UUID or temp workspace ID' }
-  ),
+  workspaceId: z
+    .string()
+    .refine(isValidWorkspaceId, { message: "Must be a valid UUID or temp workspace ID" }),
   files: z.array(z.string().min(1).max(MAX_PATH_LENGTH)).min(1).max(20),
 });
 
 export const FileImportDataSchema = z.object({
-  workspaceId: z.string().refine(
-    isValidWorkspaceId,
-    { message: 'Must be a valid UUID or temp workspace ID' }
-  ),
-  files: z.array(z.object({
-    name: z.string().min(1).max(MAX_PATH_LENGTH),
-    data: z.string().min(1),
-    mimeType: z.string().max(200).optional(),
-  })).min(1).max(20),
+  workspaceId: z
+    .string()
+    .refine(isValidWorkspaceId, { message: "Must be a valid UUID or temp workspace ID" }),
+  files: z
+    .array(
+      z.object({
+        name: z.string().min(1).max(MAX_PATH_LENGTH),
+        data: z.string().min(1),
+        mimeType: z.string().max(200).optional(),
+      }),
+    )
+    .min(1)
+    .max(20),
 });
 
 // ============ Approval Schemas ============
@@ -202,72 +216,92 @@ export const ApprovalResponseSchema = z.object({
 
 export const LLMProviderTypeSchema = z.enum(LLM_PROVIDER_TYPES);
 
-export const AnthropicSettingsSchema = z.object({
-  apiKey: z.string().max(500).optional(),
-}).optional();
+export const AnthropicSettingsSchema = z
+  .object({
+    apiKey: z.string().max(500).optional(),
+  })
+  .optional();
 
-export const BedrockSettingsSchema = z.object({
-  region: z.string().max(100).optional(),
-  accessKeyId: z.string().max(500).optional(),
-  secretAccessKey: z.string().max(500).optional(),
-  sessionToken: z.string().max(2000).optional(),
-  profile: z.string().max(100).optional(),
-  useDefaultCredentials: z.boolean().optional(),
-  model: z.string().max(200).optional(),
-}).optional();
+export const BedrockSettingsSchema = z
+  .object({
+    region: z.string().max(100).optional(),
+    accessKeyId: z.string().max(500).optional(),
+    secretAccessKey: z.string().max(500).optional(),
+    sessionToken: z.string().max(2000).optional(),
+    profile: z.string().max(100).optional(),
+    useDefaultCredentials: z.boolean().optional(),
+    model: z.string().max(200).optional(),
+  })
+  .optional();
 
-export const OllamaSettingsSchema = z.object({
-  baseUrl: z.string().url().max(500).optional(),
-  model: z.string().max(200).optional(),
-  apiKey: z.string().max(500).optional(),
-}).optional();
+export const OllamaSettingsSchema = z
+  .object({
+    baseUrl: z.string().url().max(500).optional(),
+    model: z.string().max(200).optional(),
+    apiKey: z.string().max(500).optional(),
+  })
+  .optional();
 
-export const GeminiSettingsSchema = z.object({
-  apiKey: z.string().max(500).optional(),
-  model: z.string().max(200).optional(),
-}).optional();
+export const GeminiSettingsSchema = z
+  .object({
+    apiKey: z.string().max(500).optional(),
+    model: z.string().max(200).optional(),
+  })
+  .optional();
 
-export const OpenRouterSettingsSchema = z.object({
-  apiKey: z.string().max(500).optional(),
-  model: z.string().max(200).optional(),
-  baseUrl: z.string().max(500).optional(),
-}).optional();
+export const OpenRouterSettingsSchema = z
+  .object({
+    apiKey: z.string().max(500).optional(),
+    model: z.string().max(200).optional(),
+    baseUrl: z.string().max(500).optional(),
+  })
+  .optional();
 
-export const OpenAISettingsSchema = z.object({
-  apiKey: z.string().max(500).optional(),
-  model: z.string().max(200).optional(),
-  // OAuth tokens (alternative to API key)
-  accessToken: z.string().max(2000).optional(),
-  refreshToken: z.string().max(2000).optional(),
-  tokenExpiresAt: z.number().optional(),
-  authMethod: z.enum(['api_key', 'oauth']).optional(),
-}).optional();
+export const OpenAISettingsSchema = z
+  .object({
+    apiKey: z.string().max(500).optional(),
+    model: z.string().max(200).optional(),
+    // OAuth tokens (alternative to API key)
+    accessToken: z.string().max(2000).optional(),
+    refreshToken: z.string().max(2000).optional(),
+    tokenExpiresAt: z.number().optional(),
+    authMethod: z.enum(["api_key", "oauth"]).optional(),
+  })
+  .optional();
 
-export const AzureSettingsSchema = z.object({
-  apiKey: z.string().max(500).optional(),
-  endpoint: z.string().max(500).optional(),
-  deployment: z.string().max(200).optional(),
-  deployments: z.array(z.string().max(200)).max(50).optional(),
-  apiVersion: z.string().max(200).optional(),
-}).optional();
+export const AzureSettingsSchema = z
+  .object({
+    apiKey: z.string().max(500).optional(),
+    endpoint: z.string().max(500).optional(),
+    deployment: z.string().max(200).optional(),
+    deployments: z.array(z.string().max(200)).max(50).optional(),
+    apiVersion: z.string().max(200).optional(),
+  })
+  .optional();
 
-export const GroqSettingsSchema = z.object({
-  apiKey: z.string().max(500).optional(),
-  model: z.string().max(200).optional(),
-  baseUrl: z.string().max(500).optional(),
-}).optional();
+export const GroqSettingsSchema = z
+  .object({
+    apiKey: z.string().max(500).optional(),
+    model: z.string().max(200).optional(),
+    baseUrl: z.string().max(500).optional(),
+  })
+  .optional();
 
-export const XAISettingsSchema = z.object({
-  apiKey: z.string().max(500).optional(),
-  model: z.string().max(200).optional(),
-  baseUrl: z.string().max(500).optional(),
-}).optional();
+export const XAISettingsSchema = z
+  .object({
+    apiKey: z.string().max(500).optional(),
+    model: z.string().max(200).optional(),
+    baseUrl: z.string().max(500).optional(),
+  })
+  .optional();
 
-export const KimiSettingsSchema = z.object({
-  apiKey: z.string().max(500).optional(),
-  model: z.string().max(200).optional(),
-  baseUrl: z.string().max(500).optional(),
-}).optional();
+export const KimiSettingsSchema = z
+  .object({
+    apiKey: z.string().max(500).optional(),
+    model: z.string().max(200).optional(),
+    baseUrl: z.string().max(500).optional(),
+  })
+  .optional();
 
 export const CustomProviderConfigSchema = z.object({
   apiKey: z.string().max(500).optional(),
@@ -295,31 +329,39 @@ export const LLMSettingsSchema = z.object({
 
 // ============ Search Settings Schemas ============
 
-export const SearchProviderTypeSchema = z.enum(['tavily', 'brave', 'serpapi', 'google']).nullable();
+export const SearchProviderTypeSchema = z.enum(["tavily", "brave", "serpapi", "google"]).nullable();
 
 export const SearchSettingsSchema = z.object({
   primaryProvider: SearchProviderTypeSchema,
   fallbackProvider: SearchProviderTypeSchema,
-  tavily: z.object({
-    apiKey: z.string().max(500).optional(),
-  }).optional(),
-  brave: z.object({
-    apiKey: z.string().max(500).optional(),
-  }).optional(),
-  serpapi: z.object({
-    apiKey: z.string().max(500).optional(),
-  }).optional(),
-  google: z.object({
-    apiKey: z.string().max(500).optional(),
-    searchEngineId: z.string().max(500).optional(),
-  }).optional(),
+  tavily: z
+    .object({
+      apiKey: z.string().max(500).optional(),
+    })
+    .optional(),
+  brave: z
+    .object({
+      apiKey: z.string().max(500).optional(),
+    })
+    .optional(),
+  serpapi: z
+    .object({
+      apiKey: z.string().max(500).optional(),
+    })
+    .optional(),
+  google: z
+    .object({
+      apiKey: z.string().max(500).optional(),
+      searchEngineId: z.string().max(500).optional(),
+    })
+    .optional(),
 });
 
 // ============ X/Twitter Settings Schema ============
 
 export const XSettingsSchema = z.object({
   enabled: z.boolean().default(false),
-  authMethod: z.enum(['browser', 'manual']).default('browser'),
+  authMethod: z.enum(["browser", "manual"]).default("browser"),
   authToken: z.string().max(2000).optional(),
   ct0: z.string().max(2000).optional(),
   cookieSource: z.array(z.string().max(50)).max(10).optional(),
@@ -396,7 +438,7 @@ export const GuardrailSettingsSchema = z.object({
   tokenBudgetEnabled: z.boolean().default(true),
 
   // Cost budget
-  maxCostPerTask: z.number().min(0.01).max(100).default(1.00),
+  maxCostPerTask: z.number().min(0.01).max(100).default(1.0),
   costBudgetEnabled: z.boolean().default(false),
 
   // Dangerous commands
@@ -422,35 +464,41 @@ export const GuardrailSettingsSchema = z.object({
 
 // ============ Conway Settings Schema ============
 
-export const ConwaySettingsSchema = z.object({
-  enabled: z.boolean(),
-  autoConnect: z.boolean(),
-  showWalletInSidebar: z.boolean(),
-  balanceRefreshIntervalMs: z.number().int().min(10_000).max(24 * 60 * 60 * 1000),
-  enabledToolCategories: z.object({
-    sandbox: z.boolean(),
-    inference: z.boolean(),
-    domains: z.boolean(),
-    payments: z.boolean(),
-  }),
-  walletAddressBackup: z.string().max(200).optional(),
-  walletNetworkBackup: z.string().max(100).optional(),
-  walletBackupTimestamp: z.number().int().min(0).optional(),
-}).strict();
+export const ConwaySettingsSchema = z
+  .object({
+    enabled: z.boolean(),
+    autoConnect: z.boolean(),
+    showWalletInSidebar: z.boolean(),
+    balanceRefreshIntervalMs: z
+      .number()
+      .int()
+      .min(10_000)
+      .max(24 * 60 * 60 * 1000),
+    enabledToolCategories: z.object({
+      sandbox: z.boolean(),
+      inference: z.boolean(),
+      domains: z.boolean(),
+      payments: z.boolean(),
+    }),
+    walletAddressBackup: z.string().max(200).optional(),
+    walletNetworkBackup: z.string().max(100).optional(),
+    walletBackupTimestamp: z.number().int().min(0).optional(),
+  })
+  .strict();
 
 // ============ Gateway/Channel Schemas ============
 
-export const SecurityModeSchema = z.enum(['pairing', 'allowlist', 'open']);
+export const SecurityModeSchema = z.enum(["pairing", "allowlist", "open"]);
 
 export const AddTelegramChannelSchema = z.object({
-  type: z.literal('telegram'),
+  type: z.literal("telegram"),
   name: z.string().min(1).max(MAX_TITLE_LENGTH),
   botToken: z.string().min(1).max(500),
   securityMode: SecurityModeSchema.optional(),
 });
 
 export const AddDiscordChannelSchema = z.object({
-  type: z.literal('discord'),
+  type: z.literal("discord"),
   name: z.string().min(1).max(MAX_TITLE_LENGTH),
   botToken: z.string().min(1).max(500),
   applicationId: z.string().min(1).max(100),
@@ -459,7 +507,7 @@ export const AddDiscordChannelSchema = z.object({
 });
 
 export const AddSlackChannelSchema = z.object({
-  type: z.literal('slack'),
+  type: z.literal("slack"),
   name: z.string().min(1).max(MAX_TITLE_LENGTH),
   botToken: z.string().min(1).max(500),
   appToken: z.string().min(1).max(500),
@@ -468,14 +516,16 @@ export const AddSlackChannelSchema = z.object({
 });
 
 export const AddWhatsAppChannelSchema = z.object({
-  type: z.literal('whatsapp'),
+  type: z.literal("whatsapp"),
   name: z.string().min(1).max(MAX_TITLE_LENGTH),
   allowedNumbers: z.array(z.string().max(20)).max(100).optional(),
   securityMode: SecurityModeSchema.optional(),
   ambientMode: z.boolean().optional(),
   silentUnauthorized: z.boolean().optional(),
   selfChatMode: z.boolean().optional(),
-  groupRoutingMode: z.enum(['all', 'mentionsOnly', 'mentionsOrCommands', 'commandsOnly']).optional(),
+  groupRoutingMode: z
+    .enum(["all", "mentionsOnly", "mentionsOrCommands", "commandsOnly"])
+    .optional(),
   trustedGroupMemoryOptIn: z.boolean().optional(),
   sendReadReceipts: z.boolean().optional(),
   deduplicationEnabled: z.boolean().optional(),
@@ -483,13 +533,13 @@ export const AddWhatsAppChannelSchema = z.object({
   ingestNonSelfChatsInSelfChatMode: z.boolean().optional(),
 });
 
-export const DmPolicySchema = z.enum(['open', 'allowlist', 'pairing', 'disabled']);
-export const GroupPolicySchema = z.enum(['open', 'allowlist', 'disabled']);
-export const SignalModeSchema = z.enum(['native', 'daemon']);
-export const SignalTrustModeSchema = z.enum(['tofu', 'always', 'manual']);
+export const DmPolicySchema = z.enum(["open", "allowlist", "pairing", "disabled"]);
+export const GroupPolicySchema = z.enum(["open", "allowlist", "disabled"]);
+export const SignalModeSchema = z.enum(["native", "daemon"]);
+export const SignalTrustModeSchema = z.enum(["tofu", "always", "manual"]);
 
 export const AddImessageChannelSchema = z.object({
-  type: z.literal('imessage'),
+  type: z.literal("imessage"),
   name: z.string().min(1).max(MAX_TITLE_LENGTH),
   cliPath: z.string().max(500).optional(),
   dbPath: z.string().max(500).optional(),
@@ -504,7 +554,7 @@ export const AddImessageChannelSchema = z.object({
 });
 
 export const AddSignalChannelSchema = z.object({
-  type: z.literal('signal'),
+  type: z.literal("signal"),
   name: z.string().min(1).max(MAX_TITLE_LENGTH),
   phoneNumber: z.string().min(1).max(20),
   dataDir: z.string().max(MAX_PATH_LENGTH).optional(),
@@ -518,7 +568,7 @@ export const AddSignalChannelSchema = z.object({
 });
 
 export const AddMattermostChannelSchema = z.object({
-  type: z.literal('mattermost'),
+  type: z.literal("mattermost"),
   name: z.string().min(1).max(MAX_TITLE_LENGTH),
   mattermostServerUrl: z.string().url().min(1).max(500),
   mattermostToken: z.string().min(1).max(500),
@@ -527,7 +577,7 @@ export const AddMattermostChannelSchema = z.object({
 });
 
 export const AddMatrixChannelSchema = z.object({
-  type: z.literal('matrix'),
+  type: z.literal("matrix"),
   name: z.string().min(1).max(MAX_TITLE_LENGTH),
   matrixHomeserver: z.string().url().min(1).max(500),
   matrixUserId: z.string().min(1).max(200),
@@ -538,7 +588,7 @@ export const AddMatrixChannelSchema = z.object({
 });
 
 export const AddTwitchChannelSchema = z.object({
-  type: z.literal('twitch'),
+  type: z.literal("twitch"),
   name: z.string().min(1).max(MAX_TITLE_LENGTH),
   twitchUsername: z.string().min(1).max(100),
   twitchOauthToken: z.string().min(1).max(500),
@@ -548,7 +598,7 @@ export const AddTwitchChannelSchema = z.object({
 });
 
 export const AddLineChannelSchema = z.object({
-  type: z.literal('line'),
+  type: z.literal("line"),
   name: z.string().min(1).max(MAX_TITLE_LENGTH),
   lineChannelAccessToken: z.string().min(1).max(500),
   lineChannelSecret: z.string().min(1).max(200),
@@ -557,7 +607,7 @@ export const AddLineChannelSchema = z.object({
 });
 
 export const AddBlueBubblesChannelSchema = z.object({
-  type: z.literal('bluebubbles'),
+  type: z.literal("bluebubbles"),
   name: z.string().min(1).max(MAX_TITLE_LENGTH),
   blueBubblesServerUrl: z.string().url().min(1).max(500),
   blueBubblesPassword: z.string().min(1).max(500),
@@ -570,12 +620,12 @@ export const AddBlueBubblesChannelSchema = z.object({
 });
 
 const getOptionalString = (value: unknown): string | undefined => {
-  return typeof value === 'string' ? value.trim() || undefined : undefined;
+  return typeof value === "string" ? value.trim() || undefined : undefined;
 };
 
 const isSafeLoomMailboxFolder = (value: unknown): boolean => {
   if (value === undefined) return true;
-  if (typeof value !== 'string') return false;
+  if (typeof value !== "string") return false;
   try {
     assertSafeLoomMailboxFolder(value);
     return true;
@@ -586,35 +636,35 @@ const isSafeLoomMailboxFolder = (value: unknown): boolean => {
 
 const EMAIL_FIELD_KEY_MAP = {
   add: {
-    protocol: 'emailProtocol',
-    email: 'emailAddress',
-    password: 'emailPassword',
-    imapHost: 'emailImapHost',
-    imapPort: 'emailImapPort',
-    smtpHost: 'emailSmtpHost',
-    smtpPort: 'emailSmtpPort',
-    loomBaseUrl: 'emailLoomBaseUrl',
-    loomAccessToken: 'emailLoomAccessToken',
+    protocol: "emailProtocol",
+    email: "emailAddress",
+    password: "emailPassword",
+    imapHost: "emailImapHost",
+    imapPort: "emailImapPort",
+    smtpHost: "emailSmtpHost",
+    smtpPort: "emailSmtpPort",
+    loomBaseUrl: "emailLoomBaseUrl",
+    loomAccessToken: "emailLoomAccessToken",
   } as const,
   update: {
-    protocol: 'protocol',
-    email: 'email',
-    password: 'password',
-    imapHost: 'imapHost',
-    imapPort: 'imapPort',
-    smtpHost: 'smtpHost',
-    smtpPort: 'smtpPort',
-    loomBaseUrl: 'loomBaseUrl',
-    loomAccessToken: 'loomAccessToken',
+    protocol: "protocol",
+    email: "email",
+    password: "password",
+    imapHost: "imapHost",
+    imapPort: "imapPort",
+    smtpHost: "smtpHost",
+    smtpPort: "smtpPort",
+    loomBaseUrl: "loomBaseUrl",
+    loomAccessToken: "loomAccessToken",
   } as const,
 } as const;
 
 type EmailSchemaMode = keyof typeof EMAIL_FIELD_KEY_MAP;
-type EmailFieldKeys = typeof EMAIL_FIELD_KEY_MAP[EmailSchemaMode];
+type EmailFieldKeys = (typeof EMAIL_FIELD_KEY_MAP)[EmailSchemaMode];
 
 const EMAIL_TRANSPORT_BASE_SHAPES: Record<EmailSchemaMode, z.ZodRawShape> = {
   add: {
-    [EMAIL_FIELD_KEY_MAP.add.protocol]: z.enum(['imap-smtp', 'loom']).optional(),
+    [EMAIL_FIELD_KEY_MAP.add.protocol]: z.enum(["imap-smtp", "loom"]).optional(),
     [EMAIL_FIELD_KEY_MAP.add.email]: z.string().email().min(1).max(200).optional(),
     [EMAIL_FIELD_KEY_MAP.add.password]: z.string().min(1).max(500).optional(),
     [EMAIL_FIELD_KEY_MAP.add.imapHost]: z.string().min(1).max(200).optional(),
@@ -625,7 +675,7 @@ const EMAIL_TRANSPORT_BASE_SHAPES: Record<EmailSchemaMode, z.ZodRawShape> = {
     [EMAIL_FIELD_KEY_MAP.add.loomAccessToken]: z.string().min(1).max(4000).optional(),
   },
   update: {
-    [EMAIL_FIELD_KEY_MAP.update.protocol]: z.enum(['imap-smtp', 'loom']).optional(),
+    [EMAIL_FIELD_KEY_MAP.update.protocol]: z.enum(["imap-smtp", "loom"]).optional(),
     [EMAIL_FIELD_KEY_MAP.update.email]: z.string().email().min(1).max(200).optional(),
     [EMAIL_FIELD_KEY_MAP.update.password]: z.string().min(1).max(500).optional(),
     [EMAIL_FIELD_KEY_MAP.update.imapHost]: z.string().min(1).max(200).optional(),
@@ -637,7 +687,9 @@ const EMAIL_TRANSPORT_BASE_SHAPES: Record<EmailSchemaMode, z.ZodRawShape> = {
   },
 };
 
-const createEmailTransportSchema = (mode: EmailSchemaMode): z.ZodObject<z.ZodRawShape, 'strip', z.ZodTypeAny> => {
+const createEmailTransportSchema = (
+  mode: EmailSchemaMode,
+): z.ZodObject<z.ZodRawShape, "strip", z.ZodTypeAny> => {
   const fieldMap = EMAIL_FIELD_KEY_MAP[mode];
   return z.object(EMAIL_TRANSPORT_BASE_SHAPES[mode]).superRefine((data, ctx) => {
     validateEmailChannelConfigByProtocol(data as Record<string, unknown>, ctx, fieldMap);
@@ -649,10 +701,11 @@ const createEmailAddExtras = (): z.ZodRawShape => ({
   emailAllowedSenders: z.array(z.string().max(200)).max(100).optional(),
   emailSubjectFilter: z.string().max(200).optional(),
   emailLoomIdentity: z.string().max(300).optional(),
-  emailLoomMailboxFolder: z.string().max(100).optional().refine(
-    isSafeLoomMailboxFolder,
-    { message: LOOM_MAILBOX_FOLDER_ERROR }
-  ),
+  emailLoomMailboxFolder: z
+    .string()
+    .max(100)
+    .optional()
+    .refine(isSafeLoomMailboxFolder, { message: LOOM_MAILBOX_FOLDER_ERROR }),
   emailLoomPollInterval: z.number().int().min(1000).max(300000).optional(),
 });
 
@@ -662,10 +715,11 @@ const createEmailUpdateExtras = (): z.ZodRawShape => ({
   allowedSenders: z.array(z.string().max(200)).max(100).optional(),
   subjectFilter: z.string().max(200).optional(),
   loomIdentity: z.string().max(300).optional(),
-  loomMailboxFolder: z.string().max(100).optional().refine(
-    isSafeLoomMailboxFolder,
-    { message: LOOM_MAILBOX_FOLDER_ERROR }
-  ),
+  loomMailboxFolder: z
+    .string()
+    .max(100)
+    .optional()
+    .refine(isSafeLoomMailboxFolder, { message: LOOM_MAILBOX_FOLDER_ERROR }),
   loomPollInterval: z.number().int().min(1000).max(300000).optional(),
   pollInterval: z.number().int().min(1000).max(300000).optional(),
   mailbox: z.string().max(100).optional(),
@@ -673,11 +727,13 @@ const createEmailUpdateExtras = (): z.ZodRawShape => ({
   deduplicationEnabled: z.boolean().optional(),
   responsePrefix: z.string().max(100).optional(),
   sendReadReceipts: z.boolean().optional(),
-  groupRoutingMode: z.enum(['all', 'mentionsOnly', 'mentionsOrCommands', 'commandsOnly']).optional(),
+  groupRoutingMode: z
+    .enum(["all", "mentionsOnly", "mentionsOrCommands", "commandsOnly"])
+    .optional(),
   selfChatMode: z.boolean().optional(),
   ambientMode: z.boolean().optional(),
   silentUnauthorized: z.boolean().optional(),
-  securityMode: z.enum(['pairing', 'allowlist', 'open']).optional(),
+  securityMode: z.enum(["pairing", "allowlist", "open"]).optional(),
   allowedUsers: z.array(z.string()).optional(),
   pairingCodeTTL: z.number().int().optional(),
   maxPairingAttempts: z.number().int().optional(),
@@ -688,28 +744,31 @@ const validateEmailChannelConfigByProtocol = (
   data: Record<string, unknown>,
   ctx: z.RefinementCtx,
   fieldMap: {
-    protocol: 'protocol' | 'emailProtocol';
+    protocol: "protocol" | "emailProtocol";
     email: string;
     password: string;
     imapHost: string;
     smtpHost: string;
     loomBaseUrl: string;
     loomAccessToken: string;
-  }
+  },
 ): void => {
-  const protocol = getOptionalString(data[fieldMap.protocol]) || 'imap-smtp';
-  if (protocol === 'loom') {
+  const protocol = getOptionalString(data[fieldMap.protocol]) || "imap-smtp";
+  if (protocol === "loom") {
     if (!getOptionalString(data[fieldMap.loomBaseUrl])) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: [fieldMap.loomBaseUrl],
-        message: `LOOM base URL is required when ${fieldMap.protocol === 'protocol' ? 'protocol' : 'emailProtocol'} is "loom"`,
+        message: `LOOM base URL is required when ${fieldMap.protocol === "protocol" ? "protocol" : "emailProtocol"} is "loom"`,
       });
-    } else if (typeof data[fieldMap.loomBaseUrl] === 'string' && !isSecureOrLocalLoomUrl(data[fieldMap.loomBaseUrl])) {
+    } else if (
+      typeof data[fieldMap.loomBaseUrl] === "string" &&
+      !isSecureOrLocalLoomUrl(data[fieldMap.loomBaseUrl])
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: [fieldMap.loomBaseUrl],
-        message: 'LOOM base URL must use HTTPS unless it points to localhost/127.0.0.1/::1',
+        message: "LOOM base URL must use HTTPS unless it points to localhost/127.0.0.1/::1",
       });
     }
 
@@ -717,7 +776,7 @@ const validateEmailChannelConfigByProtocol = (
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: [fieldMap.loomAccessToken],
-        message: `LOOM access token is required when ${fieldMap.protocol === 'protocol' ? 'protocol' : 'emailProtocol'} is "loom"`,
+        message: `LOOM access token is required when ${fieldMap.protocol === "protocol" ? "protocol" : "emailProtocol"} is "loom"`,
       });
     }
 
@@ -728,45 +787,44 @@ const validateEmailChannelConfigByProtocol = (
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: [fieldMap.email],
-      message: 'Email address is required for IMAP/SMTP mode',
+      message: "Email address is required for IMAP/SMTP mode",
     });
   }
   if (!getOptionalString(data[fieldMap.password])) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: [fieldMap.password],
-      message: 'Email password is required for IMAP/SMTP mode',
+      message: "Email password is required for IMAP/SMTP mode",
     });
   }
   if (!getOptionalString(data[fieldMap.imapHost])) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: [fieldMap.imapHost],
-      message: 'IMAP host is required for IMAP/SMTP mode',
+      message: "IMAP host is required for IMAP/SMTP mode",
     });
   }
   if (!getOptionalString(data[fieldMap.smtpHost])) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: [fieldMap.smtpHost],
-      message: 'SMTP host is required for IMAP/SMTP mode',
+      message: "SMTP host is required for IMAP/SMTP mode",
     });
   }
 };
 
-export const AddEmailChannelSchema = createEmailTransportSchema('add')
-  .extend({
-    type: z.literal('email'),
-    name: z.string().min(1).max(MAX_TITLE_LENGTH),
-    ...createEmailAddExtras(),
-    securityMode: SecurityModeSchema.optional(),
-  });
+export const AddEmailChannelSchema = createEmailTransportSchema("add").extend({
+  type: z.literal("email"),
+  name: z.string().min(1).max(MAX_TITLE_LENGTH),
+  ...createEmailAddExtras(),
+  securityMode: SecurityModeSchema.optional(),
+});
 
-export const EmailChannelConfigSchema = createEmailTransportSchema('update')
+export const EmailChannelConfigSchema = createEmailTransportSchema("update")
   .passthrough()
   .extend(createEmailUpdateExtras());
 
-export const AddChannelSchema = z.discriminatedUnion('type', [
+export const AddChannelSchema = z.discriminatedUnion("type", [
   AddTelegramChannelSchema,
   AddDiscordChannelSchema,
   AddSlackChannelSchema,
@@ -781,11 +839,13 @@ export const AddChannelSchema = z.discriminatedUnion('type', [
   AddEmailChannelSchema,
 ]);
 
-export const ChannelConfigSchema = z.object({
-  selfChatMode: z.boolean().optional(),
-  responsePrefix: z.string().max(20).optional(),
-  trustedGroupMemoryOptIn: z.boolean().optional(),
-}).passthrough();
+export const ChannelConfigSchema = z
+  .object({
+    selfChatMode: z.boolean().optional(),
+    responsePrefix: z.string().max(20).optional(),
+    trustedGroupMemoryOptIn: z.boolean().optional(),
+  })
+  .passthrough();
 
 export const UpdateChannelSchema = z.object({
   id: z.string().uuid(),
@@ -814,15 +874,15 @@ export const GeneratePairingSchema = z.object({
 // ============ ChatGPT Import Schema ============
 
 export const ChatGPTImportSchema = z.object({
-  workspaceId: z.string().refine(
-    isValidWorkspaceId,
-    { message: 'Must be a valid UUID or temp workspace ID' }
-  ),
-  filePath: z.string()
+  workspaceId: z
+    .string()
+    .refine(isValidWorkspaceId, { message: "Must be a valid UUID or temp workspace ID" }),
+  filePath: z
+    .string()
     .min(1)
     .max(MAX_PATH_LENGTH)
-    .refine((p) => path.isAbsolute(p), { message: 'File path must be absolute' })
-    .refine((p) => p.endsWith('.json'), { message: 'File must be a .json file' }),
+    .refine((p) => path.isAbsolute(p), { message: "File path must be absolute" })
+    .refine((p) => p.endsWith(".json"), { message: "File must be a .json file" }),
   maxConversations: z.number().int().min(0).max(10000).optional(),
   minMessages: z.number().int().min(1).max(100).optional(),
   forcePrivate: z.boolean().optional(),
@@ -831,10 +891,9 @@ export const ChatGPTImportSchema = z.object({
 });
 
 export const FindImportedSchema = z.object({
-  workspaceId: z.string().refine(
-    isValidWorkspaceId,
-    { message: 'Must be a valid UUID or temp workspace ID' }
-  ),
+  workspaceId: z
+    .string()
+    .refine(isValidWorkspaceId, { message: "Must be a valid UUID or temp workspace ID" }),
   limit: z.number().int().min(1).max(500).optional(),
   offset: z.number().int().min(0).optional(),
 });
@@ -853,16 +912,18 @@ export const StringIdSchema = z.string().min(1).max(100);
 
 // ============ MCP (Model Context Protocol) Schemas ============
 
-export const MCPTransportTypeSchema = z.enum(['stdio', 'sse', 'websocket']);
+export const MCPTransportTypeSchema = z.enum(["stdio", "sse", "websocket"]);
 
-export const MCPAuthConfigSchema = z.object({
-  type: z.enum(['none', 'bearer', 'api-key', 'basic']),
-  token: z.string().max(2000).optional(),
-  apiKey: z.string().max(2000).optional(),
-  username: z.string().max(500).optional(),
-  password: z.string().max(500).optional(),
-  headerName: z.string().max(100).optional(),
-}).optional();
+export const MCPAuthConfigSchema = z
+  .object({
+    type: z.enum(["none", "bearer", "api-key", "basic"]),
+    token: z.string().max(2000).optional(),
+    apiKey: z.string().max(2000).optional(),
+    username: z.string().max(500).optional(),
+    password: z.string().max(500).optional(),
+    headerName: z.string().max(100).optional(),
+  })
+  .optional();
 
 export const MCPServerConfigSchema = z.object({
   id: z.string().uuid().optional(), // Optional for create (will be generated)
@@ -901,7 +962,7 @@ export const MCPServerUpdateSchema = MCPServerConfigSchema.partial().omit({ id: 
 export const MCPSettingsSchema = z.object({
   servers: z.array(MCPServerConfigSchema).max(50),
   autoConnect: z.boolean().default(true),
-  toolNamePrefix: z.string().min(0).max(50).default('mcp_'),
+  toolNamePrefix: z.string().min(0).max(50).default("mcp_"),
   maxReconnectAttempts: z.number().int().min(0).max(20).default(5),
   reconnectDelayMs: z.number().int().min(100).max(60000).default(1000),
   registryEnabled: z.boolean().default(true),
@@ -912,28 +973,35 @@ export const MCPSettingsSchema = z.object({
 
 // ============ Artifact Reputation Schemas ============
 
-const ReputationActionSchema = z.enum(['allow', 'warn', 'block']);
+const ReputationActionSchema = z.enum(["allow", "warn", "block"]);
 
-export const ReputationPolicySchema = z.object({
-  clean: ReputationActionSchema.default('allow'),
-  unknown: ReputationActionSchema.default('warn'),
-  suspicious: ReputationActionSchema.default('warn'),
-  malicious: ReputationActionSchema.default('block'),
-  error: ReputationActionSchema.default('warn'),
-}).default({
-  clean: 'allow',
-  unknown: 'warn',
-  suspicious: 'warn',
-  malicious: 'block',
-  error: 'warn',
-});
+export const ReputationPolicySchema = z
+  .object({
+    clean: ReputationActionSchema.default("allow"),
+    unknown: ReputationActionSchema.default("warn"),
+    suspicious: ReputationActionSchema.default("warn"),
+    malicious: ReputationActionSchema.default("block"),
+    error: ReputationActionSchema.default("warn"),
+  })
+  .default({
+    clean: "allow",
+    unknown: "warn",
+    suspicious: "warn",
+    malicious: "block",
+    error: "warn",
+  });
 
 export const ReputationSettingsSchema = z.object({
   enabled: z.boolean().default(false),
-  provider: z.enum(['virustotal']).default('virustotal'),
+  provider: z.enum(["virustotal"]).default("virustotal"),
   apiKey: z.string().max(500).optional(),
   allowUpload: z.boolean().default(false),
-  rescanIntervalHours: z.number().int().min(1).max(24 * 30).default(24 * 7),
+  rescanIntervalHours: z
+    .number()
+    .int()
+    .min(1)
+    .max(24 * 30)
+    .default(24 * 7),
   enforceOnMCPConnect: z.boolean().default(true),
   disableMCPServerOnBlock: z.boolean().default(true),
   policy: ReputationPolicySchema,
@@ -948,7 +1016,7 @@ export const MCPRegistrySearchSchema = z.object({
 });
 
 export const MCPConnectorOAuthSchema = z.object({
-  provider: z.enum(['salesforce', 'jira', 'hubspot', 'zendesk']),
+  provider: z.enum(["salesforce", "jira", "hubspot", "zendesk"]),
   clientId: z.string().min(1).max(500),
   clientSecret: z.string().max(500).optional(),
   scopes: z.array(z.string().max(200)).max(50).optional(),
@@ -958,16 +1026,32 @@ export const MCPConnectorOAuthSchema = z.object({
 
 // ============ Hooks (Webhooks) Schemas ============
 
-export const HookMappingChannelSchema = z.enum(['telegram', 'discord', 'slack', 'whatsapp', 'imessage', 'signal', 'mattermost', 'matrix', 'twitch', 'line', 'bluebubbles', 'email', 'last']);
+export const HookMappingChannelSchema = z.enum([
+  "telegram",
+  "discord",
+  "slack",
+  "whatsapp",
+  "imessage",
+  "signal",
+  "mattermost",
+  "matrix",
+  "twitch",
+  "line",
+  "bluebubbles",
+  "email",
+  "last",
+]);
 
 export const HookMappingSchema = z.object({
   id: z.string().max(100).optional(),
-  match: z.object({
-    path: z.string().max(500).optional(),
-    source: z.string().max(100).optional(),
-  }).optional(),
-  action: z.enum(['wake', 'agent']).optional(),
-  wakeMode: z.enum(['now', 'next-heartbeat']).optional(),
+  match: z
+    .object({
+      path: z.string().max(500).optional(),
+      source: z.string().max(100).optional(),
+    })
+    .optional(),
+  action: z.enum(["wake", "agent"]).optional(),
+  wakeMode: z.enum(["now", "next-heartbeat"]).optional(),
   name: z.string().max(200).optional(),
   sessionKey: z.string().max(100).optional(),
   messageTemplate: z.string().max(10000).optional(),
@@ -990,8 +1074,10 @@ export function validateInput<T>(schema: z.ZodSchema<T>, input: unknown, context
   if (!result.success) {
     // Zod v4 uses 'issues' instead of 'errors'
     const issues = result.error.issues;
-    const errorMessages = issues.map((issue: z.ZodIssue) => `${issue.path.join('.')}: ${issue.message}`).join(', ');
-    const prefix = context ? `Invalid ${context}: ` : 'Invalid input: ';
+    const errorMessages = issues
+      .map((issue: z.ZodIssue) => `${issue.path.join(".")}: ${issue.message}`)
+      .join(", ");
+    const prefix = context ? `Invalid ${context}: ` : "Invalid input: ";
     throw new Error(`${prefix}${errorMessages}`);
   }
   return result.data;

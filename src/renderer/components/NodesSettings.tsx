@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import type { NodeInfo, NodeInvokeResult } from '../../shared/types';
+import { useState, useEffect, useCallback } from "react";
+import type { NodeInfo, NodeInvokeResult } from "../../shared/types";
 
 interface NodesSettingsProps {
   compact?: boolean;
@@ -10,7 +10,11 @@ export function NodesSettings({ compact = false }: NodesSettingsProps) {
   const [loading, setLoading] = useState(true);
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [testingCommand, setTestingCommand] = useState<string | null>(null);
-  const [testResult, setTestResult] = useState<{ nodeId: string; command: string; result: NodeInvokeResult } | null>(null);
+  const [testResult, setTestResult] = useState<{
+    nodeId: string;
+    command: string;
+    result: NodeInvokeResult;
+  } | null>(null);
 
   const loadNodes = useCallback(async () => {
     try {
@@ -21,7 +25,7 @@ export function NodesSettings({ compact = false }: NodesSettingsProps) {
         setNodes([]);
       }
     } catch (error) {
-      console.error('Failed to load nodes:', error);
+      console.error("Failed to load nodes:", error);
       setNodes([]);
     } finally {
       setLoading(false);
@@ -34,7 +38,11 @@ export function NodesSettings({ compact = false }: NodesSettingsProps) {
 
     // Subscribe to node events
     const unsubscribe = window.electronAPI?.onNodeEvent?.((event) => {
-      if (event.type === 'connected' || event.type === 'disconnected' || event.type === 'capabilities_changed') {
+      if (
+        event.type === "connected" ||
+        event.type === "disconnected" ||
+        event.type === "capabilities_changed"
+      ) {
         loadNodes();
       }
     });
@@ -56,20 +64,23 @@ export function NodesSettings({ compact = false }: NodesSettingsProps) {
       const result = await window.electronAPI?.nodeInvoke?.({
         nodeId,
         command,
-        params: command === 'camera.snap' ? { facing: 'back', maxWidth: 640 } : undefined,
+        params: command === "camera.snap" ? { facing: "back", maxWidth: 640 } : undefined,
         timeoutMs: 30000,
       });
 
       setTestResult({
         nodeId,
         command,
-        result: result || { ok: false, error: { code: 'UNKNOWN', message: 'No response' } },
+        result: result || { ok: false, error: { code: "UNKNOWN", message: "No response" } },
       });
     } catch (error: any) {
       setTestResult({
         nodeId,
         command,
-        result: { ok: false, error: { code: 'ERROR', message: error.message || 'Failed to invoke command' } },
+        result: {
+          ok: false,
+          error: { code: "ERROR", message: error.message || "Failed to invoke command" },
+        },
       });
     } finally {
       setTestingCommand(null);
@@ -78,40 +89,40 @@ export function NodesSettings({ compact = false }: NodesSettingsProps) {
 
   const getPlatformIcon = (platform: string) => {
     switch (platform) {
-      case 'ios':
-        return ''; // Apple icon
-      case 'android':
-        return ''; // Android icon
-      case 'macos':
-        return '';
+      case "ios":
+        return ""; // Apple icon
+      case "android":
+        return ""; // Android icon
+      case "macos":
+        return "";
       default:
-        return '';
+        return "";
     }
   };
 
   const getCapabilityIcon = (capability: string) => {
     switch (capability) {
-      case 'camera':
-        return '';
-      case 'location':
-        return '';
-      case 'screen':
-        return '';
-      case 'sms':
-        return '';
-      case 'voice':
-        return '';
-      case 'canvas':
-        return '';
+      case "camera":
+        return "";
+      case "location":
+        return "";
+      case "screen":
+        return "";
+      case "sms":
+        return "";
+      case "voice":
+        return "";
+      case "canvas":
+        return "";
       default:
-        return '';
+        return "";
     }
   };
 
   const formatTimestamp = (ts: number) => {
     const now = Date.now();
     const diff = now - ts;
-    if (diff < 60000) return 'Just now';
+    if (diff < 60000) return "Just now";
     if (diff < 3600000) return `${Math.floor(diff / 60000)} min ago`;
     if (diff < 86400000) return `${Math.floor(diff / 3600000)} hours ago`;
     return new Date(ts).toLocaleDateString();
@@ -150,11 +161,9 @@ export function NodesSettings({ compact = false }: NodesSettingsProps) {
           </ol>
           <div className="nodes-connection-note">
             <p>
-              <code>For local network: ws://{'<your-mac-ip>'}:18789</code>
+              <code>For local network: ws://{"<your-mac-ip>"}:18789</code>
             </p>
-            <p>
-              For remote access: Enable Tailscale or SSH tunnel in Control Plane settings
-            </p>
+            <p>For remote access: Enable Tailscale or SSH tunnel in Control Plane settings</p>
           </div>
         </div>
       )}
@@ -164,7 +173,7 @@ export function NodesSettings({ compact = false }: NodesSettingsProps) {
           {nodes.map((node) => (
             <div
               key={node.id}
-              className={`nodes-card ${selectedNode === node.id ? 'is-active' : ''}`}
+              className={`nodes-card ${selectedNode === node.id ? "is-active" : ""}`}
               onClick={() => setSelectedNode(selectedNode === node.id ? null : node.id)}
             >
               <div className="nodes-card-header">
@@ -177,8 +186,8 @@ export function NodesSettings({ compact = false }: NodesSettingsProps) {
                     </p>
                   </div>
                 </div>
-                <span className={`nodes-status ${node.isForeground ? 'foreground' : 'background'}`}>
-                  {node.isForeground ? 'Foreground' : 'Background'}
+                <span className={`nodes-status ${node.isForeground ? "foreground" : "background"}`}>
+                  {node.isForeground ? "Foreground" : "Background"}
                 </span>
               </div>
 
@@ -186,11 +195,13 @@ export function NodesSettings({ compact = false }: NodesSettingsProps) {
                 {node.capabilities.map((cap) => (
                   <span
                     key={cap}
-                    className={`nodes-capability ${node.permissions?.[cap] ? '' : 'denied'}`}
-                    title={node.permissions?.[cap] ? 'Permission granted' : 'Permission not granted'}
+                    className={`nodes-capability ${node.permissions?.[cap] ? "" : "denied"}`}
+                    title={
+                      node.permissions?.[cap] ? "Permission granted" : "Permission not granted"
+                    }
                   >
                     {getCapabilityIcon(cap)} {cap}
-                    {!node.permissions?.[cap] && ' (denied)'}
+                    {!node.permissions?.[cap] && " (denied)"}
                   </span>
                 ))}
               </div>
@@ -204,15 +215,21 @@ export function NodesSettings({ compact = false }: NodesSettingsProps) {
                     </div>
                     <div className="nodes-detail">
                       <span className="nodes-detail-label">Device ID</span>
-                      <span className="nodes-detail-value nodes-detail-mono">{node.deviceId || 'N/A'}</span>
+                      <span className="nodes-detail-value nodes-detail-mono">
+                        {node.deviceId || "N/A"}
+                      </span>
                     </div>
                     <div className="nodes-detail">
                       <span className="nodes-detail-label">Connected</span>
-                      <span className="nodes-detail-value">{formatTimestamp(node.connectedAt)}</span>
+                      <span className="nodes-detail-value">
+                        {formatTimestamp(node.connectedAt)}
+                      </span>
                     </div>
                     <div className="nodes-detail">
                       <span className="nodes-detail-label">Last Activity</span>
-                      <span className="nodes-detail-value">{formatTimestamp(node.lastActivityAt)}</span>
+                      <span className="nodes-detail-value">
+                        {formatTimestamp(node.lastActivityAt)}
+                      </span>
                     </div>
                   </div>
 
@@ -229,16 +246,16 @@ export function NodesSettings({ compact = false }: NodesSettingsProps) {
                           disabled={testingCommand === `${node.id}:${cmd}`}
                           className="nodes-command-btn"
                         >
-                          {testingCommand === `${node.id}:${cmd}` ? 'Testing...' : cmd}
+                          {testingCommand === `${node.id}:${cmd}` ? "Testing..." : cmd}
                         </button>
                       ))}
                     </div>
                   </div>
 
                   {testResult && testResult.nodeId === node.id && (
-                    <div className={`nodes-result ${testResult.result.ok ? 'success' : 'error'}`}>
+                    <div className={`nodes-result ${testResult.result.ok ? "success" : "error"}`}>
                       <p className="nodes-result-title">
-                        {testResult.command}: {testResult.result.ok ? 'Success' : 'Failed'}
+                        {testResult.command}: {testResult.result.ok ? "Success" : "Failed"}
                       </p>
                       {testResult.result.error && (
                         <p className="nodes-result-error">{testResult.result.error.message}</p>
@@ -247,9 +264,12 @@ export function NodesSettings({ compact = false }: NodesSettingsProps) {
                         <pre className="nodes-result-pre">
                           {(() => {
                             try {
-                              return JSON.stringify(testResult.result.payload, null, 2).slice(0, 500);
+                              return JSON.stringify(testResult.result.payload, null, 2).slice(
+                                0,
+                                500,
+                              );
                             } catch {
-                              return '[Unable to serialize result]';
+                              return "[Unable to serialize result]";
                             }
                           })()}
                         </pre>
@@ -265,9 +285,13 @@ export function NodesSettings({ compact = false }: NodesSettingsProps) {
 
       {nodes.length > 0 && !compact && (
         <div className="nodes-summary">
-          <span className="nodes-summary-count">{nodes.length}</span> companion{nodes.length !== 1 ? 's' : ''} connected
-          {' · '}
-          <span className="nodes-summary-highlight">{nodes.filter(n => n.isForeground).length}</span> in foreground
+          <span className="nodes-summary-count">{nodes.length}</span> companion
+          {nodes.length !== 1 ? "s" : ""} connected
+          {" · "}
+          <span className="nodes-summary-highlight">
+            {nodes.filter((n) => n.isForeground).length}
+          </span>{" "}
+          in foreground
         </div>
       )}
     </div>

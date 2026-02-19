@@ -1,7 +1,7 @@
-import Database from 'better-sqlite3';
-import path from 'path';
-import fs from 'fs';
-import { getUserDataDir } from '../utils/user-data-dir';
+import Database from "better-sqlite3";
+import path from "path";
+import fs from "fs";
+import { getUserDataDir } from "../utils/user-data-dir";
 
 export class DatabaseManager {
   private static instance: DatabaseManager | null = null;
@@ -13,7 +13,7 @@ export class DatabaseManager {
     // Run migration from old cowork-oss directory before opening database
     this.migrateFromLegacyDirectory(userDataPath);
 
-    const dbPath = path.join(userDataPath, 'cowork-os.db');
+    const dbPath = path.join(userDataPath, "cowork-os.db");
     this.db = new Database(dbPath);
     this.initializeSchema();
 
@@ -27,7 +27,9 @@ export class DatabaseManager {
    */
   static getInstance(): DatabaseManager {
     if (!DatabaseManager.instance) {
-      throw new Error('DatabaseManager has not been initialized. Call new DatabaseManager() first in main.ts.');
+      throw new Error(
+        "DatabaseManager has not been initialized. Call new DatabaseManager() first in main.ts.",
+      );
     }
     return DatabaseManager.instance;
   }
@@ -41,46 +43,46 @@ export class DatabaseManager {
    */
   private migrateFromLegacyDirectory(newDataPath: string): void {
     // Normalize path - remove trailing slash if present
-    const normalizedNewPath = newDataPath.replace(/\/+$/, '');
+    const normalizedNewPath = newDataPath.replace(/\/+$/, "");
 
     // Determine the old directory path
     // Handle both 'cowork-os' and 'cowork-os/' patterns
-    const oldDataPath = normalizedNewPath.replace(/cowork-os$/, 'cowork-oss');
+    const oldDataPath = normalizedNewPath.replace(/cowork-os$/, "cowork-oss");
 
     // Verify the replacement actually happened (paths should be different)
     if (oldDataPath === normalizedNewPath) {
-      console.log('[DatabaseManager] Cannot determine legacy path from:', newDataPath);
+      console.log("[DatabaseManager] Cannot determine legacy path from:", newDataPath);
       return;
     }
 
     // Check if old directory exists
     if (!fs.existsSync(oldDataPath)) {
-      console.log('[DatabaseManager] No legacy directory found at:', oldDataPath);
+      console.log("[DatabaseManager] No legacy directory found at:", oldDataPath);
       return; // No legacy data to migrate
     }
 
-    const newDbPath = path.join(normalizedNewPath, 'cowork-os.db');
-    const oldDbPath = path.join(oldDataPath, 'cowork-oss.db');
-    const migrationMarker = path.join(normalizedNewPath, '.migrated-from-cowork-oss');
+    const newDbPath = path.join(normalizedNewPath, "cowork-os.db");
+    const oldDbPath = path.join(oldDataPath, "cowork-oss.db");
+    const migrationMarker = path.join(normalizedNewPath, ".migrated-from-cowork-oss");
 
     // Check if migration already completed with current version
     if (fs.existsSync(migrationMarker)) {
       try {
-        const markerContent = fs.readFileSync(migrationMarker, 'utf-8');
+        const markerContent = fs.readFileSync(migrationMarker, "utf-8");
         const markerData = JSON.parse(markerContent);
         if (markerData.version >= DatabaseManager.MIGRATION_VERSION) {
           return; // Already migrated with current or newer version
         }
-        console.log('[DatabaseManager] Re-running migration (version upgrade)...');
+        console.log("[DatabaseManager] Re-running migration (version upgrade)...");
       } catch {
         // Old format marker (just a date string) - re-run migration
-        console.log('[DatabaseManager] Re-running migration (old marker format)...');
+        console.log("[DatabaseManager] Re-running migration (old marker format)...");
       }
     }
 
-    console.log('[DatabaseManager] Migrating data from cowork-oss to cowork-os...');
-    console.log('[DatabaseManager] Old path:', oldDataPath);
-    console.log('[DatabaseManager] New path:', normalizedNewPath);
+    console.log("[DatabaseManager] Migrating data from cowork-oss to cowork-os...");
+    console.log("[DatabaseManager] Old path:", oldDataPath);
+    console.log("[DatabaseManager] New path:", normalizedNewPath);
 
     let migrationSuccessful = true;
     const migratedFiles: string[] = [];
@@ -100,26 +102,28 @@ export class DatabaseManager {
 
         // Copy if new doesn't exist, or old is significantly larger (has more data)
         if (!newDbExists || oldDbSize > newDbSize) {
-          console.log(`[DatabaseManager] Copying database (old: ${oldDbSize} bytes, new: ${newDbSize} bytes)...`);
+          console.log(
+            `[DatabaseManager] Copying database (old: ${oldDbSize} bytes, new: ${newDbSize} bytes)...`,
+          );
           fs.copyFileSync(oldDbPath, newDbPath);
-          migratedFiles.push('cowork-os.db');
+          migratedFiles.push("cowork-os.db");
         } else {
-          console.log('[DatabaseManager] Database already exists and is larger, skipping...');
+          console.log("[DatabaseManager] Database already exists and is larger, skipping...");
         }
       }
 
       // 2. Migrate settings files - copy if old exists and (new doesn't exist OR old is larger)
       const settingsFiles = [
-        'appearance-settings.json',
-        'builtin-tools-settings.json',
-        'claude-auth.enc',
-        'control-plane-settings.json',
-        'guardrail-settings.json',
-        'hooks-settings.json',
-        'llm-settings.json',
-        'mcp-settings.json',
-        'personality-settings.json',
-        'search-settings.json',
+        "appearance-settings.json",
+        "builtin-tools-settings.json",
+        "claude-auth.enc",
+        "control-plane-settings.json",
+        "guardrail-settings.json",
+        "hooks-settings.json",
+        "llm-settings.json",
+        "mcp-settings.json",
+        "personality-settings.json",
+        "search-settings.json",
       ];
 
       for (const file of settingsFiles) {
@@ -133,7 +137,9 @@ export class DatabaseManager {
 
           // Copy if new doesn't exist, or old file is larger (has more data)
           if (!newExists || oldSize > newSize) {
-            console.log(`[DatabaseManager] Migrating ${file} (old: ${oldSize} bytes, new: ${newSize} bytes)...`);
+            console.log(
+              `[DatabaseManager] Migrating ${file} (old: ${oldSize} bytes, new: ${newSize} bytes)...`,
+            );
             fs.copyFileSync(oldFile, newFile);
             migratedFiles.push(file);
           }
@@ -141,7 +147,7 @@ export class DatabaseManager {
       }
 
       // 3. Migrate directories (skills, whatsapp-auth, cron, canvas, notifications)
-      const directories = ['skills', 'whatsapp-auth', 'cron', 'canvas', 'notifications'];
+      const directories = ["skills", "whatsapp-auth", "cron", "canvas", "notifications"];
 
       for (const dir of directories) {
         const oldDir = path.join(oldDataPath, dir);
@@ -154,7 +160,9 @@ export class DatabaseManager {
 
           // Copy if new doesn't exist, is empty, or has significantly fewer files
           if (!newDirExists || newDirCount === 0 || oldDirCount > newDirCount * 2) {
-            console.log(`[DatabaseManager] Migrating ${dir}/ (old: ${oldDirCount} files, new: ${newDirCount} files)...`);
+            console.log(
+              `[DatabaseManager] Migrating ${dir}/ (old: ${oldDirCount} files, new: ${newDirCount} files)...`,
+            );
             this.copyDirectoryRecursive(oldDir, newDir);
             migratedDirs.push(dir);
           }
@@ -170,17 +178,17 @@ export class DatabaseManager {
       };
       fs.writeFileSync(migrationMarker, JSON.stringify(markerData, null, 2));
 
-      console.log('[DatabaseManager] Migration completed successfully.');
-      console.log('[DatabaseManager] Migrated files:', migratedFiles);
-      console.log('[DatabaseManager] Migrated directories:', migratedDirs);
+      console.log("[DatabaseManager] Migration completed successfully.");
+      console.log("[DatabaseManager] Migrated files:", migratedFiles);
+      console.log("[DatabaseManager] Migrated directories:", migratedDirs);
     } catch (error) {
-      console.error('[DatabaseManager] Migration failed:', error);
+      console.error("[DatabaseManager] Migration failed:", error);
       migrationSuccessful = false;
       // Don't create marker if migration failed - allows retry on next startup
     }
 
     if (!migrationSuccessful) {
-      console.warn('[DatabaseManager] Migration incomplete - will retry on next startup');
+      console.warn("[DatabaseManager] Migration incomplete - will retry on next startup");
     }
   }
 
@@ -616,7 +624,10 @@ export class DatabaseManager {
       `);
     } catch (error) {
       // FTS5 might not be available in all SQLite builds
-      console.warn('[DatabaseManager] FTS5 initialization failed, full-text search will be disabled:', error);
+      console.warn(
+        "[DatabaseManager] FTS5 initialization failed, full-text search will be disabled:",
+        error,
+      );
     }
   }
 
@@ -635,7 +646,10 @@ export class DatabaseManager {
         );
       `);
     } catch (error) {
-      console.warn('[DatabaseManager] Markdown FTS5 initialization failed, markdown full-text search will be limited:', error);
+      console.warn(
+        "[DatabaseManager] Markdown FTS5 initialization failed, markdown full-text search will be limited:",
+        error,
+      );
     }
   }
 
@@ -643,9 +657,9 @@ export class DatabaseManager {
     // Migration: Add task-retry tracking columns to tasks table
     // SQLite ALTER TABLE ADD COLUMN fails if column exists, so we catch and ignore
     const taskRetryColumns = [
-      'ALTER TABLE tasks ADD COLUMN success_criteria TEXT',
-      'ALTER TABLE tasks ADD COLUMN max_attempts INTEGER DEFAULT 3',
-      'ALTER TABLE tasks ADD COLUMN current_attempt INTEGER DEFAULT 1',
+      "ALTER TABLE tasks ADD COLUMN success_criteria TEXT",
+      "ALTER TABLE tasks ADD COLUMN max_attempts INTEGER DEFAULT 3",
+      "ALTER TABLE tasks ADD COLUMN current_attempt INTEGER DEFAULT 1",
     ];
 
     for (const sql of taskRetryColumns) {
@@ -658,18 +672,18 @@ export class DatabaseManager {
 
     // Migration: Add last_used_at to workspaces for recency ordering
     try {
-      this.db.exec('ALTER TABLE workspaces ADD COLUMN last_used_at INTEGER');
+      this.db.exec("ALTER TABLE workspaces ADD COLUMN last_used_at INTEGER");
     } catch {
       // Column already exists, ignore
     }
 
     // Migration: Add Sub-Agent / Parallel Agent columns to tasks table
     const subAgentColumns = [
-      'ALTER TABLE tasks ADD COLUMN parent_task_id TEXT REFERENCES tasks(id)',
+      "ALTER TABLE tasks ADD COLUMN parent_task_id TEXT REFERENCES tasks(id)",
       'ALTER TABLE tasks ADD COLUMN agent_type TEXT DEFAULT "main"',
-      'ALTER TABLE tasks ADD COLUMN agent_config TEXT',
-      'ALTER TABLE tasks ADD COLUMN depth INTEGER DEFAULT 0',
-      'ALTER TABLE tasks ADD COLUMN result_summary TEXT',
+      "ALTER TABLE tasks ADD COLUMN agent_config TEXT",
+      "ALTER TABLE tasks ADD COLUMN depth INTEGER DEFAULT 0",
+      "ALTER TABLE tasks ADD COLUMN result_summary TEXT",
     ];
 
     for (const sql of subAgentColumns) {
@@ -682,7 +696,7 @@ export class DatabaseManager {
 
     // Add index for parent_task_id lookups
     try {
-      this.db.exec('CREATE INDEX IF NOT EXISTS idx_tasks_parent ON tasks(parent_task_id)');
+      this.db.exec("CREATE INDEX IF NOT EXISTS idx_tasks_parent ON tasks(parent_task_id)");
     } catch {
       // Index already exists, ignore
     }
@@ -719,9 +733,9 @@ export class DatabaseManager {
 
     // Migration: Add assigned_agent_role_id to tasks table
     const agentRoleColumns = [
-      'ALTER TABLE tasks ADD COLUMN assigned_agent_role_id TEXT REFERENCES agent_roles(id)',
+      "ALTER TABLE tasks ADD COLUMN assigned_agent_role_id TEXT REFERENCES agent_roles(id)",
       'ALTER TABLE tasks ADD COLUMN board_column TEXT DEFAULT "backlog"',
-      'ALTER TABLE tasks ADD COLUMN priority INTEGER DEFAULT 0',
+      "ALTER TABLE tasks ADD COLUMN priority INTEGER DEFAULT 0",
     ];
 
     for (const sql of agentRoleColumns) {
@@ -734,8 +748,10 @@ export class DatabaseManager {
 
     // Add index for agent role lookups on tasks
     try {
-      this.db.exec('CREATE INDEX IF NOT EXISTS idx_tasks_agent_role ON tasks(assigned_agent_role_id)');
-      this.db.exec('CREATE INDEX IF NOT EXISTS idx_tasks_board_column ON tasks(board_column)');
+      this.db.exec(
+        "CREATE INDEX IF NOT EXISTS idx_tasks_agent_role ON tasks(assigned_agent_role_id)",
+      );
+      this.db.exec("CREATE INDEX IF NOT EXISTS idx_tasks_board_column ON tasks(board_column)");
     } catch {
       // Index already exists, ignore
     }
@@ -800,39 +816,39 @@ export class DatabaseManager {
 
     // Migration: Add mentioned_agent_role_ids to tasks table
     try {
-      this.db.exec('ALTER TABLE tasks ADD COLUMN mentioned_agent_role_ids TEXT');
+      this.db.exec("ALTER TABLE tasks ADD COLUMN mentioned_agent_role_ids TEXT");
     } catch {
       // Column already exists, ignore
     }
 
     // Migration: Add task board columns to tasks table (Phase 1.4)
     try {
-      this.db.exec('ALTER TABLE tasks ADD COLUMN board_column TEXT DEFAULT \'backlog\'');
+      this.db.exec("ALTER TABLE tasks ADD COLUMN board_column TEXT DEFAULT 'backlog'");
     } catch {
       // Column already exists, ignore
     }
     try {
-      this.db.exec('ALTER TABLE tasks ADD COLUMN priority INTEGER DEFAULT 0');
+      this.db.exec("ALTER TABLE tasks ADD COLUMN priority INTEGER DEFAULT 0");
     } catch {
       // Column already exists, ignore
     }
     try {
-      this.db.exec('ALTER TABLE tasks ADD COLUMN labels TEXT');
+      this.db.exec("ALTER TABLE tasks ADD COLUMN labels TEXT");
     } catch {
       // Column already exists, ignore
     }
     try {
-      this.db.exec('ALTER TABLE tasks ADD COLUMN due_date INTEGER');
+      this.db.exec("ALTER TABLE tasks ADD COLUMN due_date INTEGER");
     } catch {
       // Column already exists, ignore
     }
     try {
-      this.db.exec('ALTER TABLE tasks ADD COLUMN estimated_minutes INTEGER');
+      this.db.exec("ALTER TABLE tasks ADD COLUMN estimated_minutes INTEGER");
     } catch {
       // Column already exists, ignore
     }
     try {
-      this.db.exec('ALTER TABLE tasks ADD COLUMN actual_minutes INTEGER');
+      this.db.exec("ALTER TABLE tasks ADD COLUMN actual_minutes INTEGER");
     } catch {
       // Column already exists, ignore
     }
@@ -858,12 +874,14 @@ export class DatabaseManager {
 
     // Migration: Create index for task board queries
     try {
-      this.db.exec('CREATE INDEX IF NOT EXISTS idx_tasks_board ON tasks(workspace_id, board_column)');
+      this.db.exec(
+        "CREATE INDEX IF NOT EXISTS idx_tasks_board ON tasks(workspace_id, board_column)",
+      );
     } catch {
       // Index already exists, ignore
     }
     try {
-      this.db.exec('CREATE INDEX IF NOT EXISTS idx_tasks_priority ON tasks(priority DESC)');
+      this.db.exec("CREATE INDEX IF NOT EXISTS idx_tasks_priority ON tasks(priority DESC)");
     } catch {
       // Index already exists, ignore
     }
@@ -917,12 +935,12 @@ export class DatabaseManager {
 
     // Migration: Add shell_enabled and debug_mode columns to channel_sessions
     try {
-      this.db.exec('ALTER TABLE channel_sessions ADD COLUMN shell_enabled INTEGER DEFAULT 0');
+      this.db.exec("ALTER TABLE channel_sessions ADD COLUMN shell_enabled INTEGER DEFAULT 0");
     } catch {
       // Column already exists, ignore
     }
     try {
-      this.db.exec('ALTER TABLE channel_sessions ADD COLUMN debug_mode INTEGER DEFAULT 0');
+      this.db.exec("ALTER TABLE channel_sessions ADD COLUMN debug_mode INTEGER DEFAULT 0");
     } catch {
       // Column already exists, ignore
     }
@@ -930,7 +948,7 @@ export class DatabaseManager {
     // Migration: Add lockout_until column to channel_users
     // Separates brute-force lockout timestamp from pairing code expiration
     try {
-      this.db.exec('ALTER TABLE channel_users ADD COLUMN lockout_until INTEGER');
+      this.db.exec("ALTER TABLE channel_users ADD COLUMN lockout_until INTEGER");
     } catch {
       // Column already exists, ignore
     }
@@ -960,13 +978,13 @@ export class DatabaseManager {
 
     // Migration: Add heartbeat and autonomy columns to agent_roles
     const missionControlColumns = [
-      'ALTER TABLE agent_roles ADD COLUMN autonomy_level TEXT DEFAULT \'specialist\'',
-      'ALTER TABLE agent_roles ADD COLUMN soul TEXT',
-      'ALTER TABLE agent_roles ADD COLUMN heartbeat_enabled INTEGER DEFAULT 0',
-      'ALTER TABLE agent_roles ADD COLUMN heartbeat_interval_minutes INTEGER DEFAULT 15',
-      'ALTER TABLE agent_roles ADD COLUMN heartbeat_stagger_offset INTEGER DEFAULT 0',
-      'ALTER TABLE agent_roles ADD COLUMN last_heartbeat_at INTEGER',
-      'ALTER TABLE agent_roles ADD COLUMN heartbeat_status TEXT DEFAULT \'idle\'',
+      "ALTER TABLE agent_roles ADD COLUMN autonomy_level TEXT DEFAULT 'specialist'",
+      "ALTER TABLE agent_roles ADD COLUMN soul TEXT",
+      "ALTER TABLE agent_roles ADD COLUMN heartbeat_enabled INTEGER DEFAULT 0",
+      "ALTER TABLE agent_roles ADD COLUMN heartbeat_interval_minutes INTEGER DEFAULT 15",
+      "ALTER TABLE agent_roles ADD COLUMN heartbeat_stagger_offset INTEGER DEFAULT 0",
+      "ALTER TABLE agent_roles ADD COLUMN last_heartbeat_at INTEGER",
+      "ALTER TABLE agent_roles ADD COLUMN heartbeat_status TEXT DEFAULT 'idle'",
     ];
 
     for (const sql of missionControlColumns) {
@@ -1142,35 +1160,37 @@ export class DatabaseManager {
   }
 
   private seedDefaultModels() {
-    const count = this.db.prepare('SELECT COUNT(*) as count FROM llm_models').get() as { count: number };
+    const count = this.db.prepare("SELECT COUNT(*) as count FROM llm_models").get() as {
+      count: number;
+    };
     if (count.count === 0) {
       const now = Date.now();
       const models = [
         {
-          id: 'model-opus-4-5',
-          key: 'opus-4-5',
-          displayName: 'Opus 4.5',
-          description: 'Most capable for complex work',
-          anthropicModelId: 'claude-opus-4-5-20250514',
-          bedrockModelId: 'anthropic.claude-opus-4-5-20250514',
+          id: "model-opus-4-5",
+          key: "opus-4-5",
+          displayName: "Opus 4.5",
+          description: "Most capable for complex work",
+          anthropicModelId: "claude-opus-4-5-20250514",
+          bedrockModelId: "anthropic.claude-opus-4-5-20250514",
           sortOrder: 1,
         },
         {
-          id: 'model-sonnet-4-5',
-          key: 'sonnet-4-5',
-          displayName: 'Sonnet 4.5',
-          description: 'Best for everyday tasks',
-          anthropicModelId: 'claude-sonnet-4-5-20250514',
-          bedrockModelId: 'anthropic.claude-sonnet-4-5-20250514',
+          id: "model-sonnet-4-5",
+          key: "sonnet-4-5",
+          displayName: "Sonnet 4.5",
+          description: "Best for everyday tasks",
+          anthropicModelId: "claude-sonnet-4-5-20250514",
+          bedrockModelId: "anthropic.claude-sonnet-4-5-20250514",
           sortOrder: 2,
         },
         {
-          id: 'model-haiku-4-5',
-          key: 'haiku-4-5',
-          displayName: 'Haiku 4.5',
-          description: 'Fastest for quick answers',
-          anthropicModelId: 'claude-haiku-4-5-20250514',
-          bedrockModelId: 'anthropic.claude-haiku-4-5-20250514',
+          id: "model-haiku-4-5",
+          key: "haiku-4-5",
+          displayName: "Haiku 4.5",
+          description: "Fastest for quick answers",
+          anthropicModelId: "claude-haiku-4-5-20250514",
+          bedrockModelId: "anthropic.claude-haiku-4-5-20250514",
           sortOrder: 3,
         },
       ];
@@ -1190,7 +1210,7 @@ export class DatabaseManager {
           model.bedrockModelId,
           model.sortOrder,
           now,
-          now
+          now,
         );
       }
     }

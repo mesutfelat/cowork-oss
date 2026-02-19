@@ -6,14 +6,14 @@ import {
   LLMContent,
   LLMMessage,
   LLMTool,
-} from './types';
+} from "./types";
 
 /**
  * OpenRouter API provider implementation
  * OpenRouter provides access to multiple LLM providers through a unified API
  */
 export class OpenRouterProvider implements LLMProvider {
-  readonly type = 'openrouter' as const;
+  readonly type = "openrouter" as const;
   private apiKey: string;
   private baseUrl: string;
   private defaultModel: string;
@@ -21,12 +21,14 @@ export class OpenRouterProvider implements LLMProvider {
   constructor(config: LLMProviderConfig) {
     const apiKey = config.openrouterApiKey;
     if (!apiKey) {
-      throw new Error('OpenRouter API key is required. Configure it in Settings or get one from https://openrouter.ai/keys');
+      throw new Error(
+        "OpenRouter API key is required. Configure it in Settings or get one from https://openrouter.ai/keys",
+      );
     }
 
     this.apiKey = apiKey;
-    this.baseUrl = config.openrouterBaseUrl || 'https://openrouter.ai/api/v1';
-    this.defaultModel = config.model || 'anthropic/claude-3.5-sonnet';
+    this.baseUrl = config.openrouterBaseUrl || "https://openrouter.ai/api/v1";
+    this.defaultModel = config.model || "anthropic/claude-3.5-sonnet";
   }
 
   async createMessage(request: LLMRequest): Promise<LLMResponse> {
@@ -37,38 +39,40 @@ export class OpenRouterProvider implements LLMProvider {
       console.log(`[OpenRouter] Calling API with model: ${request.model || this.defaultModel}`);
 
       const response = await fetch(`${this.baseUrl}/chat/completions`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': 'https://github.com/CoWork-OS/cowork-os',
-          'X-Title': 'CoWork-OS',
+          Authorization: `Bearer ${this.apiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://github.com/CoWork-OS/cowork-os",
+          "X-Title": "CoWork-OS",
         },
         body: JSON.stringify({
           model: request.model || this.defaultModel,
           messages,
           max_tokens: request.maxTokens,
-          ...(tools && { tools, tool_choice: 'auto' }),
+          ...(tools && { tools, tool_choice: "auto" }),
         }),
         // Pass abort signal to allow cancellation
         signal: request.signal,
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({})) as { error?: { message?: string } };
+        const errorData = (await response.json().catch(() => ({}))) as {
+          error?: { message?: string };
+        };
         throw new Error(
           `OpenRouter API error: ${response.status} ${response.statusText}` +
-          (errorData.error?.message ? ` - ${errorData.error.message}` : '')
+            (errorData.error?.message ? ` - ${errorData.error.message}` : ""),
         );
       }
 
-      const data = await response.json() as any;
+      const data = (await response.json()) as any;
       return this.convertResponse(data);
     } catch (error: any) {
       // Handle abort errors gracefully
-      if (error.name === 'AbortError' || error.message?.includes('aborted')) {
+      if (error.name === "AbortError" || error.message?.includes("aborted")) {
         console.log(`[OpenRouter] Request aborted`);
-        throw new Error('Request cancelled');
+        throw new Error("Request cancelled");
       }
 
       console.error(`[OpenRouter] API error:`, {
@@ -82,22 +86,24 @@ export class OpenRouterProvider implements LLMProvider {
   async testConnection(): Promise<{ success: boolean; error?: string }> {
     try {
       const response = await fetch(`${this.baseUrl}/chat/completions`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': 'https://github.com/CoWork-OS/cowork-os',
-          'X-Title': 'CoWork-OS',
+          Authorization: `Bearer ${this.apiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://github.com/CoWork-OS/cowork-os",
+          "X-Title": "CoWork-OS",
         },
         body: JSON.stringify({
           model: this.defaultModel,
-          messages: [{ role: 'user', content: 'Hi' }],
+          messages: [{ role: "user", content: "Hi" }],
           max_tokens: 10,
         }),
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({})) as { error?: { message?: string } };
+        const errorData = (await response.json().catch(() => ({}))) as {
+          error?: { message?: string };
+        };
         return {
           success: false,
           error: errorData.error?.message || `HTTP ${response.status}: ${response.statusText}`,
@@ -108,53 +114,55 @@ export class OpenRouterProvider implements LLMProvider {
     } catch (error: any) {
       return {
         success: false,
-        error: error.message || 'Failed to connect to OpenRouter API',
+        error: error.message || "Failed to connect to OpenRouter API",
       };
     }
   }
 
   private convertMessages(
     messages: LLMMessage[],
-    system?: string
+    system?: string,
   ): Array<{ role: string; content: any; tool_call_id?: string }> {
     const result: Array<{ role: string; content: any; tool_call_id?: string }> = [];
 
     // Add system message if provided
     if (system) {
-      result.push({ role: 'system', content: system });
+      result.push({ role: "system", content: system });
     }
 
     for (const msg of messages) {
-      if (typeof msg.content === 'string') {
+      if (typeof msg.content === "string") {
         result.push({ role: msg.role, content: msg.content });
       } else {
         // Handle array content (tool results, mixed content, images)
         const textParts: string[] = [];
-        const imageBlocks: Array<{ type: 'image'; data: string; mimeType: string }> = [];
+        const imageBlocks: Array<{ type: "image"; data: string; mimeType: string }> = [];
         for (const item of msg.content) {
-          if (item.type === 'tool_result') {
+          if (item.type === "tool_result") {
             result.push({
-              role: 'tool',
+              role: "tool",
               content: item.content,
               tool_call_id: item.tool_use_id,
             });
-          } else if (item.type === 'tool_use') {
+          } else if (item.type === "tool_use") {
             // Tool use from assistant - add as assistant message with tool_calls
             result.push({
-              role: 'assistant',
+              role: "assistant",
               content: null,
-              tool_calls: [{
-                id: item.id,
-                type: 'function',
-                function: {
-                  name: item.name,
-                  arguments: JSON.stringify(item.input),
+              tool_calls: [
+                {
+                  id: item.id,
+                  type: "function",
+                  function: {
+                    name: item.name,
+                    arguments: JSON.stringify(item.input),
+                  },
                 },
-              }],
+              ],
             } as any);
-          } else if (item.type === 'text') {
+          } else if (item.type === "text") {
             textParts.push(item.text);
-          } else if (item.type === 'image') {
+          } else if (item.type === "image") {
             imageBlocks.push(item);
           }
         }
@@ -163,17 +171,17 @@ export class OpenRouterProvider implements LLMProvider {
         if (imageBlocks.length > 0) {
           const contentParts: any[] = [];
           if (textParts.length > 0) {
-            contentParts.push({ type: 'text', text: textParts.join('\n') });
+            contentParts.push({ type: "text", text: textParts.join("\n") });
           }
           for (const img of imageBlocks) {
             contentParts.push({
-              type: 'image_url',
+              type: "image_url",
               image_url: { url: `data:${img.mimeType};base64,${img.data}` },
             });
           }
           result.push({ role: msg.role, content: contentParts });
         } else if (textParts.length > 0) {
-          result.push({ role: msg.role, content: textParts.join('\n') });
+          result.push({ role: msg.role, content: textParts.join("\n") });
         }
       }
     }
@@ -182,7 +190,7 @@ export class OpenRouterProvider implements LLMProvider {
   }
 
   private convertTools(tools: LLMTool[]): Array<{
-    type: 'function';
+    type: "function";
     function: {
       name: string;
       description: string;
@@ -190,7 +198,7 @@ export class OpenRouterProvider implements LLMProvider {
     };
   }> {
     return tools.map((tool) => ({
-      type: 'function' as const,
+      type: "function" as const,
       function: {
         name: tool.name,
         description: tool.description,
@@ -205,8 +213,8 @@ export class OpenRouterProvider implements LLMProvider {
 
     if (!choice) {
       return {
-        content: [{ type: 'text', text: '' }],
-        stopReason: 'end_turn',
+        content: [{ type: "text", text: "" }],
+        stopReason: "end_turn",
       };
     }
 
@@ -215,7 +223,7 @@ export class OpenRouterProvider implements LLMProvider {
     // Handle text content
     if (message.content) {
       content.push({
-        type: 'text',
+        type: "text",
         text: message.content,
       });
     }
@@ -223,12 +231,12 @@ export class OpenRouterProvider implements LLMProvider {
     // Handle tool calls
     if (message.tool_calls) {
       for (const toolCall of message.tool_calls) {
-        if (toolCall.type === 'function') {
+        if (toolCall.type === "function") {
           content.push({
-            type: 'tool_use',
+            type: "tool_use",
             id: toolCall.id,
             name: toolCall.function.name,
-            input: JSON.parse(toolCall.function.arguments || '{}'),
+            input: JSON.parse(toolCall.function.arguments || "{}"),
           });
         }
       }
@@ -236,7 +244,7 @@ export class OpenRouterProvider implements LLMProvider {
 
     // If no content was parsed, return empty text
     if (content.length === 0) {
-      content.push({ type: 'text', text: '' });
+      content.push({ type: "text", text: "" });
     }
 
     return {
@@ -251,18 +259,18 @@ export class OpenRouterProvider implements LLMProvider {
     };
   }
 
-  private mapStopReason(finishReason?: string): LLMResponse['stopReason'] {
+  private mapStopReason(finishReason?: string): LLMResponse["stopReason"] {
     switch (finishReason) {
-      case 'stop':
-        return 'end_turn';
-      case 'length':
-        return 'max_tokens';
-      case 'tool_calls':
-        return 'tool_use';
-      case 'content_filter':
-        return 'stop_sequence';
+      case "stop":
+        return "end_turn";
+      case "length":
+        return "max_tokens";
+      case "tool_calls":
+        return "tool_use";
+      case "content_filter":
+        return "stop_sequence";
       default:
-        return 'end_turn';
+        return "end_turn";
     }
   }
 
@@ -273,7 +281,7 @@ export class OpenRouterProvider implements LLMProvider {
     try {
       const response = await fetch(`${this.baseUrl}/models`, {
         headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
+          Authorization: `Bearer ${this.apiKey}`,
         },
       });
 
@@ -281,14 +289,14 @@ export class OpenRouterProvider implements LLMProvider {
         return [];
       }
 
-      const data = await response.json() as { data?: any[] };
+      const data = (await response.json()) as { data?: any[] };
       return (data.data || []).map((model: any) => ({
         id: model.id,
         name: model.name || model.id,
         context_length: model.context_length || 0,
       }));
     } catch (error) {
-      console.error('Failed to fetch OpenRouter models:', error);
+      console.error("Failed to fetch OpenRouter models:", error);
       return [];
     }
   }

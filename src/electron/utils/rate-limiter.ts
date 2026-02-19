@@ -9,20 +9,20 @@ interface RateLimitEntry {
 }
 
 interface RateLimitConfig {
-  maxRequests: number;  // Max requests allowed in the window
-  windowMs: number;     // Time window in milliseconds
+  maxRequests: number; // Max requests allowed in the window
+  windowMs: number; // Time window in milliseconds
 }
 
 // Default configurations for different handler types
 export const RATE_LIMIT_CONFIGS = {
   // Expensive operations (LLM calls, task creation)
-  expensive: { maxRequests: 10, windowMs: 60000 },      // 10 per minute
+  expensive: { maxRequests: 10, windowMs: 60000 }, // 10 per minute
   // Standard operations (most handlers)
-  standard: { maxRequests: 60, windowMs: 60000 },       // 60 per minute
+  standard: { maxRequests: 60, windowMs: 60000 }, // 60 per minute
   // High-frequency operations (UI updates, status checks)
-  frequent: { maxRequests: 300, windowMs: 60000 },      // 300 per minute
+  frequent: { maxRequests: 300, windowMs: 60000 }, // 300 per minute
   // Very limited (settings save, credential operations)
-  limited: { maxRequests: 5, windowMs: 60000 },         // 5 per minute
+  limited: { maxRequests: 5, windowMs: 60000 }, // 5 per minute
 } as const;
 
 class RateLimiter {
@@ -113,7 +113,7 @@ export const rateLimiter = new RateLimiter();
 export function withRateLimit<T extends (...args: any[]) => Promise<any>>(
   channel: string,
   handler: T,
-  config: RateLimitConfig = RATE_LIMIT_CONFIGS.standard
+  config: RateLimitConfig = RATE_LIMIT_CONFIGS.standard,
 ): T {
   rateLimiter.configure(channel, config);
 
@@ -121,9 +121,7 @@ export function withRateLimit<T extends (...args: any[]) => Promise<any>>(
     if (!rateLimiter.check(channel)) {
       const resetMs = rateLimiter.getResetTime(channel);
       const resetSec = Math.ceil(resetMs / 1000);
-      throw new Error(
-        `Rate limit exceeded for ${channel}. Try again in ${resetSec} seconds.`
-      );
+      throw new Error(`Rate limit exceeded for ${channel}. Try again in ${resetSec} seconds.`);
     }
     return handler(...args);
   }) as T;

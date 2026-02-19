@@ -234,7 +234,7 @@ export function buildXToggleFollowScript(params: {
   buttonLabels: string[];
   followSelectors: string[];
   expectUnfollow: boolean;
-  actionTarget: 'follow' | 'unfollow';
+  actionTarget: "follow" | "unfollow";
   maxRetries: number;
   retryDelayMs: number;
   userHandle?: string;
@@ -369,7 +369,7 @@ export function buildXToggleFollowScript(params: {
                 afterText,
                 changed: true,
                 attempts: attempt + 1,
-                targetUser: ${JSON.stringify(userHandle || '')},
+                targetUser: ${JSON.stringify(userHandle || "")},
               };
             }
             if (attempt < maxRetries - 1) {
@@ -387,7 +387,7 @@ export function buildXToggleFollowScript(params: {
             changed: false,
             attempts: maxRetries,
             reason: 'Button state did not change after ' + maxRetries + ' retries.',
-            targetUser: ${JSON.stringify(userHandle || '')},
+            targetUser: ${JSON.stringify(userHandle || "")},
           };
         }
 
@@ -421,7 +421,7 @@ export function buildXToggleFollowScript(params: {
               afterText,
               changed: true,
               attempts: attempt + 1,
-              targetUser: ${JSON.stringify(userHandle || '')},
+              targetUser: ${JSON.stringify(userHandle || "")},
             };
           }
           if (attempt < maxRetries - 1) {
@@ -438,7 +438,7 @@ export function buildXToggleFollowScript(params: {
           changed: false,
           attempts: maxRetries,
           reason: 'Button state did not change after ' + maxRetries + ' retries.',
-          targetUser: ${JSON.stringify(userHandle || '')},
+          targetUser: ${JSON.stringify(userHandle || "")},
         };
       })()
     `;

@@ -5,11 +5,11 @@
  * Provides methods for listing, describing, and invoking commands on nodes.
  */
 
-import { EventEmitter } from 'events';
-import type { ControlPlaneServer } from './server';
-import type { ControlPlaneClient, NodeCapabilityType, NodePlatform } from './client';
-import type { NodeInfo, NodeInvokeParams, NodeInvokeResult } from '../../shared/types';
-import { Events, Methods, ErrorCodes, createRequestFrame, createResponseFrame } from './protocol';
+import { EventEmitter } from "events";
+import type { ControlPlaneServer } from "./server";
+import type { ControlPlaneClient, NodeCapabilityType, NodePlatform } from "./client";
+import type { NodeInfo, NodeInvokeParams, NodeInvokeResult } from "../../shared/types";
+import { Events, Methods, ErrorCodes, createRequestFrame, createResponseFrame } from "./protocol";
 
 /**
  * Node Manager event types
@@ -138,14 +138,16 @@ export class NodeManager extends EventEmitter {
     if (!this.server) {
       return {
         ok: false,
-        error: { code: 'SERVER_NOT_RUNNING', message: 'Control Plane server is not running' },
+        error: { code: "SERVER_NOT_RUNNING", message: "Control Plane server is not running" },
       };
     }
 
     const { nodeId, command, params: commandParams, timeoutMs = 30000 } = params;
 
     // Find the node
-    const client = (this.server as any).clients.getNodeByIdOrName(nodeId) as ControlPlaneClient | undefined;
+    const client = (this.server as any).clients.getNodeByIdOrName(nodeId) as
+      | ControlPlaneClient
+      | undefined;
     if (!client) {
       return {
         ok: false,
@@ -173,13 +175,13 @@ export class NodeManager extends EventEmitter {
     }
 
     // Check foreground requirement for certain commands
-    const foregroundRequiredCommands = ['camera.snap', 'camera.clip', 'screen.record'];
+    const foregroundRequiredCommands = ["camera.snap", "camera.clip", "screen.record"];
     if (!nodeInfo.isForeground && foregroundRequiredCommands.includes(command)) {
       return {
         ok: false,
         error: {
           code: ErrorCodes.NODE_BACKGROUND_UNAVAILABLE,
-          message: 'Node app must be in foreground for this command',
+          message: "Node app must be in foreground for this command",
         },
       };
     }
@@ -190,7 +192,7 @@ export class NodeManager extends EventEmitter {
         client,
         command,
         commandParams,
-        timeoutMs
+        timeoutMs,
       );
       return result;
     } catch (error: any) {
@@ -198,7 +200,7 @@ export class NodeManager extends EventEmitter {
         ok: false,
         error: {
           code: ErrorCodes.NODE_COMMAND_FAILED,
-          message: error.message || 'Command invocation failed',
+          message: error.message || "Command invocation failed",
         },
       };
     }
@@ -209,11 +211,11 @@ export class NodeManager extends EventEmitter {
    */
   async cameraSnap(
     nodeId: string,
-    options?: { facing?: 'front' | 'back'; maxWidth?: number; quality?: number }
+    options?: { facing?: "front" | "back"; maxWidth?: number; quality?: number },
   ): Promise<NodeInvokeResult> {
     return this.invoke({
       nodeId,
-      command: 'camera.snap',
+      command: "camera.snap",
       params: options,
     });
   }
@@ -223,11 +225,11 @@ export class NodeManager extends EventEmitter {
    */
   async cameraClip(
     nodeId: string,
-    options: { durationMs: number; facing?: 'front' | 'back'; noAudio?: boolean }
+    options: { durationMs: number; facing?: "front" | "back"; noAudio?: boolean },
   ): Promise<NodeInvokeResult> {
     return this.invoke({
       nodeId,
-      command: 'camera.clip',
+      command: "camera.clip",
       params: options,
     });
   }
@@ -237,11 +239,11 @@ export class NodeManager extends EventEmitter {
    */
   async locationGet(
     nodeId: string,
-    options?: { accuracy?: 'coarse' | 'precise'; maxAge?: number; timeout?: number }
+    options?: { accuracy?: "coarse" | "precise"; maxAge?: number; timeout?: number },
   ): Promise<NodeInvokeResult> {
     return this.invoke({
       nodeId,
-      command: 'location.get',
+      command: "location.get",
       params: options,
     });
   }
@@ -251,11 +253,11 @@ export class NodeManager extends EventEmitter {
    */
   async screenRecord(
     nodeId: string,
-    options: { durationMs: number; fps?: number; noAudio?: boolean }
+    options: { durationMs: number; fps?: number; noAudio?: boolean },
   ): Promise<NodeInvokeResult> {
     return this.invoke({
       nodeId,
-      command: 'screen.record',
+      command: "screen.record",
       params: options,
     });
   }
@@ -265,11 +267,11 @@ export class NodeManager extends EventEmitter {
    */
   async smsSend(
     nodeId: string,
-    options: { to: string; message: string }
+    options: { to: string; message: string },
   ): Promise<NodeInvokeResult> {
     return this.invoke({
       nodeId,
-      command: 'sms.send',
+      command: "sms.send",
       params: options,
     });
   }
@@ -279,11 +281,11 @@ export class NodeManager extends EventEmitter {
    */
   async systemNotify(
     nodeId: string,
-    options: { title: string; message: string; sound?: boolean }
+    options: { title: string; message: string; sound?: boolean },
   ): Promise<NodeInvokeResult> {
     return this.invoke({
       nodeId,
-      command: 'system.notify',
+      command: "system.notify",
       params: options,
     });
   }

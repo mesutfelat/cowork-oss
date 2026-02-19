@@ -32,14 +32,14 @@ import {
   StatusHandler,
   ChannelInfo,
   TwitchConfig,
-} from './types';
-import { TwitchClient, TwitchMessage } from './twitch-client';
+} from "./types";
+import { TwitchClient, TwitchMessage } from "./twitch-client";
 
 export class TwitchAdapter implements ChannelAdapter {
-  readonly type = 'twitch' as const;
+  readonly type = "twitch" as const;
 
   private client: TwitchClient | null = null;
-  private _status: ChannelStatus = 'disconnected';
+  private _status: ChannelStatus = "disconnected";
   private _botUsername?: string;
   private messageHandlers: MessageHandler[] = [];
   private errorHandlers: ErrorHandler[] = [];
@@ -72,11 +72,11 @@ export class TwitchAdapter implements ChannelAdapter {
    * Connect to Twitch
    */
   async connect(): Promise<void> {
-    if (this._status === 'connected' || this._status === 'connecting') {
+    if (this._status === "connected" || this._status === "connecting") {
       return;
     }
 
-    this.setStatus('connecting');
+    this.setStatus("connecting");
 
     try {
       // Create Twitch client
@@ -84,44 +84,44 @@ export class TwitchAdapter implements ChannelAdapter {
         username: this.config.username,
         oauthToken: this.config.oauthToken,
         channels: this.config.channels,
-        verbose: process.env.NODE_ENV === 'development',
+        verbose: process.env.NODE_ENV === "development",
       });
 
       // Check connection
       const check = await this.client.checkConnection();
       if (!check.success) {
-        throw new Error(check.error || 'Failed to connect to Twitch');
+        throw new Error(check.error || "Failed to connect to Twitch");
       }
 
       this._botUsername = check.username;
 
       // Set up event handlers
-      this.client.on('message', (message: TwitchMessage) => {
+      this.client.on("message", (message: TwitchMessage) => {
         this.handleIncomingMessage(message);
       });
 
-      this.client.on('whisper', (message: TwitchMessage) => {
+      this.client.on("whisper", (message: TwitchMessage) => {
         if (this.config.allowWhispers) {
           this.handleIncomingMessage(message);
         }
       });
 
-      this.client.on('error', (error: Error) => {
-        this.handleError(error, 'client');
+      this.client.on("error", (error: Error) => {
+        this.handleError(error, "client");
       });
 
-      this.client.on('connected', () => {
-        console.log('Twitch client connected');
+      this.client.on("connected", () => {
+        console.log("Twitch client connected");
       });
 
-      this.client.on('disconnected', () => {
-        console.log('Twitch client disconnected');
-        if (this._status === 'connected') {
-          this.setStatus('disconnected');
+      this.client.on("disconnected", () => {
+        console.log("Twitch client disconnected");
+        if (this._status === "connected") {
+          this.setStatus("disconnected");
         }
       });
 
-      this.client.on('join', (channel: string) => {
+      this.client.on("join", (channel: string) => {
         console.log(`Joined Twitch channel: ${channel}`);
       });
 
@@ -133,11 +133,11 @@ export class TwitchAdapter implements ChannelAdapter {
         this.startDedupCleanup();
       }
 
-      this.setStatus('connected');
+      this.setStatus("connected");
       console.log(`Twitch adapter connected as ${this._botUsername}`);
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
-      this.setStatus('error', err);
+      this.setStatus("error", err);
       throw err;
     }
   }
@@ -162,15 +162,15 @@ export class TwitchAdapter implements ChannelAdapter {
     }
 
     this._botUsername = undefined;
-    this.setStatus('disconnected');
+    this.setStatus("disconnected");
   }
 
   /**
    * Send a message
    */
   async sendMessage(message: OutgoingMessage): Promise<string> {
-    if (!this.client || this._status !== 'connected') {
-      throw new Error('Twitch client is not connected');
+    if (!this.client || this._status !== "connected") {
+      throw new Error("Twitch client is not connected");
     }
 
     // Add response prefix if configured
@@ -183,7 +183,7 @@ export class TwitchAdapter implements ChannelAdapter {
     // Split long messages
     const chunks = this.splitMessage(text, 450); // Leave room for prefix/reply
 
-    let lastMessageId = '';
+    let lastMessageId = "";
     for (const chunk of chunks) {
       await this.client.sendMessage(message.chatId, chunk, message.replyTo);
       // Generate a pseudo message ID since Twitch IRC doesn't return one
@@ -211,7 +211,7 @@ export class TwitchAdapter implements ChannelAdapter {
       }
 
       // Find a good break point (space, newline)
-      let breakPoint = remaining.lastIndexOf(' ', maxLength);
+      let breakPoint = remaining.lastIndexOf(" ", maxLength);
       if (breakPoint === -1 || breakPoint < maxLength * 0.5) {
         breakPoint = maxLength;
       }
@@ -227,7 +227,7 @@ export class TwitchAdapter implements ChannelAdapter {
    * Edit a message (not supported by Twitch)
    */
   async editMessage(chatId: string, messageId: string, text: string): Promise<void> {
-    throw new Error('Twitch does not support message editing');
+    throw new Error("Twitch does not support message editing");
   }
 
   /**
@@ -235,22 +235,22 @@ export class TwitchAdapter implements ChannelAdapter {
    */
   async deleteMessage(chatId: string, messageId: string): Promise<void> {
     // Could implement /delete command for moderators
-    console.warn('Twitch message deletion requires moderator privileges');
-    throw new Error('Twitch message deletion not implemented');
+    console.warn("Twitch message deletion requires moderator privileges");
+    throw new Error("Twitch message deletion not implemented");
   }
 
   /**
    * Send a document/file (not supported by Twitch)
    */
   async sendDocument(chatId: string, filePath: string, caption?: string): Promise<string> {
-    throw new Error('Twitch does not support file attachments');
+    throw new Error("Twitch does not support file attachments");
   }
 
   /**
    * Send a photo/image (not supported by Twitch)
    */
   async sendPhoto(chatId: string, filePath: string, caption?: string): Promise<string> {
-    throw new Error('Twitch does not support image attachments');
+    throw new Error("Twitch does not support image attachments");
   }
 
   /**
@@ -279,7 +279,7 @@ export class TwitchAdapter implements ChannelAdapter {
    */
   async getInfo(): Promise<ChannelInfo> {
     return {
-      type: 'twitch',
+      type: "twitch",
       status: this._status,
       botId: this.config.username,
       botUsername: this._botUsername,
@@ -299,7 +299,7 @@ export class TwitchAdapter implements ChannelAdapter {
    * Join a channel
    */
   joinChannel(channel: string): void {
-    if (this.client && this._status === 'connected') {
+    if (this.client && this._status === "connected") {
       this.client.joinChannel(channel);
     }
   }
@@ -308,7 +308,7 @@ export class TwitchAdapter implements ChannelAdapter {
    * Leave a channel
    */
   leaveChannel(channel: string): void {
-    if (this.client && this._status === 'connected') {
+    if (this.client && this._status === "connected") {
       this.client.leaveChannel(channel);
     }
   }
@@ -317,8 +317,8 @@ export class TwitchAdapter implements ChannelAdapter {
    * Send a whisper (DM)
    */
   async sendWhisper(username: string, message: string): Promise<void> {
-    if (!this.client || this._status !== 'connected') {
-      throw new Error('Twitch client is not connected');
+    if (!this.client || this._status !== "connected") {
+      throw new Error("Twitch client is not connected");
     }
 
     await this.client.sendWhisper(username, message);
@@ -360,7 +360,7 @@ export class TwitchAdapter implements ChannelAdapter {
     const isGroup = !twitchMessage.isWhisper;
     const message: IncomingMessage = {
       messageId: twitchMessage.id,
-      channel: 'twitch',
+      channel: "twitch",
       userId: twitchMessage.userId,
       userName: twitchMessage.displayName || twitchMessage.username,
       chatId: twitchMessage.channel || twitchMessage.username, // Use username for whispers
@@ -376,10 +376,10 @@ export class TwitchAdapter implements ChannelAdapter {
       try {
         await handler(message);
       } catch (error) {
-        console.error('Error in Twitch message handler:', error);
+        console.error("Error in Twitch message handler:", error);
         this.handleError(
           error instanceof Error ? error : new Error(String(error)),
-          'messageHandler'
+          "messageHandler",
         );
       }
     }
@@ -433,7 +433,7 @@ export class TwitchAdapter implements ChannelAdapter {
       try {
         handler(error, context);
       } catch (e) {
-        console.error('Error in error handler:', e);
+        console.error("Error in error handler:", e);
       }
     }
   }
@@ -447,7 +447,7 @@ export class TwitchAdapter implements ChannelAdapter {
       try {
         handler(status, error);
       } catch (e) {
-        console.error('Error in status handler:', e);
+        console.error("Error in status handler:", e);
       }
     }
   }
@@ -458,13 +458,13 @@ export class TwitchAdapter implements ChannelAdapter {
  */
 export function createTwitchAdapter(config: TwitchConfig): TwitchAdapter {
   if (!config.username) {
-    throw new Error('Twitch username is required');
+    throw new Error("Twitch username is required");
   }
   if (!config.oauthToken) {
-    throw new Error('Twitch OAuth token is required');
+    throw new Error("Twitch OAuth token is required");
   }
   if (!config.channels || config.channels.length === 0) {
-    throw new Error('At least one Twitch channel is required');
+    throw new Error("At least one Twitch channel is required");
   }
   return new TwitchAdapter(config);
 }

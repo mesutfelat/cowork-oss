@@ -12,8 +12,8 @@
  * - Auto-reconnection with exponential backoff
  */
 
-import * as os from 'os';
-import * as path from 'path';
+import * as os from "os";
+import * as path from "path";
 import {
   ChannelAdapter,
   ChannelStatus,
@@ -25,7 +25,7 @@ import {
   ChannelInfo,
   ImessageConfig,
   MessageAttachment,
-} from './types';
+} from "./types";
 import {
   ImessageRpcClient,
   ImessageRpcNotification,
@@ -34,7 +34,7 @@ import {
   probeImsg,
   normalizeImessageHandle,
   formatImessageChatTarget,
-} from './imessage-client';
+} from "./imessage-client";
 
 /**
  * Exponential backoff configuration
@@ -48,10 +48,10 @@ interface BackoffConfig {
 }
 
 export class ImessageAdapter implements ChannelAdapter {
-  readonly type = 'imessage' as const;
+  readonly type = "imessage" as const;
 
   private client: ImessageRpcClient | null = null;
-  private _status: ChannelStatus = 'disconnected';
+  private _status: ChannelStatus = "disconnected";
   private _selfHandle?: string;
   private subscriptionId: number | null = null;
   private messageHandlers: MessageHandler[] = [];
@@ -82,9 +82,9 @@ export class ImessageAdapter implements ChannelAdapter {
   constructor(config: ImessageConfig) {
     this.config = {
       deduplicationEnabled: true,
-      dmPolicy: 'pairing',
-      groupPolicy: 'allowlist',
-      service: 'auto',
+      dmPolicy: "pairing",
+      groupPolicy: "allowlist",
+      service: "auto",
       mediaMaxMb: 16,
       ...config,
     };
@@ -102,11 +102,11 @@ export class ImessageAdapter implements ChannelAdapter {
    * Connect to iMessage via imsg RPC
    */
   async connect(): Promise<void> {
-    if (this._status === 'connected' || this._status === 'connecting') {
+    if (this._status === "connected" || this._status === "connecting") {
       return;
     }
 
-    this.setStatus('connecting');
+    this.setStatus("connecting");
     this.resetBackoff();
     this.abortController = new AbortController();
 
@@ -118,7 +118,7 @@ export class ImessageAdapter implements ChannelAdapter {
       });
 
       if (!probe.ok) {
-        throw new Error(probe.error || 'imsg CLI not available');
+        throw new Error(probe.error || "imsg CLI not available");
       }
 
       // Create RPC client
@@ -130,13 +130,13 @@ export class ImessageAdapter implements ChannelAdapter {
       });
 
       // Subscribe to message watching
-      const result = await this.client.request<{ subscription?: number }>('watch.subscribe', {
+      const result = await this.client.request<{ subscription?: number }>("watch.subscribe", {
         attachments: this.config.includeAttachments ?? false,
       });
       this.subscriptionId = result?.subscription ?? null;
 
-      this.setStatus('connected');
-      console.log('iMessage connected via imsg RPC');
+      this.setStatus("connected");
+      console.log("iMessage connected via imsg RPC");
 
       // Start deduplication cleanup
       if (this.config.deduplicationEnabled) {
@@ -144,7 +144,7 @@ export class ImessageAdapter implements ChannelAdapter {
       }
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
-      this.setStatus('error', err);
+      this.setStatus("error", err);
       throw err;
     }
   }
@@ -172,7 +172,7 @@ export class ImessageAdapter implements ChannelAdapter {
     // Unsubscribe from watch
     if (this.client && this.subscriptionId !== null) {
       try {
-        await this.client.request('watch.unsubscribe', {
+        await this.client.request("watch.unsubscribe", {
           subscription: this.subscriptionId,
         });
       } catch {
@@ -188,32 +188,30 @@ export class ImessageAdapter implements ChannelAdapter {
     }
 
     this.isReconnecting = false;
-    this.setStatus('disconnected');
-    console.log('iMessage disconnected');
+    this.setStatus("disconnected");
+    console.log("iMessage disconnected");
   }
 
   /**
    * Send a message
    */
   async sendMessage(message: OutgoingMessage): Promise<string> {
-    if (!this.client || this._status !== 'connected') {
-      throw new Error('iMessage not connected');
+    if (!this.client || this._status !== "connected") {
+      throw new Error("iMessage not connected");
     }
 
     const { chatId, text } = message;
     if (!text?.trim()) {
-      throw new Error('Message text is required');
+      throw new Error("Message text is required");
     }
 
     // Add response prefix if configured
-    const finalText = this.config.responsePrefix
-      ? `${this.config.responsePrefix} ${text}`
-      : text;
+    const finalText = this.config.responsePrefix ? `${this.config.responsePrefix} ${text}` : text;
 
     // Build request params
     const params: Record<string, unknown> = {
       text: finalText,
-      service: this.config.service || 'auto',
+      service: this.config.service || "auto",
     };
 
     // Parse chat target - could be chat_id:123 or imessage:handle or just a handle
@@ -222,7 +220,7 @@ export class ImessageAdapter implements ChannelAdapter {
       params.chat_id = parseInt(chatIdMatch[1], 10);
     } else {
       // Strip imessage: prefix if present
-      const handle = chatId.startsWith('imessage:') ? chatId.slice(9) : chatId;
+      const handle = chatId.startsWith("imessage:") ? chatId.slice(9) : chatId;
       params.to = handle;
     }
 
@@ -233,19 +231,19 @@ export class ImessageAdapter implements ChannelAdapter {
         id?: string;
         guid?: string;
         ok?: boolean;
-      }>('send', params);
+      }>("send", params);
 
       const messageId =
         result?.messageId ||
         result?.message_id ||
         result?.id ||
         result?.guid ||
-        (result?.ok ? 'ok' : 'unknown');
+        (result?.ok ? "ok" : "unknown");
 
       return String(messageId);
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
-      this.handleError(err, 'sendMessage');
+      this.handleError(err, "sendMessage");
       throw err;
     }
   }
@@ -283,12 +281,12 @@ export class ImessageAdapter implements ChannelAdapter {
    */
   async getInfo(): Promise<ChannelInfo> {
     return {
-      type: 'imessage',
+      type: "imessage",
       status: this._status,
       botUsername: this._selfHandle,
       extra: {
-        platform: 'macOS',
-        cliPath: this.config.cliPath || 'imsg',
+        platform: "macOS",
+        cliPath: this.config.cliPath || "imsg",
         dbPath: this.config.dbPath || this.getDefaultDbPath(),
       },
     };
@@ -298,20 +296,20 @@ export class ImessageAdapter implements ChannelAdapter {
    * Handle JSON-RPC notifications from imsg
    */
   private handleNotification(notification: ImessageRpcNotification): void {
-    if (notification.method === 'message') {
+    if (notification.method === "message") {
       const params = notification.params as { message?: ImessagePayload | null };
       const message = params?.message;
       if (message) {
         this.processInboundMessage(message).catch((err) => {
-          console.error('Error processing iMessage:', err);
+          console.error("Error processing iMessage:", err);
           this.handleError(
             err instanceof Error ? err : new Error(String(err)),
-            'messageProcessing'
+            "messageProcessing",
           );
         });
       }
-    } else if (notification.method === 'error') {
-      console.error('imsg watch error:', notification.params);
+    } else if (notification.method === "error") {
+      console.error("imsg watch error:", notification.params);
     }
   }
 
@@ -332,7 +330,7 @@ export class ImessageAdapter implements ChannelAdapter {
     }
 
     const messageId = payload.id ? String(payload.id) : undefined;
-    const text = payload.text?.trim() || '';
+    const text = payload.text?.trim() || "";
     const chatId = payload.chat_id;
     const isGroup = payload.is_group === true;
 
@@ -353,24 +351,25 @@ export class ImessageAdapter implements ChannelAdapter {
     const normalizedSender = normalizeImessageHandle(sender);
 
     // Build chat target
-    const chatTarget = chatId !== undefined && chatId !== null
-      ? formatImessageChatTarget(chatId) || `imessage:${normalizedSender}`
-      : `imessage:${normalizedSender}`;
+    const chatTarget =
+      chatId !== undefined && chatId !== null
+        ? formatImessageChatTarget(chatId) || `imessage:${normalizedSender}`
+        : `imessage:${normalizedSender}`;
 
     const attachments: MessageAttachment[] | undefined = this.buildAttachments(payload);
 
     // Create incoming message
     const incomingMessage: IncomingMessage = {
       messageId: messageId || `imessage-${Date.now()}`,
-      channel: 'imessage',
+      channel: "imessage",
       userId: normalizedSender,
       userName: normalizedSender,
       chatId: chatTarget,
       isGroup,
-      text: text || '<attachment>',
+      text: text || "<attachment>",
       timestamp: payload.created_at ? new Date(payload.created_at) : new Date(),
       ...(attachments && attachments.length > 0 ? { attachments } : {}),
-      ...(isFromMe ? { direction: 'outgoing_user' as const, ingestOnly: true } : {}),
+      ...(isFromMe ? { direction: "outgoing_user" as const, ingestOnly: true } : {}),
       raw: payload,
     };
 
@@ -384,7 +383,7 @@ export class ImessageAdapter implements ChannelAdapter {
       try {
         await handler(incomingMessage);
       } catch (error) {
-        console.error('Error in iMessage handler:', error);
+        console.error("Error in iMessage handler:", error);
       }
     }
   }
@@ -393,26 +392,26 @@ export class ImessageAdapter implements ChannelAdapter {
    * Get default Messages database path
    */
   private getDefaultDbPath(): string {
-    return path.join(os.homedir(), 'Library', 'Messages', 'chat.db');
+    return path.join(os.homedir(), "Library", "Messages", "chat.db");
   }
 
   private resolveUserPath(inputPath: string): string {
-    const p = String(inputPath || '').trim();
-    if (p.startsWith('~')) {
+    const p = String(inputPath || "").trim();
+    if (p.startsWith("~")) {
       return path.join(os.homedir(), p.slice(1));
     }
     return p;
   }
 
-  private inferAttachmentType(mimeType?: string, fileName?: string): MessageAttachment['type'] {
-    const mime = (mimeType || '').toLowerCase();
-    if (mime.startsWith('image/')) return 'image';
-    if (mime.startsWith('audio/')) return 'audio';
-    if (mime.startsWith('video/')) return 'video';
-    if (mime === 'application/pdf') return 'document';
-    const ext = (fileName ? path.extname(fileName) : '').toLowerCase();
-    if (ext === '.pdf') return 'document';
-    return 'file';
+  private inferAttachmentType(mimeType?: string, fileName?: string): MessageAttachment["type"] {
+    const mime = (mimeType || "").toLowerCase();
+    if (mime.startsWith("image/")) return "image";
+    if (mime.startsWith("audio/")) return "audio";
+    if (mime.startsWith("video/")) return "video";
+    if (mime === "application/pdf") return "document";
+    const ext = (fileName ? path.extname(fileName) : "").toLowerCase();
+    if (ext === ".pdf") return "document";
+    return "file";
   }
 
   private buildAttachments(payload: ImessagePayload): MessageAttachment[] | undefined {
@@ -423,15 +422,15 @@ export class ImessageAdapter implements ChannelAdapter {
     for (const att of payload.attachments) {
       if (!att || att.missing) continue;
 
-      const originalPathRaw = typeof att.original_path === 'string' ? att.original_path.trim() : '';
+      const originalPathRaw = typeof att.original_path === "string" ? att.original_path.trim() : "";
       if (!originalPathRaw) continue;
 
-      const isFileUrl = originalPathRaw.startsWith('file://');
-      const pathPart = isFileUrl ? originalPathRaw.replace('file://', '') : originalPathRaw;
+      const isFileUrl = originalPathRaw.startsWith("file://");
+      const pathPart = isFileUrl ? originalPathRaw.replace("file://", "") : originalPathRaw;
       const resolved = this.resolveUserPath(pathPart);
       const url = isFileUrl ? `file://${resolved}` : resolved;
 
-      const mimeType = typeof att.mime_type === 'string' ? att.mime_type.trim() : undefined;
+      const mimeType = typeof att.mime_type === "string" ? att.mime_type.trim() : undefined;
       const fileName = path.basename(resolved);
       const type = this.inferAttachmentType(mimeType, fileName);
 
@@ -455,7 +454,7 @@ export class ImessageAdapter implements ChannelAdapter {
       try {
         handler(status, error);
       } catch (e) {
-        console.error('Error in status handler:', e);
+        console.error("Error in status handler:", e);
       }
     }
   }
@@ -468,7 +467,7 @@ export class ImessageAdapter implements ChannelAdapter {
       try {
         handler(error, context);
       } catch (e) {
-        console.error('Error in error handler:', e);
+        console.error("Error in error handler:", e);
       }
     }
   }
@@ -491,8 +490,8 @@ export class ImessageAdapter implements ChannelAdapter {
   private attemptReconnection(): void {
     if (this.isReconnecting) return;
     if (this.backoffAttempt >= this.DEFAULT_BACKOFF.maxAttempts) {
-      console.error('iMessage: max reconnection attempts reached');
-      this.setStatus('error', new Error('Max reconnection attempts reached'));
+      console.error("iMessage: max reconnection attempts reached");
+      this.setStatus("error", new Error("Max reconnection attempts reached"));
       return;
     }
 
@@ -500,14 +499,16 @@ export class ImessageAdapter implements ChannelAdapter {
     const delay = this.calculateBackoffDelay();
     this.backoffAttempt++;
 
-    console.log(`iMessage: reconnecting in ${Math.round(delay / 1000)}s (attempt ${this.backoffAttempt})`);
+    console.log(
+      `iMessage: reconnecting in ${Math.round(delay / 1000)}s (attempt ${this.backoffAttempt})`,
+    );
 
     this.backoffTimer = setTimeout(async () => {
       this.isReconnecting = false;
       try {
         await this.connect();
       } catch (error) {
-        console.error('iMessage reconnection failed:', error);
+        console.error("iMessage reconnection failed:", error);
         this.attemptReconnection();
       }
     }, delay);

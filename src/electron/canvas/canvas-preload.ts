@@ -8,7 +8,7 @@
  * - Agent update notifications
  */
 
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer } from "electron";
 
 // Type definitions for the canvas API
 interface CanvasAPI {
@@ -21,7 +21,7 @@ interface CanvasAPI {
   sendA2UIAction: (
     actionName: string,
     componentId?: string,
-    context?: Record<string, unknown>
+    context?: Record<string, unknown>,
   ) => Promise<void>;
 
   /**
@@ -58,7 +58,7 @@ interface CanvasAPI {
 // Create the canvas API
 const canvasAPI: CanvasAPI = {
   sendA2UIAction: async (actionName, componentId, context) => {
-    await ipcRenderer.invoke('canvas:a2ui-action-from-window', {
+    await ipcRenderer.invoke("canvas:a2ui-action-from-window", {
       actionName,
       componentId,
       context,
@@ -66,28 +66,28 @@ const canvasAPI: CanvasAPI = {
   },
 
   getSessionInfo: async () => {
-    return ipcRenderer.invoke('canvas:get-session-from-window');
+    return ipcRenderer.invoke("canvas:get-session-from-window");
   },
 
   onAgentUpdate: (callback) => {
-    ipcRenderer.on('canvas:agent-update', (_event, data) => {
+    ipcRenderer.on("canvas:agent-update", (_event, data) => {
       callback(data);
     });
   },
 
   requestSnapshot: async () => {
-    return ipcRenderer.invoke('canvas:request-snapshot-from-window');
+    return ipcRenderer.invoke("canvas:request-snapshot-from-window");
   },
 
   log: (message, data) => {
-    ipcRenderer.send('canvas:log', { message, data });
+    ipcRenderer.send("canvas:log", { message, data });
   },
 };
 
 const shouldExposeCanvasApi = (() => {
   try {
     const location = (globalThis as { location?: { protocol?: string } }).location;
-    return location?.protocol === 'canvas:';
+    return location?.protocol === "canvas:";
   } catch {
     return false;
   }
@@ -95,8 +95,8 @@ const shouldExposeCanvasApi = (() => {
 
 if (shouldExposeCanvasApi) {
   // Expose the API to trusted canvas:// content only
-  contextBridge.exposeInMainWorld('coworkCanvas', canvasAPI);
-  console.log('[CanvasPreload] Canvas preload script loaded (canvas://)');
+  contextBridge.exposeInMainWorld("coworkCanvas", canvasAPI);
+  console.log("[CanvasPreload] Canvas preload script loaded (canvas://)");
 } else {
-  console.log('[CanvasPreload] Canvas preload script loaded (no API exposed)');
+  console.log("[CanvasPreload] Canvas preload script loaded (no API exposed)");
 }

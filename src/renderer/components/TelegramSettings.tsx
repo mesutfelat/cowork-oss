@@ -1,7 +1,13 @@
-import { useState, useEffect, useCallback } from 'react';
-import { ChannelData, ChannelUserData, SecurityMode, ContextType, ContextPolicy } from '../../shared/types';
-import { PairingCodeDisplay } from './PairingCodeDisplay';
-import { ContextPolicySettings } from './ContextPolicySettings';
+import { useState, useEffect, useCallback } from "react";
+import {
+  ChannelData,
+  ChannelUserData,
+  SecurityMode,
+  ContextType,
+  ContextPolicy,
+} from "../../shared/types";
+import { PairingCodeDisplay } from "./PairingCodeDisplay";
+import { ContextPolicySettings } from "./ContextPolicySettings";
 
 interface TelegramSettingsProps {
   onStatusChange?: (connected: boolean) => void;
@@ -13,12 +19,16 @@ export function TelegramSettings({ onStatusChange }: TelegramSettingsProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<{ success: boolean; error?: string; botUsername?: string } | null>(null);
+  const [testResult, setTestResult] = useState<{
+    success: boolean;
+    error?: string;
+    botUsername?: string;
+  } | null>(null);
 
   // Form state
-  const [botToken, setBotToken] = useState('');
-  const [channelName, setChannelName] = useState('Telegram Bot');
-  const [securityMode, setSecurityMode] = useState<SecurityMode>('pairing');
+  const [botToken, setBotToken] = useState("");
+  const [channelName, setChannelName] = useState("Telegram Bot");
+  const [securityMode, setSecurityMode] = useState<SecurityMode>("pairing");
 
   // Pairing code state
   const [pairingCode, setPairingCode] = useState<string | null>(null);
@@ -26,20 +36,22 @@ export function TelegramSettings({ onStatusChange }: TelegramSettingsProps) {
   const [generatingCode, setGeneratingCode] = useState(false);
 
   // Context policy state
-  const [contextPolicies, setContextPolicies] = useState<Record<ContextType, ContextPolicy>>({} as Record<ContextType, ContextPolicy>);
+  const [contextPolicies, setContextPolicies] = useState<Record<ContextType, ContextPolicy>>(
+    {} as Record<ContextType, ContextPolicy>,
+  );
   const [savingPolicy, setSavingPolicy] = useState(false);
 
   const loadChannel = useCallback(async () => {
     try {
       setLoading(true);
       const channels = await window.electronAPI.getGatewayChannels();
-      const telegramChannel = channels.find((c: ChannelData) => c.type === 'telegram');
+      const telegramChannel = channels.find((c: ChannelData) => c.type === "telegram");
 
       if (telegramChannel) {
         setChannel(telegramChannel);
         setChannelName(telegramChannel.name);
         setSecurityMode(telegramChannel.securityMode);
-        onStatusChange?.(telegramChannel.status === 'connected');
+        onStatusChange?.(telegramChannel.status === "connected");
 
         // Load users for this channel
         const channelUsers = await window.electronAPI.getGatewayUsers(telegramChannel.id);
@@ -47,14 +59,17 @@ export function TelegramSettings({ onStatusChange }: TelegramSettingsProps) {
 
         // Load context policies
         const policies = await window.electronAPI.listContextPolicies(telegramChannel.id);
-        const policyMap: Record<ContextType, ContextPolicy> = {} as Record<ContextType, ContextPolicy>;
+        const policyMap: Record<ContextType, ContextPolicy> = {} as Record<
+          ContextType,
+          ContextPolicy
+        >;
         for (const policy of policies) {
           policyMap[policy.contextType as ContextType] = policy;
         }
         setContextPolicies(policyMap);
       }
     } catch (error) {
-      console.error('Failed to load Telegram channel:', error);
+      console.error("Failed to load Telegram channel:", error);
     } finally {
       setLoading(false);
     }
@@ -66,7 +81,7 @@ export function TelegramSettings({ onStatusChange }: TelegramSettingsProps) {
 
   useEffect(() => {
     const unsubscribe = window.electronAPI?.onGatewayUsersUpdated?.((data) => {
-      if (data?.channelType !== 'telegram') return;
+      if (data?.channelType !== "telegram") return;
       if (channel && data?.channelId && data.channelId !== channel.id) return;
       loadChannel();
     });
@@ -83,13 +98,13 @@ export function TelegramSettings({ onStatusChange }: TelegramSettingsProps) {
       setTestResult(null);
 
       await window.electronAPI.addGatewayChannel({
-        type: 'telegram',
+        type: "telegram",
         name: channelName,
         botToken: botToken.trim(),
         securityMode,
       });
 
-      setBotToken('');
+      setBotToken("");
       await loadChannel();
     } catch (error: any) {
       setTestResult({ success: false, error: error.message });
@@ -135,7 +150,7 @@ export function TelegramSettings({ onStatusChange }: TelegramSettingsProps) {
   const handleRemoveChannel = async () => {
     if (!channel) return;
 
-    if (!confirm('Are you sure you want to remove the Telegram channel?')) {
+    if (!confirm("Are you sure you want to remove the Telegram channel?")) {
       return;
     }
 
@@ -163,7 +178,7 @@ export function TelegramSettings({ onStatusChange }: TelegramSettingsProps) {
       setSecurityMode(mode);
       setChannel({ ...channel, securityMode: mode });
     } catch (error: any) {
-      console.error('Failed to update security mode:', error);
+      console.error("Failed to update security mode:", error);
     }
   };
 
@@ -172,12 +187,12 @@ export function TelegramSettings({ onStatusChange }: TelegramSettingsProps) {
 
     try {
       setGeneratingCode(true);
-      const code = await window.electronAPI.generateGatewayPairing(channel.id, '');
+      const code = await window.electronAPI.generateGatewayPairing(channel.id, "");
       setPairingCode(code);
       // Default TTL is 5 minutes (300 seconds)
       setPairingExpiresAt(Date.now() + 5 * 60 * 1000);
     } catch (error: any) {
-      console.error('Failed to generate pairing code:', error);
+      console.error("Failed to generate pairing code:", error);
     } finally {
       setGeneratingCode(false);
     }
@@ -192,12 +207,12 @@ export function TelegramSettings({ onStatusChange }: TelegramSettingsProps) {
         securityMode: updates.securityMode,
         toolRestrictions: updates.toolRestrictions,
       });
-      setContextPolicies(prev => ({
+      setContextPolicies((prev) => ({
         ...prev,
         [contextType]: updated,
       }));
     } catch (error: any) {
-      console.error('Failed to update context policy:', error);
+      console.error("Failed to update context policy:", error);
     } finally {
       setSavingPolicy(false);
     }
@@ -210,7 +225,7 @@ export function TelegramSettings({ onStatusChange }: TelegramSettingsProps) {
       await window.electronAPI.revokeGatewayAccess(channel.id, userId);
       await loadChannel();
     } catch (error: any) {
-      console.error('Failed to revoke access:', error);
+      console.error("Failed to revoke access:", error);
     }
   };
 
@@ -248,9 +263,7 @@ export function TelegramSettings({ onStatusChange }: TelegramSettingsProps) {
               value={botToken}
               onChange={(e) => setBotToken(e.target.value)}
             />
-            <p className="settings-hint">
-              Get this from @BotFather after creating your bot
-            </p>
+            <p className="settings-hint">Get this from @BotFather after creating your bot</p>
           </div>
 
           <div className="settings-field">
@@ -265,14 +278,17 @@ export function TelegramSettings({ onStatusChange }: TelegramSettingsProps) {
               <option value="open">Open (Anyone can use)</option>
             </select>
             <p className="settings-hint">
-              {securityMode === 'pairing' && 'Users must enter a code generated in this app to use the bot'}
-              {securityMode === 'allowlist' && 'Only pre-approved Telegram user IDs can use the bot'}
-              {securityMode === 'open' && 'Anyone who messages the bot can use it (not recommended)'}
+              {securityMode === "pairing" &&
+                "Users must enter a code generated in this app to use the bot"}
+              {securityMode === "allowlist" &&
+                "Only pre-approved Telegram user IDs can use the bot"}
+              {securityMode === "open" &&
+                "Anyone who messages the bot can use it (not recommended)"}
             </p>
           </div>
 
           {testResult && (
-            <div className={`test-result ${testResult.success ? 'success' : 'error'}`}>
+            <div className={`test-result ${testResult.success ? "success" : "error"}`}>
               {testResult.success ? (
                 <>✓ Connected as @{testResult.botUsername}</>
               ) : (
@@ -286,7 +302,7 @@ export function TelegramSettings({ onStatusChange }: TelegramSettingsProps) {
             onClick={handleAddChannel}
             disabled={saving || !botToken.trim()}
           >
-            {saving ? 'Adding...' : 'Add Telegram Bot'}
+            {saving ? "Adding..." : "Add Telegram Bot"}
           </button>
         </div>
       </div>
@@ -304,44 +320,36 @@ export function TelegramSettings({ onStatusChange }: TelegramSettingsProps) {
               {channel.botUsername && <span className="bot-username">@{channel.botUsername}</span>}
             </h3>
             <div className={`channel-status ${channel.status}`}>
-              {channel.status === 'connected' && '● Connected'}
-              {channel.status === 'connecting' && '○ Connecting...'}
-              {channel.status === 'disconnected' && '○ Disconnected'}
-              {channel.status === 'error' && '● Error'}
+              {channel.status === "connected" && "● Connected"}
+              {channel.status === "connecting" && "○ Connecting..."}
+              {channel.status === "disconnected" && "○ Disconnected"}
+              {channel.status === "error" && "● Error"}
             </div>
           </div>
           <div className="channel-actions">
             <button
-              className={channel.enabled ? 'button-secondary' : 'button-primary'}
+              className={channel.enabled ? "button-secondary" : "button-primary"}
               onClick={handleToggleEnabled}
               disabled={saving}
             >
-              {channel.enabled ? 'Disable' : 'Enable'}
+              {channel.enabled ? "Disable" : "Enable"}
             </button>
             <button
               className="button-secondary"
               onClick={handleTestConnection}
               disabled={testing || !channel.enabled}
             >
-              {testing ? 'Testing...' : 'Test'}
+              {testing ? "Testing..." : "Test"}
             </button>
-            <button
-              className="button-danger"
-              onClick={handleRemoveChannel}
-              disabled={saving}
-            >
+            <button className="button-danger" onClick={handleRemoveChannel} disabled={saving}>
               Remove
             </button>
           </div>
         </div>
 
         {testResult && (
-          <div className={`test-result ${testResult.success ? 'success' : 'error'}`}>
-            {testResult.success ? (
-              <>✓ Connection successful</>
-            ) : (
-              <>✗ {testResult.error}</>
-            )}
+          <div className={`test-result ${testResult.success ? "success" : "error"}`}>
+            {testResult.success ? <>✓ Connection successful</> : <>✗ {testResult.error}</>}
           </div>
         )}
       </div>
@@ -359,7 +367,7 @@ export function TelegramSettings({ onStatusChange }: TelegramSettingsProps) {
         </select>
       </div>
 
-      {securityMode === 'pairing' && (
+      {securityMode === "pairing" && (
         <div className="settings-section">
           <h4>Generate Pairing Code</h4>
           <p className="settings-description">
@@ -378,7 +386,7 @@ export function TelegramSettings({ onStatusChange }: TelegramSettingsProps) {
               onClick={handleGeneratePairingCode}
               disabled={generatingCode}
             >
-              {generatingCode ? 'Generating...' : 'Generate Code'}
+              {generatingCode ? "Generating..." : "Generate Code"}
             </button>
           )}
         </div>
@@ -410,8 +418,8 @@ export function TelegramSettings({ onStatusChange }: TelegramSettingsProps) {
                 <div className="user-info">
                   <span className="user-name">{user.displayName}</span>
                   {user.username && <span className="user-username">@{user.username}</span>}
-                  <span className={`user-status ${user.allowed ? 'allowed' : 'pending'}`}>
-                    {user.allowed ? '✓ Allowed' : '○ Pending'}
+                  <span className={`user-status ${user.allowed ? "allowed" : "pending"}`}>
+                    {user.allowed ? "✓ Allowed" : "○ Pending"}
                   </span>
                 </div>
                 {user.allowed && (

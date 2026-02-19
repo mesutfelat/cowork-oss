@@ -1,4 +1,4 @@
-import { ApprovalRequest } from '../../shared/types';
+import { ApprovalRequest } from "../../shared/types";
 
 interface ApprovalDialogProps {
   approval: ApprovalRequest;
@@ -7,63 +7,63 @@ interface ApprovalDialogProps {
 }
 
 export function ApprovalDialog({ approval, onApprove, onDeny }: ApprovalDialogProps) {
-  const getCommandExplanation = (details: ApprovalRequest['details']) => {
+  const getCommandExplanation = (details: ApprovalRequest["details"]) => {
     const command = details?.command;
-    if (!command || typeof command !== 'string') return null;
+    if (!command || typeof command !== "string") return null;
 
     const explanation: string[] = [];
 
-    if (command.includes(';')) {
-      explanation.push('Runs multiple commands in sequence.');
+    if (command.includes(";")) {
+      explanation.push("Runs multiple commands in sequence.");
     }
 
     if (/\bls\s+-la\s+\/Applications\b/.test(command)) {
-      explanation.push('Lists the contents of /Applications.');
+      explanation.push("Lists the contents of /Applications.");
     }
 
     if (/\bls\s+-la\s+~\/Applications\b/.test(command)) {
-      explanation.push('Lists the contents of ~/Applications if it exists.');
+      explanation.push("Lists the contents of ~/Applications if it exists.");
     }
 
     const grepMatches = [...command.matchAll(/\bgrep\s+-i\s+([^\s;]+)/g)];
     if (grepMatches.length > 0) {
-      const terms = grepMatches.map(match => match[1].replace(/["']/g, '')).join(', ');
+      const terms = grepMatches.map((match) => match[1].replace(/["']/g, "")).join(", ");
       explanation.push(`Filters the output for "${terms}" (case-insensitive).`);
     }
 
-    if (command.includes('2>/dev/null')) {
-      explanation.push('Suppresses non-critical errors (like missing folders).');
+    if (command.includes("2>/dev/null")) {
+      explanation.push("Suppresses non-critical errors (like missing folders).");
     }
 
-    return explanation.length > 0 ? explanation.join(' ') : null;
+    return explanation.length > 0 ? explanation.join(" ") : null;
   };
 
-  const getApprovalIcon = (type: ApprovalRequest['type']) => {
+  const getApprovalIcon = (type: ApprovalRequest["type"]) => {
     switch (type) {
-      case 'delete_file':
-      case 'delete_multiple':
-        return '🗑️';
-      case 'bulk_rename':
-        return '📝';
-      case 'network_access':
-        return '🌐';
-      case 'external_service':
-        return '🔗';
+      case "delete_file":
+      case "delete_multiple":
+        return "🗑️";
+      case "bulk_rename":
+        return "📝";
+      case "network_access":
+        return "🌐";
+      case "external_service":
+        return "🔗";
       default:
-        return '⚠️';
+        return "⚠️";
     }
   };
 
-  const getApprovalColor = (type: ApprovalRequest['type']) => {
+  const getApprovalColor = (type: ApprovalRequest["type"]) => {
     switch (type) {
-      case 'delete_file':
-      case 'delete_multiple':
-        return 'approval-danger';
-      case 'network_access':
-      case 'external_service':
-        return 'approval-warning';
+      case "delete_file":
+      case "delete_multiple":
+        return "approval-danger";
+      case "network_access":
+      case "external_service":
+        return "approval-warning";
       default:
-        return 'approval-info';
+        return "approval-info";
     }
   };
 

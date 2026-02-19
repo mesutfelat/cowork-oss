@@ -2,13 +2,17 @@
  * Tests for AgentRoleRepository
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import type { AgentRole, CreateAgentRoleRequest, UpdateAgentRoleRequest } from '../../../shared/types';
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import type {
+  AgentRole,
+  CreateAgentRoleRequest,
+  UpdateAgentRoleRequest,
+} from "../../../shared/types";
 
 // Mock electron to avoid getPath errors
-vi.mock('electron', () => ({
+vi.mock("electron", () => ({
   app: {
-    getPath: vi.fn().mockReturnValue('/tmp/test-cowork'),
+    getPath: vi.fn().mockReturnValue("/tmp/test-cowork"),
   },
 }));
 
@@ -27,8 +31,8 @@ class MockAgentRoleRepository {
       name: request.name,
       displayName: request.displayName,
       description: request.description,
-      icon: request.icon || '🤖',
-      color: request.color || '#6366f1',
+      icon: request.icon || "🤖",
+      color: request.color || "#6366f1",
       personalityId: request.personalityId,
       modelKey: request.modelKey,
       providerType: request.providerType,
@@ -88,8 +92,10 @@ class MockAgentRoleRepository {
     if (request.modelKey !== undefined) stored.modelKey = request.modelKey;
     if (request.providerType !== undefined) stored.providerType = request.providerType;
     if (request.systemPrompt !== undefined) stored.systemPrompt = request.systemPrompt;
-    if (request.capabilities !== undefined) stored.capabilities = JSON.stringify(request.capabilities);
-    if (request.toolRestrictions !== undefined) stored.toolRestrictions = JSON.stringify(request.toolRestrictions);
+    if (request.capabilities !== undefined)
+      stored.capabilities = JSON.stringify(request.capabilities);
+    if (request.toolRestrictions !== undefined)
+      stored.toolRestrictions = JSON.stringify(request.toolRestrictions);
     if (request.isActive !== undefined) stored.isActive = request.isActive ? 1 : 0;
     if (request.sortOrder !== undefined) stored.sortOrder = request.sortOrder;
 
@@ -128,7 +134,7 @@ class MockAgentRoleRepository {
   }
 }
 
-describe('AgentRoleRepository', () => {
+describe("AgentRoleRepository", () => {
   let repository: MockAgentRoleRepository;
 
   beforeEach(() => {
@@ -137,128 +143,128 @@ describe('AgentRoleRepository', () => {
     repository = new MockAgentRoleRepository();
   });
 
-  describe('create', () => {
-    it('should create an agent role with required fields', () => {
+  describe("create", () => {
+    it("should create an agent role with required fields", () => {
       const role = repository.create({
-        name: 'coder',
-        displayName: 'Code Writer',
-        capabilities: ['code', 'review'],
+        name: "coder",
+        displayName: "Code Writer",
+        capabilities: ["code", "review"],
       });
 
       expect(role).toBeDefined();
       expect(role.id).toBeDefined();
-      expect(role.name).toBe('coder');
-      expect(role.displayName).toBe('Code Writer');
-      expect(role.capabilities).toEqual(['code', 'review']);
-      expect(role.icon).toBe('🤖');
-      expect(role.color).toBe('#6366f1');
+      expect(role.name).toBe("coder");
+      expect(role.displayName).toBe("Code Writer");
+      expect(role.capabilities).toEqual(["code", "review"]);
+      expect(role.icon).toBe("🤖");
+      expect(role.color).toBe("#6366f1");
       expect(role.isActive).toBe(true);
       expect(role.isSystem).toBe(false);
     });
 
-    it('should create a role with all optional fields', () => {
+    it("should create a role with all optional fields", () => {
       const role = repository.create({
-        name: 'researcher',
-        displayName: 'Research Agent',
-        description: 'Specialized in research tasks',
-        icon: '🔬',
-        color: '#22c55e',
-        personalityId: 'analytical',
-        modelKey: 'opus-4-5',
-        providerType: 'anthropic',
-        systemPrompt: 'You are a research specialist.',
-        capabilities: ['research', 'analyze'],
-        toolRestrictions: { allowedTools: ['web_search', 'read_file'] },
+        name: "researcher",
+        displayName: "Research Agent",
+        description: "Specialized in research tasks",
+        icon: "🔬",
+        color: "#22c55e",
+        personalityId: "analytical",
+        modelKey: "opus-4-5",
+        providerType: "anthropic",
+        systemPrompt: "You are a research specialist.",
+        capabilities: ["research", "analyze"],
+        toolRestrictions: { allowedTools: ["web_search", "read_file"] },
       });
 
-      expect(role.description).toBe('Specialized in research tasks');
-      expect(role.icon).toBe('🔬');
-      expect(role.color).toBe('#22c55e');
-      expect(role.personalityId).toBe('analytical');
-      expect(role.modelKey).toBe('opus-4-5');
-      expect(role.systemPrompt).toBe('You are a research specialist.');
-      expect(role.toolRestrictions).toEqual({ allowedTools: ['web_search', 'read_file'] });
+      expect(role.description).toBe("Specialized in research tasks");
+      expect(role.icon).toBe("🔬");
+      expect(role.color).toBe("#22c55e");
+      expect(role.personalityId).toBe("analytical");
+      expect(role.modelKey).toBe("opus-4-5");
+      expect(role.systemPrompt).toBe("You are a research specialist.");
+      expect(role.toolRestrictions).toEqual({ allowedTools: ["web_search", "read_file"] });
     });
 
-    it('should persist role and allow retrieval', () => {
+    it("should persist role and allow retrieval", () => {
       const created = repository.create({
-        name: 'tester',
-        displayName: 'Test Agent',
-        capabilities: ['test'],
+        name: "tester",
+        displayName: "Test Agent",
+        capabilities: ["test"],
       });
 
       const retrieved = repository.findById(created.id);
 
       expect(retrieved).toBeDefined();
       expect(retrieved?.id).toBe(created.id);
-      expect(retrieved?.name).toBe('tester');
+      expect(retrieved?.name).toBe("tester");
     });
   });
 
-  describe('findById', () => {
-    it('should return undefined for non-existent role', () => {
-      const role = repository.findById('non-existent');
+  describe("findById", () => {
+    it("should return undefined for non-existent role", () => {
+      const role = repository.findById("non-existent");
       expect(role).toBeUndefined();
     });
 
-    it('should return the correct role', () => {
+    it("should return the correct role", () => {
       const created = repository.create({
-        name: 'helper',
-        displayName: 'Helper Agent',
-        capabilities: ['assist'],
+        name: "helper",
+        displayName: "Helper Agent",
+        capabilities: ["assist"],
       });
 
       const found = repository.findById(created.id);
-      expect(found?.name).toBe('helper');
+      expect(found?.name).toBe("helper");
     });
   });
 
-  describe('findByName', () => {
-    it('should find role by name', () => {
+  describe("findByName", () => {
+    it("should find role by name", () => {
       repository.create({
-        name: 'unique-name',
-        displayName: 'Unique Agent',
-        capabilities: ['unique'],
+        name: "unique-name",
+        displayName: "Unique Agent",
+        capabilities: ["unique"],
       });
 
-      const found = repository.findByName('unique-name');
+      const found = repository.findByName("unique-name");
       expect(found).toBeDefined();
-      expect(found?.displayName).toBe('Unique Agent');
+      expect(found?.displayName).toBe("Unique Agent");
     });
 
-    it('should return undefined for non-existent name', () => {
-      const found = repository.findByName('does-not-exist');
+    it("should return undefined for non-existent name", () => {
+      const found = repository.findByName("does-not-exist");
       expect(found).toBeUndefined();
     });
   });
 
-  describe('list', () => {
-    it('should return empty array when no roles exist', () => {
+  describe("list", () => {
+    it("should return empty array when no roles exist", () => {
       const roles = repository.list();
       expect(roles).toHaveLength(0);
     });
 
-    it('should return all active roles', () => {
+    it("should return all active roles", () => {
       repository.create({
-        name: 'role1',
-        displayName: 'Role 1',
-        capabilities: ['cap1'],
+        name: "role1",
+        displayName: "Role 1",
+        capabilities: ["cap1"],
       });
       repository.create({
-        name: 'role2',
-        displayName: 'Role 2',
-        capabilities: ['cap2'],
+        name: "role2",
+        displayName: "Role 2",
+        capabilities: ["cap2"],
       });
 
       const roles = repository.list();
       expect(roles).toHaveLength(2);
     });
 
-    it('should exclude inactive roles by default', () => {
+    it("should exclude inactive roles by default", () => {
       const role = repository.create({
-        name: 'inactive-role',
-        displayName: 'Inactive',
-        capabilities: ['inactive'],
+        name: "inactive-role",
+        displayName: "Inactive",
+        capabilities: ["inactive"],
       });
 
       repository.update(role.id, { isActive: false });
@@ -270,87 +276,87 @@ describe('AgentRoleRepository', () => {
       expect(allRoles).toHaveLength(1);
     });
 
-    it('should sort roles by sortOrder', () => {
+    it("should sort roles by sortOrder", () => {
       const role1 = repository.create({
-        name: 'role-z',
-        displayName: 'Role Z',
-        capabilities: ['z'],
+        name: "role-z",
+        displayName: "Role Z",
+        capabilities: ["z"],
       });
       repository.update(role1.id, { sortOrder: 200 });
 
       const role2 = repository.create({
-        name: 'role-a',
-        displayName: 'Role A',
-        capabilities: ['a'],
+        name: "role-a",
+        displayName: "Role A",
+        capabilities: ["a"],
       });
       repository.update(role2.id, { sortOrder: 50 });
 
       const roles = repository.list();
-      expect(roles[0].name).toBe('role-a');
-      expect(roles[1].name).toBe('role-z');
+      expect(roles[0].name).toBe("role-a");
+      expect(roles[1].name).toBe("role-z");
     });
   });
 
-  describe('update', () => {
-    it('should update displayName', () => {
+  describe("update", () => {
+    it("should update displayName", () => {
       const role = repository.create({
-        name: 'updatable',
-        displayName: 'Original Name',
-        capabilities: ['update'],
+        name: "updatable",
+        displayName: "Original Name",
+        capabilities: ["update"],
       });
 
-      repository.update(role.id, { displayName: 'New Name' });
+      repository.update(role.id, { displayName: "New Name" });
 
       const updated = repository.findById(role.id);
-      expect(updated?.displayName).toBe('New Name');
+      expect(updated?.displayName).toBe("New Name");
     });
 
-    it('should update capabilities', () => {
+    it("should update capabilities", () => {
       const role = repository.create({
-        name: 'cap-role',
-        displayName: 'Cap Role',
-        capabilities: ['old'],
+        name: "cap-role",
+        displayName: "Cap Role",
+        capabilities: ["old"],
       });
 
-      repository.update(role.id, { capabilities: ['new1', 'new2'] });
+      repository.update(role.id, { capabilities: ["new1", "new2"] });
 
       const updated = repository.findById(role.id);
-      expect(updated?.capabilities).toEqual(['new1', 'new2']);
+      expect(updated?.capabilities).toEqual(["new1", "new2"]);
     });
 
-    it('should update multiple fields at once', () => {
+    it("should update multiple fields at once", () => {
       const role = repository.create({
-        name: 'multi-update',
-        displayName: 'Multi',
-        capabilities: ['multi'],
+        name: "multi-update",
+        displayName: "Multi",
+        capabilities: ["multi"],
       });
 
       repository.update(role.id, {
-        displayName: 'Updated Multi',
-        icon: '🎯',
-        color: '#ef4444',
+        displayName: "Updated Multi",
+        icon: "🎯",
+        color: "#ef4444",
         isActive: false,
       });
 
       const updated = repository.findById(role.id);
-      expect(updated?.displayName).toBe('Updated Multi');
-      expect(updated?.icon).toBe('🎯');
-      expect(updated?.color).toBe('#ef4444');
+      expect(updated?.displayName).toBe("Updated Multi");
+      expect(updated?.icon).toBe("🎯");
+      expect(updated?.color).toBe("#ef4444");
       expect(updated?.isActive).toBe(false);
     });
 
-    it('should return undefined for non-existent role', () => {
-      const result = repository.update('non-existent', { displayName: 'New' });
+    it("should return undefined for non-existent role", () => {
+      const result = repository.update("non-existent", { displayName: "New" });
       expect(result).toBeUndefined();
     });
   });
 
-  describe('delete', () => {
-    it('should delete a role', () => {
+  describe("delete", () => {
+    it("should delete a role", () => {
       const role = repository.create({
-        name: 'deletable',
-        displayName: 'Delete Me',
-        capabilities: ['delete'],
+        name: "deletable",
+        displayName: "Delete Me",
+        capabilities: ["delete"],
       });
 
       const deleted = repository.delete(role.id);
@@ -360,8 +366,8 @@ describe('AgentRoleRepository', () => {
       expect(found).toBeUndefined();
     });
 
-    it('should return false for non-existent role', () => {
-      const deleted = repository.delete('non-existent');
+    it("should return false for non-existent role", () => {
+      const deleted = repository.delete("non-existent");
       expect(deleted).toBe(false);
     });
   });

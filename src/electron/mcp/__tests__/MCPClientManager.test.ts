@@ -3,8 +3,8 @@
  * Tests parallel connections, debounced tool map rebuilds, and batch mode integration
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { EventEmitter } from 'events';
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { EventEmitter } from "events";
 
 // Track test state
 const testState = {
@@ -15,17 +15,17 @@ const testState = {
 };
 
 const defaultMockServers = [
-  { id: 'server-1', name: 'Server 1', enabled: true },
-  { id: 'server-2', name: 'Server 2', enabled: true },
-  { id: 'server-3', name: 'Server 3', enabled: true },
-  { id: 'server-4', name: 'Server 4', enabled: false },
+  { id: "server-1", name: "Server 1", enabled: true },
+  { id: "server-2", name: "Server 2", enabled: true },
+  { id: "server-3", name: "Server 3", enabled: true },
+  { id: "server-4", name: "Server 4", enabled: false },
 ];
 
 let mockServers: any[] = defaultMockServers.map((s) => ({ ...s }));
 
 // Mock electron
-vi.mock('electron', () => ({
-  app: { getPath: vi.fn().mockReturnValue('/mock/user/data') },
+vi.mock("electron", () => ({
+  app: { getPath: vi.fn().mockReturnValue("/mock/user/data") },
   safeStorage: {
     isEncryptionAvailable: vi.fn().mockReturnValue(false),
     encryptString: vi.fn(),
@@ -35,11 +35,11 @@ vi.mock('electron', () => ({
 }));
 
 // Mock MCPServerConnection
-vi.mock('../client/MCPServerConnection', () => {
+vi.mock("../client/MCPServerConnection", () => {
   return {
     MCPServerConnection: class MockConnection extends EventEmitter {
       private cfg: any;
-      private st = 'disconnected';
+      private st = "disconnected";
       private tls: any[] = [];
 
       constructor(cfg: any) {
@@ -48,18 +48,18 @@ vi.mock('../client/MCPServerConnection', () => {
       }
 
       async connect() {
-        this.st = 'connecting';
-        this.emit('status_changed', 'connecting');
+        this.st = "connecting";
+        this.emit("status_changed", "connecting");
         await new Promise((r) => setTimeout(r, 10));
-        this.st = 'connected';
-        this.tls = [{ name: `tool-${this.cfg.id}`, description: 'Test' }];
-        this.emit('status_changed', 'connected');
-        this.emit('tools_changed', this.tls);
+        this.st = "connected";
+        this.tls = [{ name: `tool-${this.cfg.id}`, description: "Test" }];
+        this.emit("status_changed", "connected");
+        this.emit("tools_changed", this.tls);
       }
 
       async disconnect() {
-        this.st = 'disconnected';
-        this.emit('status_changed', 'disconnected');
+        this.st = "disconnected";
+        this.emit("status_changed", "disconnected");
       }
 
       getStatus() {
@@ -74,7 +74,7 @@ vi.mock('../client/MCPServerConnection', () => {
 });
 
 // Mock settings manager
-vi.mock('../settings', () => ({
+vi.mock("../settings", () => ({
   MCPSettingsManager: {
     initialize: vi.fn(),
     loadSettings: vi.fn(() => ({
@@ -109,8 +109,8 @@ vi.mock('../settings', () => ({
 }));
 
 // Import after mocks
-import { MCPClientManager } from '../client/MCPClientManager';
-import { MCPSettingsManager } from '../settings';
+import { MCPClientManager } from "../client/MCPClientManager";
+import { MCPSettingsManager } from "../settings";
 
 function resetState() {
   testState.batchModeActive = false;
@@ -119,7 +119,7 @@ function resetState() {
   testState.endBatchCalled = false;
 }
 
-describe('MCPClientManager startup optimizations', () => {
+describe("MCPClientManager startup optimizations", () => {
   let manager: MCPClientManager;
 
   beforeEach(() => {
@@ -139,8 +139,8 @@ describe('MCPClientManager startup optimizations', () => {
     }
   });
 
-  describe('parallel server connections', () => {
-    it('should connect faster than sequential (parallel execution)', async () => {
+  describe("parallel server connections", () => {
+    it("should connect faster than sequential (parallel execution)", async () => {
       const start = Date.now();
       await manager.initialize();
       const elapsed = Date.now() - start;
@@ -150,53 +150,53 @@ describe('MCPClientManager startup optimizations', () => {
       expect(elapsed).toBeLessThan(100);
     });
 
-    it('should connect to all enabled servers', async () => {
+    it("should connect to all enabled servers", async () => {
       await manager.initialize();
 
       const status = manager.getStatus();
-      const connected = status.filter((s) => s.status === 'connected');
+      const connected = status.filter((s) => s.status === "connected");
 
       expect(connected.length).toBe(3);
     });
 
-    it('should skip disabled servers', async () => {
+    it("should skip disabled servers", async () => {
       await manager.initialize();
 
       const status = manager.getStatus();
-      const server4 = status.find((s) => s.id === 'server-4');
+      const server4 = status.find((s) => s.id === "server-4");
 
-      expect(server4?.status).not.toBe('connected');
+      expect(server4?.status).not.toBe("connected");
     });
 
-    it('should skip unconfigured enterprise connectors during auto-connect', async () => {
+    it("should skip unconfigured enterprise connectors during auto-connect", async () => {
       mockServers = [
         {
-          id: 'salesforce-1',
-          name: 'Salesforce',
+          id: "salesforce-1",
+          name: "Salesforce",
           enabled: true,
-          transport: 'stdio',
+          transport: "stdio",
           command: process.execPath,
-          args: ['--runAsNode', '/tmp/connectors/salesforce-mcp/dist/index.js'],
+          args: ["--runAsNode", "/tmp/connectors/salesforce-mcp/dist/index.js"],
           env: {
-            SALESFORCE_INSTANCE_URL: '',
-            SALESFORCE_ACCESS_TOKEN: '',
+            SALESFORCE_INSTANCE_URL: "",
+            SALESFORCE_ACCESS_TOKEN: "",
           },
         },
         {
-          id: 'jira-1',
-          name: 'Jira',
+          id: "jira-1",
+          name: "Jira",
           enabled: true,
-          transport: 'stdio',
+          transport: "stdio",
           command: process.execPath,
-          args: ['--runAsNode', '/tmp/connectors/jira-mcp/dist/index.js'],
+          args: ["--runAsNode", "/tmp/connectors/jira-mcp/dist/index.js"],
           env: {
-            JIRA_BASE_URL: '',
-            JIRA_ACCESS_TOKEN: '',
+            JIRA_BASE_URL: "",
+            JIRA_ACCESS_TOKEN: "",
           },
         },
         {
-          id: 'server-1',
-          name: 'Server 1',
+          id: "server-1",
+          name: "Server 1",
           enabled: true,
         },
       ];
@@ -204,44 +204,46 @@ describe('MCPClientManager startup optimizations', () => {
       await manager.initialize();
       const status = manager.getStatus();
 
-      expect(status.find((s) => s.id === 'salesforce-1')?.status).toBe('disconnected');
-      expect(status.find((s) => s.id === 'jira-1')?.status).toBe('disconnected');
-      expect(status.find((s) => s.id === 'server-1')?.status).toBe('connected');
-      expect(MCPSettingsManager.updateServer).toHaveBeenCalledWith('salesforce-1', { enabled: false });
-      expect(MCPSettingsManager.updateServer).toHaveBeenCalledWith('jira-1', { enabled: false });
+      expect(status.find((s) => s.id === "salesforce-1")?.status).toBe("disconnected");
+      expect(status.find((s) => s.id === "jira-1")?.status).toBe("disconnected");
+      expect(status.find((s) => s.id === "server-1")?.status).toBe("connected");
+      expect(MCPSettingsManager.updateServer).toHaveBeenCalledWith("salesforce-1", {
+        enabled: false,
+      });
+      expect(MCPSettingsManager.updateServer).toHaveBeenCalledWith("jira-1", { enabled: false });
     });
 
-    it('should auto-connect configured enterprise connectors', async () => {
+    it("should auto-connect configured enterprise connectors", async () => {
       mockServers = [
         {
-          id: 'salesforce-1',
-          name: 'Salesforce',
+          id: "salesforce-1",
+          name: "Salesforce",
           enabled: true,
-          transport: 'stdio',
+          transport: "stdio",
           command: process.execPath,
-          args: ['--runAsNode', '/tmp/connectors/salesforce-mcp/dist/index.js'],
+          args: ["--runAsNode", "/tmp/connectors/salesforce-mcp/dist/index.js"],
           env: {
-            SALESFORCE_INSTANCE_URL: 'https://example.my.salesforce.com',
-            SALESFORCE_ACCESS_TOKEN: 'token',
+            SALESFORCE_INSTANCE_URL: "https://example.my.salesforce.com",
+            SALESFORCE_ACCESS_TOKEN: "token",
           },
         },
       ];
 
       await manager.initialize();
       const status = manager.getStatus();
-      expect(status.find((s) => s.id === 'salesforce-1')?.status).toBe('connected');
+      expect(status.find((s) => s.id === "salesforce-1")?.status).toBe("connected");
     });
   });
 
-  describe('batch mode integration', () => {
-    it('should use batch mode during initialization', async () => {
+  describe("batch mode integration", () => {
+    it("should use batch mode during initialization", async () => {
       await manager.initialize();
 
       expect(testState.beginBatchCalled).toBe(true);
       expect(testState.endBatchCalled).toBe(true);
     });
 
-    it('should consolidate saves to one during initialization', async () => {
+    it("should consolidate saves to one during initialization", async () => {
       resetState();
       await manager.initialize();
 
@@ -250,32 +252,32 @@ describe('MCPClientManager startup optimizations', () => {
     });
   });
 
-  describe('tool map', () => {
-    it('should aggregate tools from all connected servers', async () => {
+  describe("tool map", () => {
+    it("should aggregate tools from all connected servers", async () => {
       await manager.initialize();
 
       const tools = manager.getAllTools();
       expect(tools.length).toBe(3);
     });
 
-    it('should make tools searchable by name', async () => {
+    it("should make tools searchable by name", async () => {
       await manager.initialize();
 
-      expect(manager.hasTool('tool-server-1')).toBe(true);
-      expect(manager.hasTool('tool-server-2')).toBe(true);
-      expect(manager.hasTool('tool-server-3')).toBe(true);
-      expect(manager.hasTool('tool-server-4')).toBe(false);
+      expect(manager.hasTool("tool-server-1")).toBe(true);
+      expect(manager.hasTool("tool-server-2")).toBe(true);
+      expect(manager.hasTool("tool-server-3")).toBe(true);
+      expect(manager.hasTool("tool-server-4")).toBe(false);
     });
   });
 });
 
-describe('MCPClientManager singleton', () => {
+describe("MCPClientManager singleton", () => {
   beforeEach(() => {
     // @ts-expect-error - reset singleton
     MCPClientManager.instance = null;
   });
 
-  it('returns same instance', () => {
+  it("returns same instance", () => {
     const a = MCPClientManager.getInstance();
     const b = MCPClientManager.getInstance();
     expect(a).toBe(b);

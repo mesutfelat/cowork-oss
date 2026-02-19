@@ -36,6 +36,9 @@ CoWork OS is an Electron-based agentic task automation app for macOS.
 ### Commands
 - `npm run dev` - Start development server
 - `npm run build` - Production build
+- `npm run fmt` - Format code with Oxfmt
+- `npm run fmt:check` - Check formatting without writing
+- `npm run lint` - Run Oxlint (fast, Rust-based linter)
 - `npm run type-check` - TypeScript validation
 
 ### Skills

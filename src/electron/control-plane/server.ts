@@ -5,9 +5,9 @@
  * and message routing for the control plane.
  */
 
-import http from 'http';
-import { WebSocketServer, WebSocket } from 'ws';
-import crypto from 'crypto';
+import http from "http";
+import { WebSocketServer, WebSocket } from "ws";
+import crypto from "crypto";
 import {
   Frame,
   RequestFrame,
@@ -20,23 +20,16 @@ import {
   ErrorCodes,
   Events,
   Methods,
-} from './protocol';
-import {
-  ControlPlaneClient,
-  ClientRegistry,
-  type ClientScope,
-} from './client';
-import {
-  ControlPlaneSettingsManager,
-  type ControlPlaneSettings,
-} from './settings';
+} from "./protocol";
+import { ControlPlaneClient, ClientRegistry, type ClientScope } from "./client";
+import { ControlPlaneSettingsManager, type ControlPlaneSettings } from "./settings";
 import {
   startTailscaleExposure,
   stopTailscaleExposure,
   getExposureStatus,
   type TailscaleExposureResult,
-} from '../tailscale';
-import { getControlPlaneWebUIHtml } from './web-ui';
+} from "../tailscale";
+import { getControlPlaneWebUIHtml } from "./web-ui";
 
 /**
  * Control plane server configuration
@@ -75,7 +68,14 @@ export interface ControlPlaneConfig {
  * Server events emitted for monitoring
  */
 export interface ControlPlaneServerEvent {
-  action: 'started' | 'stopped' | 'client_connected' | 'client_disconnected' | 'client_authenticated' | 'request' | 'error';
+  action:
+    | "started"
+    | "stopped"
+    | "client_connected"
+    | "client_disconnected"
+    | "client_authenticated"
+    | "request"
+    | "error";
   timestamp: number;
   clientId?: string;
   method?: string;
@@ -86,10 +86,7 @@ export interface ControlPlaneServerEvent {
 /**
  * Method handler function signature
  */
-export type MethodHandler = (
-  client: ControlPlaneClient,
-  params?: unknown
-) => Promise<unknown>;
+export type MethodHandler = (client: ControlPlaneClient, params?: unknown) => Promise<unknown>;
 
 /**
  * WebSocket Control Plane Server
@@ -110,7 +107,7 @@ export class ControlPlaneServer {
   constructor(config: ControlPlaneConfig) {
     this.config = {
       port: config.port ?? 18789,
-      host: config.host ?? '127.0.0.1',
+      host: config.host ?? "127.0.0.1",
       trustProxy: config.trustProxy ?? false,
       token: config.token,
       handshakeTimeoutMs: config.handshakeTimeoutMs ?? 10000,
@@ -139,7 +136,7 @@ export class ControlPlaneServer {
   getAddress(): { host: string; port: number; wsUrl: string } | null {
     if (!this.httpServer) return null;
     const addr = this.httpServer.address();
-    if (typeof addr === 'string' || !addr) return null;
+    if (typeof addr === "string" || !addr) return null;
 
     return {
       host: addr.address,
@@ -153,7 +150,7 @@ export class ControlPlaneServer {
    */
   async start(): Promise<void> {
     if (this.isRunning) {
-      console.info('[ControlPlane] Server already running');
+      console.info("[ControlPlane] Server already running");
       return;
     }
 
@@ -161,16 +158,16 @@ export class ControlPlaneServer {
       // Create HTTP server for WebSocket upgrade
       this.httpServer = http.createServer((req, res) => {
         // Minimal web UI (headless dashboard)
-        if ((req.url === '/' || req.url === '/ui') && req.method === 'GET') {
+        if ((req.url === "/" || req.url === "/ui") && req.method === "GET") {
           const html = getControlPlaneWebUIHtml();
           res.writeHead(200, {
-            'Content-Type': 'text/html; charset=utf-8',
-            'Cache-Control': 'no-store',
-            'X-Content-Type-Options': 'nosniff',
-            'X-Frame-Options': 'DENY',
-            'Referrer-Policy': 'no-referrer',
+            "Content-Type": "text/html; charset=utf-8",
+            "Cache-Control": "no-store",
+            "X-Content-Type-Options": "nosniff",
+            "X-Frame-Options": "DENY",
+            "Referrer-Policy": "no-referrer",
             // Keep this intentionally strict while allowing the single inline script/style used by the UI.
-            'Content-Security-Policy': [
+            "Content-Security-Policy": [
               "default-src 'none'",
               "style-src 'unsafe-inline'",
               "script-src 'unsafe-inline'",
@@ -179,26 +176,28 @@ export class ControlPlaneServer {
               "base-uri 'none'",
               "form-action 'none'",
               "frame-ancestors 'none'",
-            ].join('; '),
+            ].join("; "),
           });
           res.end(html);
           return;
         }
 
         // Health check endpoint
-        if (req.url === '/health' && req.method === 'GET') {
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({
-            status: 'ok',
-            timestamp: Date.now(),
-            clients: this.clients.count,
-          }));
+        if (req.url === "/health" && req.method === "GET") {
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(
+            JSON.stringify({
+              status: "ok",
+              timestamp: Date.now(),
+              clients: this.clients.count,
+            }),
+          );
           return;
         }
 
         // Return 404 for other HTTP requests
-        res.writeHead(404, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Not found' }));
+        res.writeHead(404, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Not found" }));
       });
 
       // Create WebSocket server
@@ -208,24 +207,26 @@ export class ControlPlaneServer {
       });
 
       // Handle new connections
-      this.wss.on('connection', (socket, request) => {
+      this.wss.on("connection", (socket, request) => {
         this.handleConnection(socket, request);
       });
 
-      this.wss.on('error', (error) => {
-        console.error('[ControlPlane] WebSocket server error:', error);
-        this.emitEvent({ action: 'error', timestamp: Date.now(), error: String(error) });
+      this.wss.on("error", (error) => {
+        console.error("[ControlPlane] WebSocket server error:", error);
+        this.emitEvent({ action: "error", timestamp: Date.now(), error: String(error) });
       });
 
-      this.httpServer.on('error', (error) => {
-        console.error('[ControlPlane] HTTP server error:', error);
+      this.httpServer.on("error", (error) => {
+        console.error("[ControlPlane] HTTP server error:", error);
         reject(error);
       });
 
       // Start listening
       this.httpServer.listen(this.config.port, this.config.host, () => {
-        console.info(`[ControlPlane] Server listening on ws://${this.config.host}:${this.config.port}`);
-        this.emitEvent({ action: 'started', timestamp: Date.now() });
+        console.info(
+          `[ControlPlane] Server listening on ws://${this.config.host}:${this.config.port}`,
+        );
+        this.emitEvent({ action: "started", timestamp: Date.now() });
 
         // Start heartbeat interval
         this.startHeartbeat();
@@ -248,7 +249,7 @@ export class ControlPlaneServer {
     await this.start();
 
     // If Tailscale is configured, start exposure
-    if (settings.tailscale.mode !== 'off') {
+    if (settings.tailscale.mode !== "off") {
       const result = await startTailscaleExposure({
         mode: settings.tailscale.mode,
         port: this.config.port,
@@ -290,10 +291,10 @@ export class ControlPlaneServer {
     }
 
     // Broadcast shutdown event
-    this.clients.broadcast(Events.SHUTDOWN, { reason: 'Server stopping' });
+    this.clients.broadcast(Events.SHUTDOWN, { reason: "Server stopping" });
 
     // Close all client connections
-    this.clients.closeAll(1001, 'Server shutting down');
+    this.clients.closeAll(1001, "Server shutting down");
 
     // Close WebSocket server
     if (this.wss) {
@@ -305,8 +306,8 @@ export class ControlPlaneServer {
     if (this.httpServer) {
       return new Promise((resolve) => {
         this.httpServer!.close(() => {
-          console.info('[ControlPlane] Server stopped');
-          this.emitEvent({ action: 'stopped', timestamp: Date.now() });
+          console.info("[ControlPlane] Server stopped");
+          this.emitEvent({ action: "stopped", timestamp: Date.now() });
           this.httpServer = null;
           resolve();
         });
@@ -326,8 +327,8 @@ export class ControlPlaneServer {
    */
   getStatus(): {
     running: boolean;
-    address: ReturnType<ControlPlaneServer['getAddress']>;
-    clients: ReturnType<ClientRegistry['getStatus']>;
+    address: ReturnType<ControlPlaneServer["getAddress"]>;
+    clients: ReturnType<ClientRegistry["getStatus"]>;
     tailscale: ReturnType<typeof getExposureStatus>;
   } {
     return {
@@ -368,22 +369,22 @@ export class ControlPlaneServer {
   private handleConnection(socket: WebSocket, request: http.IncomingMessage): void {
     const remoteAddress = (() => {
       if (this.config.trustProxy) {
-        const xff = request.headers['x-forwarded-for'];
-        const raw = typeof xff === 'string' ? xff : Array.isArray(xff) ? xff[0] : undefined;
-        const parsed = raw?.split(',')[0]?.trim();
+        const xff = request.headers["x-forwarded-for"];
+        const raw = typeof xff === "string" ? xff : Array.isArray(xff) ? xff[0] : undefined;
+        const parsed = raw?.split(",")[0]?.trim();
         if (parsed) return parsed;
       }
-      return request.socket.remoteAddress || 'unknown';
+      return request.socket.remoteAddress || "unknown";
     })();
-    const userAgent = request.headers['user-agent'];
-    const origin = request.headers['origin'];
+    const userAgent = request.headers["user-agent"];
+    const origin = request.headers["origin"];
 
     const client = new ControlPlaneClient(socket, remoteAddress, userAgent, origin);
     this.clients.add(client);
 
     console.info(`[ControlPlane] Client connected: ${client.id} from ${remoteAddress}`);
     this.emitEvent({
-      action: 'client_connected',
+      action: "client_connected",
       timestamp: Date.now(),
       clientId: client.id,
     });
@@ -395,12 +396,12 @@ export class ControlPlaneServer {
     const handshakeTimeout = setTimeout(() => {
       if (!client.isAuthenticated) {
         console.warn(`[ControlPlane] Handshake timeout for client ${client.id}`);
-        client.close(4008, 'Handshake timeout');
+        client.close(4008, "Handshake timeout");
       }
     }, this.config.handshakeTimeoutMs);
 
     // Handle messages
-    socket.on('message', async (data) => {
+    socket.on("message", async (data) => {
       try {
         const message = data.toString();
         await this.handleMessage(client, message);
@@ -410,7 +411,7 @@ export class ControlPlaneServer {
     });
 
     // Handle close
-    socket.on('close', (code, reason) => {
+    socket.on("close", (code, reason) => {
       clearTimeout(handshakeTimeout);
 
       // If this was a node, broadcast disconnection event to operators
@@ -420,14 +421,16 @@ export class ControlPlaneServer {
           nodeId: client.id,
           node: nodeInfo,
         });
-        console.info(`[ControlPlane] Node disconnected: ${client.id} (${nodeInfo?.displayName || 'unnamed'}) (code: ${code})`);
+        console.info(
+          `[ControlPlane] Node disconnected: ${client.id} (${nodeInfo?.displayName || "unnamed"}) (code: ${code})`,
+        );
       } else {
         console.info(`[ControlPlane] Client disconnected: ${client.id} (code: ${code})`);
       }
 
       this.clients.remove(client.id);
       this.emitEvent({
-        action: 'client_disconnected',
+        action: "client_disconnected",
         timestamp: Date.now(),
         clientId: client.id,
         details: { code, reason: reason.toString(), wasNode: client.isNode },
@@ -435,7 +438,7 @@ export class ControlPlaneServer {
     });
 
     // Handle error
-    socket.on('error', (error) => {
+    socket.on("error", (error) => {
       console.error(`[ControlPlane] Client error (${client.id}):`, error);
     });
   }
@@ -468,11 +471,9 @@ export class ControlPlaneServer {
 
     // All other methods require authentication
     if (!client.isAuthenticated) {
-      client.send(createErrorResponse(
-        request.id,
-        ErrorCodes.UNAUTHORIZED,
-        'Authentication required'
-      ));
+      client.send(
+        createErrorResponse(request.id, ErrorCodes.UNAUTHORIZED, "Authentication required"),
+      );
       return;
     }
 
@@ -490,49 +491,51 @@ export class ControlPlaneServer {
     const authRecord = this.authAttempts.get(remoteAddress);
     if (authRecord?.bannedUntil && authRecord.bannedUntil > Date.now()) {
       const remainingMs = authRecord.bannedUntil - Date.now();
-      console.warn(`[ControlPlane] Auth blocked for ${remoteAddress}: banned for ${Math.ceil(remainingMs / 1000)}s`);
-      client.send(createErrorResponse(
-        request.id,
-        ErrorCodes.UNAUTHORIZED,
-        `Too many failed attempts. Try again in ${Math.ceil(remainingMs / 1000)} seconds.`
-      ));
-      client.close(4029, 'Rate limited');
+      console.warn(
+        `[ControlPlane] Auth blocked for ${remoteAddress}: banned for ${Math.ceil(remainingMs / 1000)}s`,
+      );
+      client.send(
+        createErrorResponse(
+          request.id,
+          ErrorCodes.UNAUTHORIZED,
+          `Too many failed attempts. Try again in ${Math.ceil(remainingMs / 1000)} seconds.`,
+        ),
+      );
+      client.close(4029, "Rate limited");
       return;
     }
 
-    const params = request.params as {
-      token?: string;
-      deviceName?: string;
-      nonce?: string;
-      // Node-specific params (Mobile Companions)
-      role?: 'operator' | 'node';
-      client?: {
-        id?: string;
-        displayName?: string;
-        version?: string;
-        platform?: 'ios' | 'android' | 'macos';
-        mode?: string;
-        deviceFamily?: string;
-        modelIdentifier?: string;
-      };
-      capabilities?: string[];
-      commands?: string[];
-      permissions?: Record<string, boolean>;
-    } | undefined;
+    const params = request.params as
+      | {
+          token?: string;
+          deviceName?: string;
+          nonce?: string;
+          // Node-specific params (Mobile Companions)
+          role?: "operator" | "node";
+          client?: {
+            id?: string;
+            displayName?: string;
+            version?: string;
+            platform?: "ios" | "android" | "macos";
+            mode?: string;
+            deviceFamily?: string;
+            modelIdentifier?: string;
+          };
+          capabilities?: string[];
+          commands?: string[];
+          permissions?: Record<string, boolean>;
+        }
+      | undefined;
 
     // Verify token
-    const providedToken = params?.token || '';
+    const providedToken = params?.token || "";
     if (!this.verifyToken(providedToken)) {
       // Track failed attempt
       this.recordFailedAuth(remoteAddress);
 
       client.reject();
-      client.send(createErrorResponse(
-        request.id,
-        ErrorCodes.UNAUTHORIZED,
-        'Invalid token'
-      ));
-      client.close(4001, 'Authentication failed');
+      client.send(createErrorResponse(request.id, ErrorCodes.UNAUTHORIZED, "Invalid token"));
+      client.close(4001, "Authentication failed");
       return;
     }
 
@@ -540,11 +543,11 @@ export class ControlPlaneServer {
     this.authAttempts.delete(remoteAddress);
 
     // Check if this is a node (mobile companion) connection
-    const isNode = params?.role === 'node';
+    const isNode = params?.role === "node";
 
     if (isNode) {
       // Authenticate as a node
-      const platform = (params?.client?.platform || 'ios') as 'ios' | 'android' | 'macos';
+      const platform = (params?.client?.platform || "ios") as "ios" | "android" | "macos";
       const capabilities = (params?.capabilities || []) as any[];
       const commands = params?.commands || [];
       const permissions = params?.permissions || {};
@@ -552,7 +555,7 @@ export class ControlPlaneServer {
       client.authenticateAsNode({
         deviceName: params?.client?.displayName || params?.deviceName,
         platform,
-        version: params?.client?.version || '0.0.0',
+        version: params?.client?.version || "0.0.0",
         deviceId: params?.client?.id,
         modelIdentifier: params?.client?.modelIdentifier,
         capabilities,
@@ -560,14 +563,16 @@ export class ControlPlaneServer {
         permissions,
       });
 
-      console.info(`[ControlPlane] Node authenticated: ${client.id} (${params?.client?.displayName || 'unnamed'}) [${platform}]`);
+      console.info(
+        `[ControlPlane] Node authenticated: ${client.id} (${params?.client?.displayName || "unnamed"}) [${platform}]`,
+      );
       this.emitEvent({
-        action: 'client_authenticated',
+        action: "client_authenticated",
         timestamp: Date.now(),
         clientId: client.id,
         details: {
           deviceName: params?.client?.displayName,
-          role: 'node',
+          role: "node",
           platform,
           capabilities,
         },
@@ -580,36 +585,42 @@ export class ControlPlaneServer {
       });
 
       // Send success response
-      client.send(createResponseFrame(request.id, {
-        clientId: client.id,
-        role: 'node',
-        scopes: ['read'],
-      }));
+      client.send(
+        createResponseFrame(request.id, {
+          clientId: client.id,
+          role: "node",
+          scopes: ["read"],
+        }),
+      );
     } else {
       // Authenticate as operator with admin scope
-      const scopes: ClientScope[] = ['admin'];
+      const scopes: ClientScope[] = ["admin"];
       client.authenticate(scopes, params?.deviceName);
 
-      console.info(`[ControlPlane] Client authenticated: ${client.id} (${params?.deviceName || 'unnamed'})`);
+      console.info(
+        `[ControlPlane] Client authenticated: ${client.id} (${params?.deviceName || "unnamed"})`,
+      );
       this.emitEvent({
-        action: 'client_authenticated',
+        action: "client_authenticated",
         timestamp: Date.now(),
         clientId: client.id,
-        details: { deviceName: params?.deviceName, role: 'operator' },
+        details: { deviceName: params?.deviceName, role: "operator" },
       });
 
       // Send success response
-      client.send(createResponseFrame(request.id, {
-        clientId: client.id,
-        role: 'operator',
-        scopes,
-      }));
+      client.send(
+        createResponseFrame(request.id, {
+          clientId: client.id,
+          role: "operator",
+          scopes,
+        }),
+      );
     }
 
     // Send connect success event
     client.sendEvent(Events.CONNECT_SUCCESS, {
       clientId: client.id,
-      serverVersion: '1.0.0',
+      serverVersion: "1.0.0",
     });
   }
 
@@ -622,7 +633,9 @@ export class ControlPlaneServer {
 
     if (record.attempts >= this.config.maxAuthAttempts) {
       record.bannedUntil = Date.now() + this.config.authBanDurationMs;
-      console.warn(`[ControlPlane] IP ${remoteAddress} banned for ${this.config.authBanDurationMs / 1000}s after ${record.attempts} failed attempts`);
+      console.warn(
+        `[ControlPlane] IP ${remoteAddress} banned for ${this.config.authBanDurationMs / 1000}s after ${record.attempts} failed attempts`,
+      );
     }
 
     this.authAttempts.set(remoteAddress, record);
@@ -635,18 +648,20 @@ export class ControlPlaneServer {
     const handler = this.methods.get(request.method);
 
     this.emitEvent({
-      action: 'request',
+      action: "request",
       timestamp: Date.now(),
       clientId: client.id,
       method: request.method,
     });
 
     if (!handler) {
-      client.send(createErrorResponse(
-        request.id,
-        ErrorCodes.UNKNOWN_METHOD,
-        `Unknown method: ${request.method}`
-      ));
+      client.send(
+        createErrorResponse(
+          request.id,
+          ErrorCodes.UNKNOWN_METHOD,
+          `Unknown method: ${request.method}`,
+        ),
+      );
       return;
     }
 
@@ -656,15 +671,18 @@ export class ControlPlaneServer {
     } catch (error: any) {
       console.error(`[ControlPlane] Method error (${request.method}):`, error);
       const code =
-        typeof error?.code === 'string' && (Object.values(ErrorCodes) as string[]).includes(error.code)
+        typeof error?.code === "string" &&
+        (Object.values(ErrorCodes) as string[]).includes(error.code)
           ? (error.code as any)
           : ErrorCodes.METHOD_FAILED;
-      client.send(createErrorResponse(
-        request.id,
-        code,
-        error?.message || 'Method execution failed',
-        error.details
-      ));
+      client.send(
+        createErrorResponse(
+          request.id,
+          code,
+          error?.message || "Method execution failed",
+          error.details,
+        ),
+      );
     }
   }
 
@@ -692,7 +710,7 @@ export class ControlPlaneServer {
     }));
 
     this.registerMethod(Methods.HEALTH, async () => ({
-      status: 'ok',
+      status: "ok",
       timestamp: Date.now(),
       uptime: process.uptime(),
     }));
@@ -713,7 +731,7 @@ export class ControlPlaneServer {
     this.registerMethod(Methods.NODE_DESCRIBE, async (client, params) => {
       const { nodeId } = params as { nodeId?: string };
       if (!nodeId) {
-        throw { code: ErrorCodes.INVALID_PARAMS, message: 'nodeId is required' };
+        throw { code: ErrorCodes.INVALID_PARAMS, message: "nodeId is required" };
       }
       const node = this.clients.getNodeByIdOrName(nodeId);
       if (!node) {
@@ -726,7 +744,12 @@ export class ControlPlaneServer {
 
     // Invoke a command on a node
     this.registerMethod(Methods.NODE_INVOKE, async (client, params) => {
-      const { nodeId, command, params: commandParams, timeoutMs = 30000 } = params as {
+      const {
+        nodeId,
+        command,
+        params: commandParams,
+        timeoutMs = 30000,
+      } = params as {
         nodeId?: string;
         command?: string;
         params?: Record<string, unknown>;
@@ -734,10 +757,10 @@ export class ControlPlaneServer {
       };
 
       if (!nodeId) {
-        throw { code: ErrorCodes.INVALID_PARAMS, message: 'nodeId is required' };
+        throw { code: ErrorCodes.INVALID_PARAMS, message: "nodeId is required" };
       }
       if (!command) {
-        throw { code: ErrorCodes.INVALID_PARAMS, message: 'command is required' };
+        throw { code: ErrorCodes.INVALID_PARAMS, message: "command is required" };
       }
 
       const node = this.clients.getNodeByIdOrName(nodeId);
@@ -755,10 +778,13 @@ export class ControlPlaneServer {
       }
 
       // Check if node is in foreground (required for most commands)
-      if (!nodeInfo.isForeground && ['camera.snap', 'camera.clip', 'screen.record'].includes(command)) {
+      if (
+        !nodeInfo.isForeground &&
+        ["camera.snap", "camera.clip", "screen.record"].includes(command)
+      ) {
         throw {
           code: ErrorCodes.NODE_BACKGROUND_UNAVAILABLE,
-          message: 'Node app must be in foreground for this command',
+          message: "Node app must be in foreground for this command",
         };
       }
 
@@ -769,24 +795,24 @@ export class ControlPlaneServer {
     // Handle node events (from nodes to gateway)
     this.registerMethod(Methods.NODE_EVENT, async (client, params) => {
       if (!client.isNode) {
-        throw { code: ErrorCodes.UNAUTHORIZED, message: 'Only nodes can send node events' };
+        throw { code: ErrorCodes.UNAUTHORIZED, message: "Only nodes can send node events" };
       }
 
       const { event, payload } = params as { event?: string; payload?: unknown };
       if (!event) {
-        throw { code: ErrorCodes.INVALID_PARAMS, message: 'event is required' };
+        throw { code: ErrorCodes.INVALID_PARAMS, message: "event is required" };
       }
 
       // Handle specific node events
-      if (event === 'foreground_changed') {
+      if (event === "foreground_changed") {
         const isForeground = (payload as any)?.isForeground ?? true;
         client.setForeground(isForeground);
         this.clients.broadcastToOperators(Events.NODE_EVENT, {
           nodeId: client.id,
-          event: 'foreground_changed',
+          event: "foreground_changed",
           isForeground,
         });
-      } else if (event === 'capabilities_changed') {
+      } else if (event === "capabilities_changed") {
         const { capabilities, commands, permissions } = payload as any;
         if (capabilities && commands && permissions) {
           client.updateCapabilities(capabilities, commands, permissions);
@@ -808,7 +834,7 @@ export class ControlPlaneServer {
     node: ControlPlaneClient,
     command: string,
     params: Record<string, unknown> | undefined,
-    timeoutMs: number
+    timeoutMs: number,
   ): Promise<{ ok: boolean; payload?: unknown; error?: { code: string; message: string } }> {
     return new Promise((resolve) => {
       const requestId = crypto.randomUUID();
@@ -821,14 +847,14 @@ export class ControlPlaneServer {
           const frame = parseFrame(message);
           if (frame && frame.type === FrameType.Response && (frame as any).id === requestId) {
             clearTimeout(timeoutHandle);
-            node.info.socket.removeListener('message', handleResponse);
+            node.info.socket.removeListener("message", handleResponse);
             const response = frame as any;
             if (response.ok) {
               resolve({ ok: true, payload: response.payload });
             } else {
               resolve({
                 ok: false,
-                error: response.error || { code: 'UNKNOWN', message: 'Command failed' },
+                error: response.error || { code: "UNKNOWN", message: "Command failed" },
               });
             }
           }
@@ -837,14 +863,17 @@ export class ControlPlaneServer {
         }
       };
 
-      node.info.socket.on('message', handleResponse);
+      node.info.socket.on("message", handleResponse);
 
       // Set timeout
       timeoutHandle = setTimeout(() => {
-        node.info.socket.removeListener('message', handleResponse);
+        node.info.socket.removeListener("message", handleResponse);
         resolve({
           ok: false,
-          error: { code: ErrorCodes.NODE_TIMEOUT, message: `Command timed out after ${timeoutMs}ms` },
+          error: {
+            code: ErrorCodes.NODE_TIMEOUT,
+            message: `Command timed out after ${timeoutMs}ms`,
+          },
         });
       }, timeoutMs);
 
@@ -852,7 +881,7 @@ export class ControlPlaneServer {
       const requestFrame = {
         type: FrameType.Request,
         id: requestId,
-        method: 'node.invoke',
+        method: "node.invoke",
         params: { command, params },
       };
       node.info.socket.send(JSON.stringify(requestFrame));
@@ -904,7 +933,7 @@ export class ControlPlaneServer {
       try {
         this.config.onEvent(event);
       } catch (error) {
-        console.error('[ControlPlane] Event handler error:', error);
+        console.error("[ControlPlane] Event handler error:", error);
       }
     }
   }

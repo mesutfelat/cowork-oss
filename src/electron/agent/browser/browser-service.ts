@@ -1,8 +1,8 @@
-import { chromium, Browser, Page, BrowserContext, Locator } from 'playwright';
-import * as path from 'path';
-import * as fs from 'fs/promises';
-import { Workspace } from '../../../shared/types';
-import { GuardrailManager } from '../../guardrails/guardrail-manager';
+import { chromium, Browser, Page, BrowserContext, Locator } from "playwright";
+import * as path from "path";
+import * as fs from "fs/promises";
+import { Workspace } from "../../../shared/types";
+import { GuardrailManager } from "../../guardrails/guardrail-manager";
 
 export interface BrowserOptions {
   headless?: boolean;
@@ -20,7 +20,7 @@ export interface BrowserOptions {
    * "chrome" uses the system-installed Google Chrome (if available).
    * "brave" uses a locally installed Brave executable (auto-discovered or BRAVE_PATH).
    */
-  channel?: 'chromium' | 'chrome' | 'brave';
+  channel?: "chromium" | "chrome" | "brave";
 }
 
 export interface NavigateResult {
@@ -79,8 +79,8 @@ export interface EvaluateResult {
 }
 
 function normalizeEvaluateScript(script: string): string {
-  const trimmed = String(script || '').trim();
-  if (!trimmed) return '';
+  const trimmed = String(script || "").trim();
+  if (!trimmed) return "";
 
   // LLMs frequently send multi-line snippets with top-level "return".
   if (/(?:^|[\n;])\s*return\b/.test(trimmed)) {
@@ -123,19 +123,19 @@ export class BrowserService {
   }
 
   private isRetryableBrowserError(error: unknown): boolean {
-    const message = String((error as Error)?.message || error || '').toLowerCase();
+    const message = String((error as Error)?.message || error || "").toLowerCase();
     const retryable = [
-      'timeout',
-      'not visible',
-      'not found',
-      'detached',
-      'stale',
-      'element is not attached',
-      'not attached',
-      'not stable',
-      'interception',
-      'click',
-      'fill',
+      "timeout",
+      "not visible",
+      "not found",
+      "detached",
+      "stale",
+      "element is not attached",
+      "not attached",
+      "not stable",
+      "interception",
+      "click",
+      "fill",
     ];
 
     return retryable.some((token) => message.includes(token));
@@ -154,7 +154,7 @@ export class BrowserService {
     for (let attempt = 0; attempt < attempts; attempt += 1) {
       try {
         const locator = this.page!.locator(selector);
-        await locator.waitFor({ state: 'visible', timeout: perAttemptTimeout });
+        await locator.waitFor({ state: "visible", timeout: perAttemptTimeout });
         await locator.scrollIntoViewIfNeeded();
         if (attempt > 0) {
           await this.page!.waitForTimeout(200).catch(() => {});
@@ -171,7 +171,10 @@ export class BrowserService {
     throw lastError instanceof Error ? lastError : new Error(String(lastError));
   }
 
-  private async captureFailureContext(action: string, selector?: string): Promise<{
+  private async captureFailureContext(
+    action: string,
+    selector?: string,
+  ): Promise<{
     screenshot?: string;
     url?: string;
     content?: string;
@@ -189,7 +192,10 @@ export class BrowserService {
     }
 
     try {
-      const screenshot = await this.screenshot(`browser-${action}-failure-${Date.now()}.png`, false);
+      const screenshot = await this.screenshot(
+        `browser-${action}-failure-${Date.now()}.png`,
+        false,
+      );
       context.screenshot = screenshot.path;
       context.url = this.page.url();
       context.content = await this.page.evaluate(`
@@ -210,26 +216,26 @@ export class BrowserService {
     const envPath = process.env.BRAVE_PATH?.trim();
     const candidates = [
       envPath,
-      process.platform === 'darwin'
-        ? '/Applications/Brave Browser.app/Contents/MacOS/Brave Browser'
+      process.platform === "darwin"
+        ? "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"
         : undefined,
-      process.platform === 'linux' ? '/usr/bin/brave-browser' : undefined,
-      process.platform === 'linux' ? '/usr/bin/brave-browser-stable' : undefined,
-      process.platform === 'linux' ? '/snap/bin/brave' : undefined,
-      process.platform === 'win32' && process.env.LOCALAPPDATA
+      process.platform === "linux" ? "/usr/bin/brave-browser" : undefined,
+      process.platform === "linux" ? "/usr/bin/brave-browser-stable" : undefined,
+      process.platform === "linux" ? "/snap/bin/brave" : undefined,
+      process.platform === "win32" && process.env.LOCALAPPDATA
         ? path.join(
             process.env.LOCALAPPDATA,
-            'BraveSoftware',
-            'Brave-Browser',
-            'Application',
-            'brave.exe',
+            "BraveSoftware",
+            "Brave-Browser",
+            "Application",
+            "brave.exe",
           )
         : undefined,
-      process.platform === 'win32'
-        ? 'C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe'
+      process.platform === "win32"
+        ? "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe"
         : undefined,
-      process.platform === 'win32'
-        ? 'C:\\Program Files (x86)\\BraveSoftware\\Brave-Browser\\Application\\brave.exe'
+      process.platform === "win32"
+        ? "C:\\Program Files (x86)\\BraveSoftware\\Brave-Browser\\Application\\brave.exe"
         : undefined,
     ].filter((value): value is string => Boolean(value));
 
@@ -256,15 +262,14 @@ export class BrowserService {
     let context: BrowserContext | null = null;
 
     try {
-      const channel = this.options.channel === 'chrome' ? 'chrome' : undefined;
-      const executablePath = this.options.channel === 'brave'
-        ? await this.resolveBraveExecutablePath()
-        : undefined;
+      const channel = this.options.channel === "chrome" ? "chrome" : undefined;
+      const executablePath =
+        this.options.channel === "brave" ? await this.resolveBraveExecutablePath() : undefined;
 
-      if (this.options.channel === 'brave' && !executablePath) {
+      if (this.options.channel === "brave" && !executablePath) {
         throw new Error(
-          'Brave browser was requested but no Brave executable was found. ' +
-          'Install Brave or set BRAVE_PATH to the Brave binary path.',
+          "Brave browser was requested but no Brave executable was found. " +
+            "Install Brave or set BRAVE_PATH to the Brave binary path.",
         );
       }
 
@@ -290,7 +295,7 @@ export class BrowserService {
         });
       }
 
-      const page = context.pages()[0] ?? await context.newPage();
+      const page = context.pages()[0] ?? (await context.newPage());
       page.setDefaultTimeout(this.options.timeout!);
 
       // Only assign to instance variables after all operations succeed
@@ -312,17 +317,21 @@ export class BrowserService {
   /**
    * Navigate to a URL
    */
-  async navigate(url: string, waitUntil: 'load' | 'domcontentloaded' | 'networkidle' = 'load'): Promise<NavigateResult> {
+  async navigate(
+    url: string,
+    waitUntil: "load" | "domcontentloaded" | "networkidle" = "load",
+  ): Promise<NavigateResult> {
     // Check if domain is allowed by guardrails
     if (!GuardrailManager.isDomainAllowed(url)) {
       const settings = GuardrailManager.loadSettings();
-      const allowedDomainsStr = settings.allowedDomains.length > 0
-        ? settings.allowedDomains.join(', ')
-        : '(none configured)';
+      const allowedDomainsStr =
+        settings.allowedDomains.length > 0
+          ? settings.allowedDomains.join(", ")
+          : "(none configured)";
       throw new Error(
         `Domain not allowed: "${url}"\n` +
-        `Allowed domains: ${allowedDomainsStr}\n` +
-        `You can modify allowed domains in Settings > Guardrails.`
+          `Allowed domains: ${allowedDomainsStr}\n` +
+          `You can modify allowed domains in Settings > Guardrails.`,
       );
     }
 
@@ -333,9 +342,7 @@ export class BrowserService {
 
     // Validate HTTP status code - warn on client/server errors
     if (status && status >= 400) {
-      const statusMessage = status >= 500
-        ? `Server error (${status})`
-        : `Client error (${status})`;
+      const statusMessage = status >= 500 ? `Server error (${status})` : `Client error (${status})`;
       console.warn(`[BrowserService] Navigation to ${url} returned ${statusMessage}`);
     }
 
@@ -347,7 +354,7 @@ export class BrowserService {
       title: await this.page!.title(),
       status,
       // Include error flag for status codes >= 400
-      isError: status !== null && status >= 400
+      isError: status !== null && status >= 400,
     };
   }
 
@@ -362,22 +369,22 @@ export class BrowserService {
       // Common consent button selectors and text patterns
       const consentButtonSelectors = [
         // Common button IDs and classes
-        '#L2AGLb', // Google consent "Accept all"
-        '#onetrust-accept-btn-handler',
-        '#accept-all-cookies',
-        '#acceptAllCookies',
-        '.accept-cookies',
-        '.accept-all',
+        "#L2AGLb", // Google consent "Accept all"
+        "#onetrust-accept-btn-handler",
+        "#accept-all-cookies",
+        "#acceptAllCookies",
+        ".accept-cookies",
+        ".accept-all",
         '[data-testid="cookie-policy-dialog-accept-button"]',
         '[data-testid="GDPR-accept"]',
-        '.cookie-consent-accept',
-        '.cookie-banner-accept',
-        '.consent-accept',
-        '#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll',
-        '.cc-accept',
-        '.cc-btn.cc-allow',
-        '#didomi-notice-agree-button',
-        '.evidon-barrier-acceptall',
+        ".cookie-consent-accept",
+        ".cookie-banner-accept",
+        ".consent-accept",
+        "#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll",
+        ".cc-accept",
+        ".cc-btn.cc-allow",
+        "#didomi-notice-agree-button",
+        ".evidon-barrier-acceptall",
         // Aria labels
         '[aria-label="Accept all cookies"]',
         '[aria-label="Accept cookies"]',
@@ -408,37 +415,39 @@ export class BrowserService {
 
       // Try text-based matching for common button texts
       const buttonTexts = [
-        'Accept all',
-        'Accept All',
-        'Accept all cookies',
-        'Accept All Cookies',
-        'Allow all',
-        'Allow All',
-        'Allow all cookies',
-        'I agree',
-        'I Accept',
-        'Got it',
-        'OK',
-        'Agree',
-        'Accept',
-        'Consent',
-        'Continue',
-        'Yes, I agree',
-        'Reject all',
-        'Reject All',
-        'Rejeitar tudo',
-        'Aceitar tudo',
-        'Recusar tudo',
-        'Accetto',
-        'Akzeptieren',
-        'Accepter',
-        'Aceptar',
+        "Accept all",
+        "Accept All",
+        "Accept all cookies",
+        "Accept All Cookies",
+        "Allow all",
+        "Allow All",
+        "Allow all cookies",
+        "I agree",
+        "I Accept",
+        "Got it",
+        "OK",
+        "Agree",
+        "Accept",
+        "Consent",
+        "Continue",
+        "Yes, I agree",
+        "Reject all",
+        "Reject All",
+        "Rejeitar tudo",
+        "Aceitar tudo",
+        "Recusar tudo",
+        "Accetto",
+        "Akzeptieren",
+        "Accepter",
+        "Aceptar",
       ];
 
       for (const text of buttonTexts) {
         try {
           // Look for buttons with exact or partial text match
-          const button = await this.page.$(`button:has-text("${text}"), a:has-text("${text}"), [role="button"]:has-text("${text}")`);
+          const button = await this.page.$(
+            `button:has-text("${text}"), a:has-text("${text}"), [role="button"]:has-text("${text}")`,
+          );
           if (button) {
             // Verify the button is visible and in a consent-like context
             const isVisible = await button.isVisible();
@@ -495,10 +504,9 @@ export class BrowserService {
           document.documentElement.style.overflow = '';
         })()
       `);
-
     } catch (error) {
       // Silently fail - consent popup handling is best-effort
-      console.log('[BrowserService] Could not dismiss consent popup:', error);
+      console.log("[BrowserService] Could not dismiss consent popup:", error);
     }
   }
 
@@ -513,19 +521,19 @@ export class BrowserService {
 
     await this.page!.screenshot({
       path: screenshotPath,
-      fullPage
+      fullPage,
     });
 
     const viewport = this.page!.viewportSize();
 
     const pageHeight = fullPage
-      ? await this.page!.evaluate('document.body.scrollHeight') as number
+      ? ((await this.page!.evaluate("document.body.scrollHeight")) as number)
       : (viewport?.height ?? this.options.viewport!.height);
 
     return {
       path: screenshotName,
       width: viewport?.width ?? this.options.viewport!.width,
-      height: pageHeight
+      height: pageHeight,
     };
   }
 
@@ -547,17 +555,17 @@ export class BrowserService {
     const title = await this.page!.title();
 
     // Get visible text content
-    const text = await this.page!.evaluate(`
+    const text = (await this.page!.evaluate(`
       (() => {
         const body = document.body;
         const clone = body.cloneNode(true);
         clone.querySelectorAll('script, style, noscript').forEach(el => el.remove());
         return clone.innerText.replace(/\\s+/g, ' ').trim().slice(0, 10000);
       })()
-    `) as string;
+    `)) as string;
 
     // Get links
-    const links = await this.page!.evaluate(`
+    const links = (await this.page!.evaluate(`
       (() => {
         const anchors = document.querySelectorAll('a[href]');
         return Array.from(anchors).slice(0, 50).map(a => ({
@@ -565,10 +573,10 @@ export class BrowserService {
           href: a.href
         })).filter(l => l.text && l.href);
       })()
-    `) as Array<{ text: string; href: string }>;
+    `)) as Array<{ text: string; href: string }>;
 
     // Get forms
-    const forms = await this.page!.evaluate(`
+    const forms = (await this.page!.evaluate(`
       (() => {
         const formElements = document.querySelectorAll('form');
         return Array.from(formElements).slice(0, 10).map(form => ({
@@ -579,7 +587,7 @@ export class BrowserService {
           })
         }));
       })()
-    `) as Array<{ action: string; method: string; inputs: string[] }>;
+    `)) as Array<{ action: string; method: string; inputs: string[] }>;
 
     return { url, title, text, links, forms };
   }
@@ -593,23 +601,27 @@ export class BrowserService {
     const actionTimeout = this.getActionTimeout(timeoutMs);
 
     try {
-      const locator = await this.runLocatorActionWithRetry(selector, actionTimeout, async (candidate, actionTimeoutForAttempt) => {
-        await candidate.click({ timeout: actionTimeoutForAttempt });
-        return candidate;
-      });
+      const locator = await this.runLocatorActionWithRetry(
+        selector,
+        actionTimeout,
+        async (candidate, actionTimeoutForAttempt) => {
+          await candidate.click({ timeout: actionTimeoutForAttempt });
+          return candidate;
+        },
+      );
       const text = await locator.textContent().catch(() => null);
 
       return {
         success: true,
-        element: text?.trim().slice(0, 100)
+        element: text?.trim().slice(0, 100),
       };
     } catch (error) {
-      const context = await this.captureFailureContext('click', selector);
+      const context = await this.captureFailureContext("click", selector);
       return {
         success: false,
         element: selector,
         error: (error as Error).message,
-        ...context
+        ...context,
       };
     }
   }
@@ -622,24 +634,28 @@ export class BrowserService {
     const actionTimeout = this.getActionTimeout(timeoutMs);
 
     try {
-      const locator = await this.runLocatorActionWithRetry(selector, actionTimeout, async (candidate, actionTimeoutForAttempt) => {
-        await candidate.fill(value, { timeout: actionTimeoutForAttempt });
-        return candidate;
-      });
+      const locator = await this.runLocatorActionWithRetry(
+        selector,
+        actionTimeout,
+        async (candidate, actionTimeoutForAttempt) => {
+          await candidate.fill(value, { timeout: actionTimeoutForAttempt });
+          return candidate;
+        },
+      );
 
       return {
         success: true,
         selector,
-        value
+        value,
       };
     } catch (error) {
-      const context = await this.captureFailureContext('fill', selector);
+      const context = await this.captureFailureContext("fill", selector);
       return {
         success: false,
         selector,
         value,
         error: (error as Error).message,
-        ...context
+        ...context,
       };
     }
   }
@@ -647,30 +663,39 @@ export class BrowserService {
   /**
    * Type text (with key events)
    */
-  async type(selector: string, text: string, delay: number = 50, timeoutMs?: number): Promise<FillResult> {
+  async type(
+    selector: string,
+    text: string,
+    delay: number = 50,
+    timeoutMs?: number,
+  ): Promise<FillResult> {
     await this.ensurePage();
     const actionTimeout = this.getActionTimeout(timeoutMs);
 
     try {
-      const locator = await this.runLocatorActionWithRetry(selector, actionTimeout, async (candidate, actionTimeoutForAttempt) => {
-        await candidate.click({ timeout: actionTimeoutForAttempt });
-        await candidate.type(text, { delay, timeout: actionTimeoutForAttempt });
-        return candidate;
-      });
+      const locator = await this.runLocatorActionWithRetry(
+        selector,
+        actionTimeout,
+        async (candidate, actionTimeoutForAttempt) => {
+          await candidate.click({ timeout: actionTimeoutForAttempt });
+          await candidate.type(text, { delay, timeout: actionTimeoutForAttempt });
+          return candidate;
+        },
+      );
 
       return {
         success: true,
         selector,
-        value: text
+        value: text,
       };
     } catch (error) {
-      const context = await this.captureFailureContext('type', selector);
+      const context = await this.captureFailureContext("type", selector);
       return {
         success: false,
         selector,
         value: text,
         error: (error as Error).message,
-        ...context
+        ...context,
       };
     }
   }
@@ -692,7 +717,10 @@ export class BrowserService {
   /**
    * Wait for an element to appear
    */
-  async waitForSelector(selector: string, timeout?: number): Promise<{ success: boolean; selector: string }> {
+  async waitForSelector(
+    selector: string,
+    timeout?: number,
+  ): Promise<{ success: boolean; selector: string }> {
     await this.ensurePage();
 
     try {
@@ -712,7 +740,7 @@ export class BrowserService {
 
     try {
       const actionTimeout = this.getActionTimeout(timeout);
-      await this.page!.waitForLoadState('load', { timeout: actionTimeout });
+      await this.page!.waitForLoadState("load", { timeout: actionTimeout });
       return { success: true, url: this.page!.url() };
     } catch (error) {
       return { success: false, url: (error as Error).message };
@@ -728,10 +756,10 @@ export class BrowserService {
     try {
       const element = await this.page!.$(selector);
       if (!element) {
-        return { success: false, text: 'Element not found' };
+        return { success: false, text: "Element not found" };
       }
       const text = await element.textContent();
-      return { success: true, text: text?.trim() ?? '' };
+      return { success: true, text: text?.trim() ?? "" };
     } catch (error) {
       return { success: false, text: (error as Error).message };
     }
@@ -740,7 +768,10 @@ export class BrowserService {
   /**
    * Get element attribute
    */
-  async getAttribute(selector: string, attribute: string): Promise<{ success: boolean; value: string | null }> {
+  async getAttribute(
+    selector: string,
+    attribute: string,
+  ): Promise<{ success: boolean; value: string | null }> {
     await this.ensurePage();
 
     try {
@@ -787,7 +818,10 @@ export class BrowserService {
   /**
    * Check or uncheck a checkbox
    */
-  async check(selector: string, checked: boolean = true): Promise<{ success: boolean; selector: string; checked: boolean }> {
+  async check(
+    selector: string,
+    checked: boolean = true,
+  ): Promise<{ success: boolean; selector: string; checked: boolean }> {
     await this.ensurePage();
 
     try {
@@ -805,7 +839,10 @@ export class BrowserService {
   /**
    * Scroll the page
    */
-  async scroll(direction: 'up' | 'down' | 'top' | 'bottom', amount?: number): Promise<{ success: boolean }> {
+  async scroll(
+    direction: "up" | "down" | "top" | "bottom",
+    amount?: number,
+  ): Promise<{ success: boolean }> {
     await this.ensurePage();
 
     try {
@@ -813,16 +850,16 @@ export class BrowserService {
       let script: string;
 
       switch (direction) {
-        case 'up':
+        case "up":
           script = `window.scrollBy(0, -${scrollAmount})`;
           break;
-        case 'down':
+        case "down":
           script = `window.scrollBy(0, ${scrollAmount})`;
           break;
-        case 'top':
+        case "top":
           script = `window.scrollTo(0, 0)`;
           break;
-        case 'bottom':
+        case "bottom":
           script = `window.scrollTo(0, document.body.scrollHeight)`;
           break;
       }
@@ -844,7 +881,7 @@ export class BrowserService {
     return {
       url: this.page!.url(),
       title: await this.page!.title(),
-      status: null
+      status: null,
     };
   }
 
@@ -858,7 +895,7 @@ export class BrowserService {
     return {
       url: this.page!.url(),
       title: await this.page!.title(),
-      status: null
+      status: null,
     };
   }
 
@@ -872,7 +909,7 @@ export class BrowserService {
     return {
       url: this.page!.url(),
       title: await this.page!.title(),
-      status: response?.status() ?? null
+      status: response?.status() ?? null,
     };
   }
 
@@ -893,7 +930,7 @@ export class BrowserService {
     const pdfName = filename || `page-${Date.now()}.pdf`;
     const pdfPath = path.join(this.workspace.path, pdfName);
 
-    await this.page!.pdf({ path: pdfPath, format: 'A4' });
+    await this.page!.pdf({ path: pdfPath, format: "A4" });
 
     return { path: pdfName };
   }
@@ -902,7 +939,7 @@ export class BrowserService {
    * Get current URL
    */
   getUrl(): string {
-    return this.page?.url() ?? '';
+    return this.page?.url() ?? "";
   }
 
   /**

@@ -8,9 +8,9 @@
  * - Explicitly specified paths
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
-import { app } from 'electron';
+import * as fs from "fs";
+import * as path from "path";
+import { app } from "electron";
 import {
   PluginManifest,
   Plugin,
@@ -19,24 +19,24 @@ import {
   PluginDiscoveryResult,
   PluginState,
   PluginConfigSchema,
-} from './types';
+} from "./types";
 
 /** Manifest filename */
-const MANIFEST_FILENAME = 'cowork.plugin.json';
+const MANIFEST_FILENAME = "cowork.plugin.json";
 
 /** Default extensions directories */
 const getDefaultExtensionsDirs = (): string[] => {
   const dirs: string[] = [];
 
   // Built-in extensions (relative to app)
-  const builtinDir = path.join(__dirname, '..', 'extensions');
+  const builtinDir = path.join(__dirname, "..", "extensions");
   if (fs.existsSync(builtinDir)) {
     dirs.push(builtinDir);
   }
 
   // User extensions directory
-  const userDataPath = app?.getPath?.('userData') || path.join(process.env.HOME || '', '.cowork');
-  const userExtensionsDir = path.join(userDataPath, 'extensions');
+  const userDataPath = app?.getPath?.("userData") || path.join(process.env.HOME || "", ".cowork");
+  const userExtensionsDir = path.join(userDataPath, "extensions");
   if (fs.existsSync(userExtensionsDir)) {
     dirs.push(userExtensionsDir);
   }
@@ -48,40 +48,45 @@ const getDefaultExtensionsDirs = (): string[] => {
  * Validate a plugin manifest
  */
 export function validateManifest(manifest: unknown): manifest is PluginManifest {
-  if (!manifest || typeof manifest !== 'object') {
+  if (!manifest || typeof manifest !== "object") {
     return false;
   }
 
   const m = manifest as Record<string, unknown>;
 
   // Required fields
-  if (typeof m.name !== 'string' || !m.name) {
-    throw new Error('Plugin manifest missing required field: name');
+  if (typeof m.name !== "string" || !m.name) {
+    throw new Error("Plugin manifest missing required field: name");
   }
 
-  if (typeof m.displayName !== 'string' || !m.displayName) {
-    throw new Error('Plugin manifest missing required field: displayName');
+  if (typeof m.displayName !== "string" || !m.displayName) {
+    throw new Error("Plugin manifest missing required field: displayName");
   }
 
-  if (typeof m.version !== 'string' || !m.version) {
-    throw new Error('Plugin manifest missing required field: version');
+  if (typeof m.version !== "string" || !m.version) {
+    throw new Error("Plugin manifest missing required field: version");
   }
 
-  if (typeof m.description !== 'string') {
-    throw new Error('Plugin manifest missing required field: description');
+  if (typeof m.description !== "string") {
+    throw new Error("Plugin manifest missing required field: description");
   }
 
-  if (typeof m.type !== 'string' || !['channel', 'tool', 'provider', 'integration'].includes(m.type)) {
-    throw new Error('Plugin manifest has invalid type. Must be: channel, tool, provider, or integration');
+  if (
+    typeof m.type !== "string" ||
+    !["channel", "tool", "provider", "integration"].includes(m.type)
+  ) {
+    throw new Error(
+      "Plugin manifest has invalid type. Must be: channel, tool, provider, or integration",
+    );
   }
 
-  if (typeof m.main !== 'string' || !m.main) {
-    throw new Error('Plugin manifest missing required field: main');
+  if (typeof m.main !== "string" || !m.main) {
+    throw new Error("Plugin manifest missing required field: main");
   }
 
   // Validate version format (semver-like)
   if (!/^\d+\.\d+\.\d+/.test(m.version)) {
-    throw new Error('Plugin version must be valid semver (e.g., 1.0.0)');
+    throw new Error("Plugin version must be valid semver (e.g., 1.0.0)");
   }
 
   // Validate config schema if present
@@ -96,12 +101,12 @@ export function validateManifest(manifest: unknown): manifest is PluginManifest 
  * Validate configuration schema
  */
 function validateConfigSchema(schema: PluginConfigSchema): void {
-  if (schema.type !== 'object') {
+  if (schema.type !== "object") {
     throw new Error('Config schema type must be "object"');
   }
 
-  if (!schema.properties || typeof schema.properties !== 'object') {
-    throw new Error('Config schema must have properties');
+  if (!schema.properties || typeof schema.properties !== "object") {
+    throw new Error("Config schema must have properties");
   }
 
   for (const [key, prop] of Object.entries(schema.properties)) {
@@ -109,7 +114,7 @@ function validateConfigSchema(schema: PluginConfigSchema): void {
       throw new Error(`Config property "${key}" missing type`);
     }
 
-    const validTypes = ['string', 'number', 'boolean', 'array', 'object'];
+    const validTypes = ["string", "number", "boolean", "array", "object"];
     if (!validTypes.includes(prop.type)) {
       throw new Error(`Config property "${key}" has invalid type: ${prop.type}`);
     }
@@ -143,7 +148,7 @@ export async function discoverPlugins(dirs?: string[]): Promise<PluginDiscoveryR
       }
 
       try {
-        const manifestContent = fs.readFileSync(manifestPath, 'utf-8');
+        const manifestContent = fs.readFileSync(manifestPath, "utf-8");
         const manifest = JSON.parse(manifestContent);
 
         if (validateManifest(manifest)) {
@@ -177,13 +182,13 @@ export async function loadPlugin(pluginPath: string): Promise<PluginLoadResult> 
 
   try {
     // Read and validate manifest
-    const manifestContent = fs.readFileSync(manifestPath, 'utf-8');
+    const manifestContent = fs.readFileSync(manifestPath, "utf-8");
     const manifest = JSON.parse(manifestContent);
 
     if (!validateManifest(manifest)) {
       return {
         success: false,
-        error: new Error('Invalid plugin manifest'),
+        error: new Error("Invalid plugin manifest"),
       };
     }
 
@@ -212,10 +217,10 @@ export async function loadPlugin(pluginPath: string): Promise<PluginLoadResult> 
     const plugin: Plugin = pluginModule.default || pluginModule;
 
     // Validate plugin interface
-    if (typeof plugin.register !== 'function') {
+    if (typeof plugin.register !== "function") {
       return {
         success: false,
-        error: new Error('Plugin must export a register function'),
+        error: new Error("Plugin must export a register function"),
       };
     }
 
@@ -226,7 +231,7 @@ export async function loadPlugin(pluginPath: string): Promise<PluginLoadResult> 
       manifest,
       instance: plugin,
       path: pluginPath,
-      state: 'loaded',
+      state: "loaded",
       loadedAt: new Date(),
     };
 
@@ -246,8 +251,8 @@ export async function loadPlugin(pluginPath: string): Promise<PluginLoadResult> 
  * Create the user extensions directory if it doesn't exist
  */
 export function ensureExtensionsDirectory(): string {
-  const userDataPath = app?.getPath?.('userData') || path.join(process.env.HOME || '', '.cowork');
-  const extensionsDir = path.join(userDataPath, 'extensions');
+  const userDataPath = app?.getPath?.("userData") || path.join(process.env.HOME || "", ".cowork");
+  const extensionsDir = path.join(userDataPath, "extensions");
 
   if (!fs.existsSync(extensionsDir)) {
     fs.mkdirSync(extensionsDir, { recursive: true });
@@ -260,8 +265,8 @@ export function ensureExtensionsDirectory(): string {
  * Get the path to a plugin's data directory
  */
 export function getPluginDataPath(pluginName: string): string {
-  const userDataPath = app?.getPath?.('userData') || path.join(process.env.HOME || '', '.cowork');
-  const pluginDataDir = path.join(userDataPath, 'plugin-data', pluginName);
+  const userDataPath = app?.getPath?.("userData") || path.join(process.env.HOME || "", ".cowork");
+  const pluginDataDir = path.join(userDataPath, "plugin-data", pluginName);
 
   if (!fs.existsSync(pluginDataDir)) {
     fs.mkdirSync(pluginDataDir, { recursive: true });
@@ -312,32 +317,35 @@ export function isPluginCompatible(manifest: PluginManifest, coworkVersion: stri
  */
 export function generateManifestTemplate(
   name: string,
-  type: 'channel' | 'tool' | 'provider' | 'integration' = 'channel'
+  type: "channel" | "tool" | "provider" | "integration" = "channel",
 ): PluginManifest {
   return {
-    name: name.toLowerCase().replace(/[^a-z0-9-]/g, '-'),
+    name: name.toLowerCase().replace(/[^a-z0-9-]/g, "-"),
     displayName: name,
-    version: '1.0.0',
+    version: "1.0.0",
     description: `${name} plugin for CoWork`,
     type,
-    main: 'dist/index.js',
+    main: "dist/index.js",
     configSchema: {
-      type: 'object',
+      type: "object",
       properties: {
         enabled: {
-          type: 'boolean',
-          description: 'Enable this plugin',
+          type: "boolean",
+          description: "Enable this plugin",
           default: true,
         },
       },
       required: [],
     },
-    capabilities: type === 'channel' ? {
-      sendMessage: true,
-      receiveMessage: true,
-      attachments: false,
-      reactions: false,
-    } : undefined,
+    capabilities:
+      type === "channel"
+        ? {
+            sendMessage: true,
+            receiveMessage: true,
+            attachments: false,
+            reactions: false,
+          }
+        : undefined,
     keywords: [type, name.toLowerCase()],
   };
 }
@@ -345,14 +353,11 @@ export function generateManifestTemplate(
 /**
  * Write a manifest template to a plugin directory
  */
-export function writeManifestTemplate(
-  pluginDir: string,
-  manifest: PluginManifest
-): void {
+export function writeManifestTemplate(pluginDir: string, manifest: PluginManifest): void {
   if (!fs.existsSync(pluginDir)) {
     fs.mkdirSync(pluginDir, { recursive: true });
   }
 
   const manifestPath = path.join(pluginDir, MANIFEST_FILENAME);
-  fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), 'utf-8');
+  fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), "utf-8");
 }

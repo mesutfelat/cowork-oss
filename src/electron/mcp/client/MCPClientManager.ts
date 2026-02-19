@@ -6,7 +6,7 @@
  * and routes tool calls to the appropriate server.
  */
 
-import { EventEmitter } from 'events';
+import { EventEmitter } from "events";
 import {
   MCPServerConfig,
   MCPServerStatus,
@@ -14,28 +14,29 @@ import {
   MCPCallResult,
   MCPClientEvent,
   MCPSettings,
-} from '../types';
-import { MCPSettingsManager } from '../settings';
-import { MCPServerConnection } from './MCPServerConnection';
-import { IPC_CHANNELS } from '../../../shared/types';
+} from "../types";
+import { MCPSettingsManager } from "../settings";
+import { MCPServerConnection } from "./MCPServerConnection";
+import { IPC_CHANNELS } from "../../../shared/types";
 
-const CONNECTOR_SCRIPT_PATH_REGEX = /(?:^|[\\/])connectors[\\/]([^\\/]+)-mcp[\\/]dist[\\/]index\.js$/i;
+const CONNECTOR_SCRIPT_PATH_REGEX =
+  /(?:^|[\\/])connectors[\\/]([^\\/]+)-mcp[\\/]dist[\\/]index\.js$/i;
 const KNOWN_CONNECTORS = new Set([
-  'salesforce',
-  'jira',
-  'hubspot',
-  'zendesk',
-  'servicenow',
-  'linear',
-  'asana',
-  'okta',
-  'resend',
+  "salesforce",
+  "jira",
+  "hubspot",
+  "zendesk",
+  "servicenow",
+  "linear",
+  "asana",
+  "okta",
+  "resend",
 ]);
 
 function getAllElectronWindows(): any[] {
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const electron = require('electron') as any;
+    const electron = require("electron") as any;
     const BrowserWindow = electron?.BrowserWindow;
     if (BrowserWindow?.getAllWindows) return BrowserWindow.getAllWindows();
   } catch {
@@ -74,7 +75,7 @@ export class MCPClientManager extends EventEmitter {
       return;
     }
 
-    console.log('[MCPClientManager] Initializing...');
+    console.log("[MCPClientManager] Initializing...");
     this.isInitializing = true;
 
     // Initialize settings manager
@@ -103,13 +104,15 @@ export class MCPClientManager extends EventEmitter {
           MCPSettingsManager.updateServer(server.id, { enabled: false });
         }
       }
-      console.log(`[MCPClientManager] Auto-connecting to ${autoConnectServers.length} enabled server(s) in parallel`);
+      console.log(
+        `[MCPClientManager] Auto-connecting to ${autoConnectServers.length} enabled server(s) in parallel`,
+      );
 
       const connectionPromises = autoConnectServers.map((server) =>
         this.connectServer(server.id).catch((error) => {
           console.error(`[MCPClientManager] Failed to auto-connect to ${server.name}:`, error);
           return null; // Don't throw, allow other connections to continue
-        })
+        }),
       );
 
       await Promise.allSettled(connectionPromises);
@@ -124,14 +127,14 @@ export class MCPClientManager extends EventEmitter {
     // End batch mode - this will save settings once if any changes were made
     MCPSettingsManager.endBatch();
 
-    console.log('[MCPClientManager] Initialized');
+    console.log("[MCPClientManager] Initialized");
   }
 
   /**
    * Shutdown and disconnect all servers
    */
   async shutdown(): Promise<void> {
-    console.log('[MCPClientManager] Shutting down...');
+    console.log("[MCPClientManager] Shutting down...");
 
     // Clear debounce timer to prevent memory leaks
     if (this.rebuildToolMapDebounceTimer) {
@@ -141,8 +144,8 @@ export class MCPClientManager extends EventEmitter {
 
     const disconnectPromises = Array.from(this.connections.keys()).map((id) =>
       this.disconnectServer(id).catch((error) =>
-        console.error(`[MCPClientManager] Error disconnecting ${id}:`, error)
-      )
+        console.error(`[MCPClientManager] Error disconnecting ${id}:`, error),
+      ),
     );
 
     await Promise.all(disconnectPromises);
@@ -150,7 +153,7 @@ export class MCPClientManager extends EventEmitter {
     this.toolServerMap.clear();
     this.initialized = false;
 
-    console.log('[MCPClientManager] Shutdown complete');
+    console.log("[MCPClientManager] Shutdown complete");
   }
 
   /**
@@ -160,7 +163,7 @@ export class MCPClientManager extends EventEmitter {
     // Check if already connected
     if (this.connections.has(serverId)) {
       const existing = this.connections.get(serverId)!;
-      if (existing.getStatus().status === 'connected') {
+      if (existing.getStatus().status === "connected") {
         console.log(`[MCPClientManager] Server ${serverId} already connected`);
         return;
       }
@@ -221,7 +224,7 @@ export class MCPClientManager extends EventEmitter {
     const tools: MCPTool[] = [];
 
     for (const connection of this.connections.values()) {
-      if (connection.getStatus().status === 'connected') {
+      if (connection.getStatus().status === "connected") {
         tools.push(...connection.getTools());
       }
     }
@@ -280,7 +283,7 @@ export class MCPClientManager extends EventEmitter {
         statuses.push({
           id: config.id,
           name: config.name,
-          status: 'disconnected',
+          status: "disconnected",
           error: config.lastError,
           tools: config.tools || [],
           lastPing: config.lastConnectedAt,
@@ -306,7 +309,7 @@ export class MCPClientManager extends EventEmitter {
       return {
         id: config.id,
         name: config.name,
-        status: 'disconnected',
+        status: "disconnected",
         error: config.lastError,
         tools: config.tools || [],
         lastPing: config.lastConnectedAt,
@@ -319,7 +322,9 @@ export class MCPClientManager extends EventEmitter {
   /**
    * Test connection to a server (connect and disconnect)
    */
-  async testServer(serverId: string): Promise<{ success: boolean; error?: string; tools?: number }> {
+  async testServer(
+    serverId: string,
+  ): Promise<{ success: boolean; error?: string; tools?: number }> {
     try {
       await this.connectServer(serverId);
       const status = this.getServerStatus(serverId);
@@ -336,34 +341,34 @@ export class MCPClientManager extends EventEmitter {
    * Set up event handlers for a connection
    */
   private setupConnectionHandlers(serverId: string, connection: MCPServerConnection): void {
-    connection.on('status_changed', (status, error) => {
-      console.log(`[MCPClientManager] Server ${serverId} status: ${status}`, error || '');
+    connection.on("status_changed", (status, error) => {
+      console.log(`[MCPClientManager] Server ${serverId} status: ${status}`, error || "");
 
       // Update settings with last error
       if (error) {
         MCPSettingsManager.updateServerError(serverId, error);
-      } else if (status === 'connected') {
+      } else if (status === "connected") {
         MCPSettingsManager.updateServerError(serverId, undefined);
       }
 
       // Emit event
       const event: MCPClientEvent = error
-        ? { type: 'server_error', serverId, error }
-        : status === 'connected'
-        ? { type: 'server_connected', serverId, serverInfo: connection.getStatus().serverInfo! }
-        : status === 'disconnected'
-        ? { type: 'server_disconnected', serverId }
-        : status === 'reconnecting'
-        ? { type: 'server_reconnecting', serverId, attempt: 0 }
-        : { type: 'server_disconnected', serverId };
+        ? { type: "server_error", serverId, error }
+        : status === "connected"
+          ? { type: "server_connected", serverId, serverInfo: connection.getStatus().serverInfo! }
+          : status === "disconnected"
+            ? { type: "server_disconnected", serverId }
+            : status === "reconnecting"
+              ? { type: "server_reconnecting", serverId, attempt: 0 }
+              : { type: "server_disconnected", serverId };
 
-      this.emit('event', event);
+      this.emit("event", event);
 
       // Broadcast to renderer
       this.broadcastStatusChange();
     });
 
-    connection.on('tools_changed', (tools) => {
+    connection.on("tools_changed", (tools) => {
       console.log(`[MCPClientManager] Server ${serverId} tools changed: ${tools.length} tools`);
 
       // Update settings with tools
@@ -373,14 +378,14 @@ export class MCPClientManager extends EventEmitter {
       this.rebuildToolMap();
 
       // Emit event
-      const event: MCPClientEvent = { type: 'tools_changed', serverId, tools };
-      this.emit('event', event);
+      const event: MCPClientEvent = { type: "tools_changed", serverId, tools };
+      this.emit("event", event);
 
       // Broadcast to renderer
       this.broadcastStatusChange();
     });
 
-    connection.on('error', (error) => {
+    connection.on("error", (error) => {
       console.error(`[MCPClientManager] Server ${serverId} error:`, error);
     });
   }
@@ -412,11 +417,11 @@ export class MCPClientManager extends EventEmitter {
     this.toolServerMap.clear();
 
     for (const [serverId, connection] of this.connections) {
-      if (connection.getStatus().status === 'connected') {
+      if (connection.getStatus().status === "connected") {
         for (const tool of connection.getTools()) {
           if (this.toolServerMap.has(tool.name)) {
             console.warn(
-              `[MCPClientManager] Tool name collision: ${tool.name} from ${serverId} conflicts with ${this.toolServerMap.get(tool.name)}`
+              `[MCPClientManager] Tool name collision: ${tool.name} from ${serverId} conflicts with ${this.toolServerMap.get(tool.name)}`,
             );
           } else {
             this.toolServerMap.set(tool.name, serverId);
@@ -453,7 +458,7 @@ export class MCPClientManager extends EventEmitter {
     }
 
     console.log(
-      `[MCPClientManager] Skipping auto-connect for unconfigured connector: ${server.name} (${connectorId})`
+      `[MCPClientManager] Skipping auto-connect for unconfigured connector: ${server.name} (${connectorId})`,
     );
     return false;
   }
@@ -485,40 +490,51 @@ export class MCPClientManager extends EventEmitter {
     return keys.every((key) => this.hasEnvValue(env, key));
   }
 
-  private isConnectorConfigured(connectorId: string, env: Record<string, string> | undefined): boolean {
+  private isConnectorConfigured(
+    connectorId: string,
+    env: Record<string, string> | undefined,
+  ): boolean {
     switch (connectorId) {
-      case 'salesforce':
+      case "salesforce":
         return (
-          this.hasEnvValue(env, 'SALESFORCE_INSTANCE_URL') &&
-          (this.hasEnvValue(env, 'SALESFORCE_ACCESS_TOKEN') ||
-            this.hasAllEnvValues(env, ['SALESFORCE_CLIENT_ID', 'SALESFORCE_CLIENT_SECRET', 'SALESFORCE_REFRESH_TOKEN']))
+          this.hasEnvValue(env, "SALESFORCE_INSTANCE_URL") &&
+          (this.hasEnvValue(env, "SALESFORCE_ACCESS_TOKEN") ||
+            this.hasAllEnvValues(env, [
+              "SALESFORCE_CLIENT_ID",
+              "SALESFORCE_CLIENT_SECRET",
+              "SALESFORCE_REFRESH_TOKEN",
+            ]))
         );
-      case 'jira':
+      case "jira":
         return (
-          this.hasEnvValue(env, 'JIRA_BASE_URL') &&
-          (this.hasEnvValue(env, 'JIRA_ACCESS_TOKEN') || this.hasAllEnvValues(env, ['JIRA_EMAIL', 'JIRA_API_TOKEN']))
+          this.hasEnvValue(env, "JIRA_BASE_URL") &&
+          (this.hasEnvValue(env, "JIRA_ACCESS_TOKEN") ||
+            this.hasAllEnvValues(env, ["JIRA_EMAIL", "JIRA_API_TOKEN"]))
         );
-      case 'hubspot':
-        return this.hasEnvValue(env, 'HUBSPOT_ACCESS_TOKEN');
-      case 'zendesk':
+      case "hubspot":
+        return this.hasEnvValue(env, "HUBSPOT_ACCESS_TOKEN");
+      case "zendesk":
         return (
-          (this.hasEnvValue(env, 'ZENDESK_BASE_URL') || this.hasEnvValue(env, 'ZENDESK_SUBDOMAIN')) &&
-          (this.hasEnvValue(env, 'ZENDESK_ACCESS_TOKEN') || this.hasAllEnvValues(env, ['ZENDESK_EMAIL', 'ZENDESK_API_TOKEN']))
+          (this.hasEnvValue(env, "ZENDESK_BASE_URL") ||
+            this.hasEnvValue(env, "ZENDESK_SUBDOMAIN")) &&
+          (this.hasEnvValue(env, "ZENDESK_ACCESS_TOKEN") ||
+            this.hasAllEnvValues(env, ["ZENDESK_EMAIL", "ZENDESK_API_TOKEN"]))
         );
-      case 'servicenow':
+      case "servicenow":
         return (
-          (this.hasEnvValue(env, 'SERVICENOW_INSTANCE_URL') || this.hasEnvValue(env, 'SERVICENOW_INSTANCE')) &&
-          (this.hasEnvValue(env, 'SERVICENOW_ACCESS_TOKEN') ||
-            this.hasAllEnvValues(env, ['SERVICENOW_USERNAME', 'SERVICENOW_PASSWORD']))
+          (this.hasEnvValue(env, "SERVICENOW_INSTANCE_URL") ||
+            this.hasEnvValue(env, "SERVICENOW_INSTANCE")) &&
+          (this.hasEnvValue(env, "SERVICENOW_ACCESS_TOKEN") ||
+            this.hasAllEnvValues(env, ["SERVICENOW_USERNAME", "SERVICENOW_PASSWORD"]))
         );
-      case 'linear':
-        return this.hasEnvValue(env, 'LINEAR_API_KEY');
-      case 'asana':
-        return this.hasEnvValue(env, 'ASANA_ACCESS_TOKEN');
-      case 'okta':
-        return this.hasAllEnvValues(env, ['OKTA_BASE_URL', 'OKTA_API_TOKEN']);
-      case 'resend':
-        return this.hasEnvValue(env, 'RESEND_API_KEY');
+      case "linear":
+        return this.hasEnvValue(env, "LINEAR_API_KEY");
+      case "asana":
+        return this.hasEnvValue(env, "ASANA_ACCESS_TOKEN");
+      case "okta":
+        return this.hasAllEnvValues(env, ["OKTA_BASE_URL", "OKTA_API_TOKEN"]);
+      case "resend":
+        return this.hasEnvValue(env, "RESEND_API_KEY");
       default:
         return true;
     }

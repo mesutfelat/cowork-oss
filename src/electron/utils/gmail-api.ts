@@ -2,10 +2,13 @@
  * Gmail API helpers
  */
 
-import { GoogleWorkspaceSettingsData } from '../../shared/types';
-import { getGoogleWorkspaceAccessToken, refreshGoogleWorkspaceAccessToken } from './google-workspace-auth';
+import { GoogleWorkspaceSettingsData } from "../../shared/types";
+import {
+  getGoogleWorkspaceAccessToken,
+  refreshGoogleWorkspaceAccessToken,
+} from "./google-workspace-auth";
 
-export const GMAIL_API_BASE = 'https://gmail.googleapis.com/gmail/v1';
+export const GMAIL_API_BASE = "https://gmail.googleapis.com/gmail/v1";
 const DEFAULT_TIMEOUT_MS = 20000;
 
 function parseJsonSafe(text: string): any | undefined {
@@ -19,16 +22,12 @@ function parseJsonSafe(text: string): any | undefined {
 }
 
 function formatGmailError(status: number, data: any, fallback?: string): string {
-  const message =
-    data?.error?.message ||
-    data?.message ||
-    fallback ||
-    'Gmail API error';
+  const message = data?.error?.message || data?.message || fallback || "Gmail API error";
   return `Gmail API error ${status}: ${message}`;
 }
 
 export interface GmailRequestOptions {
-  method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  method: "GET" | "POST" | "PATCH" | "DELETE";
   path: string;
   query?: Record<string, string | number | boolean | string[] | undefined>;
   body?: any;
@@ -43,7 +42,7 @@ export interface GmailRequestResult {
 
 export async function gmailRequest(
   settings: GoogleWorkspaceSettingsData,
-  options: GmailRequestOptions
+  options: GmailRequestOptions,
 ): Promise<GmailRequestResult> {
   const params = new URLSearchParams();
   if (options.query) {
@@ -59,7 +58,7 @@ export async function gmailRequest(
     }
   }
   const queryString = params.toString();
-  const url = `${GMAIL_API_BASE}${options.path}${queryString ? `?${queryString}` : ''}`;
+  const url = `${GMAIL_API_BASE}${options.path}${queryString ? `?${queryString}` : ""}`;
 
   const timeoutMs = options.timeoutMs ?? settings.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
@@ -68,8 +67,8 @@ export async function gmailRequest(
       Authorization: `Bearer ${accessToken}`,
     };
 
-    if (options.method !== 'GET' && options.method !== 'DELETE') {
-      headers['Content-Type'] = 'application/json';
+    if (options.method !== "GET" && options.method !== "DELETE") {
+      headers["Content-Type"] = "application/json";
     }
 
     const controller = new AbortController();
@@ -83,14 +82,17 @@ export async function gmailRequest(
         signal: controller.signal,
       });
 
-      const rawText = typeof response.text === 'function' ? await response.text() : '';
+      const rawText = typeof response.text === "function" ? await response.text() : "";
       const data = rawText ? parseJsonSafe(rawText) : undefined;
 
       if (!response.ok) {
-        throw Object.assign(new Error(formatGmailError(response.status, data, response.statusText)), {
-          status: response.status,
-          data,
-        });
+        throw Object.assign(
+          new Error(formatGmailError(response.status, data, response.statusText)),
+          {
+            status: response.status,
+            data,
+          },
+        );
       }
 
       return {
@@ -99,8 +101,8 @@ export async function gmailRequest(
         raw: rawText || undefined,
       };
     } catch (error: any) {
-      if (error?.name === 'AbortError') {
-        throw new Error('Gmail API request timed out');
+      if (error?.name === "AbortError") {
+        throw new Error("Gmail API request timed out");
       }
       throw error;
     } finally {

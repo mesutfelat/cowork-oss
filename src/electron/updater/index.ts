@@ -1,1 +1,1 @@
-export { UpdateManager, updateManager } from './update-manager';
+export { UpdateManager, updateManager } from "./update-manager";

@@ -5,21 +5,18 @@
  * Settings are stored encrypted in the database using SecureSettingsRepository.
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
-import crypto from 'crypto';
-import type { TailscaleMode } from '../tailscale/settings';
-import type {
-  ControlPlaneConnectionMode,
-  RemoteGatewayConfig,
-} from '../../shared/types';
-import { SecureSettingsRepository } from '../database/SecureSettingsRepository';
-import { getUserDataDir } from '../utils/user-data-dir';
-import { getSafeStorage } from '../utils/safe-storage';
+import * as fs from "fs";
+import * as path from "path";
+import crypto from "crypto";
+import type { TailscaleMode } from "../tailscale/settings";
+import type { ControlPlaneConnectionMode, RemoteGatewayConfig } from "../../shared/types";
+import { SecureSettingsRepository } from "../database/SecureSettingsRepository";
+import { getUserDataDir } from "../utils/user-data-dir";
+import { getSafeStorage } from "../utils/safe-storage";
 
-const LEGACY_SETTINGS_FILE = 'control-plane-settings.json';
-const MASKED_VALUE = '***configured***';
-const ENCRYPTED_PREFIX = 'encrypted:';
+const LEGACY_SETTINGS_FILE = "control-plane-settings.json";
+const MASKED_VALUE = "***configured***";
+const ENCRYPTED_PREFIX = "encrypted:";
 
 /**
  * Control plane settings interface
@@ -56,16 +53,16 @@ export interface ControlPlaneSettings {
 export const DEFAULT_CONTROL_PLANE_SETTINGS: ControlPlaneSettings = {
   enabled: false,
   port: 18789,
-  host: '127.0.0.1',
-  token: '',
+  host: "127.0.0.1",
+  token: "",
   handshakeTimeoutMs: 10000,
   heartbeatIntervalMs: 30000,
   maxPayloadBytes: 10 * 1024 * 1024, // 10MB
   tailscale: {
-    mode: 'off',
+    mode: "off",
     resetOnExit: true,
   },
-  connectionMode: 'local',
+  connectionMode: "local",
   remote: undefined,
 };
 
@@ -73,9 +70,9 @@ export const DEFAULT_CONTROL_PLANE_SETTINGS: ControlPlaneSettings = {
  * Default remote gateway configuration
  */
 export const DEFAULT_REMOTE_GATEWAY_CONFIG: RemoteGatewayConfig = {
-  url: 'ws://127.0.0.1:18789',
-  token: '',
-  deviceName: 'CoWork Remote Client',
+  url: "ws://127.0.0.1:18789",
+  token: "",
+  deviceName: "CoWork Remote Client",
   autoReconnect: true,
   reconnectIntervalMs: 5000,
   maxReconnectAttempts: 10,
@@ -85,7 +82,7 @@ export const DEFAULT_REMOTE_GATEWAY_CONFIG: RemoteGatewayConfig = {
  * Generate a secure random token
  */
 export function generateControlPlaneToken(bytes = 32): string {
-  return crypto.randomBytes(bytes).toString('hex');
+  return crypto.randomBytes(bytes).toString("hex");
 }
 
 /**
@@ -100,10 +97,10 @@ function encryptSecret(value?: string): string | undefined {
     const safeStorage = getSafeStorage();
     if (safeStorage?.isEncryptionAvailable()) {
       const encrypted = safeStorage.encryptString(trimmed);
-      return ENCRYPTED_PREFIX + encrypted.toString('base64');
+      return ENCRYPTED_PREFIX + encrypted.toString("base64");
     }
   } catch (error) {
-    console.warn('[ControlPlane Settings] Failed to encrypt secret:', error);
+    console.warn("[ControlPlane Settings] Failed to encrypt secret:", error);
   }
   return MASKED_VALUE;
 }
@@ -119,11 +116,11 @@ function decryptSecret(value?: string): string | undefined {
     try {
       const safeStorage = getSafeStorage();
       if (safeStorage?.isEncryptionAvailable()) {
-        const encrypted = Buffer.from(value.slice(ENCRYPTED_PREFIX.length), 'base64');
+        const encrypted = Buffer.from(value.slice(ENCRYPTED_PREFIX.length), "base64");
         return safeStorage.decryptString(encrypted);
       }
     } catch (error: any) {
-      console.error('[ControlPlane Settings] Failed to decrypt:', error.message || error);
+      console.error("[ControlPlane Settings] Failed to decrypt:", error.message || error);
     }
   }
 
@@ -154,7 +151,7 @@ export class ControlPlaneSettingsManager {
     this.legacySettingsPath = path.join(userDataPath, LEGACY_SETTINGS_FILE);
     this.initialized = true;
 
-    console.log('[ControlPlane Settings] Initialized');
+    console.log("[ControlPlane Settings] Initialized");
 
     // Migrate from legacy JSON file to encrypted database
     this.migrateFromLegacyFile();
@@ -168,31 +165,35 @@ export class ControlPlaneSettingsManager {
 
     try {
       if (!SecureSettingsRepository.isInitialized()) {
-        console.log('[ControlPlane Settings] SecureSettingsRepository not yet initialized, skipping migration');
+        console.log(
+          "[ControlPlane Settings] SecureSettingsRepository not yet initialized, skipping migration",
+        );
         return;
       }
 
       const repository = SecureSettingsRepository.getInstance();
 
-      if (repository.exists('controlplane')) {
+      if (repository.exists("controlplane")) {
         this.migrationCompleted = true;
         return;
       }
 
       if (!fs.existsSync(this.legacySettingsPath)) {
-        console.log('[ControlPlane Settings] No legacy settings file found');
+        console.log("[ControlPlane Settings] No legacy settings file found");
         this.migrationCompleted = true;
         return;
       }
 
-      console.log('[ControlPlane Settings] Migrating settings from legacy JSON file to encrypted database...');
+      console.log(
+        "[ControlPlane Settings] Migrating settings from legacy JSON file to encrypted database...",
+      );
 
       // Create backup before migration
-      const backupPath = this.legacySettingsPath + '.migration-backup';
+      const backupPath = this.legacySettingsPath + ".migration-backup";
       fs.copyFileSync(this.legacySettingsPath, backupPath);
 
       try {
-        const data = fs.readFileSync(this.legacySettingsPath, 'utf-8');
+        const data = fs.readFileSync(this.legacySettingsPath, "utf-8");
         const parsed = JSON.parse(data);
 
         const merged: ControlPlaneSettings = {
@@ -205,30 +206,30 @@ export class ControlPlaneSettingsManager {
         };
 
         // Decrypt any existing encrypted values
-        merged.token = decryptSecret(merged.token) || '';
+        merged.token = decryptSecret(merged.token) || "";
         if (parsed.remote) {
           merged.remote = {
             ...DEFAULT_REMOTE_GATEWAY_CONFIG,
             ...parsed.remote,
-            token: decryptSecret(parsed.remote.token) || '',
+            token: decryptSecret(parsed.remote.token) || "",
           };
         }
 
-        repository.save('controlplane', merged);
-        console.log('[ControlPlane Settings] Settings migrated to encrypted database');
+        repository.save("controlplane", merged);
+        console.log("[ControlPlane Settings] Settings migrated to encrypted database");
 
         // Migration successful - delete backup and original
         fs.unlinkSync(backupPath);
         fs.unlinkSync(this.legacySettingsPath);
-        console.log('[ControlPlane Settings] Migration complete, cleaned up legacy files');
+        console.log("[ControlPlane Settings] Migration complete, cleaned up legacy files");
 
         this.migrationCompleted = true;
       } catch (migrationError) {
-        console.error('[ControlPlane Settings] Migration failed, backup preserved at:', backupPath);
+        console.error("[ControlPlane Settings] Migration failed, backup preserved at:", backupPath);
         throw migrationError;
       }
     } catch (error) {
-      console.error('[ControlPlane Settings] Migration failed:', error);
+      console.error("[ControlPlane Settings] Migration failed:", error);
     }
   }
 
@@ -254,7 +255,7 @@ export class ControlPlaneSettingsManager {
     try {
       if (SecureSettingsRepository.isInitialized()) {
         const repository = SecureSettingsRepository.getInstance();
-        const stored = repository.load<ControlPlaneSettings>('controlplane');
+        const stored = repository.load<ControlPlaneSettings>("controlplane");
         if (stored) {
           const merged: ControlPlaneSettings = {
             ...DEFAULT_CONTROL_PLANE_SETTINGS,
@@ -271,15 +272,15 @@ export class ControlPlaneSettingsManager {
             };
           }
           this.cachedSettings = merged;
-          console.log('[ControlPlane Settings] Loaded settings from encrypted database');
+          console.log("[ControlPlane Settings] Loaded settings from encrypted database");
           return this.cachedSettings;
         }
       }
     } catch (error) {
-      console.error('[ControlPlane Settings] Failed to load:', error);
+      console.error("[ControlPlane Settings] Failed to load:", error);
     }
 
-    console.log('[ControlPlane Settings] No settings found, using defaults');
+    console.log("[ControlPlane Settings] No settings found, using defaults");
     this.cachedSettings = { ...DEFAULT_CONTROL_PLANE_SETTINGS };
     return this.cachedSettings;
   }
@@ -292,15 +293,15 @@ export class ControlPlaneSettingsManager {
 
     try {
       if (!SecureSettingsRepository.isInitialized()) {
-        throw new Error('SecureSettingsRepository not initialized');
+        throw new Error("SecureSettingsRepository not initialized");
       }
 
       const repository = SecureSettingsRepository.getInstance();
-      repository.save('controlplane', settings);
+      repository.save("controlplane", settings);
       this.cachedSettings = settings;
-      console.log('[ControlPlane Settings] Saved settings to encrypted database');
+      console.log("[ControlPlane Settings] Saved settings to encrypted database");
     } catch (error) {
-      console.error('[ControlPlane Settings] Failed to save:', error);
+      console.error("[ControlPlane Settings] Failed to save:", error);
       throw error;
     }
   }
@@ -366,14 +367,14 @@ export class ControlPlaneSettingsManager {
     const settings = this.loadSettings();
     const displaySettings: ControlPlaneSettings = {
       ...settings,
-      token: settings.token ? MASKED_VALUE : '',
+      token: settings.token ? MASKED_VALUE : "",
     };
 
     // Mask remote token if present
     if (settings.remote) {
       displaySettings.remote = {
         ...settings.remote,
-        token: settings.remote.token ? MASKED_VALUE : '',
+        token: settings.remote.token ? MASKED_VALUE : "",
       };
     }
 

@@ -1,8 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import {
-  AgentRoleData,
-  MentionType,
-} from '../../electron/preload';
+import { useState, useEffect, useRef } from "react";
+import { AgentRoleData, MentionType } from "../../electron/preload";
 
 interface MentionInputProps {
   workspaceId: string;
@@ -13,10 +10,10 @@ interface MentionInputProps {
 }
 
 const MENTION_TYPE_OPTIONS: { value: MentionType; label: string; description: string }[] = [
-  { value: 'request', label: 'Request', description: 'Ask for help with a task' },
-  { value: 'handoff', label: 'Handoff', description: 'Hand over the task completely' },
-  { value: 'review', label: 'Review', description: 'Request a review of work done' },
-  { value: 'fyi', label: 'FYI', description: 'Informational, no action needed' },
+  { value: "request", label: "Request", description: "Ask for help with a task" },
+  { value: "handoff", label: "Handoff", description: "Hand over the task completely" },
+  { value: "review", label: "Review", description: "Request a review of work done" },
+  { value: "fyi", label: "FYI", description: "Informational, no action needed" },
 ];
 
 export function MentionInput({
@@ -24,15 +21,15 @@ export function MentionInput({
   taskId,
   fromAgentRoleId,
   onMentionCreated,
-  placeholder = 'Type @ to mention an agent...',
+  placeholder = "Type @ to mention an agent...",
 }: MentionInputProps) {
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
   const [agents, setAgents] = useState<AgentRoleData[]>([]);
   const [filteredAgents, setFilteredAgents] = useState<AgentRoleData[]>([]);
   const [selectedAgent, setSelectedAgent] = useState<AgentRoleData | null>(null);
-  const [mentionType, setMentionType] = useState<MentionType>('request');
-  const [context, setContext] = useState('');
+  const [mentionType, setMentionType] = useState<MentionType>("request");
+  const [context, setContext] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -44,7 +41,7 @@ export function MentionInput({
         const roles = await window.electronAPI.getAgentRoles();
         setAgents(roles.filter((r: AgentRoleData) => r.isActive));
       } catch (err) {
-        console.error('Failed to load agents:', err);
+        console.error("Failed to load agents:", err);
       }
     };
     loadAgents();
@@ -52,12 +49,11 @@ export function MentionInput({
 
   // Filter agents based on input
   useEffect(() => {
-    if (input.startsWith('@')) {
+    if (input.startsWith("@")) {
       const search = input.slice(1).toLowerCase();
       const filtered = agents.filter(
         (a) =>
-          a.name.toLowerCase().includes(search) ||
-          a.displayName.toLowerCase().includes(search)
+          a.name.toLowerCase().includes(search) || a.displayName.toLowerCase().includes(search),
       );
       setFilteredAgents(filtered);
       setShowDropdown(true);
@@ -69,14 +65,18 @@ export function MentionInput({
   // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node) &&
-          inputRef.current && !inputRef.current.contains(e.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node) &&
+        inputRef.current &&
+        !inputRef.current.contains(e.target as Node)
+      ) {
         setShowDropdown(false);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const handleSelectAgent = (agent: AgentRoleData) => {
@@ -100,23 +100,23 @@ export function MentionInput({
       });
 
       // Reset form
-      setInput('');
+      setInput("");
       setSelectedAgent(null);
-      setContext('');
-      setMentionType('request');
+      setContext("");
+      setMentionType("request");
       onMentionCreated?.();
     } catch (err) {
-      console.error('Failed to create mention:', err);
+      console.error("Failed to create mention:", err);
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleCancel = () => {
-    setInput('');
+    setInput("");
     setSelectedAgent(null);
-    setContext('');
-    setMentionType('request');
+    setContext("");
+    setMentionType("request");
   };
 
   return (
@@ -191,12 +191,8 @@ export function MentionInput({
             <button className="btn-cancel" onClick={handleCancel}>
               Cancel
             </button>
-            <button
-              className="btn-submit"
-              onClick={handleSubmit}
-              disabled={submitting}
-            >
-              {submitting ? 'Sending...' : 'Send Mention'}
+            <button className="btn-submit" onClick={handleSubmit} disabled={submitting}>
+              {submitting ? "Sending..." : "Send Mention"}
             </button>
           </div>
         </div>

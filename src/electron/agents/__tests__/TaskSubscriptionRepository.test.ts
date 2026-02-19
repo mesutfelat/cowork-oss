@@ -2,14 +2,14 @@
  * Tests for TaskSubscriptionRepository
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import type { TaskSubscription } from '../../../shared/types';
-import type { SubscriptionReason } from '../TaskSubscriptionRepository';
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import type { TaskSubscription } from "../../../shared/types";
+import type { SubscriptionReason } from "../TaskSubscriptionRepository";
 
 // Mock electron to avoid getPath errors
-vi.mock('electron', () => ({
+vi.mock("electron", () => ({
   app: {
-    getPath: vi.fn().mockReturnValue('/tmp/test-cowork'),
+    getPath: vi.fn().mockReturnValue("/tmp/test-cowork"),
   },
 }));
 
@@ -104,7 +104,12 @@ class MockTaskSubscriptionRepository {
     return results.sort((a, b) => b.subscribedAt - a.subscribedAt);
   }
 
-  list(query: { taskId?: string; agentRoleId?: string; limit?: number; offset?: number }): TaskSubscription[] {
+  list(query: {
+    taskId?: string;
+    agentRoleId?: string;
+    limit?: number;
+    offset?: number;
+  }): TaskSubscription[] {
     let results: TaskSubscription[] = [];
     mockSubscriptions.forEach((stored) => {
       let matches = true;
@@ -171,7 +176,7 @@ class MockTaskSubscriptionRepository {
   }
 }
 
-describe('TaskSubscriptionRepository', () => {
+describe("TaskSubscriptionRepository", () => {
   let repository: MockTaskSubscriptionRepository;
 
   beforeEach(() => {
@@ -180,196 +185,196 @@ describe('TaskSubscriptionRepository', () => {
     repository = new MockTaskSubscriptionRepository();
   });
 
-  describe('subscribe', () => {
-    it('should create a subscription', () => {
-      const sub = repository.subscribe('task-1', 'agent-1', 'assigned');
+  describe("subscribe", () => {
+    it("should create a subscription", () => {
+      const sub = repository.subscribe("task-1", "agent-1", "assigned");
 
       expect(sub).toBeDefined();
       expect(sub.id).toBeDefined();
-      expect(sub.taskId).toBe('task-1');
-      expect(sub.agentRoleId).toBe('agent-1');
-      expect(sub.subscriptionReason).toBe('assigned');
+      expect(sub.taskId).toBe("task-1");
+      expect(sub.agentRoleId).toBe("agent-1");
+      expect(sub.subscriptionReason).toBe("assigned");
       expect(sub.subscribedAt).toBeGreaterThan(0);
     });
 
-    it('should return existing subscription if already subscribed', () => {
-      const sub1 = repository.subscribe('task-1', 'agent-1', 'assigned');
-      const sub2 = repository.subscribe('task-1', 'agent-1', 'mentioned');
+    it("should return existing subscription if already subscribed", () => {
+      const sub1 = repository.subscribe("task-1", "agent-1", "assigned");
+      const sub2 = repository.subscribe("task-1", "agent-1", "mentioned");
 
       expect(sub2.id).toBe(sub1.id);
-      expect(sub2.subscriptionReason).toBe('assigned'); // Original reason preserved
+      expect(sub2.subscriptionReason).toBe("assigned"); // Original reason preserved
     });
 
-    it('should allow different agents to subscribe to same task', () => {
-      const sub1 = repository.subscribe('task-1', 'agent-1', 'assigned');
-      const sub2 = repository.subscribe('task-1', 'agent-2', 'mentioned');
+    it("should allow different agents to subscribe to same task", () => {
+      const sub1 = repository.subscribe("task-1", "agent-1", "assigned");
+      const sub2 = repository.subscribe("task-1", "agent-2", "mentioned");
 
       expect(sub1.id).not.toBe(sub2.id);
-      expect(repository.getSubscriberCount('task-1')).toBe(2);
+      expect(repository.getSubscriberCount("task-1")).toBe(2);
     });
 
-    it('should allow same agent to subscribe to different tasks', () => {
-      const sub1 = repository.subscribe('task-1', 'agent-1', 'assigned');
-      const sub2 = repository.subscribe('task-2', 'agent-1', 'mentioned');
+    it("should allow same agent to subscribe to different tasks", () => {
+      const sub1 = repository.subscribe("task-1", "agent-1", "assigned");
+      const sub2 = repository.subscribe("task-2", "agent-1", "mentioned");
 
       expect(sub1.id).not.toBe(sub2.id);
-      expect(repository.getSubscriptionsForAgent('agent-1')).toHaveLength(2);
+      expect(repository.getSubscriptionsForAgent("agent-1")).toHaveLength(2);
     });
   });
 
-  describe('autoSubscribe', () => {
-    it('should work the same as subscribe', () => {
-      const sub = repository.autoSubscribe('task-1', 'agent-1', 'commented');
+  describe("autoSubscribe", () => {
+    it("should work the same as subscribe", () => {
+      const sub = repository.autoSubscribe("task-1", "agent-1", "commented");
 
-      expect(sub.taskId).toBe('task-1');
-      expect(sub.subscriptionReason).toBe('commented');
+      expect(sub.taskId).toBe("task-1");
+      expect(sub.subscriptionReason).toBe("commented");
     });
   });
 
-  describe('unsubscribe', () => {
-    it('should remove a subscription', () => {
-      repository.subscribe('task-1', 'agent-1', 'assigned');
+  describe("unsubscribe", () => {
+    it("should remove a subscription", () => {
+      repository.subscribe("task-1", "agent-1", "assigned");
 
-      const result = repository.unsubscribe('task-1', 'agent-1');
+      const result = repository.unsubscribe("task-1", "agent-1");
 
       expect(result).toBe(true);
-      expect(repository.isSubscribed('task-1', 'agent-1')).toBe(false);
+      expect(repository.isSubscribed("task-1", "agent-1")).toBe(false);
     });
 
-    it('should return false if not subscribed', () => {
-      const result = repository.unsubscribe('task-1', 'agent-1');
+    it("should return false if not subscribed", () => {
+      const result = repository.unsubscribe("task-1", "agent-1");
 
       expect(result).toBe(false);
     });
   });
 
-  describe('findByTaskAndAgent', () => {
-    it('should find existing subscription', () => {
-      repository.subscribe('task-1', 'agent-1', 'assigned');
+  describe("findByTaskAndAgent", () => {
+    it("should find existing subscription", () => {
+      repository.subscribe("task-1", "agent-1", "assigned");
 
-      const found = repository.findByTaskAndAgent('task-1', 'agent-1');
+      const found = repository.findByTaskAndAgent("task-1", "agent-1");
 
       expect(found).toBeDefined();
-      expect(found?.taskId).toBe('task-1');
+      expect(found?.taskId).toBe("task-1");
     });
 
-    it('should return undefined for non-existent subscription', () => {
-      const found = repository.findByTaskAndAgent('task-1', 'agent-1');
+    it("should return undefined for non-existent subscription", () => {
+      const found = repository.findByTaskAndAgent("task-1", "agent-1");
 
       expect(found).toBeUndefined();
     });
   });
 
-  describe('findById', () => {
-    it('should find subscription by ID', () => {
-      const created = repository.subscribe('task-1', 'agent-1', 'assigned');
+  describe("findById", () => {
+    it("should find subscription by ID", () => {
+      const created = repository.subscribe("task-1", "agent-1", "assigned");
 
       const found = repository.findById(created.id);
 
       expect(found).toBeDefined();
-      expect(found?.taskId).toBe('task-1');
+      expect(found?.taskId).toBe("task-1");
     });
 
-    it('should return undefined for non-existent ID', () => {
-      const found = repository.findById('non-existent');
+    it("should return undefined for non-existent ID", () => {
+      const found = repository.findById("non-existent");
 
       expect(found).toBeUndefined();
     });
   });
 
-  describe('getSubscribers', () => {
-    it('should return all subscribers for a task', () => {
-      repository.subscribe('task-1', 'agent-1', 'assigned');
-      repository.subscribe('task-1', 'agent-2', 'mentioned');
-      repository.subscribe('task-1', 'agent-3', 'commented');
+  describe("getSubscribers", () => {
+    it("should return all subscribers for a task", () => {
+      repository.subscribe("task-1", "agent-1", "assigned");
+      repository.subscribe("task-1", "agent-2", "mentioned");
+      repository.subscribe("task-1", "agent-3", "commented");
 
-      const subscribers = repository.getSubscribers('task-1');
+      const subscribers = repository.getSubscribers("task-1");
 
       expect(subscribers).toHaveLength(3);
     });
 
-    it('should return empty array for task with no subscribers', () => {
-      const subscribers = repository.getSubscribers('task-1');
+    it("should return empty array for task with no subscribers", () => {
+      const subscribers = repository.getSubscribers("task-1");
 
       expect(subscribers).toHaveLength(0);
     });
 
-    it('should sort by subscribed time ascending', () => {
-      repository.subscribe('task-1', 'agent-1', 'assigned');
-      repository.subscribe('task-1', 'agent-2', 'mentioned');
+    it("should sort by subscribed time ascending", () => {
+      repository.subscribe("task-1", "agent-1", "assigned");
+      repository.subscribe("task-1", "agent-2", "mentioned");
 
-      const subscribers = repository.getSubscribers('task-1');
+      const subscribers = repository.getSubscribers("task-1");
 
-      expect(subscribers[0].agentRoleId).toBe('agent-1');
-      expect(subscribers[1].agentRoleId).toBe('agent-2');
+      expect(subscribers[0].agentRoleId).toBe("agent-1");
+      expect(subscribers[1].agentRoleId).toBe("agent-2");
     });
   });
 
-  describe('getSubscriberCount', () => {
-    it('should return count of subscribers', () => {
-      repository.subscribe('task-1', 'agent-1', 'assigned');
-      repository.subscribe('task-1', 'agent-2', 'mentioned');
+  describe("getSubscriberCount", () => {
+    it("should return count of subscribers", () => {
+      repository.subscribe("task-1", "agent-1", "assigned");
+      repository.subscribe("task-1", "agent-2", "mentioned");
 
-      expect(repository.getSubscriberCount('task-1')).toBe(2);
+      expect(repository.getSubscriberCount("task-1")).toBe(2);
     });
 
-    it('should return 0 for task with no subscribers', () => {
-      expect(repository.getSubscriberCount('task-1')).toBe(0);
+    it("should return 0 for task with no subscribers", () => {
+      expect(repository.getSubscriberCount("task-1")).toBe(0);
     });
   });
 
-  describe('getSubscriptionsForAgent', () => {
-    it('should return all subscriptions for an agent', () => {
-      repository.subscribe('task-1', 'agent-1', 'assigned');
-      repository.subscribe('task-2', 'agent-1', 'mentioned');
-      repository.subscribe('task-3', 'agent-1', 'manual');
+  describe("getSubscriptionsForAgent", () => {
+    it("should return all subscriptions for an agent", () => {
+      repository.subscribe("task-1", "agent-1", "assigned");
+      repository.subscribe("task-2", "agent-1", "mentioned");
+      repository.subscribe("task-3", "agent-1", "manual");
 
-      const subs = repository.getSubscriptionsForAgent('agent-1');
+      const subs = repository.getSubscriptionsForAgent("agent-1");
 
       expect(subs).toHaveLength(3);
     });
 
-    it('should return empty array for agent with no subscriptions', () => {
-      const subs = repository.getSubscriptionsForAgent('agent-1');
+    it("should return empty array for agent with no subscriptions", () => {
+      const subs = repository.getSubscriptionsForAgent("agent-1");
 
       expect(subs).toHaveLength(0);
     });
   });
 
-  describe('list', () => {
-    it('should list all subscriptions', () => {
-      repository.subscribe('task-1', 'agent-1', 'assigned');
-      repository.subscribe('task-2', 'agent-2', 'mentioned');
+  describe("list", () => {
+    it("should list all subscriptions", () => {
+      repository.subscribe("task-1", "agent-1", "assigned");
+      repository.subscribe("task-2", "agent-2", "mentioned");
 
       const all = repository.list({});
 
       expect(all).toHaveLength(2);
     });
 
-    it('should filter by taskId', () => {
-      repository.subscribe('task-1', 'agent-1', 'assigned');
-      repository.subscribe('task-2', 'agent-2', 'mentioned');
+    it("should filter by taskId", () => {
+      repository.subscribe("task-1", "agent-1", "assigned");
+      repository.subscribe("task-2", "agent-2", "mentioned");
 
-      const filtered = repository.list({ taskId: 'task-1' });
-
-      expect(filtered).toHaveLength(1);
-      expect(filtered[0].taskId).toBe('task-1');
-    });
-
-    it('should filter by agentRoleId', () => {
-      repository.subscribe('task-1', 'agent-1', 'assigned');
-      repository.subscribe('task-2', 'agent-2', 'mentioned');
-
-      const filtered = repository.list({ agentRoleId: 'agent-1' });
+      const filtered = repository.list({ taskId: "task-1" });
 
       expect(filtered).toHaveLength(1);
-      expect(filtered[0].agentRoleId).toBe('agent-1');
+      expect(filtered[0].taskId).toBe("task-1");
     });
 
-    it('should respect limit', () => {
-      repository.subscribe('task-1', 'agent-1', 'assigned');
-      repository.subscribe('task-2', 'agent-2', 'mentioned');
-      repository.subscribe('task-3', 'agent-3', 'commented');
+    it("should filter by agentRoleId", () => {
+      repository.subscribe("task-1", "agent-1", "assigned");
+      repository.subscribe("task-2", "agent-2", "mentioned");
+
+      const filtered = repository.list({ agentRoleId: "agent-1" });
+
+      expect(filtered).toHaveLength(1);
+      expect(filtered[0].agentRoleId).toBe("agent-1");
+    });
+
+    it("should respect limit", () => {
+      repository.subscribe("task-1", "agent-1", "assigned");
+      repository.subscribe("task-2", "agent-2", "mentioned");
+      repository.subscribe("task-3", "agent-3", "commented");
 
       const limited = repository.list({ limit: 2 });
 
@@ -377,66 +382,66 @@ describe('TaskSubscriptionRepository', () => {
     });
   });
 
-  describe('deleteByTask', () => {
-    it('should delete all subscriptions for a task', () => {
-      repository.subscribe('task-1', 'agent-1', 'assigned');
-      repository.subscribe('task-1', 'agent-2', 'mentioned');
-      repository.subscribe('task-2', 'agent-1', 'assigned');
+  describe("deleteByTask", () => {
+    it("should delete all subscriptions for a task", () => {
+      repository.subscribe("task-1", "agent-1", "assigned");
+      repository.subscribe("task-1", "agent-2", "mentioned");
+      repository.subscribe("task-2", "agent-1", "assigned");
 
-      const deleted = repository.deleteByTask('task-1');
+      const deleted = repository.deleteByTask("task-1");
 
       expect(deleted).toBe(2);
-      expect(repository.getSubscriberCount('task-1')).toBe(0);
-      expect(repository.getSubscriberCount('task-2')).toBe(1);
+      expect(repository.getSubscriberCount("task-1")).toBe(0);
+      expect(repository.getSubscriberCount("task-2")).toBe(1);
     });
 
-    it('should return 0 if no subscriptions exist', () => {
-      const deleted = repository.deleteByTask('task-1');
+    it("should return 0 if no subscriptions exist", () => {
+      const deleted = repository.deleteByTask("task-1");
 
       expect(deleted).toBe(0);
     });
   });
 
-  describe('deleteByAgent', () => {
-    it('should delete all subscriptions for an agent', () => {
-      repository.subscribe('task-1', 'agent-1', 'assigned');
-      repository.subscribe('task-2', 'agent-1', 'mentioned');
-      repository.subscribe('task-1', 'agent-2', 'assigned');
+  describe("deleteByAgent", () => {
+    it("should delete all subscriptions for an agent", () => {
+      repository.subscribe("task-1", "agent-1", "assigned");
+      repository.subscribe("task-2", "agent-1", "mentioned");
+      repository.subscribe("task-1", "agent-2", "assigned");
 
-      const deleted = repository.deleteByAgent('agent-1');
+      const deleted = repository.deleteByAgent("agent-1");
 
       expect(deleted).toBe(2);
-      expect(repository.getSubscriptionsForAgent('agent-1')).toHaveLength(0);
-      expect(repository.getSubscriptionsForAgent('agent-2')).toHaveLength(1);
+      expect(repository.getSubscriptionsForAgent("agent-1")).toHaveLength(0);
+      expect(repository.getSubscriptionsForAgent("agent-2")).toHaveLength(1);
     });
   });
 
-  describe('isSubscribed', () => {
-    it('should return true if subscribed', () => {
-      repository.subscribe('task-1', 'agent-1', 'assigned');
+  describe("isSubscribed", () => {
+    it("should return true if subscribed", () => {
+      repository.subscribe("task-1", "agent-1", "assigned");
 
-      expect(repository.isSubscribed('task-1', 'agent-1')).toBe(true);
+      expect(repository.isSubscribed("task-1", "agent-1")).toBe(true);
     });
 
-    it('should return false if not subscribed', () => {
-      expect(repository.isSubscribed('task-1', 'agent-1')).toBe(false);
+    it("should return false if not subscribed", () => {
+      expect(repository.isSubscribed("task-1", "agent-1")).toBe(false);
     });
   });
 
-  describe('getSubscriberIds', () => {
-    it('should return agent IDs subscribed to a task', () => {
-      repository.subscribe('task-1', 'agent-1', 'assigned');
-      repository.subscribe('task-1', 'agent-2', 'mentioned');
+  describe("getSubscriberIds", () => {
+    it("should return agent IDs subscribed to a task", () => {
+      repository.subscribe("task-1", "agent-1", "assigned");
+      repository.subscribe("task-1", "agent-2", "mentioned");
 
-      const ids = repository.getSubscriberIds('task-1');
+      const ids = repository.getSubscriberIds("task-1");
 
-      expect(ids).toContain('agent-1');
-      expect(ids).toContain('agent-2');
+      expect(ids).toContain("agent-1");
+      expect(ids).toContain("agent-2");
       expect(ids).toHaveLength(2);
     });
 
-    it('should return empty array for task with no subscribers', () => {
-      const ids = repository.getSubscriberIds('task-1');
+    it("should return empty array for task with no subscribers", () => {
+      const ids = repository.getSubscriberIds("task-1");
 
       expect(ids).toHaveLength(0);
     });

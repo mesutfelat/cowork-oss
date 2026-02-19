@@ -1,6 +1,6 @@
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import JSZip from 'jszip';
+import * as fs from "fs/promises";
+import * as path from "path";
+import JSZip from "jszip";
 
 type PptxRelationship = {
   type?: string;
@@ -18,17 +18,32 @@ const DEFAULT_MAX_SLIDES_TO_PROCESS = 250;
 const DEFAULT_TEXT_CANDIDATE_LIMIT = 200 * 1024;
 const DEFAULT_MAX_PPTX_FILE_SIZE_BYTES = 50 * 1024 * 1024;
 
-export async function extractPptxContentFromFile(filePath: string, options: PptxExtractOptions = {}): Promise<string> {
-  const maxSlidesToProcess = Math.max(1, options.maxSlidesToProcess ?? DEFAULT_MAX_SLIDES_TO_PROCESS);
-  const textCandidateLimit = Math.max(1024, options.textCandidateLimit ?? DEFAULT_TEXT_CANDIDATE_LIMIT);
-  const outputCharLimit = typeof options.outputCharLimit === 'number' && Number.isFinite(options.outputCharLimit)
-    ? Math.max(1, Math.floor(options.outputCharLimit))
-    : undefined;
-  const maxFileSizeBytes = Math.max(1024, options.maxFileSizeBytes ?? DEFAULT_MAX_PPTX_FILE_SIZE_BYTES);
+export async function extractPptxContentFromFile(
+  filePath: string,
+  options: PptxExtractOptions = {},
+): Promise<string> {
+  const maxSlidesToProcess = Math.max(
+    1,
+    options.maxSlidesToProcess ?? DEFAULT_MAX_SLIDES_TO_PROCESS,
+  );
+  const textCandidateLimit = Math.max(
+    1024,
+    options.textCandidateLimit ?? DEFAULT_TEXT_CANDIDATE_LIMIT,
+  );
+  const outputCharLimit =
+    typeof options.outputCharLimit === "number" && Number.isFinite(options.outputCharLimit)
+      ? Math.max(1, Math.floor(options.outputCharLimit))
+      : undefined;
+  const maxFileSizeBytes = Math.max(
+    1024,
+    options.maxFileSizeBytes ?? DEFAULT_MAX_PPTX_FILE_SIZE_BYTES,
+  );
 
   const stats = await fs.stat(filePath);
   if (stats.size > maxFileSizeBytes) {
-    throw new Error(`PPTX file too large. Max supported size is ${Math.round(maxFileSizeBytes / (1024 * 1024))}MB.`);
+    throw new Error(
+      `PPTX file too large. Max supported size is ${Math.round(maxFileSizeBytes / (1024 * 1024))}MB.`,
+    );
   }
 
   const zipData = await fs.readFile(filePath);
@@ -60,7 +75,7 @@ export async function extractPptxContentFromFile(filePath: string, options: Pptx
     const match = entryName.match(/slide(\d+)\.xml$/i);
     const slideNumber = match ? Number(match[1]) : slideText.length + 1;
     const relationships = await extractPptxSlideRelationships(zip, entryName);
-    const xml = await file.async('string');
+    const xml = await file.async("string");
     const extracted = extractPptxContentFromXml(xml, relationships);
     if (!extracted) continue;
 
@@ -69,30 +84,34 @@ export async function extractPptxContentFromFile(filePath: string, options: Pptx
     if (notes) {
       blocks.push(`\n[Presenter notes]\n${notes}`);
     }
-    const blockText = blocks.join('\n');
+    const blockText = blocks.join("\n");
     slideText.push(blockText);
     accumulatedLength += blockText.length;
 
     if (accumulatedLength > textCandidateLimit) {
-      truncationNotices.push(`... truncated after ${Math.round(textCandidateLimit / 1024)}KB of extracted text ...`);
+      truncationNotices.push(
+        `... truncated after ${Math.round(textCandidateLimit / 1024)}KB of extracted text ...`,
+      );
       break;
     }
   }
 
   if (slideEntries.length > maxSlides) {
-    truncationNotices.push(`... truncated due to slide count limit (${maxSlides}/${slideEntries.length}) ...`);
+    truncationNotices.push(
+      `... truncated due to slide count limit (${maxSlides}/${slideEntries.length}) ...`,
+    );
   }
 
-  let allText = slideText.join('\n\n');
+  let allText = slideText.join("\n\n");
   if (!allText) {
-    allText = '[No extractable slide text found in this PPTX file.]';
+    allText = "[No extractable slide text found in this PPTX file.]";
   }
 
-  const metadataText = metadata.length > 0 ? `[PPTX Metadata]\n${metadata.join('\n')}\n\n` : '';
+  const metadataText = metadata.length > 0 ? `[PPTX Metadata]\n${metadata.join("\n")}\n\n` : "";
   const summaryLine = `[PPTX Slides: ${processedSlideCount === slideEntries.length ? slideEntries.length : `${processedSlideCount}/${slideEntries.length}`}]\n\n`;
   let resultText = `${summaryLine}${metadataText}${allText}`;
   if (truncationNotices.length > 0) {
-    resultText = `${resultText}\n\n[${truncationNotices.join(' ')}]`;
+    resultText = `${resultText}\n\n[${truncationNotices.join(" ")}]`;
   }
 
   if (outputCharLimit && resultText.length > outputCharLimit) {
@@ -104,12 +123,12 @@ export async function extractPptxContentFromFile(filePath: string, options: Pptx
 
 function decodePptxXmlText(value: string): string {
   return value
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&")
     .replace(/&quot;/g, '"')
     .replace(/&apos;/g, "'")
-    .replace(/&nbsp;/g, ' ')
+    .replace(/&nbsp;/g, " ")
     .replace(/&#x([0-9a-fA-F]+);/g, (_match, hex) => String.fromCodePoint(parseInt(hex, 16)))
     .replace(/&#(\d+);/g, (_match, dec) => String.fromCodePoint(Number(dec)))
     .trim();
@@ -117,7 +136,9 @@ function decodePptxXmlText(value: string): string {
 
 function extractPptxXmlField(xml: string, tagCandidates: string[], isDate = false): string {
   for (const tagName of tagCandidates) {
-    const match = xml.match(new RegExp(`<(?:\\w+:)?${tagName}\\b[^>]*>([\\s\\S]*?)</(?:\\w+:)?${tagName}>`, 'i'));
+    const match = xml.match(
+      new RegExp(`<(?:\\w+:)?${tagName}\\b[^>]*>([\\s\\S]*?)</(?:\\w+:)?${tagName}>`, "i"),
+    );
     if (!match?.[1]) continue;
 
     const cleaned = decodePptxXmlText(match[1].trim());
@@ -132,22 +153,22 @@ function extractPptxXmlField(xml: string, tagCandidates: string[], isDate = fals
 
     return cleaned;
   }
-  return '';
+  return "";
 }
 
 async function extractPptxMetadataFromZip(zip: JSZip): Promise<string[]> {
   const metadata: string[] = [];
 
-  const coreFile = zip.file('docProps/core.xml');
+  const coreFile = zip.file("docProps/core.xml");
   if (coreFile) {
-    const coreXml = await coreFile.async('string');
-    const title = extractPptxXmlField(coreXml, ['title']);
-    const subject = extractPptxXmlField(coreXml, ['subject']);
-    const creator = extractPptxXmlField(coreXml, ['creator']);
-    const created = extractPptxXmlField(coreXml, ['created'], true);
-    const modified = extractPptxXmlField(coreXml, ['modified'], true);
-    const lastModifiedBy = extractPptxXmlField(coreXml, ['lastModifiedBy']);
-    const description = extractPptxXmlField(coreXml, ['description']);
+    const coreXml = await coreFile.async("string");
+    const title = extractPptxXmlField(coreXml, ["title"]);
+    const subject = extractPptxXmlField(coreXml, ["subject"]);
+    const creator = extractPptxXmlField(coreXml, ["creator"]);
+    const created = extractPptxXmlField(coreXml, ["created"], true);
+    const modified = extractPptxXmlField(coreXml, ["modified"], true);
+    const lastModifiedBy = extractPptxXmlField(coreXml, ["lastModifiedBy"]);
+    const description = extractPptxXmlField(coreXml, ["description"]);
 
     const values: string[] = [];
     if (title) values.push(`Title: ${title}`);
@@ -157,27 +178,30 @@ async function extractPptxMetadataFromZip(zip: JSZip): Promise<string[]> {
     if (modified) values.push(`Modified: ${modified}`);
     if (lastModifiedBy) values.push(`Last Modified By: ${lastModifiedBy}`);
     if (description) values.push(`Description: ${description}`);
-    if (values.length > 0) metadata.push(values.join(' | '));
+    if (values.length > 0) metadata.push(values.join(" | "));
   }
 
-  const appFile = zip.file('docProps/app.xml');
+  const appFile = zip.file("docProps/app.xml");
   if (appFile) {
-    const appXml = await appFile.async('string');
-    const appName = extractPptxXmlField(appXml, ['Application']);
-    const presentationFormat = extractPptxXmlField(appXml, ['PresentationFormat']);
-    const slides = extractPptxXmlField(appXml, ['Slides']);
+    const appXml = await appFile.async("string");
+    const appName = extractPptxXmlField(appXml, ["Application"]);
+    const presentationFormat = extractPptxXmlField(appXml, ["PresentationFormat"]);
+    const slides = extractPptxXmlField(appXml, ["Slides"]);
 
     const values: string[] = [];
     if (appName) values.push(`Application: ${appName}`);
     if (presentationFormat) values.push(`Format: ${presentationFormat}`);
     if (slides) values.push(`Declared Slides: ${slides}`);
-    if (values.length > 0) metadata.push(values.join(' | '));
+    if (values.length > 0) metadata.push(values.join(" | "));
   }
 
   return metadata;
 }
 
-function parsePptxRelationshipsFromXml(xml: string, sourcePath: string): Record<string, PptxRelationship> {
+function parsePptxRelationshipsFromXml(
+  xml: string,
+  sourcePath: string,
+): Record<string, PptxRelationship> {
   const relationships: Record<string, PptxRelationship> = {};
   const relationshipPattern = /<Relationship\b[^>]*\/?>/gi;
 
@@ -192,7 +216,7 @@ function parsePptxRelationshipsFromXml(xml: string, sourcePath: string): Record<
 
     const id = idMatch[2];
     const rawTarget = decodePptxRelationshipTarget(targetMatch[2]);
-    const normalizedTarget = rawTarget.replace(/^[/\\]+/, '').replace(/\\/g, '/');
+    const normalizedTarget = rawTarget.replace(/^[/\\]+/, "").replace(/\\/g, "/");
     const target = path.posix.normalize(path.posix.join(sourcePath, normalizedTarget));
     relationships[id] = { target, type: typeMatch[2] };
   }
@@ -208,55 +232,60 @@ function decodePptxRelationshipTarget(target: string): string {
   }
 }
 
-async function extractPptxSlideRelationships(zip: JSZip, slideEntryName: string): Promise<Record<string, PptxRelationship>> {
+async function extractPptxSlideRelationships(
+  zip: JSZip,
+  slideEntryName: string,
+): Promise<Record<string, PptxRelationship>> {
   const relsPath = `ppt/slides/_rels/${path.posix.basename(slideEntryName)}.rels`;
   const relsFile = zip.file(relsPath);
   if (!relsFile) return {};
 
-  const relsXml = await relsFile.async('string');
+  const relsXml = await relsFile.async("string");
   return parsePptxRelationshipsFromXml(relsXml, path.posix.dirname(slideEntryName));
 }
 
 async function extractPptxNotesFromZip(
   zip: JSZip,
   relationships: Record<string, PptxRelationship>,
-  slideNumber: number
+  slideNumber: number,
 ): Promise<string | null> {
-  const notesRelation = Object.values(relationships).find((relation) => relation.type?.includes('/notesSlide'));
+  const notesRelation = Object.values(relationships).find((relation) =>
+    relation.type?.includes("/notesSlide"),
+  );
   const notesPath = notesRelation?.target ?? `ppt/notesSlides/notesSlide${slideNumber}.xml`;
 
   const notesFile = zip.file(notesPath);
   if (!notesFile) {
     const fallback = zip.file(`ppt/notesSlides/notesSlide${slideNumber}.xml`);
     if (!fallback) return null;
-    const fallbackXml = await fallback.async('string');
+    const fallbackXml = await fallback.async("string");
     const notesText = extractTextFromPptxXml(fallbackXml);
     return notesText || null;
   }
 
-  const notesXml = await notesFile.async('string');
+  const notesXml = await notesFile.async("string");
   const notesText = extractTextFromPptxXml(notesXml);
   return notesText || null;
 }
 
 function extractTextFromPptxXml(xml: string): string {
-  if (!xml) return '';
-  const withLineBreaks = xml.replace(/<(?:\w+:)?br\b[^>]*\/?>/g, '\n');
+  if (!xml) return "";
+  const withLineBreaks = xml.replace(/<(?:\w+:)?br\b[^>]*\/?>/g, "\n");
 
   return withLineBreaks
-    .replace(/<[^>]*>/g, '')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&amp;/g, '&')
+    .replace(/<[^>]*>/g, "")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&")
     .replace(/&quot;/g, '"')
     .replace(/&apos;/g, "'")
-    .replace(/&nbsp;/g, ' ')
+    .replace(/&nbsp;/g, " ")
     .replace(/&#x([0-9a-fA-F]+);/g, (_match, hex) => String.fromCodePoint(parseInt(hex, 16)))
     .replace(/&#(\d+);/g, (_match, dec) => String.fromCodePoint(Number(dec)))
-    .replace(/\u000B/g, '')
-    .replace(/\u000C/g, '')
-    .replace(/\r\n/g, '\n')
-    .replace(/\n{3,}/g, '\n\n')
+    .replace(/\u000B/g, "")
+    .replace(/\u000C/g, "")
+    .replace(/\r\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
 
@@ -274,20 +303,20 @@ function extractPptxTablesFromXml(xml: string): string[] {
     const maxCols = Math.max(...rows.map((row) => row.length));
     const normalizedRows = rows.map((row) => {
       const padded = [...row];
-      while (padded.length < maxCols) padded.push('');
+      while (padded.length < maxCols) padded.push("");
       return padded.map((cell) => escapePptxTableCell(cell));
     });
 
-    const header = `| ${normalizedRows[0].join(' | ')} |`;
-    const separator = `| ${normalizedRows[0].map(() => '---').join(' | ')} |`;
+    const header = `| ${normalizedRows[0].join(" | ")} |`;
+    const separator = `| ${normalizedRows[0].map(() => "---").join(" | ")} |`;
     const lines = [
       header,
       separator,
-      ...normalizedRows.slice(1).map((row) => `| ${row.join(' | ')} |`),
+      ...normalizedRows.slice(1).map((row) => `| ${row.join(" | ")} |`),
     ];
 
     if (lines.length > 1) {
-      tables.push(`\n${lines.join('\n')}`);
+      tables.push(`\n${lines.join("\n")}`);
     }
   }
 
@@ -300,33 +329,40 @@ function extractPptxRowsFromTableXml(tableXml: string): string[][] {
 
   for (const rowMatch of rowMatches) {
     const cellMatches = rowMatch[0].matchAll(/<(?:\w+:)?tc\b[\s\S]*?<\/(?:\w+:)?tc>/gi);
-    const row: { text: string; colSpan: number; rowSpan: number }[] = Array.from(cellMatches).map((cellMatch) => {
-      const cellXml = cellMatch[0];
-      return {
-        text: extractTextFromPptxXml(cellXml).replace(/\s+/g, ' ').trim(),
-        colSpan: extractPptxTableSpan(cellXml, 'gridSpan'),
-        rowSpan: extractPptxTableSpan(cellXml, 'rowSpan'),
-      };
-    });
+    const row: { text: string; colSpan: number; rowSpan: number }[] = Array.from(cellMatches).map(
+      (cellMatch) => {
+        const cellXml = cellMatch[0];
+        return {
+          text: extractTextFromPptxXml(cellXml).replace(/\s+/g, " ").trim(),
+          colSpan: extractPptxTableSpan(cellXml, "gridSpan"),
+          rowSpan: extractPptxTableSpan(cellXml, "rowSpan"),
+        };
+      },
+    );
     rows.push(row);
   }
 
   return expandPptxTableRows(rows);
 }
 
-function extractPptxTableSpan(cellXml: string, spanType: 'gridSpan' | 'rowSpan'): number {
+function extractPptxTableSpan(cellXml: string, spanType: "gridSpan" | "rowSpan"): number {
   const tcPr = cellXml.match(/<(?:\w+:)?tcPr\b[\s\S]*?<\/(?:\w+:)?tcPr>/i)?.[0];
   if (!tcPr) return 1;
 
   const tagMatch = tcPr.match(
-    new RegExp(`(?:\\w+:)?${spanType}\\b[^>]*?(?:\\b(?:w:)?val|\\bval)=([\"'])(\\d+)\\1`, 'i')
+    new RegExp(`(?:\\w+:)?${spanType}\\b[^>]*?(?:\\b(?:w:)?val|\\bval)=([\"'])(\\d+)\\1`, "i"),
   );
   const legacyTagMatch = !tagMatch
-    ? tcPr.match(new RegExp(`(?:\\w+:)?${spanType}\\b[^>]*?(?:\\b(?:w:)?val|\\bval)=\"(\\d+)\"`, 'i'))
+    ? tcPr.match(
+        new RegExp(`(?:\\w+:)?${spanType}\\b[^>]*?(?:\\b(?:w:)?val|\\bval)=\"(\\d+)\"`, "i"),
+      )
     : null;
-  const unquotedTagMatch = !tagMatch && !legacyTagMatch
-    ? tcPr.match(new RegExp(`(?:\\w+:)?${spanType}\\b[^>]*?(?:\\b(?:w:)?val|\\bval)=([^\\s"'>/]+)`, 'i'))
-    : null;
+  const unquotedTagMatch =
+    !tagMatch && !legacyTagMatch
+      ? tcPr.match(
+          new RegExp(`(?:\\w+:)?${spanType}\\b[^>]*?(?:\\b(?:w:)?val|\\bval)=([^\\s"'>/]+)`, "i"),
+        )
+      : null;
   const valueText = (tagMatch?.[2] || legacyTagMatch?.[1] || unquotedTagMatch?.[1])?.trim();
   if (!valueText) return 1;
 
@@ -334,7 +370,9 @@ function extractPptxTableSpan(cellXml: string, spanType: 'gridSpan' | 'rowSpan')
   return Number.isFinite(value) && value > 1 ? value : 1;
 }
 
-function expandPptxTableRows(rows: { text: string; colSpan: number; rowSpan: number }[][]): string[][] {
+function expandPptxTableRows(
+  rows: { text: string; colSpan: number; rowSpan: number }[][],
+): string[][] {
   const expandedRows: string[][] = [];
   const activeRowSpans: number[] = [];
   let maxColumns = 0;
@@ -346,7 +384,7 @@ function expandPptxTableRows(rows: { text: string; colSpan: number; rowSpan: num
     for (const cell of row) {
       while (activeRowSpans[columnIndex] > 0) {
         if (!expandedRow[columnIndex]) {
-          expandedRow[columnIndex] = '';
+          expandedRow[columnIndex] = "";
         }
         columnIndex += 1;
       }
@@ -355,16 +393,19 @@ function expandPptxTableRows(rows: { text: string; colSpan: number; rowSpan: num
       const rowSpan = Math.max(1, Math.floor(cell.rowSpan || 1));
 
       while (expandedRow.length < columnIndex + colSpan) {
-        expandedRow.push('');
+        expandedRow.push("");
       }
 
       for (let offset = 0; offset < colSpan; offset += 1) {
-        expandedRow[columnIndex + offset] = offset === 0 ? cell.text : '';
+        expandedRow[columnIndex + offset] = offset === 0 ? cell.text : "";
         if (rowSpan > 1) {
           while (activeRowSpans.length <= columnIndex + offset) {
             activeRowSpans.push(0);
           }
-          activeRowSpans[columnIndex + offset] = Math.max(activeRowSpans[columnIndex + offset], rowSpan - 1);
+          activeRowSpans[columnIndex + offset] = Math.max(
+            activeRowSpans[columnIndex + offset],
+            rowSpan - 1,
+          );
         }
       }
 
@@ -372,11 +413,11 @@ function expandPptxTableRows(rows: { text: string; colSpan: number; rowSpan: num
     }
 
     while (expandedRow.length < activeRowSpans.length) {
-      expandedRow.push('');
+      expandedRow.push("");
     }
 
     maxColumns = Math.max(maxColumns, expandedRow.length);
-    expandedRows.push(expandedRow.map((cell) => cell || ''));
+    expandedRows.push(expandedRow.map((cell) => cell || ""));
 
     for (let column = 0; column < activeRowSpans.length; column += 1) {
       if (activeRowSpans[column] > 0) {
@@ -388,18 +429,21 @@ function expandPptxTableRows(rows: { text: string; colSpan: number; rowSpan: num
   return expandedRows.map((row) => {
     const normalized = [...row];
     while (normalized.length < maxColumns) {
-      normalized.push('');
+      normalized.push("");
     }
     return normalized;
   });
 }
 
 function escapePptxTableCell(value: string): string {
-  return value.replace(/\|/g, '\\|').replace(/\n+/g, ' ').trim();
+  return value.replace(/\|/g, "\\|").replace(/\n+/g, " ").trim();
 }
 
-function extractPptxContentFromXml(xml: string, relationships: Record<string, PptxRelationship> = {}): string {
-  if (!xml) return '';
+function extractPptxContentFromXml(
+  xml: string,
+  relationships: Record<string, PptxRelationship> = {},
+): string {
+  if (!xml) return "";
 
   const replacements: Array<{ index: number; length: number; text: string }> = [];
 
@@ -420,7 +464,7 @@ function extractPptxContentFromXml(xml: string, relationships: Record<string, Pp
     const embedMatch = shapeXml.match(/r:embed=(['"])(.*?)\1/i);
     const embedRelation = embedMatch?.[2] ? relationships[embedMatch[2]] : undefined;
 
-    const name = nameMatch ? nameMatch[2].trim() : 'Image';
+    const name = nameMatch ? nameMatch[2].trim() : "Image";
     const parts = [name];
     if (descMatch?.[2]?.trim()) {
       parts.push(descMatch[2].trim());
@@ -435,23 +479,27 @@ function extractPptxContentFromXml(xml: string, relationships: Record<string, Pp
     replacements.push({
       index: imageMatch.index as number,
       length: imageMatch[0].length,
-      text: `\n[Image/Diagram: ${parts.join(' - ')}]\n`,
+      text: `\n[Image/Diagram: ${parts.join(" - ")}]\n`,
     });
   }
 
-  for (const graphicMatch of xml.matchAll(/<(?:\w+:)?graphicFrame\b[\s\S]*?<\/(?:\w+:)?graphicFrame>/gi)) {
+  for (const graphicMatch of xml.matchAll(
+    /<(?:\w+:)?graphicFrame\b[\s\S]*?<\/(?:\w+:)?graphicFrame>/gi,
+  )) {
     const shapeXml = graphicMatch[0];
     const nameMatch = shapeXml.match(/name=(['"])(.*?)\1/i);
     const descMatch = shapeXml.match(/descr=(['"])(.*?)\1/i);
     const chartMatch = shapeXml.match(/<(?:\w+:)?chart\b[^>]*r:id=(['"])(.*?)\1/i);
-    const diagramMatch = shapeXml.match(/<(?:\w+:)?relIds\b[\s\S]*?(?:\s|>)[^<]*?r:id=(['"])(.*?)\1/i);
+    const diagramMatch = shapeXml.match(
+      /<(?:\w+:)?relIds\b[\s\S]*?(?:\s|>)[^<]*?r:id=(['"])(.*?)\1/i,
+    );
     const typeMatch = chartMatch || diagramMatch;
     const relationId = typeMatch?.[2];
     const relation = relationId ? relationships[relationId] : undefined;
     const isChart = /<(?:\w+:)?chart\b/i.test(shapeXml);
     const isDiagram = /<(?:\w+:)?relIds/i.test(shapeXml) || /<(?:\w+:)?dgm:/i.test(shapeXml);
 
-    const label = isChart ? 'Chart' : isDiagram ? 'Diagram' : 'Graphic';
+    const label = isChart ? "Chart" : isDiagram ? "Diagram" : "Graphic";
     const parts = [label];
     const name = nameMatch ? nameMatch[2].trim() : null;
     if (name) parts.push(name);
@@ -468,7 +516,7 @@ function extractPptxContentFromXml(xml: string, relationships: Record<string, Pp
     replacements.push({
       index: graphicMatch.index as number,
       length: graphicMatch[0].length,
-      text: `\n[${parts.join(' - ')}]\n`,
+      text: `\n[${parts.join(" - ")}]\n`,
     });
   }
 

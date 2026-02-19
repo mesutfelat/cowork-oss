@@ -3,11 +3,11 @@
  * Uses atomic writes with temporary files for data safety
  */
 
-import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
-import { getUserDataDir } from '../utils/user-data-dir';
-import type { CronStoreFile } from './types';
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { getUserDataDir } from "../utils/user-data-dir";
+import type { CronStoreFile } from "./types";
 
 // Lazy-evaluated paths (app.getPath() is not available until app is ready)
 let _cronDir: string | null = null;
@@ -15,21 +15,21 @@ let _cronStorePath: string | null = null;
 
 export function getCronDir(): string {
   if (!_cronDir) {
-    _cronDir = path.join(getUserDataDir(), 'cron');
+    _cronDir = path.join(getUserDataDir(), "cron");
   }
   return _cronDir;
 }
 
 export function getCronStorePath(): string {
   if (!_cronStorePath) {
-    _cronStorePath = path.join(getCronDir(), 'jobs.json');
+    _cronStorePath = path.join(getCronDir(), "jobs.json");
   }
   return _cronStorePath;
 }
 
 // Legacy exports - use getter functions instead
-export const DEFAULT_CRON_DIR = '' as string;
-export const DEFAULT_CRON_STORE_PATH = '' as string;
+export const DEFAULT_CRON_DIR = "" as string;
+export const DEFAULT_CRON_STORE_PATH = "" as string;
 
 /**
  * Resolve the cron store path, supporting ~ expansion
@@ -37,8 +37,8 @@ export const DEFAULT_CRON_STORE_PATH = '' as string;
 export function resolveCronStorePath(storePath?: string): string {
   if (storePath?.trim()) {
     const raw = storePath.trim();
-    if (raw.startsWith('~')) {
-      return path.resolve(raw.replace('~', os.homedir()));
+    if (raw.startsWith("~")) {
+      return path.resolve(raw.replace("~", os.homedir()));
     }
     return path.resolve(raw);
   }
@@ -51,22 +51,22 @@ export function resolveCronStorePath(storePath?: string): string {
  */
 export async function loadCronStore(storePath: string): Promise<CronStoreFile> {
   try {
-    const raw = await fs.promises.readFile(storePath, 'utf-8');
+    const raw = await fs.promises.readFile(storePath, "utf-8");
     const parsed = JSON.parse(raw) as Partial<CronStoreFile> | null;
     const jobs = Array.isArray(parsed?.jobs) ? parsed.jobs : [];
 
     // Validate and filter jobs
-    const validJobs = jobs.filter((job): job is CronStoreFile['jobs'][number] => {
+    const validJobs = jobs.filter((job): job is CronStoreFile["jobs"][number] => {
       return (
         job &&
-        typeof job === 'object' &&
-        typeof job.id === 'string' &&
-        typeof job.name === 'string' &&
-        typeof job.enabled === 'boolean' &&
-        typeof job.workspaceId === 'string' &&
-        typeof job.taskPrompt === 'string' &&
+        typeof job === "object" &&
+        typeof job.id === "string" &&
+        typeof job.name === "string" &&
+        typeof job.enabled === "boolean" &&
+        typeof job.workspaceId === "string" &&
+        typeof job.taskPrompt === "string" &&
         job.schedule &&
-        typeof job.schedule === 'object'
+        typeof job.schedule === "object"
       );
     });
 
@@ -85,22 +85,22 @@ export async function loadCronStore(storePath: string): Promise<CronStoreFile> {
  */
 export function loadCronStoreSync(storePath: string): CronStoreFile {
   try {
-    const raw = fs.readFileSync(storePath, 'utf-8');
+    const raw = fs.readFileSync(storePath, "utf-8");
     const parsed = JSON.parse(raw) as Partial<CronStoreFile> | null;
     const jobs = Array.isArray(parsed?.jobs) ? parsed.jobs : [];
 
     // Validate and filter jobs
-    const validJobs = jobs.filter((job): job is CronStoreFile['jobs'][number] => {
+    const validJobs = jobs.filter((job): job is CronStoreFile["jobs"][number] => {
       return (
         job &&
-        typeof job === 'object' &&
-        typeof job.id === 'string' &&
-        typeof job.name === 'string' &&
-        typeof job.enabled === 'boolean' &&
-        typeof job.workspaceId === 'string' &&
-        typeof job.taskPrompt === 'string' &&
+        typeof job === "object" &&
+        typeof job.id === "string" &&
+        typeof job.name === "string" &&
+        typeof job.enabled === "boolean" &&
+        typeof job.workspaceId === "string" &&
+        typeof job.taskPrompt === "string" &&
         job.schedule &&
-        typeof job.schedule === 'object'
+        typeof job.schedule === "object"
       );
     });
 
@@ -126,7 +126,7 @@ export async function saveCronStore(storePath: string, store: CronStoreFile): Pr
 
   // Write to temp file
   const json = JSON.stringify(store, null, 2);
-  await fs.promises.writeFile(tmp, json, 'utf-8');
+  await fs.promises.writeFile(tmp, json, "utf-8");
 
   // Atomic rename
   await fs.promises.rename(tmp, storePath);
@@ -151,7 +151,7 @@ export function saveCronStoreSync(storePath: string, store: CronStoreFile): void
 
   // Write to temp file
   const json = JSON.stringify(store, null, 2);
-  fs.writeFileSync(tmp, json, 'utf-8');
+  fs.writeFileSync(tmp, json, "utf-8");
 
   // Atomic rename
   fs.renameSync(tmp, storePath);

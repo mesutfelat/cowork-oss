@@ -1,12 +1,12 @@
-import Database from 'better-sqlite3';
-import { v4 as uuidv4 } from 'uuid';
+import Database from "better-sqlite3";
+import { v4 as uuidv4 } from "uuid";
 import {
   Activity,
   CreateActivityRequest,
   ActivityListQuery,
   ActivityActorType,
   ActivityType,
-} from '../../shared/types';
+} from "../../shared/types";
 
 /**
  * Safely parse JSON with error handling
@@ -16,7 +16,7 @@ function safeJsonParse<T>(jsonString: string | null, defaultValue: T, context?: 
   try {
     return JSON.parse(jsonString);
   } catch (error) {
-    console.error(`Failed to parse JSON${context ? ` in ${context}` : ''}:`, error);
+    console.error(`Failed to parse JSON${context ? ` in ${context}` : ""}:`, error);
     return defaultValue;
   }
 }
@@ -67,7 +67,7 @@ export class ActivityRepository {
       activity.metadata ? JSON.stringify(activity.metadata) : null,
       activity.isRead ? 1 : 0,
       activity.isPinned ? 1 : 0,
-      activity.createdAt
+      activity.createdAt,
     );
 
     return activity;
@@ -77,7 +77,7 @@ export class ActivityRepository {
    * Find an activity by ID
    */
   findById(id: string): Activity | undefined {
-    const stmt = this.db.prepare('SELECT * FROM activity_feed WHERE id = ?');
+    const stmt = this.db.prepare("SELECT * FROM activity_feed WHERE id = ?");
     const row = stmt.get(id) as any;
     return row ? this.mapRowToActivity(row) : undefined;
   }
@@ -86,45 +86,45 @@ export class ActivityRepository {
    * List activities with optional filtering
    */
   list(query: ActivityListQuery): Activity[] {
-    const conditions: string[] = ['workspace_id = ?'];
+    const conditions: string[] = ["workspace_id = ?"];
     const params: any[] = [query.workspaceId];
 
     if (query.taskId) {
-      conditions.push('task_id = ?');
+      conditions.push("task_id = ?");
       params.push(query.taskId);
     }
 
     if (query.agentRoleId) {
-      conditions.push('agent_role_id = ?');
+      conditions.push("agent_role_id = ?");
       params.push(query.agentRoleId);
     }
 
     if (query.activityType) {
       if (Array.isArray(query.activityType)) {
-        conditions.push(`activity_type IN (${query.activityType.map(() => '?').join(', ')})`);
+        conditions.push(`activity_type IN (${query.activityType.map(() => "?").join(", ")})`);
         params.push(...query.activityType);
       } else {
-        conditions.push('activity_type = ?');
+        conditions.push("activity_type = ?");
         params.push(query.activityType);
       }
     }
 
     if (query.actorType) {
-      conditions.push('actor_type = ?');
+      conditions.push("actor_type = ?");
       params.push(query.actorType);
     }
 
     if (query.isRead !== undefined) {
-      conditions.push('is_read = ?');
+      conditions.push("is_read = ?");
       params.push(query.isRead ? 1 : 0);
     }
 
     if (query.isPinned !== undefined) {
-      conditions.push('is_pinned = ?');
+      conditions.push("is_pinned = ?");
       params.push(query.isPinned ? 1 : 0);
     }
 
-    let sql = `SELECT * FROM activity_feed WHERE ${conditions.join(' AND ')} ORDER BY created_at DESC`;
+    let sql = `SELECT * FROM activity_feed WHERE ${conditions.join(" AND ")} ORDER BY created_at DESC`;
 
     if (query.limit) {
       sql += ` LIMIT ${query.limit}`;
@@ -143,7 +143,7 @@ export class ActivityRepository {
    */
   getUnreadCount(workspaceId: string): number {
     const stmt = this.db.prepare(
-      'SELECT COUNT(*) as count FROM activity_feed WHERE workspace_id = ? AND is_read = 0'
+      "SELECT COUNT(*) as count FROM activity_feed WHERE workspace_id = ? AND is_read = 0",
     );
     const result = stmt.get(workspaceId) as { count: number };
     return result.count;
@@ -153,7 +153,7 @@ export class ActivityRepository {
    * Mark an activity as read
    */
   markRead(id: string): boolean {
-    const stmt = this.db.prepare('UPDATE activity_feed SET is_read = 1 WHERE id = ?');
+    const stmt = this.db.prepare("UPDATE activity_feed SET is_read = 1 WHERE id = ?");
     const result = stmt.run(id);
     return result.changes > 0;
   }
@@ -163,7 +163,7 @@ export class ActivityRepository {
    */
   markAllRead(workspaceId: string): number {
     const stmt = this.db.prepare(
-      'UPDATE activity_feed SET is_read = 1 WHERE workspace_id = ? AND is_read = 0'
+      "UPDATE activity_feed SET is_read = 1 WHERE workspace_id = ? AND is_read = 0",
     );
     const result = stmt.run(workspaceId);
     return result.changes;
@@ -177,7 +177,7 @@ export class ActivityRepository {
     if (!existing) return undefined;
 
     const newPinned = !existing.isPinned;
-    const stmt = this.db.prepare('UPDATE activity_feed SET is_pinned = ? WHERE id = ?');
+    const stmt = this.db.prepare("UPDATE activity_feed SET is_pinned = ? WHERE id = ?");
     stmt.run(newPinned ? 1 : 0, id);
 
     return { ...existing, isPinned: newPinned };
@@ -187,7 +187,7 @@ export class ActivityRepository {
    * Delete an activity
    */
   delete(id: string): boolean {
-    const stmt = this.db.prepare('DELETE FROM activity_feed WHERE id = ?');
+    const stmt = this.db.prepare("DELETE FROM activity_feed WHERE id = ?");
     const result = stmt.run(id);
     return result.changes > 0;
   }
@@ -199,13 +199,13 @@ export class ActivityRepository {
     if (olderThanMs) {
       const cutoff = Date.now() - olderThanMs;
       const stmt = this.db.prepare(
-        'DELETE FROM activity_feed WHERE workspace_id = ? AND created_at < ? AND is_pinned = 0'
+        "DELETE FROM activity_feed WHERE workspace_id = ? AND created_at < ? AND is_pinned = 0",
       );
       const result = stmt.run(workspaceId, cutoff);
       return result.changes;
     } else {
       const stmt = this.db.prepare(
-        'DELETE FROM activity_feed WHERE workspace_id = ? AND is_pinned = 0'
+        "DELETE FROM activity_feed WHERE workspace_id = ? AND is_pinned = 0",
       );
       const result = stmt.run(workspaceId);
       return result.changes;
@@ -228,7 +228,7 @@ export class ActivityRepository {
       metadata: safeJsonParse<Record<string, unknown> | undefined>(
         row.metadata,
         undefined,
-        'activity.metadata'
+        "activity.metadata",
       ),
       isRead: row.is_read === 1,
       isPinned: row.is_pinned === 1,

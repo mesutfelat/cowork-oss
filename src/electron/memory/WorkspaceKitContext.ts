@@ -1,8 +1,8 @@
-import fs from 'fs';
-import path from 'path';
-import { InputSanitizer } from '../agent/security';
-import { checkProjectAccessFromMarkdown } from '../security/project-access';
-import { redactSensitiveMarkdownContent } from './MarkdownMemoryIndexService';
+import fs from "fs";
+import path from "path";
+import { InputSanitizer } from "../agent/security";
+import { checkProjectAccessFromMarkdown } from "../security/project-access";
+import { redactSensitiveMarkdownContent } from "./MarkdownMemoryIndexService";
 
 type ExtractedSection = {
   title: string;
@@ -10,7 +10,7 @@ type ExtractedSection = {
   content: string;
 };
 
-const KIT_DIRNAME = '.cowork';
+const KIT_DIRNAME = ".cowork";
 
 // Hard caps to prevent blowing up system prompt tokens.
 const MAX_FILE_BYTES = 96 * 1024;
@@ -19,15 +19,15 @@ const MAX_TOTAL_CHARS = 16000;
 
 // Optional "map" files for faster codebase orientation. These are NOT part of the kit directory.
 const MAP_FILES: Array<{ relPath: string; title: string }> = [
-  { relPath: 'docs/CODEBASE_MAP.md', title: 'Codebase Map' },
-  { relPath: 'docs/architecture.md', title: 'Architecture Notes' },
-  { relPath: 'ARCHITECTURE.md', title: 'Architecture Notes (Root)' },
+  { relPath: "docs/CODEBASE_MAP.md", title: "Codebase Map" },
+  { relPath: "docs/architecture.md", title: "Architecture Notes" },
+  { relPath: "ARCHITECTURE.md", title: "Architecture Notes (Root)" },
 ];
 
 function getLocalDateStamp(now: Date): string {
   const yyyy = String(now.getFullYear());
-  const mm = String(now.getMonth() + 1).padStart(2, '0');
-  const dd = String(now.getDate()).padStart(2, '0');
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const dd = String(now.getDate()).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}`;
 }
 
@@ -46,11 +46,11 @@ function readFilePrefix(absPath: string, maxBytes: number): string | null {
     if (!stat.isFile()) return null;
 
     const size = Math.min(stat.size, maxBytes);
-    const fd = fs.openSync(absPath, 'r');
+    const fd = fs.openSync(absPath, "r");
     try {
       const buf = Buffer.alloc(size);
       const bytesRead = fs.readSync(fd, buf, 0, size, 0);
-      return buf.toString('utf8', 0, bytesRead);
+      return buf.toString("utf8", 0, bytesRead);
     } finally {
       fs.closeSync(fd);
     }
@@ -60,7 +60,7 @@ function readFilePrefix(absPath: string, maxBytes: number): string | null {
 }
 
 function extractFilledFieldLines(markdown: string, maxLines = 40): string {
-  const lines = markdown.split('\n');
+  const lines = markdown.split("\n");
   const out: string[] = [];
 
   for (const line of lines) {
@@ -71,21 +71,21 @@ function extractFilledFieldLines(markdown: string, maxLines = 40): string {
     }
   }
 
-  return out.join('\n').trim();
+  return out.join("\n").trim();
 }
 
 function extractBulletSections(
   markdown: string,
-  opts?: { onlyHeadings?: Set<string>; maxBulletsPerSection?: number; maxSections?: number }
+  opts?: { onlyHeadings?: Set<string>; maxBulletsPerSection?: number; maxSections?: number },
 ): string {
   const onlyHeadings = opts?.onlyHeadings;
   const maxBulletsPerSection = opts?.maxBulletsPerSection ?? 12;
   const maxSections = opts?.maxSections ?? 8;
 
-  const lines = markdown.split('\n');
+  const lines = markdown.split("\n");
   const sections: Array<{ heading: string; bullets: string[] }> = [];
 
-  let currentHeading = '';
+  let currentHeading = "";
   let currentBullets: string[] = [];
 
   const flush = () => {
@@ -100,7 +100,7 @@ function extractBulletSections(
       return;
     }
     sections.push({
-      heading: currentHeading || 'Notes',
+      heading: currentHeading || "Notes",
       bullets: bullets.slice(0, maxBulletsPerSection),
     });
     currentBullets = [];
@@ -123,25 +123,29 @@ function extractBulletSections(
   const rendered: string[] = [];
   for (const section of selected) {
     rendered.push(`#### ${section.heading}`);
-    rendered.push(section.bullets.join('\n'));
-    rendered.push('');
+    rendered.push(section.bullets.join("\n"));
+    rendered.push("");
   }
-  return rendered.join('\n').trim();
+  return rendered.join("\n").trim();
 }
 
 function sanitizeForInjection(text: string): string {
   // Treat kit files as untrusted input. They can guide behavior, but must not
   // contain control tokens that enable instruction override.
-  const redacted = redactSensitiveMarkdownContent(text || '');
+  const redacted = redactSensitiveMarkdownContent(text || "");
   return InputSanitizer.sanitizeMemoryContent(redacted).trim();
 }
 
 function clampSection(text: string, maxChars: number): string {
   if (text.length <= maxChars) return text;
-  return text.slice(0, maxChars) + '\n[... truncated ...]';
+  return text.slice(0, maxChars) + "\n[... truncated ...]";
 }
 
-function buildKitSections(workspacePath: string, taskPrompt: string, now: Date): ExtractedSection[] {
+function buildKitSections(
+  workspacePath: string,
+  taskPrompt: string,
+  now: Date,
+): ExtractedSection[] {
   // Note: taskPrompt is reserved for future relevance scoring; for now we keep extraction deterministic.
   void taskPrompt;
 
@@ -152,67 +156,67 @@ function buildKitSections(workspacePath: string, taskPrompt: string, now: Date):
     extractor: (raw: string) => string;
   }> = [
     {
-      relPath: path.join(KIT_DIRNAME, 'AGENTS.md'),
-      title: 'Workspace Rules',
+      relPath: path.join(KIT_DIRNAME, "AGENTS.md"),
+      title: "Workspace Rules",
       extractor: (raw) => sanitizeForInjection(clampSection(raw, MAX_SECTION_CHARS)),
     },
     {
-      relPath: path.join(KIT_DIRNAME, 'MEMORY.md'),
-      title: 'Long-Term Memory',
+      relPath: path.join(KIT_DIRNAME, "MEMORY.md"),
+      title: "Long-Term Memory",
       extractor: (raw) => sanitizeForInjection(extractBulletSections(raw, { maxSections: 12 })),
     },
     {
-      relPath: path.join(KIT_DIRNAME, 'USER.md'),
-      title: 'User Profile',
+      relPath: path.join(KIT_DIRNAME, "USER.md"),
+      title: "User Profile",
       extractor: (raw) => sanitizeForInjection(extractFilledFieldLines(raw)),
     },
     {
-      relPath: path.join(KIT_DIRNAME, 'SOUL.md'),
-      title: 'Assistant Style',
+      relPath: path.join(KIT_DIRNAME, "SOUL.md"),
+      title: "Assistant Style",
       // SOUL.md is intentionally free-form; inject the (sanitized) document rather than
       // only extracting filled "- Key: value" template lines.
       extractor: (raw) => sanitizeForInjection(clampSection(raw, MAX_SECTION_CHARS)),
     },
     {
-      relPath: path.join(KIT_DIRNAME, 'IDENTITY.md'),
-      title: 'Assistant Identity',
+      relPath: path.join(KIT_DIRNAME, "IDENTITY.md"),
+      title: "Assistant Identity",
       extractor: (raw) => sanitizeForInjection(extractFilledFieldLines(raw)),
     },
     {
-      relPath: path.join(KIT_DIRNAME, 'TOOLS.md'),
-      title: 'Local Setup Notes',
+      relPath: path.join(KIT_DIRNAME, "TOOLS.md"),
+      title: "Local Setup Notes",
       extractor: (raw) => sanitizeForInjection(extractBulletSections(raw, { maxSections: 8 })),
     },
     {
-      relPath: path.join(KIT_DIRNAME, 'HEARTBEAT.md'),
-      title: 'Recurring Checks',
+      relPath: path.join(KIT_DIRNAME, "HEARTBEAT.md"),
+      title: "Recurring Checks",
       extractor: (raw) => sanitizeForInjection(extractBulletSections(raw, { maxSections: 10 })),
     },
     {
-      relPath: path.join(KIT_DIRNAME, 'PRIORITIES.md'),
-      title: 'Priorities',
+      relPath: path.join(KIT_DIRNAME, "PRIORITIES.md"),
+      title: "Priorities",
       // Priorities are often numbered lists; keep the (sanitized) doc rather than only "- bullets".
       extractor: (raw) => sanitizeForInjection(clampSection(raw, MAX_SECTION_CHARS)),
     },
     {
-      relPath: path.join(KIT_DIRNAME, 'CROSS_SIGNALS.md'),
-      title: 'Cross-Agent Signals',
+      relPath: path.join(KIT_DIRNAME, "CROSS_SIGNALS.md"),
+      title: "Cross-Agent Signals",
       extractor: (raw) => sanitizeForInjection(clampSection(raw, MAX_SECTION_CHARS)),
     },
     {
-      relPath: path.join(KIT_DIRNAME, 'MISTAKES.md'),
-      title: 'Mistakes / Preferences',
+      relPath: path.join(KIT_DIRNAME, "MISTAKES.md"),
+      title: "Mistakes / Preferences",
       extractor: (raw) => sanitizeForInjection(clampSection(raw, MAX_SECTION_CHARS)),
     },
     {
-      relPath: path.join(KIT_DIRNAME, 'memory', `${stamp}.md`),
+      relPath: path.join(KIT_DIRNAME, "memory", `${stamp}.md`),
       title: `Daily Log (${stamp})`,
       extractor: (raw) =>
         sanitizeForInjection(
           extractBulletSections(raw, {
-            onlyHeadings: new Set(['Open Loops', 'Next Actions', 'Decisions', 'Summary']),
+            onlyHeadings: new Set(["Open Loops", "Next Actions", "Decisions", "Summary"]),
             maxSections: 4,
-          })
+          }),
         ),
     },
   ];
@@ -228,7 +232,7 @@ function buildKitSections(workspacePath: string, taskPrompt: string, now: Date):
     if (!extracted) continue;
     sections.push({
       title: file.title,
-      relPath: file.relPath.replace(/\\/g, '/'),
+      relPath: file.relPath.replace(/\\/g, "/"),
       content: extracted,
     });
   }
@@ -248,7 +252,7 @@ function buildMapSections(workspacePath: string): ExtractedSection[] {
     if (!extracted) continue;
     sections.push({
       title: file.title,
-      relPath: file.relPath.replace(/\\/g, '/'),
+      relPath: file.relPath.replace(/\\/g, "/"),
       content: extracted,
     });
   }
@@ -266,15 +270,20 @@ function scoreTextOverlap(a: string, b: string): number {
   return score;
 }
 
-function buildProjectContextSections(workspacePath: string, taskPrompt: string, agentRoleId: string | null): ExtractedSection[] {
+function buildProjectContextSections(
+  workspacePath: string,
+  taskPrompt: string,
+  agentRoleId: string | null,
+): ExtractedSection[] {
   const sections: ExtractedSection[] = [];
 
-  const projectsDirRel = path.join(KIT_DIRNAME, 'projects');
+  const projectsDirRel = path.join(KIT_DIRNAME, "projects");
   const projectsDirAbs = safeResolveWithinWorkspace(workspacePath, projectsDirRel);
   if (!projectsDirAbs) return sections;
 
   try {
-    if (!fs.existsSync(projectsDirAbs) || !fs.statSync(projectsDirAbs).isDirectory()) return sections;
+    if (!fs.existsSync(projectsDirAbs) || !fs.statSync(projectsDirAbs).isDirectory())
+      return sections;
   } catch {
     return sections;
   }
@@ -287,10 +296,10 @@ function buildProjectContextSections(workspacePath: string, taskPrompt: string, 
     for (const d of dirents) {
       if (!d.isDirectory()) continue;
       const name = d.name;
-      if (!name || name.startsWith('.')) continue;
+      if (!name || name.startsWith(".")) continue;
 
-      const contextRel = path.join(projectsDirRel, name, 'CONTEXT.md');
-      const accessRel = path.join(projectsDirRel, name, 'ACCESS.md');
+      const contextRel = path.join(projectsDirRel, name, "CONTEXT.md");
+      const accessRel = path.join(projectsDirRel, name, "ACCESS.md");
 
       const contextAbs = safeResolveWithinWorkspace(workspacePath, contextRel);
       if (!contextAbs) continue;
@@ -298,7 +307,7 @@ function buildProjectContextSections(workspacePath: string, taskPrompt: string, 
       if (!raw) continue;
 
       // Prefer matches on directory name; fall back to content overlap.
-      const nameScore = scoreTextOverlap(taskPrompt, name.replace(/[-_]/g, ' '));
+      const nameScore = scoreTextOverlap(taskPrompt, name.replace(/[-_]/g, " "));
       const contentScore = scoreTextOverlap(taskPrompt, raw.slice(0, 6000));
       const score = nameScore * 3 + contentScore;
 
@@ -317,30 +326,32 @@ function buildProjectContextSections(workspacePath: string, taskPrompt: string, 
     if (!contextAbs) continue;
 
     const accessAbs = safeResolveWithinWorkspace(workspacePath, c.accessRel);
-    const accessRaw = accessAbs ? readFilePrefix(accessAbs, Math.min(MAX_FILE_BYTES, 24 * 1024)) : null;
-    const accessText = accessRaw ? sanitizeForInjection(clampSection(accessRaw, 2000)) : '';
+    const accessRaw = accessAbs
+      ? readFilePrefix(accessAbs, Math.min(MAX_FILE_BYTES, 24 * 1024))
+      : null;
+    const accessText = accessRaw ? sanitizeForInjection(clampSection(accessRaw, 2000)) : "";
 
     if (accessRaw && agentRoleId) {
       const res = checkProjectAccessFromMarkdown({ markdown: accessRaw, agentRoleId });
       if (!res.allowed) continue;
     }
 
-    const contextRaw = readFilePrefix(contextAbs, MAX_FILE_BYTES) || '';
+    const contextRaw = readFilePrefix(contextAbs, MAX_FILE_BYTES) || "";
     const contextText = sanitizeForInjection(clampSection(contextRaw, MAX_SECTION_CHARS));
 
     const combined = [
-      accessText ? `#### Access (${c.accessRel.replace(/\\\\/g, '/')})\n${accessText}` : '',
-      `#### Context (${c.contextRel.replace(/\\\\/g, '/')})\n${contextText}`,
+      accessText ? `#### Access (${c.accessRel.replace(/\\\\/g, "/")})\n${accessText}` : "",
+      `#### Context (${c.contextRel.replace(/\\\\/g, "/")})\n${contextText}`,
     ]
       .filter(Boolean)
-      .join('\n\n')
+      .join("\n\n")
       .trim();
 
     if (!combined) continue;
 
     sections.push({
       title: `Project: ${c.name}`,
-      relPath: c.contextRel.replace(/\\/g, '/'),
+      relPath: c.contextRel.replace(/\\/g, "/"),
       content: combined,
     });
   }
@@ -356,10 +367,10 @@ export function buildWorkspaceKitContext(
   workspacePath: string,
   taskPrompt: string,
   now: Date = new Date(),
-  opts?: { agentRoleId?: string | null }
+  opts?: { agentRoleId?: string | null },
 ): string {
   const collectedSections: ExtractedSection[] = [];
-  const agentRoleId = typeof opts?.agentRoleId === 'string' ? opts?.agentRoleId : null;
+  const agentRoleId = typeof opts?.agentRoleId === "string" ? opts?.agentRoleId : null;
 
   // Map files are independent of kit dir existence.
   collectedSections.push(...buildMapSections(workspacePath));
@@ -369,7 +380,9 @@ export function buildWorkspaceKitContext(
     try {
       if (fs.existsSync(kitDir) && fs.statSync(kitDir).isDirectory()) {
         collectedSections.push(...buildKitSections(workspacePath, taskPrompt, now));
-        collectedSections.push(...buildProjectContextSections(workspacePath, taskPrompt, agentRoleId));
+        collectedSections.push(
+          ...buildProjectContextSections(workspacePath, taskPrompt, agentRoleId),
+        );
       }
     } catch {
       // ignore
@@ -377,7 +390,7 @@ export function buildWorkspaceKitContext(
   }
 
   const sections = collectedSections;
-  if (sections.length === 0) return '';
+  if (sections.length === 0) return "";
 
   const parts: string[] = [];
   let totalChars = 0;
@@ -390,7 +403,7 @@ export function buildWorkspaceKitContext(
     if (totalChars + block.length > MAX_TOTAL_CHARS) {
       const remaining = Math.max(0, MAX_TOTAL_CHARS - totalChars);
       if (remaining > 200) {
-        parts.push(block.slice(0, remaining) + '\n[... truncated ...]');
+        parts.push(block.slice(0, remaining) + "\n[... truncated ...]");
       }
       break;
     }
@@ -399,5 +412,5 @@ export function buildWorkspaceKitContext(
     totalChars += block.length;
   }
 
-  return parts.join('\n').trim();
+  return parts.join("\n").trim();
 }

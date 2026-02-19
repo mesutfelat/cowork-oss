@@ -68,8 +68,16 @@ button:focus-visible,
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.2);
   --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.25);
   --shadow-glow: 0 0 20px rgba(34, 211, 238, 0.15);
-  --gradient-glossy: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 100%);
-  --gradient-shine: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 50%);
+  --gradient-glossy: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.08) 0%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  --gradient-shine: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(255, 255, 255, 0) 50%
+  );
   --density-chat-message-intrinsic-size: 80px;
   --density-timeline-event-intrinsic-size: 40px;
 }
@@ -99,8 +107,16 @@ button:focus-visible,
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12);
-  --gradient-glossy: linear-gradient(180deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 100%);
-  --gradient-shine: linear-gradient(135deg, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0) 50%);
+  --gradient-glossy: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.5) 0%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  --gradient-shine: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.6) 0%,
+    rgba(255, 255, 255, 0) 50%
+  );
 }
 
 /* ============================================
@@ -113,8 +129,8 @@ button:focus-visible,
   --radius-md: 10px;
   --radius-lg: 14px;
   --radius-xl: 18px;
-  --font-content: 'JetBrains Mono', 'Fira Code', 'Menlo', monospace;
-  --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-content: "JetBrains Mono", "Fira Code", "Menlo", monospace;
+  --font-ui: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 /* Modern Visual Theme (default visual style, same base colors) */
@@ -123,8 +139,10 @@ button:focus-visible,
   --radius-md: 16px;
   --radius-lg: 20px;
   --radius-xl: 24px;
-  --font-content: 'Avenir Next', 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-ui: 'Avenir Next', 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-content:
+    "Avenir Next", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-ui:
+    "Avenir Next", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 /* Hide CLI-specific decorations in modern style */
@@ -337,15 +355,11 @@ button:focus-visible,
   color: var(--color-text-muted);
 }
 
-
-
 /* Rounded avatars/icons in modern style */
 .visual-oblivion .avatar,
 .visual-oblivion .model-icon {
   border-radius: 50%;
 }
-
-
 
 /* ============================================
    Accent Color Themes
@@ -1023,7 +1037,9 @@ body {
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", system-ui,
+    sans-serif;
   font-size: 14px;
   line-height: 1.5;
   color: var(--color-text);
@@ -1239,10 +1255,11 @@ a,
   overflow: hidden;
   position: relative;
   padding-top: var(--title-bar-height);
-  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              min-width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              opacity 0.3s ease;
+  transition:
+    width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    min-width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.3s ease;
 }
 
 /* Removed: double-border effect - using single border only */
@@ -1308,7 +1325,7 @@ a,
 }
 
 .new-task-btn::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -1368,11 +1385,13 @@ a,
 
 .task-item-selected {
   background: var(--color-bg-secondary);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 0 0 1px var(--color-accent-subtle);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 0 0 1px var(--color-accent-subtle);
 }
 
 .task-item-selected::before {
-  content: '';
+  content: "";
   position: absolute;
   left: 0;
   top: 50%;
@@ -1446,7 +1465,9 @@ a,
   color: var(--color-text-muted);
   cursor: pointer;
   border-radius: 4px;
-  transition: opacity 0.15s ease, background 0.15s ease;
+  transition:
+    opacity 0.15s ease,
+    background 0.15s ease;
 }
 
 .task-item:hover .task-item-more {
@@ -1479,7 +1500,7 @@ a,
 }
 
 .task-item-menu::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -1808,7 +1829,9 @@ a,
   border: none;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: color 0.15s ease, background 0.15s ease;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
 }
 
 .message-copy-btn:hover {
@@ -1858,7 +1881,9 @@ a,
   border: none;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: color 0.15s ease, background 0.15s ease;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
 }
 
 .message-speak-btn:hover {
@@ -1879,7 +1904,6 @@ a,
 }
 
 @keyframes pulse {
-
   0%,
   100% {
     opacity: 1;
@@ -2030,7 +2054,7 @@ a,
   border: 1px solid var(--border-color);
   border-radius: 4px;
   color: var(--text-secondary);
-  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-family: "SF Mono", "Fira Code", "Consolas", monospace;
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -2210,7 +2234,7 @@ a,
   padding: 12px;
   background: var(--color-bg-secondary);
   border-radius: var(--radius-md);
-  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-family: "SF Mono", "Fira Code", monospace;
   font-size: 12px;
   color: var(--color-text-secondary);
   border: 1px solid var(--color-border);
@@ -2222,7 +2246,7 @@ a,
 }
 
 .event-details.assistant-message {
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
   font-size: 14px;
   line-height: 1.6;
   color: var(--color-text);
@@ -2243,7 +2267,7 @@ a,
 }
 
 .event-details.event-details-file-preview {
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
   padding: 10px;
 }
 
@@ -2347,7 +2371,7 @@ a,
 }
 
 .markdown-content code {
-  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-family: "SF Mono", "Fira Code", "Consolas", monospace;
   font-size: 0.9em;
   background: var(--color-bg-secondary);
   padding: 2px 6px;
@@ -2529,7 +2553,7 @@ a,
 
 .code-preview-path {
   color: var(--color-text-secondary, #aaa);
-  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-family: "SF Mono", "Fira Code", monospace;
 }
 
 .code-preview-truncated {
@@ -2552,7 +2576,7 @@ a,
 }
 
 .code-preview-content code {
-  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-family: "SF Mono", "Fira Code", monospace;
   font-size: 11px;
 }
 
@@ -2578,7 +2602,7 @@ a,
 }
 
 .diff-line code {
-  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-family: "SF Mono", "Fira Code", monospace;
   font-size: 11px;
 }
 
@@ -2594,7 +2618,7 @@ a,
 
 .diff-marker {
   font-weight: bold;
-  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-family: "SF Mono", "Fira Code", monospace;
   flex-shrink: 0;
   width: 14px;
   text-align: center;
@@ -2621,7 +2645,7 @@ a,
   background: var(--color-bg-secondary);
   border-radius: var(--radius-md);
   margin-bottom: 8px;
-  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-family: "SF Mono", "Fira Code", monospace;
   font-size: 12px;
   color: var(--color-pink);
   border: 1px solid var(--color-border-subtle);
@@ -2644,12 +2668,16 @@ a,
   background: var(--color-bg-input);
   border: 1px solid transparent;
   border-radius: var(--radius-lg);
-  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+  transition:
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
 }
 
 .input-container:focus-within {
   border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px var(--color-accent-subtle), 0 2px 12px rgba(0, 0, 0, 0.1);
+  box-shadow:
+    0 0 0 3px var(--color-accent-subtle),
+    0 2px 12px rgba(0, 0, 0, 0.1);
 }
 
 .input-container.drag-over {
@@ -2934,7 +2962,6 @@ a,
 }
 
 @keyframes voice-pulse {
-
   0%,
   100% {
     box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.4);
@@ -2972,7 +2999,8 @@ a,
 }
 
 @keyframes talk-mode-pulse {
-  0%, 100% {
+  0%,
+  100% {
     box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
   }
   50% {
@@ -2981,7 +3009,8 @@ a,
 }
 
 @keyframes talk-mode-pulse-accent {
-  0%, 100% {
+  0%,
+  100% {
     box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.3);
   }
   50% {
@@ -3275,7 +3304,9 @@ a,
   justify-content: center;
   gap: 6px;
   transition: all 0.2s ease;
-  box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  box-shadow:
+    var(--shadow-sm),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
   position: relative;
   overflow: hidden;
   font-size: 13px;
@@ -3283,7 +3314,7 @@ a,
 }
 
 .send-btn::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -3297,7 +3328,9 @@ a,
 .send-btn:hover:not(:disabled) {
   background: linear-gradient(180deg, var(--color-accent-hover) 0%, var(--color-accent) 100%);
   transform: translateY(-1px);
-  box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  box-shadow:
+    var(--shadow-md),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 
 .send-btn:active:not(:disabled) {
@@ -3385,7 +3418,7 @@ a,
 }
 
 .stop-btn-simple::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: -3px;
   border-radius: 50%;
@@ -3393,7 +3426,7 @@ a,
 }
 
 .stop-btn-simple::after {
-  content: '';
+  content: "";
   position: absolute;
   inset: -3px;
   border-radius: 50%;
@@ -3461,8 +3494,9 @@ a,
   overflow-y: auto;
   position: relative;
   padding-top: var(--title-bar-height);
-  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              opacity 0.3s ease;
+  transition:
+    width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.3s ease;
 }
 
 /* Removed: double-border effect - using single border only */
@@ -3655,14 +3689,16 @@ a,
   -webkit-backdrop-filter: blur(30px) saturate(200%);
   border-radius: var(--radius-xl);
   border: 1px solid var(--color-border);
-  box-shadow: var(--shadow-lg), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+  box-shadow:
+    var(--shadow-lg),
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset;
   position: relative;
   display: flex;
   flex-direction: column;
 }
 
 .workspace-selector-content::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -3728,7 +3764,7 @@ a,
 }
 
 .workspace-list-item::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -3782,7 +3818,7 @@ a,
 
 .cli-workspace-selector {
   background: var(--color-bg-primary);
-  font-family: 'SF Mono', 'Fira Code', 'Consolas', 'Monaco', monospace;
+  font-family: "SF Mono", "Fira Code", "Consolas", "Monaco", monospace;
 }
 
 .cli-workspace-content {
@@ -3893,7 +3929,6 @@ a,
 }
 
 @keyframes blink {
-
   0%,
   100% {
     opacity: 1;
@@ -4184,11 +4219,13 @@ button {
   background: linear-gradient(180deg, var(--color-accent-hover) 0%, var(--color-accent) 100%);
   color: #1a1a1a;
   border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  box-shadow:
+    var(--shadow-sm),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .button-primary::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -4202,12 +4239,16 @@ button {
 .button-primary:hover:not(:disabled) {
   background: linear-gradient(180deg, var(--color-accent-hover) 0%, var(--color-accent) 100%);
   transform: translateY(-1px);
-  box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  box-shadow:
+    var(--shadow-md),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 
 .button-primary:active:not(:disabled) {
   transform: translateY(0);
-  box-shadow: var(--shadow-sm), inset 0 1px 2px rgba(0, 0, 0, 0.1);
+  box-shadow:
+    var(--shadow-sm),
+    inset 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .button-primary:disabled {
@@ -4227,7 +4268,7 @@ button {
 }
 
 .button-secondary::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -4242,7 +4283,9 @@ button {
   background: rgba(85, 85, 90, 0.9);
   border-color: rgba(255, 255, 255, 0.25);
   transform: translateY(-1px);
-  box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  box-shadow:
+    var(--shadow-sm),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
 .button-secondary:active {
@@ -4356,7 +4399,7 @@ button {
 .approval-details pre {
   white-space: pre-wrap;
   word-wrap: break-word;
-  font-family: 'SF Mono', monospace;
+  font-family: "SF Mono", monospace;
   color: var(--color-text-secondary);
 }
 
@@ -4443,7 +4486,7 @@ button {
 
 /* CLI Style Welcome */
 .welcome-content.cli-style {
-  font-family: 'SF Mono', 'Fira Code', 'Consolas', 'Monaco', monospace;
+  font-family: "SF Mono", "Fira Code", "Consolas", "Monaco", monospace;
 }
 
 /* Welcome Logo */
@@ -4671,13 +4714,13 @@ button {
   align-items: center;
 }
 
-.mention-autocomplete-wrapper:focus-within~.cli-cursor {
+.mention-autocomplete-wrapper:focus-within ~ .cli-cursor {
   opacity: 1;
 }
 
 .cli-input-prompt {
   color: var(--color-accent);
-  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-family: "SF Mono", "Fira Code", "Consolas", monospace;
   font-weight: 600;
   font-size: 14px;
   flex-shrink: 0;
@@ -4686,7 +4729,7 @@ button {
 .cli-input {
   flex: 1;
   padding: 0 !important;
-  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace !important;
+  font-family: "SF Mono", "Fira Code", "Consolas", monospace !important;
 }
 
 .mention-autocomplete-dropdown {
@@ -4771,16 +4814,15 @@ button {
   height: 0;
   overflow: hidden;
   white-space: pre;
-  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace !important;
+  font-family: "SF Mono", "Fira Code", "Consolas", monospace !important;
   font-size: 14px;
 }
 
-.cli-input:focus~.cli-cursor {
+.cli-input:focus ~ .cli-cursor {
   opacity: 1;
 }
 
 @keyframes blink {
-
   0%,
   50% {
     opacity: 1;
@@ -4799,7 +4841,7 @@ button {
 }
 
 .cli-input-container .folder-selector {
-  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-family: "SF Mono", "Fira Code", "Consolas", monospace;
   background: transparent;
   border-color: var(--color-border-subtle);
 }
@@ -4810,7 +4852,7 @@ button {
 }
 
 .cli-input-container .model-selector {
-  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-family: "SF Mono", "Fira Code", "Consolas", monospace;
   background: transparent;
   border-color: var(--color-border-subtle);
 }
@@ -4821,7 +4863,7 @@ button {
 }
 
 .cli-input-container .lets-go-btn {
-  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-family: "SF Mono", "Fira Code", "Consolas", monospace;
   background: var(--color-accent);
   border: none;
   box-shadow: 0 0 10px var(--color-accent-subtle);
@@ -4840,12 +4882,16 @@ button {
   background: var(--color-bg-secondary);
   border: 1px solid transparent;
   border-radius: var(--radius-lg);
-  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+  transition:
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
 }
 
 .welcome-input-container:focus-within {
   border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px var(--color-accent-subtle), 0 2px 12px rgba(0, 0, 0, 0.1);
+  box-shadow:
+    0 0 0 3px var(--color-accent-subtle),
+    0 2px 12px rgba(0, 0, 0, 0.1);
 }
 
 .welcome-input-container.drag-over {
@@ -4924,7 +4970,9 @@ button {
   background: #1a1d23;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius-lg);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
   z-index: 100;
   overflow: hidden;
 }
@@ -4932,7 +4980,9 @@ button {
 .theme-light .workspace-dropdown {
   background: #ffffff;
   border: 1px solid rgba(0, 0, 0, 0.12);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.15),
+    0 0 0 1px rgba(0, 0, 0, 0.05);
 }
 
 .workspace-dropdown-header {
@@ -5150,13 +5200,15 @@ button {
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
-  box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  box-shadow:
+    var(--shadow-sm),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
   position: relative;
   overflow: hidden;
 }
 
 .lets-go-btn::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -5170,12 +5222,16 @@ button {
 .lets-go-btn:hover:not(:disabled) {
   background: linear-gradient(180deg, var(--color-accent-hover) 0%, var(--color-accent) 100%);
   transform: translateY(-1px);
-  box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  box-shadow:
+    var(--shadow-md),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 
 .lets-go-btn:active:not(:disabled) {
   transform: translateY(0);
-  box-shadow: var(--shadow-sm), inset 0 1px 2px rgba(0, 0, 0, 0.1);
+  box-shadow:
+    var(--shadow-sm),
+    inset 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .lets-go-btn:disabled {
@@ -5223,7 +5279,7 @@ button {
   color: var(--color-text-muted);
   font-size: 16px;
   font-weight: 600;
-  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-family: "SF Mono", "Fira Code", monospace;
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -5249,7 +5305,9 @@ button {
   background: #1a1d23;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius-lg);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
   z-index: 100;
   overflow: hidden;
 }
@@ -5257,7 +5315,9 @@ button {
 .theme-light .skills-dropdown {
   background: #ffffff;
   border: 1px solid rgba(0, 0, 0, 0.12);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.15),
+    0 0 0 1px rgba(0, 0, 0, 0.05);
 }
 
 .skills-dropdown-header {
@@ -5750,12 +5810,14 @@ button {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  box-shadow: var(--shadow-lg), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+  box-shadow:
+    var(--shadow-lg),
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset;
   position: relative;
 }
 
 .modal-content::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -5905,7 +5967,7 @@ button {
 }
 
 .provider-option::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -5924,7 +5986,9 @@ button {
 .provider-option.selected {
   border-color: var(--color-accent);
   background: var(--color-accent-subtle);
-  box-shadow: 0 0 0 1px var(--color-accent) inset, var(--shadow-glow);
+  box-shadow:
+    0 0 0 1px var(--color-accent) inset,
+    var(--shadow-glow);
 }
 
 .provider-option input[type="radio"] {
@@ -6017,7 +6081,9 @@ button {
 
 .searchable-select-trigger:focus {
   border-color: var(--color-accent);
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1), 0 0 0 3px var(--color-accent-subtle);
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.1),
+    0 0 0 3px var(--color-accent-subtle);
 }
 
 .searchable-select-trigger.open {
@@ -6151,7 +6217,9 @@ button {
 
 .settings-input:focus {
   border-color: var(--color-accent);
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1), 0 0 0 3px var(--color-accent-subtle);
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.1),
+    0 0 0 3px var(--color-accent-subtle);
 }
 
 .settings-input::placeholder {
@@ -6306,7 +6374,7 @@ button {
 
 .settings-divider::before,
 .settings-divider::after {
-  content: '';
+  content: "";
   flex: 1;
   height: 1px;
   background: var(--color-border-subtle);
@@ -6603,7 +6671,7 @@ button {
 }
 
 .pairing-code {
-  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-family: "SF Mono", "Fira Code", monospace;
   font-size: 24px;
   font-weight: 600;
   color: var(--color-accent);
@@ -6931,7 +6999,7 @@ button {
    ========================================== */
 
 .cli-panel {
-  font-family: 'SF Mono', 'Fira Code', 'Consolas', 'Monaco', monospace;
+  font-family: "SF Mono", "Fira Code", "Consolas", "Monaco", monospace;
   background: rgba(0, 0, 0, 0.4) !important;
 }
 
@@ -7285,7 +7353,7 @@ button {
 
 .cli-queue-status {
   color: var(--color-text-muted);
-  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-family: "SF Mono", "Fira Code", monospace;
   font-size: 10px;
   flex-shrink: 0;
 }
@@ -7315,7 +7383,9 @@ button {
   cursor: pointer;
   padding: 0 4px;
   opacity: 0;
-  transition: opacity 0.15s ease, color 0.15s ease;
+  transition:
+    opacity 0.15s ease,
+    color 0.15s ease;
 }
 
 .cli-queue-item:hover .cli-queue-cancel {
@@ -7351,7 +7421,7 @@ button {
    ========================================== */
 
 .cli-sidebar {
-  font-family: 'SF Mono', 'Fira Code', 'Consolas', 'Monaco', monospace;
+  font-family: "SF Mono", "Fira Code", "Consolas", "Monaco", monospace;
   background: rgba(0, 0, 0, 0.4) !important;
 }
 
@@ -7387,7 +7457,7 @@ button {
   background: transparent !important;
   border: 1px solid var(--color-border-subtle) !important;
   border-radius: var(--radius-md);
-  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace !important;
+  font-family: "SF Mono", "Fira Code", "Consolas", monospace !important;
   padding: 8px 12px !important;
   color: var(--color-text-muted) !important;
   font-size: 11px !important;
@@ -7578,7 +7648,7 @@ button {
 }
 
 .cli-more-btn {
-  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-family: "SF Mono", "Fira Code", "Consolas", monospace;
   font-size: 12px;
   color: var(--color-text-muted);
   background: transparent;
@@ -7595,7 +7665,7 @@ button {
 
 /* CLI Task Menu */
 .cli-task-menu {
-  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-family: "SF Mono", "Fira Code", "Consolas", monospace;
   background: rgba(0, 0, 0, 0.9) !important;
   border: 1px solid var(--color-border) !important;
 }
@@ -7604,7 +7674,7 @@ button {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace !important;
+  font-family: "SF Mono", "Fira Code", "Consolas", monospace !important;
   font-size: 11px !important;
 }
 
@@ -7632,7 +7702,7 @@ button {
 }
 
 .cli-tree-prefix {
-  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-family: "SF Mono", "Fira Code", "Consolas", monospace;
   font-size: 11px;
   color: var(--color-text-muted);
   margin-right: 4px;
@@ -7640,7 +7710,7 @@ button {
 }
 
 .cli-collapse-btn {
-  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-family: "SF Mono", "Fira Code", "Consolas", monospace;
   font-size: 10px;
   color: var(--color-text-muted);
   background: transparent;
@@ -7671,7 +7741,7 @@ button {
 
 /* Agent type badges */
 .cli-agent-type {
-  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-family: "SF Mono", "Fira Code", "Consolas", monospace;
   font-size: 8px;
   font-weight: 600;
   padding: 1px 4px;
@@ -7714,7 +7784,7 @@ button {
 
 /* CLI Rename Input */
 .cli-rename-input {
-  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace !important;
+  font-family: "SF Mono", "Fira Code", "Consolas", monospace !important;
   background: rgba(0, 0, 0, 0.3) !important;
   border: 1px solid var(--color-accent) !important;
 }
@@ -7773,7 +7843,7 @@ button {
 }
 
 .cli-settings-btn {
-  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace !important;
+  font-family: "SF Mono", "Fira Code", "Consolas", monospace !important;
   font-size: 11px !important;
   color: var(--color-text-muted) !important;
   background: transparent !important;
@@ -7817,7 +7887,7 @@ button {
 }
 
 .main-header {
-  font-family: 'SF Mono', 'Fira Code', 'Consolas', 'Monaco', monospace;
+  font-family: "SF Mono", "Fira Code", "Consolas", "Monaco", monospace;
   background: transparent;
   border-bottom: none;
   overflow: hidden;
@@ -7825,7 +7895,7 @@ button {
 
 .main-header-title {
   flex: 1;
-  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-family: "SF Mono", "Fira Code", "Consolas", monospace;
   font-size: 13px;
   letter-spacing: 0.3px;
   overflow: hidden;
@@ -7838,11 +7908,11 @@ button {
 
 /* CLI Style for Task View */
 .task-content {
-  font-family: 'SF Mono', 'Fira Code', 'Consolas', 'Monaco', monospace;
+  font-family: "SF Mono", "Fira Code", "Consolas", "Monaco", monospace;
 }
 
 .task-description {
-  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-family: "SF Mono", "Fira Code", "Consolas", monospace;
   font-size: 13px;
   line-height: 1.6;
   background: rgba(0, 0, 0, 0.2);
@@ -7853,18 +7923,18 @@ button {
 
 /* Timeline CLI Styles */
 .timeline-section {
-  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-family: "SF Mono", "Fira Code", "Consolas", monospace;
 }
 
 .view-steps-btn {
-  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-family: "SF Mono", "Fira Code", "Consolas", monospace;
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .timeline-event {
-  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-family: "SF Mono", "Fira Code", "Consolas", monospace;
 }
 
 .event-title {
@@ -7873,18 +7943,18 @@ button {
 
 .event-time {
   font-size: 10px;
-  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-family: "SF Mono", "Fira Code", "Consolas", monospace;
 }
 
 .event-details {
-  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-family: "SF Mono", "Fira Code", "Consolas", monospace;
   font-size: 11px;
   background: rgba(0, 0, 0, 0.2);
   border: 1px solid var(--color-border-subtle);
 }
 
 .event-details pre {
-  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-family: "SF Mono", "Fira Code", "Consolas", monospace;
   font-size: 11px;
 }
 
@@ -7895,29 +7965,31 @@ button {
 }
 
 .input-container {
-  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-family: "SF Mono", "Fira Code", "Consolas", monospace;
   background: rgba(0, 0, 0, 0.3);
 }
 
 .input-field {
-  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-family: "SF Mono", "Fira Code", "Consolas", monospace;
 }
 
 .input-disclaimer {
-  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-family: "SF Mono", "Fira Code", "Consolas", monospace;
   font-size: 10px;
 }
 
 /* Send Button CLI Style */
 .send-btn {
-  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-family: "SF Mono", "Fira Code", "Consolas", monospace;
 }
 
 /* Clickable File Paths - underline on hover only */
 .clickable-file-path {
   cursor: pointer;
   text-decoration: none;
-  transition: color 0.15s ease, text-decoration-color 0.15s ease;
+  transition:
+    color 0.15s ease,
+    text-decoration-color 0.15s ease;
 }
 
 .clickable-file-path:hover {
@@ -7989,7 +8061,7 @@ button {
   gap: 8px;
   font-size: 13px;
   color: var(--color-text-secondary);
-  font-family: 'SF Mono', monospace;
+  font-family: "SF Mono", monospace;
 }
 
 .git-branch {
@@ -8183,7 +8255,7 @@ button {
 
 .manual-update-commands code {
   display: block;
-  font-family: 'SF Mono', monospace;
+  font-family: "SF Mono", monospace;
   font-size: 12px;
   color: var(--color-text-secondary);
   white-space: pre;
@@ -8438,7 +8510,6 @@ button {
   overflow: hidden;
 }
 
-
 .settings-actions {
   display: flex;
   gap: 12px;
@@ -8454,7 +8525,19 @@ button {
 }
 
 /* Normalize controls in Settings to match LLM Provider styling */
-.settings-page :where(input[type="text"], input[type="password"], input[type="email"], input[type="url"], input[type="search"], input[type="number"], input[type="tel"], input[type="datetime-local"], input[type="date"], input[type="time"]) {
+.settings-page
+  :where(
+    input[type="text"],
+    input[type="password"],
+    input[type="email"],
+    input[type="url"],
+    input[type="search"],
+    input[type="number"],
+    input[type="tel"],
+    input[type="datetime-local"],
+    input[type="date"],
+    input[type="time"]
+  ) {
   width: 100%;
   padding: 10px 12px;
   background: var(--color-bg-input);
@@ -8467,17 +8550,55 @@ button {
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
-.settings-page :where(input[type="text"], input[type="password"], input[type="email"], input[type="url"], input[type="search"], input[type="number"], input[type="tel"], input[type="datetime-local"], input[type="date"], input[type="time"]):hover {
+.settings-page
+  :where(
+    input[type="text"],
+    input[type="password"],
+    input[type="email"],
+    input[type="url"],
+    input[type="search"],
+    input[type="number"],
+    input[type="tel"],
+    input[type="datetime-local"],
+    input[type="date"],
+    input[type="time"]
+  ):hover {
   border-color: var(--color-border-light);
   background: rgba(0, 0, 0, 0.3);
 }
 
-.settings-page :where(input[type="text"], input[type="password"], input[type="email"], input[type="url"], input[type="search"], input[type="number"], input[type="tel"], input[type="datetime-local"], input[type="date"], input[type="time"]):focus {
+.settings-page
+  :where(
+    input[type="text"],
+    input[type="password"],
+    input[type="email"],
+    input[type="url"],
+    input[type="search"],
+    input[type="number"],
+    input[type="tel"],
+    input[type="datetime-local"],
+    input[type="date"],
+    input[type="time"]
+  ):focus {
   border-color: var(--color-accent);
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1), 0 0 0 3px var(--color-accent-subtle);
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.1),
+    0 0 0 3px var(--color-accent-subtle);
 }
 
-.settings-page :where(input[type="text"], input[type="password"], input[type="email"], input[type="url"], input[type="search"], input[type="number"], input[type="tel"], input[type="datetime-local"], input[type="date"], input[type="time"])::placeholder {
+.settings-page
+  :where(
+    input[type="text"],
+    input[type="password"],
+    input[type="email"],
+    input[type="url"],
+    input[type="search"],
+    input[type="number"],
+    input[type="tel"],
+    input[type="datetime-local"],
+    input[type="date"],
+    input[type="time"]
+  )::placeholder {
   color: var(--color-text-muted);
 }
 
@@ -8540,11 +8661,13 @@ button {
   background: linear-gradient(180deg, var(--color-accent-hover) 0%, var(--color-accent) 100%);
   color: #1a1a1a;
   border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  box-shadow:
+    var(--shadow-sm),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .settings-page .btn-primary::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -8558,7 +8681,9 @@ button {
 .settings-page .btn-primary:hover:not(:disabled) {
   background: linear-gradient(180deg, var(--color-accent-hover) 0%, var(--color-accent) 100%);
   transform: translateY(-1px);
-  box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  box-shadow:
+    var(--shadow-md),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 
 .settings-page .btn-primary:active:not(:disabled) {
@@ -8573,7 +8698,7 @@ button {
 }
 
 .settings-page .btn-secondary::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -8588,7 +8713,9 @@ button {
   background: rgba(85, 85, 90, 0.9);
   border-color: rgba(255, 255, 255, 0.25);
   transform: translateY(-1px);
-  box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  box-shadow:
+    var(--shadow-sm),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
 .settings-page .btn-secondary:active:not(:disabled) {
@@ -8768,7 +8895,9 @@ button {
 
 .skillhub-card {
   cursor: pointer;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .skillhub-card.is-selected {
@@ -8943,7 +9072,7 @@ button {
 }
 
 .nodes-connection-note code {
-  font-family: 'SF Mono', monospace;
+  font-family: "SF Mono", monospace;
   font-size: 12px;
   color: var(--color-text-secondary);
 }
@@ -8960,7 +9089,9 @@ button {
   background: var(--color-bg-glass);
   padding: 16px;
   cursor: pointer;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .nodes-card:hover {
@@ -9081,7 +9212,7 @@ button {
 }
 
 .nodes-detail-mono {
-  font-family: 'SF Mono', monospace;
+  font-family: "SF Mono", monospace;
 }
 
 .nodes-test h5 {
@@ -9380,12 +9511,12 @@ button {
   transition: 0.2s;
 }
 
-.settings-toggle input:checked+.toggle-slider {
+.settings-toggle input:checked + .toggle-slider {
   background-color: var(--color-accent);
   border-color: var(--color-accent);
 }
 
-.settings-toggle input:checked+.toggle-slider::before {
+.settings-toggle input:checked + .toggle-slider::before {
   transform: translateX(20px);
   background-color: white;
 }
@@ -9607,7 +9738,11 @@ button {
   border: 2px solid var(--color-border);
   border-radius: var(--radius-md);
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .theme-option:hover {
@@ -9646,7 +9781,7 @@ button {
 }
 
 .theme-option-preview.dark::before {
-  content: '';
+  content: "";
   position: absolute;
   left: 0;
   top: 0;
@@ -9664,7 +9799,7 @@ button {
 }
 
 .theme-option-preview.light::before {
-  content: '';
+  content: "";
   position: absolute;
   left: 0;
   top: 0;
@@ -9682,7 +9817,7 @@ button {
 }
 
 .theme-option-preview.terminal::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
   background: repeating-linear-gradient(
@@ -9729,7 +9864,7 @@ button {
 }
 
 .theme-option-preview.warm::before {
-  content: '';
+  content: "";
   position: absolute;
   left: 0;
   top: 0;
@@ -9805,7 +9940,9 @@ button {
   border: 2px solid transparent;
   border-radius: 50%;
   cursor: pointer;
-  transition: transform 0.15s ease, border-color 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .color-swatch-btn:hover {
@@ -9832,7 +9969,7 @@ button {
 }
 
 .color-swatch::after {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
   border-radius: 50%;
@@ -9889,7 +10026,6 @@ button {
 .color-swatch.coral {
   background: linear-gradient(135deg, #ff6b6b 0%, #e85555 100%);
 }
-
 
 /* Theme Option Icon */
 .theme-option-icon {
@@ -10243,7 +10379,9 @@ button {
   cursor: pointer;
   border-radius: 4px;
   flex-shrink: 0;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .toast-dismiss:hover {
@@ -10653,7 +10791,11 @@ button {
 .skill-card-guideline {
   border-color: var(--color-primary);
   border-style: dashed;
-  background: linear-gradient(135deg, var(--color-bg-secondary) 0%, rgba(var(--color-primary-rgb), 0.05) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--color-bg-secondary) 0%,
+    rgba(var(--color-primary-rgb), 0.05) 100%
+  );
 }
 
 .skill-type-badge {
@@ -10710,17 +10852,17 @@ button {
   transition: all 0.2s ease;
 }
 
-.skill-toggle input:checked+.skill-toggle-slider {
+.skill-toggle input:checked + .skill-toggle-slider {
   background: var(--color-primary);
   border-color: var(--color-primary);
 }
 
-.skill-toggle input:checked+.skill-toggle-slider:before {
+.skill-toggle input:checked + .skill-toggle-slider:before {
   transform: translateX(18px);
   background: white;
 }
 
-.skill-toggle input:focus+.skill-toggle-slider {
+.skill-toggle input:focus + .skill-toggle-slider {
   box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb), 0.3);
 }
 
@@ -10797,7 +10939,7 @@ button {
 .form-group textarea {
   resize: vertical;
   min-height: 120px;
-  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-family: "SF Mono", "Fira Code", monospace;
   font-size: 13px;
   line-height: 1.5;
 }
@@ -11125,12 +11267,12 @@ button {
   border-radius: 50%;
 }
 
-.toggle-switch input:checked+.toggle-slider {
+.toggle-switch input:checked + .toggle-slider {
   background-color: var(--color-accent);
   border-color: var(--color-accent);
 }
 
-.toggle-switch input:checked+.toggle-slider:before {
+.toggle-switch input:checked + .toggle-slider:before {
   background-color: white;
   transform: translateX(18px);
 }
@@ -11677,12 +11819,12 @@ button {
   border-radius: 50%;
 }
 
-.builtin-tool-toggle input:checked+.builtin-tool-toggle-slider {
+.builtin-tool-toggle input:checked + .builtin-tool-toggle-slider {
   background-color: var(--color-accent);
   border-color: var(--color-accent);
 }
 
-.builtin-tool-toggle input:checked+.builtin-tool-toggle-slider:before {
+.builtin-tool-toggle input:checked + .builtin-tool-toggle-slider:before {
   transform: translateX(18px);
   background-color: white;
 }
@@ -12283,7 +12425,9 @@ button {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   color: var(--color-text);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .skill-param-input:focus {
@@ -12306,7 +12450,9 @@ button {
   border-radius: var(--radius-md);
   color: var(--color-text);
   cursor: pointer;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
   appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
   background-repeat: no-repeat;
@@ -12544,7 +12690,7 @@ button {
 
 /* Code and text content */
 .file-viewer-code {
-  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  font-family: "SF Mono", "Monaco", "Consolas", monospace;
   font-size: 13px;
   line-height: 1.6;
   white-space: pre-wrap;
@@ -12761,7 +12907,14 @@ button {
 }
 
 .disclaimer-container {
-  font-family: var(--font-ui, 'Avenir Next', 'SF Pro Text', -apple-system, BlinkMacSystemFont, sans-serif);
+  font-family: var(
+    --font-ui,
+    "Avenir Next",
+    "SF Pro Text",
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif
+  );
   color: var(--color-text, #ffffff);
   max-width: 560px;
   width: 100%;
@@ -12821,13 +12974,16 @@ button {
 }
 
 .disclaimer-card::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   height: 1px;
-  background: var(--gradient-glossy, linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 100%));
+  background: var(
+    --gradient-glossy,
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 100%)
+  );
   border-radius: var(--radius-lg, 20px) var(--radius-lg, 20px) 0 0;
 }
 
@@ -12948,13 +13104,16 @@ button {
 }
 
 .disclaimer-option::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   height: 50%;
-  background: var(--gradient-glossy, linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 100%));
+  background: var(
+    --gradient-glossy,
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 100%)
+  );
   pointer-events: none;
 }
 
@@ -12968,7 +13127,9 @@ button {
   background: var(--color-accent-subtle, rgba(34, 211, 238, 0.08));
   border-color: var(--color-accent, #22d3ee);
   color: var(--color-accent, #22d3ee);
-  box-shadow: 0 0 0 1px var(--color-accent, #22d3ee) inset, var(--shadow-glow, 0 0 20px rgba(34, 211, 238, 0.1));
+  box-shadow:
+    0 0 0 1px var(--color-accent, #22d3ee) inset,
+    var(--shadow-glow, 0 0 20px rgba(34, 211, 238, 0.1));
 }
 
 /* Modern radio button */
@@ -13043,7 +13204,11 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: linear-gradient(180deg, var(--color-accent-hover, #3ee0f5) 0%, var(--color-accent, #22d3ee) 100%);
+  background: linear-gradient(
+    180deg,
+    var(--color-accent-hover, #3ee0f5) 0%,
+    var(--color-accent, #22d3ee) 100%
+  );
   border: 1px solid rgba(255, 255, 255, 0.2);
   color: #1a1a1a;
   padding: 12px 32px;
@@ -13053,13 +13218,15 @@ button {
   cursor: pointer;
   transition: all 0.2s ease;
   border-radius: var(--radius-md, 16px);
-  box-shadow: var(--shadow-sm, 0 2px 8px rgba(0, 0, 0, 0.15)), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  box-shadow:
+    var(--shadow-sm, 0 2px 8px rgba(0, 0, 0, 0.15)),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
   position: relative;
   overflow: hidden;
 }
 
 .disclaimer-continue-btn::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -13071,7 +13238,9 @@ button {
 
 .disclaimer-continue-btn:hover {
   transform: translateY(-1px);
-  box-shadow: var(--shadow-md, 0 4px 16px rgba(0, 0, 0, 0.2)), var(--shadow-glow, 0 0 20px rgba(34, 211, 238, 0.15));
+  box-shadow:
+    var(--shadow-md, 0 4px 16px rgba(0, 0, 0, 0.2)),
+    var(--shadow-glow, 0 0 20px rgba(34, 211, 238, 0.15));
 }
 
 .disclaimer-continue-btn:active {
@@ -13222,7 +13391,7 @@ button {
 }
 
 .command-output-title .command-text {
-  font-family: 'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
+  font-family: "SF Mono", "Menlo", "Monaco", "Consolas", monospace;
   font-size: 11px;
   color: var(--color-text);
   white-space: nowrap;
@@ -13255,7 +13424,6 @@ button {
 }
 
 @keyframes pulse {
-
   0%,
   100% {
     opacity: 1;
@@ -13276,7 +13444,7 @@ button {
 }
 
 .command-output-content pre {
-  font-family: 'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
+  font-family: "SF Mono", "Menlo", "Monaco", "Consolas", monospace;
   font-size: 12px;
   line-height: 1.5;
   color: var(--color-text);
@@ -13332,7 +13500,7 @@ button {
 
 .command-stdin-prompt {
   color: var(--color-accent);
-  font-family: 'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
+  font-family: "SF Mono", "Menlo", "Monaco", "Consolas", monospace;
   font-size: 12px;
   font-weight: 600;
   flex-shrink: 0;
@@ -13345,10 +13513,12 @@ button {
   border-radius: 4px;
   padding: 6px 10px;
   color: var(--color-text);
-  font-family: 'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
+  font-family: "SF Mono", "Menlo", "Monaco", "Consolas", monospace;
   font-size: 12px;
   outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
 }
 
 .command-stdin-input:focus {
@@ -13372,7 +13542,9 @@ button {
   color: #000;
   cursor: pointer;
   flex-shrink: 0;
-  transition: background 0.2s, opacity 0.2s;
+  transition:
+    background 0.2s,
+    opacity 0.2s;
 }
 
 .command-stdin-send:hover:not(:disabled) {
@@ -13413,7 +13585,9 @@ button {
   font-size: 11px;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.2s, transform 0.1s;
+  transition:
+    background 0.2s,
+    transform 0.1s;
 }
 
 .command-stop-btn:hover {
@@ -13437,7 +13611,6 @@ button {
 }
 
 @keyframes pulse {
-
   0%,
   100% {
     opacity: 1;
@@ -13460,7 +13633,9 @@ button {
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s, transform 0.1s;
+  transition:
+    background 0.2s,
+    transform 0.1s;
 }
 
 .command-force-kill-btn:hover {
@@ -13778,7 +13953,7 @@ button {
   border-radius: 3px;
   font-size: 10px;
   color: var(--color-text-muted);
-  font-family: 'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
+  font-family: "SF Mono", "Menlo", "Monaco", "Consolas", monospace;
 }
 
 .canvas-preview-updating {
@@ -14069,7 +14244,12 @@ button {
 .skeleton-title {
   width: 120px;
   height: 16px;
-  background: linear-gradient(90deg, var(--color-bg-secondary) 25%, var(--color-bg-tertiary) 50%, var(--color-bg-secondary) 75%);
+  background: linear-gradient(
+    90deg,
+    var(--color-bg-secondary) 25%,
+    var(--color-bg-tertiary) 50%,
+    var(--color-bg-secondary) 75%
+  );
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
   border-radius: 4px;
@@ -14083,7 +14263,12 @@ button {
 .skeleton-btn {
   width: 24px;
   height: 24px;
-  background: linear-gradient(90deg, var(--color-bg-secondary) 25%, var(--color-bg-tertiary) 50%, var(--color-bg-secondary) 75%);
+  background: linear-gradient(
+    90deg,
+    var(--color-bg-secondary) 25%,
+    var(--color-bg-tertiary) 50%,
+    var(--color-bg-secondary) 75%
+  );
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
   border-radius: 4px;
@@ -14100,7 +14285,12 @@ button {
 .skeleton-image {
   width: 80%;
   height: 200px;
-  background: linear-gradient(90deg, var(--color-bg-secondary) 25%, var(--color-bg-tertiary) 50%, var(--color-bg-secondary) 75%);
+  background: linear-gradient(
+    90deg,
+    var(--color-bg-secondary) 25%,
+    var(--color-bg-tertiary) 50%,
+    var(--color-bg-secondary) 75%
+  );
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
   border-radius: 8px;
@@ -14451,7 +14641,7 @@ button {
   flex: 1;
   overflow-y: auto;
   padding: 4px 0;
-  font-family: 'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
+  font-family: "SF Mono", "Menlo", "Monaco", "Consolas", monospace;
   font-size: 11px;
 }
 
@@ -15829,7 +16019,6 @@ button {
 }
 
 @keyframes pulse {
-
   0%,
   100% {
     opacity: 1;
@@ -16030,7 +16219,6 @@ button {
 }
 
 @keyframes voice-pulse {
-
   0%,
   100% {
     opacity: 0;
@@ -16180,11 +16368,11 @@ button {
   border-radius: 50%;
 }
 
-.toggle-switch input:checked+.toggle-slider {
+.toggle-switch input:checked + .toggle-slider {
   background-color: var(--color-accent);
 }
 
-.toggle-switch input:checked+.toggle-slider:before {
+.toggle-switch input:checked + .toggle-slider:before {
   transform: translateX(20px);
 }
 
@@ -16196,7 +16384,7 @@ button {
   gap: 16px;
 }
 
-.settings-header-row>div {
+.settings-header-row > div {
   flex: 1;
 }
 
@@ -16549,7 +16737,6 @@ button {
 
 /* Awakening orb animations */
 @keyframes onboarding-breathe {
-
   0%,
   100% {
     transform: scale(1);
@@ -16671,7 +16858,9 @@ button {
 }
 
 .onboarding-orb.awakening {
-  animation: onboarding-awakening 2s ease-out forwards, onboarding-breathe 4s ease-in-out 2s infinite;
+  animation:
+    onboarding-awakening 2s ease-out forwards,
+    onboarding-breathe 4s ease-in-out 2s infinite;
 }
 
 .onboarding-orb.listening {
@@ -16728,7 +16917,6 @@ button {
 
 /* Typewriter text */
 @keyframes onboarding-cursor-blink {
-
   0%,
   50% {
     opacity: 1;
@@ -16741,7 +16929,7 @@ button {
 }
 
 .onboarding-typewriter {
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
   font-size: 1.5rem;
   font-weight: 300;
   line-height: 1.6;
@@ -17466,15 +17654,13 @@ button {
 }
 
 .onboarding-ambient::before {
-  content: '';
+  content: "";
   position: absolute;
   top: -50%;
   left: -50%;
   width: 200%;
   height: 200%;
-  background: radial-gradient(ellipse at center,
-      rgba(255, 107, 107, 0.03) 0%,
-      transparent 50%);
+  background: radial-gradient(ellipse at center, rgba(255, 107, 107, 0.03) 0%, transparent 50%);
   animation: onboarding-ambient-drift 20s ease-in-out infinite alternate;
 }
 
@@ -18031,7 +18217,7 @@ button {
 }
 
 .visual-oblivion .markdown-content ul li::before {
-  content: '';
+  content: "";
   position: absolute;
   left: 0;
   top: 0.6em;
@@ -18088,7 +18274,7 @@ button {
 }
 
 .visual-oblivion .cli-tree-prefix::before {
-  content: '';
+  content: "";
   width: 6px;
   height: 6px;
   border-radius: 999px;
@@ -18228,7 +18414,9 @@ button {
   border: 2px dashed var(--color-border);
   border-radius: 10px;
   cursor: pointer;
-  transition: border-color 0.2s, background 0.2s;
+  transition:
+    border-color 0.2s,
+    background 0.2s;
 }
 
 .chatgpt-import-dropzone:hover {
@@ -18348,7 +18536,7 @@ button {
 }
 .overflow-menu-btn {
   background: transparent;
-  border: 1px solid var(--color-border-subtle, rgba(255,255,255,0.08));
+  border: 1px solid var(--color-border-subtle, rgba(255, 255, 255, 0.08));
   border-radius: var(--radius-sm, 6px);
   color: var(--color-text-secondary, #9ca3af);
   padding: 4px 8px;
@@ -18369,12 +18557,12 @@ button {
   bottom: calc(100% + 4px);
   left: 0;
   background: var(--color-bg-elevated, #1e1e2e);
-  border: 1px solid var(--color-border, rgba(255,255,255,0.1));
+  border: 1px solid var(--color-border, rgba(255, 255, 255, 0.1));
   border-radius: var(--radius-md, 8px);
   padding: 4px;
   min-width: 220px;
   z-index: 100;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
 }
 .overflow-menu-item {
   padding: 2px 4px;
@@ -18401,7 +18589,7 @@ button {
 .overflow-menu-item .shell-toggle:hover,
 .overflow-menu-item .skills-menu-btn:hover,
 .overflow-menu-item .goal-mode-toggle:hover {
-  background: var(--color-bg-hover, rgba(255,255,255,0.05));
+  background: var(--color-bg-hover, rgba(255, 255, 255, 0.05));
   color: var(--color-text-primary, #e5e7eb);
 }
 .overflow-menu-item .goal-mode-toggle {
@@ -18426,19 +18614,19 @@ button {
 }
 .model-label-subtle:hover {
   color: var(--color-accent, #22d3ee);
-  background: var(--color-bg-hover, rgba(255,255,255,0.05));
+  background: var(--color-bg-hover, rgba(255, 255, 255, 0.05));
 }
 .model-label-dropdown {
   position: absolute;
   bottom: calc(100% + 4px);
   right: 0;
   background: var(--color-bg-elevated, #1e1e2e);
-  border: 1px solid var(--color-border, rgba(255,255,255,0.1));
+  border: 1px solid var(--color-border, rgba(255, 255, 255, 0.1));
   border-radius: var(--radius-md, 8px);
   padding: 4px;
   min-width: 180px;
   z-index: 100;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
 }
 .model-label-dropdown-item {
   display: block;
@@ -18454,7 +18642,7 @@ button {
   transition: background 0.15s ease;
 }
 .model-label-dropdown-item:hover {
-  background: var(--color-bg-hover, rgba(255,255,255,0.05));
+  background: var(--color-bg-hover, rgba(255, 255, 255, 0.05));
   color: var(--color-text-primary, #e5e7eb);
 }
 .model-label-dropdown-item.active {
@@ -18583,13 +18771,13 @@ button {
 .focused-cards .quick-start-card {
   padding: 16px 18px;
   gap: 6px;
-  border-color: var(--color-border-subtle, rgba(255,255,255,0.06));
+  border-color: var(--color-border-subtle, rgba(255, 255, 255, 0.06));
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
 }
 .focused-cards .quick-start-card::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -18602,7 +18790,9 @@ button {
 }
 .focused-cards .quick-start-card:hover {
   border-color: var(--color-accent, #22d3ee);
-  box-shadow: 0 0 0 1px var(--color-accent, #22d3ee), 0 4px 16px rgba(0,0,0,0.2);
+  box-shadow:
+    0 0 0 1px var(--color-accent, #22d3ee),
+    0 4px 16px rgba(0, 0, 0, 0.2);
   transform: translateY(-2px);
 }
 .focused-cards .quick-start-card:hover::before {
@@ -18615,7 +18805,9 @@ button {
 .focused-cards .quick-start-icon {
   font-size: 22px;
   margin-bottom: 4px;
-  transition: color 0.2s ease, transform 0.2s ease;
+  transition:
+    color 0.2s ease,
+    transform 0.2s ease;
 }
 .focused-cards .quick-start-title {
   font-size: 14px;
@@ -18631,11 +18823,13 @@ button {
 }
 /* Light theme focused cards */
 .theme-light .focused-cards .quick-start-card {
-  border-color: rgba(0,0,0,0.08);
+  border-color: rgba(0, 0, 0, 0.08);
 }
 .theme-light .focused-cards .quick-start-card:hover {
   border-color: var(--color-accent, #22d3ee);
-  box-shadow: 0 0 0 1px var(--color-accent, #22d3ee), 0 4px 16px rgba(0,0,0,0.1);
+  box-shadow:
+    0 0 0 1px var(--color-accent, #22d3ee),
+    0 4px 16px rgba(0, 0, 0, 0.1);
 }
 
 /* Setup & discover card category badges */
@@ -18665,14 +18859,18 @@ button {
 }
 .focused-cards .card-setup:hover {
   border-color: var(--color-success, #34d399);
-  box-shadow: 0 0 0 1px var(--color-success, #34d399), 0 4px 16px rgba(0,0,0,0.2);
+  box-shadow:
+    0 0 0 1px var(--color-success, #34d399),
+    0 4px 16px rgba(0, 0, 0, 0.2);
 }
 .focused-cards .card-setup::before {
   background: linear-gradient(135deg, rgba(52, 211, 153, 0.15) 0%, transparent 60%);
 }
 .focused-cards .card-discover:hover {
   border-color: var(--color-info, #60a5fa);
-  box-shadow: 0 0 0 1px var(--color-info, #60a5fa), 0 4px 16px rgba(0,0,0,0.2);
+  box-shadow:
+    0 0 0 1px var(--color-info, #60a5fa),
+    0 4px 16px rgba(0, 0, 0, 0.2);
 }
 .focused-cards .card-discover::before {
   background: linear-gradient(135deg, rgba(96, 165, 250, 0.15) 0%, transparent 60%);
@@ -18681,7 +18879,7 @@ button {
 /* "More ideas" shuffle card */
 .focused-cards .card-shuffle {
   border-style: dashed;
-  border-color: var(--color-border-subtle, rgba(255,255,255,0.08));
+  border-color: var(--color-border-subtle, rgba(255, 255, 255, 0.08));
   background: transparent;
   opacity: 0.7;
   transition: all 0.25s ease;
@@ -18704,10 +18902,10 @@ button {
   transform: rotate(180deg);
 }
 .theme-light .focused-cards .card-shuffle {
-  border-color: rgba(0,0,0,0.1);
+  border-color: rgba(0, 0, 0, 0.1);
 }
 .theme-light .focused-cards .card-shuffle:hover {
-  border-color: rgba(0,0,0,0.25);
+  border-color: rgba(0, 0, 0, 0.25);
 }
 
 /* ---- Focused mode entrance animations ---- */
@@ -18733,13 +18931,27 @@ button {
 .focused-cards .quick-start-card {
   animation: focusedFadeInUp 0.4s ease both;
 }
-.focused-cards .quick-start-card:nth-child(1) { animation-delay: 0.05s; }
-.focused-cards .quick-start-card:nth-child(2) { animation-delay: 0.1s; }
-.focused-cards .quick-start-card:nth-child(3) { animation-delay: 0.15s; }
-.focused-cards .quick-start-card:nth-child(4) { animation-delay: 0.2s; }
-.focused-cards .quick-start-card:nth-child(5) { animation-delay: 0.25s; }
-.focused-cards .quick-start-card:nth-child(6) { animation-delay: 0.3s; }
-.focused-cards .quick-start-card:nth-child(7) { animation-delay: 0.35s; }
+.focused-cards .quick-start-card:nth-child(1) {
+  animation-delay: 0.05s;
+}
+.focused-cards .quick-start-card:nth-child(2) {
+  animation-delay: 0.1s;
+}
+.focused-cards .quick-start-card:nth-child(3) {
+  animation-delay: 0.15s;
+}
+.focused-cards .quick-start-card:nth-child(4) {
+  animation-delay: 0.2s;
+}
+.focused-cards .quick-start-card:nth-child(5) {
+  animation-delay: 0.25s;
+}
+.focused-cards .quick-start-card:nth-child(6) {
+  animation-delay: 0.3s;
+}
+.focused-cards .quick-start-card:nth-child(7) {
+  animation-delay: 0.35s;
+}
 
 .welcome-hint {
   animation: focusedFadeInUp 0.5s ease 0.4s both;
@@ -18853,7 +19065,9 @@ button {
   height: 0;
   overflow: hidden;
   margin: 0;
-  transition: opacity 0.15s ease, height 0.15s ease;
+  transition:
+    opacity 0.15s ease,
+    height 0.15s ease;
 }
 .density-focused .chat-message:hover .message-actions {
   opacity: 1;
@@ -18867,7 +19081,9 @@ button {
   overflow: hidden;
   margin: 0;
   padding: 0;
-  transition: opacity 0.15s ease, height 0.15s ease;
+  transition:
+    opacity 0.15s ease,
+    height 0.15s ease;
 }
 .density-focused .chat-message.user-message:hover > .message-copy-btn {
   opacity: 1;
@@ -19033,8 +19249,14 @@ button {
 
 /* ---- Entrance animation ---- */
 @keyframes focusedMessageFadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 .density-focused .conversation-flow > *:last-child {
   animation: focusedMessageFadeIn 0.3s ease both;
@@ -19369,7 +19591,6 @@ button {
   color: var(--color-text-primary);
 }
 
-
 .conway-setup-progress {
   display: flex;
   flex-direction: column;
@@ -19483,7 +19704,7 @@ button {
 }
 
 .conway-wallet-address {
-  font-family: var(--font-mono, 'SF Mono', 'Fira Code', monospace);
+  font-family: var(--font-mono, "SF Mono", "Fira Code", monospace);
   font-size: 13px;
   color: var(--color-text-secondary);
   user-select: all;
@@ -19782,11 +20003,16 @@ button {
 }
 
 .conway-wallet-badge .conway-wallet-balance {
-  font-family: var(--font-mono, 'SF Mono', 'Fira Code', monospace);
+  font-family: var(--font-mono, "SF Mono", "Fira Code", monospace);
   font-size: 11px;
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }

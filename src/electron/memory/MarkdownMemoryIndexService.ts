@@ -1,9 +1,9 @@
-import crypto from 'crypto';
-import fs from 'fs';
-import path from 'path';
-import Database from 'better-sqlite3';
-import { estimateTokens } from '../agent/context-manager';
-import type { Memory, MemorySearchResult, MemoryTimelineEntry } from '../database/repositories';
+import crypto from "crypto";
+import fs from "fs";
+import path from "path";
+import Database from "better-sqlite3";
+import { estimateTokens } from "../agent/context-manager";
+import type { Memory, MemorySearchResult, MemoryTimelineEntry } from "../database/repositories";
 
 const SYNC_DEBOUNCE_MS = 15000;
 const MAX_INDEXED_FILE_BYTES = 2 * 1024 * 1024;
@@ -18,57 +18,115 @@ const DEFAULT_TEXT_WEIGHT = 0.45;
 const ASYNC_SYNC_DELAY_MS = 250;
 const ASYNC_SYNC_MAX_DELAY_MS = 1500;
 
-const MARKDOWN_EXTENSIONS = new Set(['.md', '.markdown']);
+const MARKDOWN_EXTENSIONS = new Set([".md", ".markdown"]);
 const IGNORED_DIRS = new Set([
-  '.git',
-  'node_modules',
-  'dist',
-  'build',
-  'coverage',
-  '.next',
-  '.turbo',
-  '.cache',
-  '.idea',
-  '.vscode',
-  'release',
+  ".git",
+  "node_modules",
+  "dist",
+  "build",
+  "coverage",
+  ".next",
+  ".turbo",
+  ".cache",
+  ".idea",
+  ".vscode",
+  "release",
 ]);
 
 const STOP_WORDS = new Set([
-  'a', 'an', 'the', 'and', 'or', 'but', 'if', 'then', 'else', 'is', 'are', 'was', 'were',
-  'be', 'been', 'being', 'to', 'of', 'in', 'on', 'for', 'with', 'by', 'as', 'at', 'from',
-  'that', 'this', 'it', 'its', 'into', 'about', 'over', 'under', 'we', 'you', 'they', 'i',
-  'he', 'she', 'them', 'our', 'your', 'my', 'me', 'us', 'do', 'does', 'did', 'done', 'can',
-  'could', 'should', 'would', 'will', 'shall', 'may', 'might', 'not', 'no', 'yes',
+  "a",
+  "an",
+  "the",
+  "and",
+  "or",
+  "but",
+  "if",
+  "then",
+  "else",
+  "is",
+  "are",
+  "was",
+  "were",
+  "be",
+  "been",
+  "being",
+  "to",
+  "of",
+  "in",
+  "on",
+  "for",
+  "with",
+  "by",
+  "as",
+  "at",
+  "from",
+  "that",
+  "this",
+  "it",
+  "its",
+  "into",
+  "about",
+  "over",
+  "under",
+  "we",
+  "you",
+  "they",
+  "i",
+  "he",
+  "she",
+  "them",
+  "our",
+  "your",
+  "my",
+  "me",
+  "us",
+  "do",
+  "does",
+  "did",
+  "done",
+  "can",
+  "could",
+  "should",
+  "would",
+  "will",
+  "shall",
+  "may",
+  "might",
+  "not",
+  "no",
+  "yes",
 ]);
 
 const SENSITIVE_REDACTION_PATTERNS: Array<{ pattern: RegExp; replacement: string }> = [
   {
-    pattern: /-----BEGIN(?: [A-Z]+)? PRIVATE KEY-----[\s\S]*?-----END(?: [A-Z]+)? PRIVATE KEY-----/g,
-    replacement: '[REDACTED_PRIVATE_KEY]',
+    pattern:
+      /-----BEGIN(?: [A-Z]+)? PRIVATE KEY-----[\s\S]*?-----END(?: [A-Z]+)? PRIVATE KEY-----/g,
+    replacement: "[REDACTED_PRIVATE_KEY]",
   },
   {
     pattern: /\bBearer\s+[A-Za-z0-9._\-+/=]+\b/gi,
-    replacement: 'Bearer [REDACTED_TOKEN]',
+    replacement: "Bearer [REDACTED_TOKEN]",
   },
   {
     pattern: /\bgh[pousr]_[A-Za-z0-9]{20,}\b/g,
-    replacement: '[REDACTED_GITHUB_TOKEN]',
+    replacement: "[REDACTED_GITHUB_TOKEN]",
   },
   {
     pattern: /\bsk-[A-Za-z0-9]{16,}\b/g,
-    replacement: '[REDACTED_API_KEY]',
+    replacement: "[REDACTED_API_KEY]",
   },
   {
     pattern: /\bxox[baprs]-[A-Za-z0-9-]+\b/g,
-    replacement: '[REDACTED_SLACK_TOKEN]',
+    replacement: "[REDACTED_SLACK_TOKEN]",
   },
   {
     pattern: /\b(?:AKIA|ASIA)[0-9A-Z]{16}\b/g,
-    replacement: '[REDACTED_AWS_ACCESS_KEY]',
+    replacement: "[REDACTED_AWS_ACCESS_KEY]",
   },
   {
-    pattern: /((?:api[_-]?key|secret|password|passwd|token|access[_-]?token|client[_-]?secret)\s*[:=]\s*["']?)([^"'\s]+)(["']?)/gi,
-    replacement: '$1[REDACTED]$3',
+    pattern:
+      /((?:api[_-]?key|secret|password|passwd|token|access[_-]?token|client[_-]?secret)\s*[:=]\s*["']?)([^"'\s]+)(["']?)/gi,
+    replacement: "$1[REDACTED]$3",
   },
 ];
 
@@ -133,7 +191,7 @@ type ParsedChunkRow = {
 export function tokenizeForMemorySearch(text: string): string[] {
   return text
     .toLowerCase()
-    .replace(/[^a-z0-9_\s-]/g, ' ')
+    .replace(/[^a-z0-9_\s-]/g, " ")
     .split(/\s+/)
     .map((token) => token.trim())
     .filter((token) => token.length > 1 && !STOP_WORDS.has(token));
@@ -142,13 +200,15 @@ export function tokenizeForMemorySearch(text: string): string[] {
 export function buildMarkdownFtsQuery(raw: string): string | null {
   const tokens = tokenizeForMemorySearch(raw).slice(0, 8);
   if (tokens.length === 0) return null;
-  return tokens.map((token) => `"${token.replace(/"/g, '')}"`).join(' AND ');
+  return tokens.map((token) => `"${token.replace(/"/g, "")}"`).join(" AND ");
 }
 
-export function chunkMarkdownForIndex(content: string): Array<{ startLine: number; endLine: number; text: string }> {
+export function chunkMarkdownForIndex(
+  content: string,
+): Array<{ startLine: number; endLine: number; text: string }> {
   if (!content.trim()) return [];
 
-  const lines = content.split('\n');
+  const lines = content.split("\n");
   const chunks: Array<{ startLine: number; endLine: number; text: string }> = [];
   let cursor = 0;
 
@@ -159,7 +219,7 @@ export function chunkMarkdownForIndex(content: string): Array<{ startLine: numbe
     while (end < lines.length) {
       const line = lines[end];
       chars += line.length + 1;
-      const boundary = line.trim() === '' || line.trimStart().startsWith('#');
+      const boundary = line.trim() === "" || line.trimStart().startsWith("#");
       end += 1;
       if (chars >= TARGET_CHARS_OR_MIN(boundary, chars)) {
         break;
@@ -167,7 +227,7 @@ export function chunkMarkdownForIndex(content: string): Array<{ startLine: numbe
     }
 
     const safeEnd = Math.max(end, cursor + 1);
-    const text = lines.slice(cursor, safeEnd).join('\n').trim();
+    const text = lines.slice(cursor, safeEnd).join("\n").trim();
     if (text) {
       chunks.push({
         startLine: cursor + 1,
@@ -196,7 +256,7 @@ function TARGET_CHARS_OR_MIN(boundary: boolean, chars: number): number {
 }
 
 function hashText(input: string): string {
-  return crypto.createHash('sha1').update(input).digest('hex');
+  return crypto.createHash("sha1").update(input).digest("hex");
 }
 
 function hashToken(token: string, seed: number): number {
@@ -273,13 +333,13 @@ function normalizeBm25Rank(rank: number): number {
 }
 
 function normalizeSnippet(text: string): string {
-  const compact = text.replace(/\s+/g, ' ').trim();
+  const compact = text.replace(/\s+/g, " ").trim();
   if (compact.length <= MAX_SNIPPET_CHARS) return compact;
-  return compact.slice(0, MAX_SNIPPET_CHARS - 3) + '...';
+  return compact.slice(0, MAX_SNIPPET_CHARS - 3) + "...";
 }
 
 export function redactSensitiveMarkdownContent(text: string): string {
-  if (!text) return '';
+  if (!text) return "";
   let redacted = text;
   for (const { pattern, replacement } of SENSITIVE_REDACTION_PATTERNS) {
     redacted = redacted.replace(pattern, replacement);
@@ -292,7 +352,7 @@ function parseEmbedding(raw: string): number[] {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
     return parsed
-      .map((value) => (typeof value === 'number' ? value : Number(value)))
+      .map((value) => (typeof value === "number" ? value : Number(value)))
       .filter((value) => Number.isFinite(value));
   } catch {
     return [];
@@ -305,10 +365,13 @@ export class MarkdownMemoryIndexService {
   private readonly pendingSyncByWorkspace = new Map<string, Promise<void>>();
   private readonly scheduledSyncByWorkspace = new Map<string, ReturnType<typeof setTimeout>>();
   private readonly syncGenerationByWorkspace = new Map<string, number>();
-  private readonly parsedChunkCacheByWorkspace = new Map<string, {
-    signature: string;
-    rows: ParsedChunkRow[];
-  }>();
+  private readonly parsedChunkCacheByWorkspace = new Map<
+    string,
+    {
+      signature: string;
+      rows: ParsedChunkRow[];
+    }
+  >();
 
   constructor(private readonly db: Database.Database) {
     this.ftsAvailable = this.isFtsTableAvailable();
@@ -318,7 +381,7 @@ export class MarkdownMemoryIndexService {
     workspaceId: string,
     workspacePath: string,
     query: string,
-    limit = 10
+    limit = 10,
   ): MemorySearchResult[] {
     if (limit <= 0) return [];
     const trimmed = query.trim();
@@ -335,21 +398,17 @@ export class MarkdownMemoryIndexService {
       .map((candidate) => ({
         id: `md:${candidate.id}`,
         snippet: candidate.snippet,
-        type: 'summary',
+        type: "summary",
         relevanceScore: candidate.score,
         createdAt: candidate.createdAt,
-        source: 'markdown',
+        source: "markdown",
         path: candidate.path,
         startLine: candidate.startLine,
         endLine: candidate.endLine,
       }));
   }
 
-  getRecentSnippets(
-    workspaceId: string,
-    workspacePath: string,
-    limit = 3
-  ): MemorySearchResult[] {
+  getRecentSnippets(workspaceId: string, workspacePath: string, limit = 3): MemorySearchResult[] {
     if (limit <= 0) return [];
     this.scheduleSync(workspaceId, workspacePath);
 
@@ -374,16 +433,23 @@ export class MarkdownMemoryIndexService {
     const results: MemorySearchResult[] = [];
     for (const file of files) {
       const chunk = getFirstChunk.get(workspaceId, file.path) as
-        | { id: string; path: string; start_line: number; end_line: number; text: string; mtime: number }
+        | {
+            id: string;
+            path: string;
+            start_line: number;
+            end_line: number;
+            text: string;
+            mtime: number;
+          }
         | undefined;
       if (!chunk) continue;
       results.push({
         id: `md:${chunk.id}`,
         snippet: normalizeSnippet(chunk.text),
-        type: 'summary',
+        type: "summary",
         relevanceScore: 0.5,
         createdAt: chunk.mtime,
-        source: 'markdown',
+        source: "markdown",
         path: chunk.path,
         startLine: chunk.start_line,
         endLine: chunk.end_line,
@@ -426,7 +492,7 @@ export class MarkdownMemoryIndexService {
     workspaceId: string,
     workspacePath: string,
     force = false,
-    generation?: number
+    generation?: number,
   ): Promise<void> {
     if (generation !== undefined && generation !== this.getSyncGeneration(workspaceId)) {
       return;
@@ -480,9 +546,9 @@ export class MarkdownMemoryIndexService {
           continue;
         }
 
-        let content = '';
+        let content = "";
         try {
-          content = await fs.promises.readFile(file.absPath, 'utf-8');
+          content = await fs.promises.readFile(file.absPath, "utf-8");
         } catch {
           continue;
         }
@@ -509,7 +575,7 @@ export class MarkdownMemoryIndexService {
         .map((row) => row.path);
 
       let indexChanged = false;
-      this.db.exec('BEGIN');
+      this.db.exec("BEGIN");
       try {
         const updateMetadata = this.db.prepare(`
           UPDATE memory_markdown_files
@@ -531,16 +597,16 @@ export class MarkdownMemoryIndexService {
           indexChanged = true;
         }
 
-        this.db.exec('COMMIT');
+        this.db.exec("COMMIT");
         if (indexChanged) {
           this.parsedChunkCacheByWorkspace.delete(workspaceId);
         }
       } catch (error) {
-        this.db.exec('ROLLBACK');
+        this.db.exec("ROLLBACK");
         throw error;
       }
     } catch (error) {
-      console.warn('[MarkdownMemoryIndexService] Failed to sync markdown index:', error);
+      console.warn("[MarkdownMemoryIndexService] Failed to sync markdown index:", error);
     }
   }
 
@@ -593,7 +659,7 @@ export class MarkdownMemoryIndexService {
     }
 
     let removed = 0;
-    this.db.exec('BEGIN');
+    this.db.exec("BEGIN");
     try {
       for (const row of indexed) {
         const absPath = this.resolveWorkspaceFilePath(workspacePath, row.path);
@@ -602,9 +668,9 @@ export class MarkdownMemoryIndexService {
           removed += 1;
         }
       }
-      this.db.exec('COMMIT');
+      this.db.exec("COMMIT");
     } catch (error) {
-      this.db.exec('ROLLBACK');
+      this.db.exec("ROLLBACK");
       throw error;
     }
 
@@ -628,15 +694,17 @@ export class MarkdownMemoryIndexService {
         FROM memory_markdown_chunks
         WHERE id = ?
       `)
-      .get(chunkId) as {
-      id: string;
-      workspace_id: string;
-      path: string;
-      start_line: number;
-      end_line: number;
-      text: string;
-      mtime: number;
-    } | undefined;
+      .get(chunkId) as
+      | {
+          id: string;
+          workspace_id: string;
+          path: string;
+          start_line: number;
+          end_line: number;
+          text: string;
+          mtime: number;
+        }
+      | undefined;
     if (!current) return [];
 
     const around = this.db
@@ -647,12 +715,7 @@ export class MarkdownMemoryIndexService {
         ORDER BY ABS(start_line - ?) ASC
         LIMIT ?
       `)
-      .all(
-        current.workspace_id,
-        current.path,
-        current.start_line,
-        windowSize * 2 + 1
-      ) as Array<{
+      .all(current.workspace_id, current.path, current.start_line, windowSize * 2 + 1) as Array<{
       id: string;
       text: string;
       start_line: number;
@@ -665,7 +728,7 @@ export class MarkdownMemoryIndexService {
       .map((row) => ({
         id: `md:${row.id}`,
         content: row.text,
-        type: 'summary',
+        type: "summary",
         createdAt: row.mtime,
       }));
   }
@@ -678,7 +741,7 @@ export class MarkdownMemoryIndexService {
       return [];
     }
 
-    const placeholders = chunkIds.map(() => '?').join(', ');
+    const placeholders = chunkIds.map(() => "?").join(", ");
     const rows = this.db
       .prepare(`
         SELECT id, workspace_id, path, start_line, end_line, text, mtime, updated_at
@@ -707,7 +770,7 @@ export class MarkdownMemoryIndexService {
       details.push({
         id: `md:${row.id}`,
         workspaceId: row.workspace_id,
-        type: 'summary',
+        type: "summary",
         content: row.text,
         summary: `${row.path}#L${row.start_line}-${row.end_line}`,
         tokens: estimateTokens(row.text),
@@ -755,8 +818,8 @@ export class MarkdownMemoryIndexService {
         }
         if (stat.size > MAX_INDEXED_FILE_BYTES) continue;
 
-        const relPath = path.relative(workspacePath, absPath).replace(/\\/g, '/');
-        if (!relPath || relPath.startsWith('..')) continue;
+        const relPath = path.relative(workspacePath, absPath).replace(/\\/g, "/");
+        if (!relPath || relPath.startsWith("..")) continue;
 
         entries.push({
           absPath,
@@ -775,7 +838,7 @@ export class MarkdownMemoryIndexService {
     file: MarkdownFileEntry,
     content: string,
     contentHash: string,
-    now: number
+    now: number,
   ): void {
     this.deleteIndexedFile(workspaceId, file.relPath);
 
@@ -807,7 +870,7 @@ export class MarkdownMemoryIndexService {
 
     for (const chunk of chunks) {
       const chunkId = hashText(
-        `${workspaceId}:${file.relPath}:${chunk.startLine}:${chunk.endLine}:${contentHash}`
+        `${workspaceId}:${file.relPath}:${chunk.startLine}:${chunk.endLine}:${contentHash}`,
       );
       insertChunk.run(
         chunkId,
@@ -818,7 +881,7 @@ export class MarkdownMemoryIndexService {
         chunk.text,
         JSON.stringify(chunk.embedding),
         file.mtime,
-        now
+        now,
       );
       if (insertFts) {
         insertFts.run(
@@ -827,7 +890,7 @@ export class MarkdownMemoryIndexService {
           workspaceId,
           file.relPath,
           chunk.startLine,
-          chunk.endLine
+          chunk.endLine,
         );
       }
     }
@@ -918,7 +981,11 @@ export class MarkdownMemoryIndexService {
     }
   }
 
-  private searchKeywordFallback(workspaceId: string, query: string, limit: number): KeywordCandidate[] {
+  private searchKeywordFallback(
+    workspaceId: string,
+    query: string,
+    limit: number,
+  ): KeywordCandidate[] {
     const tokens = tokenizeForMemorySearch(query).slice(0, 8);
     const raw = query.trim();
     if (tokens.length === 0 && !raw) {
@@ -929,13 +996,13 @@ export class MarkdownMemoryIndexService {
     const params: unknown[] = [workspaceId];
 
     if (tokens.length > 0) {
-      const tokenClauses = tokens.map(() => 'text LIKE ?').join(' OR ');
+      const tokenClauses = tokens.map(() => "text LIKE ?").join(" OR ");
       clauses.push(`(${tokenClauses})`);
       for (const token of tokens) {
         params.push(`%${token}%`);
       }
     } else {
-      clauses.push('text LIKE ?');
+      clauses.push("text LIKE ?");
       params.push(`%${raw}%`);
     }
 
@@ -945,7 +1012,7 @@ export class MarkdownMemoryIndexService {
       .prepare(`
         SELECT id, path, start_line, end_line, text, mtime
         FROM memory_markdown_chunks
-        WHERE workspace_id = ? AND ${clauses.join(' AND ')}
+        WHERE workspace_id = ? AND ${clauses.join(" AND ")}
         ORDER BY mtime DESC
         LIMIT ?
       `)
@@ -998,7 +1065,7 @@ export class MarkdownMemoryIndexService {
   private mergeAndRerank(
     query: string,
     keywordCandidates: KeywordCandidate[],
-    vectorCandidates: VectorCandidate[]
+    vectorCandidates: VectorCandidate[],
   ): Array<{
     id: string;
     path: string;
@@ -1105,7 +1172,7 @@ export class MarkdownMemoryIndexService {
 
   private normalizeMemoryId(memoryId: string): string | null {
     const trimmed = memoryId.trim();
-    if (!trimmed.startsWith('md:')) return null;
+    if (!trimmed.startsWith("md:")) return null;
     const id = trimmed.slice(3).trim();
     return id || null;
   }
@@ -1130,23 +1197,30 @@ export class MarkdownMemoryIndexService {
     this.lastSyncByWorkspace.clear();
   }
 
-  private enqueueSync(workspaceId: string, workspacePath: string, force: boolean, generation: number): void {
+  private enqueueSync(
+    workspaceId: string,
+    workspacePath: string,
+    force: boolean,
+    generation: number,
+  ): void {
     if (this.pendingSyncByWorkspace.has(workspaceId)) {
       return;
     }
 
-    const task = Promise.resolve().then(async () => {
-      if (generation !== this.getSyncGeneration(workspaceId)) {
-        return;
-      }
-      await this.syncWorkspace(workspaceId, workspacePath, force, generation);
-    }).finally(() => {
-      this.pendingSyncByWorkspace.delete(workspaceId);
-    });
+    const task = Promise.resolve()
+      .then(async () => {
+        if (generation !== this.getSyncGeneration(workspaceId)) {
+          return;
+        }
+        await this.syncWorkspace(workspaceId, workspacePath, force, generation);
+      })
+      .finally(() => {
+        this.pendingSyncByWorkspace.delete(workspaceId);
+      });
 
     this.pendingSyncByWorkspace.set(workspaceId, task);
     void task.catch((error) => {
-      console.warn('[MarkdownMemoryIndexService] Async sync failed:', error);
+      console.warn("[MarkdownMemoryIndexService] Async sync failed:", error);
     });
   }
 

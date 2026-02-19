@@ -1,7 +1,13 @@
-import { useState, useEffect, useCallback } from 'react';
-import { ChannelData, ChannelUserData, SecurityMode, ContextType, ContextPolicy } from '../../shared/types';
-import { PairingCodeDisplay } from './PairingCodeDisplay';
-import { ContextPolicySettings } from './ContextPolicySettings';
+import { useState, useEffect, useCallback } from "react";
+import {
+  ChannelData,
+  ChannelUserData,
+  SecurityMode,
+  ContextType,
+  ContextPolicy,
+} from "../../shared/types";
+import { PairingCodeDisplay } from "./PairingCodeDisplay";
+import { ContextPolicySettings } from "./ContextPolicySettings";
 
 interface LineSettingsProps {
   onStatusChange?: (connected: boolean) => void;
@@ -13,13 +19,17 @@ export function LineSettings({ onStatusChange }: LineSettingsProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<{ success: boolean; error?: string; botUsername?: string } | null>(null);
+  const [testResult, setTestResult] = useState<{
+    success: boolean;
+    error?: string;
+    botUsername?: string;
+  } | null>(null);
 
   // Form state
-  const [channelName, setChannelName] = useState('LINE');
-  const [securityMode, setSecurityMode] = useState<SecurityMode>('pairing');
-  const [channelAccessToken, setChannelAccessToken] = useState('');
-  const [channelSecret, setChannelSecret] = useState('');
+  const [channelName, setChannelName] = useState("LINE");
+  const [securityMode, setSecurityMode] = useState<SecurityMode>("pairing");
+  const [channelAccessToken, setChannelAccessToken] = useState("");
+  const [channelSecret, setChannelSecret] = useState("");
   const [webhookPort, setWebhookPort] = useState(3100);
 
   // Pairing code state
@@ -28,26 +38,28 @@ export function LineSettings({ onStatusChange }: LineSettingsProps) {
   const [generatingCode, setGeneratingCode] = useState(false);
 
   // Context policy state
-  const [contextPolicies, setContextPolicies] = useState<Record<ContextType, ContextPolicy>>({} as Record<ContextType, ContextPolicy>);
+  const [contextPolicies, setContextPolicies] = useState<Record<ContextType, ContextPolicy>>(
+    {} as Record<ContextType, ContextPolicy>,
+  );
   const [savingPolicy, setSavingPolicy] = useState(false);
 
   const loadChannel = useCallback(async () => {
     try {
       setLoading(true);
       const channels = await window.electronAPI.getGatewayChannels();
-      const lineChannel = channels.find((c: ChannelData) => c.type === 'line');
+      const lineChannel = channels.find((c: ChannelData) => c.type === "line");
 
       if (lineChannel) {
         setChannel(lineChannel);
         setChannelName(lineChannel.name);
         setSecurityMode(lineChannel.securityMode);
-        onStatusChange?.(lineChannel.status === 'connected');
+        onStatusChange?.(lineChannel.status === "connected");
 
         // Load config settings
         if (lineChannel.config) {
-          setChannelAccessToken(lineChannel.config.channelAccessToken as string || '');
-          setChannelSecret(lineChannel.config.channelSecret as string || '');
-          setWebhookPort(lineChannel.config.webhookPort as number || 3100);
+          setChannelAccessToken((lineChannel.config.channelAccessToken as string) || "");
+          setChannelSecret((lineChannel.config.channelSecret as string) || "");
+          setWebhookPort((lineChannel.config.webhookPort as number) || 3100);
         }
 
         // Load users for this channel
@@ -56,14 +68,17 @@ export function LineSettings({ onStatusChange }: LineSettingsProps) {
 
         // Load context policies
         const policies = await window.electronAPI.listContextPolicies(lineChannel.id);
-        const policyMap: Record<ContextType, ContextPolicy> = {} as Record<ContextType, ContextPolicy>;
+        const policyMap: Record<ContextType, ContextPolicy> = {} as Record<
+          ContextType,
+          ContextPolicy
+        >;
         for (const policy of policies) {
           policyMap[policy.contextType as ContextType] = policy;
         }
         setContextPolicies(policyMap);
       }
     } catch (error) {
-      console.error('Failed to load LINE channel:', error);
+      console.error("Failed to load LINE channel:", error);
     } finally {
       setLoading(false);
     }
@@ -75,7 +90,7 @@ export function LineSettings({ onStatusChange }: LineSettingsProps) {
 
   useEffect(() => {
     const unsubscribe = window.electronAPI?.onGatewayUsersUpdated?.((data) => {
-      if (data?.channelType !== 'line') return;
+      if (data?.channelType !== "line") return;
       if (channel && data?.channelId && data.channelId !== channel.id) return;
       loadChannel();
     });
@@ -86,7 +101,10 @@ export function LineSettings({ onStatusChange }: LineSettingsProps) {
 
   const handleAddChannel = async () => {
     if (!channelAccessToken.trim() || !channelSecret.trim()) {
-      setTestResult({ success: false, error: 'Channel access token and channel secret are required' });
+      setTestResult({
+        success: false,
+        error: "Channel access token and channel secret are required",
+      });
       return;
     }
 
@@ -95,7 +113,7 @@ export function LineSettings({ onStatusChange }: LineSettingsProps) {
       setTestResult(null);
 
       await window.electronAPI.addGatewayChannel({
-        type: 'line',
+        type: "line",
         name: channelName,
         securityMode,
         lineChannelAccessToken: channelAccessToken.trim(),
@@ -148,7 +166,7 @@ export function LineSettings({ onStatusChange }: LineSettingsProps) {
   const handleRemoveChannel = async () => {
     if (!channel) return;
 
-    if (!confirm('Are you sure you want to remove the LINE channel?')) {
+    if (!confirm("Are you sure you want to remove the LINE channel?")) {
       return;
     }
 
@@ -176,7 +194,7 @@ export function LineSettings({ onStatusChange }: LineSettingsProps) {
       setSecurityMode(newMode);
       setChannel({ ...channel, securityMode: newMode });
     } catch (error: any) {
-      console.error('Failed to update security mode:', error);
+      console.error("Failed to update security mode:", error);
     }
   };
 
@@ -185,12 +203,12 @@ export function LineSettings({ onStatusChange }: LineSettingsProps) {
 
     try {
       setGeneratingCode(true);
-      const code = await window.electronAPI.generateGatewayPairing(channel.id, '');
+      const code = await window.electronAPI.generateGatewayPairing(channel.id, "");
       setPairingCode(code);
       // Default TTL is 5 minutes (300 seconds)
       setPairingExpiresAt(Date.now() + 5 * 60 * 1000);
     } catch (error: any) {
-      console.error('Failed to generate pairing code:', error);
+      console.error("Failed to generate pairing code:", error);
     } finally {
       setGeneratingCode(false);
     }
@@ -205,12 +223,12 @@ export function LineSettings({ onStatusChange }: LineSettingsProps) {
         securityMode: updates.securityMode,
         toolRestrictions: updates.toolRestrictions,
       });
-      setContextPolicies(prev => ({
+      setContextPolicies((prev) => ({
         ...prev,
         [contextType]: updated,
       }));
     } catch (error: any) {
-      console.error('Failed to update context policy:', error);
+      console.error("Failed to update context policy:", error);
     } finally {
       setSavingPolicy(false);
     }
@@ -223,7 +241,7 @@ export function LineSettings({ onStatusChange }: LineSettingsProps) {
       await window.electronAPI.revokeGatewayAccess(channel.id, channelUserId);
       await loadChannel();
     } catch (error: any) {
-      console.error('Failed to revoke access:', error);
+      console.error("Failed to revoke access:", error);
     }
   };
 
@@ -238,7 +256,8 @@ export function LineSettings({ onStatusChange }: LineSettingsProps) {
         <div className="settings-section">
           <h3>Connect LINE</h3>
           <p className="settings-description">
-            Connect to LINE Messaging API to receive and send messages. Popular in Asia with 200M+ users.
+            Connect to LINE Messaging API to receive and send messages. Popular in Asia with 200M+
+            users.
           </p>
 
           <div className="settings-field">
@@ -275,9 +294,7 @@ export function LineSettings({ onStatusChange }: LineSettingsProps) {
               value={channelSecret}
               onChange={(e) => setChannelSecret(e.target.value)}
             />
-            <p className="settings-hint">
-              Used to verify webhook signatures
-            </p>
+            <p className="settings-hint">Used to verify webhook signatures</p>
           </div>
 
           <div className="settings-field">
@@ -289,9 +306,7 @@ export function LineSettings({ onStatusChange }: LineSettingsProps) {
               value={webhookPort}
               onChange={(e) => setWebhookPort(parseInt(e.target.value) || 3100)}
             />
-            <p className="settings-hint">
-              Port for the webhook server (default: 3100)
-            </p>
+            <p className="settings-hint">Port for the webhook server (default: 3100)</p>
           </div>
 
           <div className="settings-field">
@@ -306,14 +321,16 @@ export function LineSettings({ onStatusChange }: LineSettingsProps) {
               <option value="open">Open (Anyone can use)</option>
             </select>
             <p className="settings-hint">
-              {securityMode === 'pairing' && 'Users must enter a code generated in this app to use the bot'}
-              {securityMode === 'allowlist' && 'Only pre-approved LINE user IDs can use the bot'}
-              {securityMode === 'open' && 'Anyone who messages the bot can use it (not recommended)'}
+              {securityMode === "pairing" &&
+                "Users must enter a code generated in this app to use the bot"}
+              {securityMode === "allowlist" && "Only pre-approved LINE user IDs can use the bot"}
+              {securityMode === "open" &&
+                "Anyone who messages the bot can use it (not recommended)"}
             </p>
           </div>
 
           {testResult && (
-            <div className={`test-result ${testResult.success ? 'success' : 'error'}`}>
+            <div className={`test-result ${testResult.success ? "success" : "error"}`}>
               {testResult.success ? (
                 <>✓ Connected as {testResult.botUsername}</>
               ) : (
@@ -327,18 +344,25 @@ export function LineSettings({ onStatusChange }: LineSettingsProps) {
             onClick={handleAddChannel}
             disabled={saving || !channelAccessToken.trim() || !channelSecret.trim()}
           >
-            {saving ? 'Adding...' : 'Add LINE'}
+            {saving ? "Adding..." : "Add LINE"}
           </button>
         </div>
 
         <div className="settings-section">
           <h4>Setup Instructions</h4>
           <ol className="setup-instructions">
-            <li>Go to <a href="https://developers.line.biz/" target="_blank" rel="noopener noreferrer">LINE Developers Console</a></li>
+            <li>
+              Go to{" "}
+              <a href="https://developers.line.biz/" target="_blank" rel="noopener noreferrer">
+                LINE Developers Console
+              </a>
+            </li>
             <li>Create a Messaging API channel</li>
             <li>Copy the Channel Access Token and Channel Secret</li>
             <li>Configure your webhook URL in the console</li>
-            <li>Use ngrok for development: <code>ngrok http 3100</code></li>
+            <li>
+              Use ngrok for development: <code>ngrok http 3100</code>
+            </li>
           </ol>
         </div>
 
@@ -366,44 +390,36 @@ export function LineSettings({ onStatusChange }: LineSettingsProps) {
               {channel.botUsername && <span className="bot-username">{channel.botUsername}</span>}
             </h3>
             <div className={`channel-status ${channel.status}`}>
-              {channel.status === 'connected' && '● Connected'}
-              {channel.status === 'connecting' && '○ Connecting...'}
-              {channel.status === 'disconnected' && '○ Disconnected'}
-              {channel.status === 'error' && '● Error'}
+              {channel.status === "connected" && "● Connected"}
+              {channel.status === "connecting" && "○ Connecting..."}
+              {channel.status === "disconnected" && "○ Disconnected"}
+              {channel.status === "error" && "● Error"}
             </div>
           </div>
           <div className="channel-actions">
             <button
-              className={channel.enabled ? 'button-secondary' : 'button-primary'}
+              className={channel.enabled ? "button-secondary" : "button-primary"}
               onClick={handleToggleEnabled}
               disabled={saving}
             >
-              {channel.enabled ? 'Disable' : 'Enable'}
+              {channel.enabled ? "Disable" : "Enable"}
             </button>
             <button
               className="button-secondary"
               onClick={handleTestConnection}
               disabled={testing || !channel.enabled}
             >
-              {testing ? 'Testing...' : 'Test'}
+              {testing ? "Testing..." : "Test"}
             </button>
-            <button
-              className="button-danger"
-              onClick={handleRemoveChannel}
-              disabled={saving}
-            >
+            <button className="button-danger" onClick={handleRemoveChannel} disabled={saving}>
               Remove
             </button>
           </div>
         </div>
 
         {testResult && (
-          <div className={`test-result ${testResult.success ? 'success' : 'error'}`}>
-            {testResult.success ? (
-              <>✓ Connection successful</>
-            ) : (
-              <>✗ {testResult.error}</>
-            )}
+          <div className={`test-result ${testResult.success ? "success" : "error"}`}>
+            {testResult.success ? <>✓ Connection successful</> : <>✗ {testResult.error}</>}
           </div>
         )}
       </div>
@@ -421,7 +437,7 @@ export function LineSettings({ onStatusChange }: LineSettingsProps) {
         </select>
       </div>
 
-      {securityMode === 'pairing' && (
+      {securityMode === "pairing" && (
         <div className="settings-section">
           <h4>Generate Pairing Code</h4>
           <p className="settings-description">
@@ -440,7 +456,7 @@ export function LineSettings({ onStatusChange }: LineSettingsProps) {
               onClick={handleGeneratePairingCode}
               disabled={generatingCode}
             >
-              {generatingCode ? 'Generating...' : 'Generate Code'}
+              {generatingCode ? "Generating..." : "Generate Code"}
             </button>
           )}
         </div>
@@ -472,8 +488,8 @@ export function LineSettings({ onStatusChange }: LineSettingsProps) {
                 <div className="user-info">
                   <span className="user-name">{user.displayName}</span>
                   {user.username && <span className="user-username">{user.username}</span>}
-                  <span className={`user-status ${user.allowed ? 'allowed' : 'pending'}`}>
-                    {user.allowed ? '✓ Allowed' : '○ Pending'}
+                  <span className={`user-status ${user.allowed ? "allowed" : "pending"}`}>
+                    {user.allowed ? "✓ Allowed" : "○ Pending"}
                   </span>
                 </div>
                 {user.allowed && (

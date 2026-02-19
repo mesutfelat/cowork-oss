@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from "react";
 
 interface QuickTaskFABProps {
   onCreateTask: (prompt: string) => void;
@@ -7,7 +7,7 @@ interface QuickTaskFABProps {
 
 export function QuickTaskFAB({ onCreateTask, disabled }: QuickTaskFABProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [prompt, setPrompt] = useState('');
+  const [prompt, setPrompt] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -19,18 +19,18 @@ export function QuickTaskFAB({ onCreateTask, disabled }: QuickTaskFABProps) {
   const handleSubmit = () => {
     if (prompt.trim()) {
       onCreateTask(prompt.trim());
-      setPrompt('');
+      setPrompt("");
       setIsOpen(false);
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSubmit();
-    } else if (e.key === 'Escape') {
+    } else if (e.key === "Escape") {
       setIsOpen(false);
-      setPrompt('');
+      setPrompt("");
     }
   };
 
@@ -47,22 +47,18 @@ export function QuickTaskFAB({ onCreateTask, disabled }: QuickTaskFABProps) {
             onChange={(e) => setPrompt(e.target.value)}
             onKeyDown={handleKeyDown}
           />
-          <button
-            className="quick-task-submit"
-            onClick={handleSubmit}
-            disabled={!prompt.trim()}
-          >
+          <button className="quick-task-submit" onClick={handleSubmit} disabled={!prompt.trim()}>
             +
           </button>
         </div>
       )}
       <button
-        className={`quick-task-fab ${isOpen ? 'open' : ''}`}
+        className={`quick-task-fab ${isOpen ? "open" : ""}`}
         onClick={() => setIsOpen(!isOpen)}
         disabled={disabled}
         title="Quick start"
       >
-        <span className="fab-icon">{isOpen ? 'x' : '+'}</span>
+        <span className="fab-icon">{isOpen ? "x" : "+"}</span>
       </button>
     </div>
   );

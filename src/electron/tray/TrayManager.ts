@@ -10,27 +10,36 @@
  * Settings are stored encrypted in the database using SecureSettingsRepository.
  */
 
-import { app, Tray, Menu, nativeImage, BrowserWindow, shell, NativeImage, globalShortcut } from 'electron';
-import * as path from 'path';
-import * as os from 'os';
-import * as fs from 'fs';
-import { ChannelGateway } from '../gateway';
-import { DatabaseManager } from '../database/schema';
-import { TaskRepository, WorkspaceRepository } from '../database/repositories';
-import { AgentDaemon } from '../agent/daemon';
-import { QuickInputWindow } from './QuickInputWindow';
+import {
+  app,
+  Tray,
+  Menu,
+  nativeImage,
+  BrowserWindow,
+  shell,
+  NativeImage,
+  globalShortcut,
+} from "electron";
+import * as path from "path";
+import * as os from "os";
+import * as fs from "fs";
+import { ChannelGateway } from "../gateway";
+import { DatabaseManager } from "../database/schema";
+import { TaskRepository, WorkspaceRepository } from "../database/repositories";
+import { AgentDaemon } from "../agent/daemon";
+import { QuickInputWindow } from "./QuickInputWindow";
 import {
   TEMP_WORKSPACE_ID_PREFIX,
   TEMP_WORKSPACE_NAME,
   TEMP_WORKSPACE_ROOT_DIR_NAME,
   Workspace,
   isTempWorkspaceId,
-} from '../../shared/types';
-import { SecureSettingsRepository } from '../database/SecureSettingsRepository';
-import { getUserDataDir } from '../utils/user-data-dir';
-import { pruneTempWorkspaces } from '../utils/temp-workspace';
+} from "../../shared/types";
+import { SecureSettingsRepository } from "../database/SecureSettingsRepository";
+import { getUserDataDir } from "../utils/user-data-dir";
+import { pruneTempWorkspaces } from "../utils/temp-workspace";
 
-const LEGACY_SETTINGS_FILE = 'tray-settings.json';
+const LEGACY_SETTINGS_FILE = "tray-settings.json";
 
 export interface TrayManagerOptions {
   showDockIcon?: boolean;
@@ -67,8 +76,8 @@ export class TrayManager {
   private activeTaskCount: number = 0;
   private quickInputWindow: QuickInputWindow | null = null;
   private currentQuickTaskId: string | null = null;
-  private quickTaskAccumulatedResponse: string = '';
-  private currentStepInfo: string = '';
+  private quickTaskAccumulatedResponse: string = "";
+  private currentStepInfo: string = "";
   private legacySettingsPath: string;
 
   private static instance: TrayManager | null = null;
@@ -84,7 +93,7 @@ export class TrayManager {
   private constructor() {
     // Defer app.getPath() - it's not available until app is ready.
     // legacySettingsPath will be resolved lazily in initialize().
-    this.legacySettingsPath = '';
+    this.legacySettingsPath = "";
   }
 
   /**
@@ -95,7 +104,7 @@ export class TrayManager {
     gateway: ChannelGateway,
     dbManager: DatabaseManager,
     agentDaemon?: AgentDaemon,
-    options: TrayManagerOptions = {}
+    options: TrayManagerOptions = {},
   ): Promise<void> {
     this.mainWindow = mainWindow;
     this.gateway = gateway;
@@ -159,7 +168,7 @@ export class TrayManager {
     // Register global shortcut for quick input (Cmd+Shift+Space)
     this.registerGlobalShortcut();
 
-    console.log('[TrayManager] Initialized');
+    console.log("[TrayManager] Initialized");
   }
 
   /**
@@ -169,90 +178,109 @@ export class TrayManager {
     if (!this.agentDaemon) return;
 
     // Listen for assistant messages (the main text response)
-    this.agentDaemon.on('assistant_message', (event: { taskId: string; message?: string }) => {
+    this.agentDaemon.on("assistant_message", (event: { taskId: string; message?: string }) => {
       if (event.taskId !== this.currentQuickTaskId) return;
-      const message = event.message || '';
+      const message = event.message || "";
       if (message) {
         // Append to accumulated response (assistant may send multiple messages)
         if (this.quickTaskAccumulatedResponse) {
-          this.quickTaskAccumulatedResponse += '\n\n' + message;
+          this.quickTaskAccumulatedResponse += "\n\n" + message;
         } else {
           this.quickTaskAccumulatedResponse = message;
         }
         this.quickInputWindow?.updateResponse(
           this.formatResponseWithQuestion(this.quickTaskAccumulatedResponse),
-          false
+          false,
         );
       }
     });
 
     // Listen for progress updates
-    this.agentDaemon.on('progress_update', (event: { taskId: string; message?: string; progress?: number }) => {
-      if (event.taskId !== this.currentQuickTaskId) return;
-      // Only show progress if we don't have response content yet
-      if (!this.quickTaskAccumulatedResponse && event.message) {
-        this.quickInputWindow?.updateResponse(
-          `<p style="color: rgba(255,255,255,0.6);">${event.message}</p>`,
-          false
-        );
-      }
-    });
+    this.agentDaemon.on(
+      "progress_update",
+      (event: { taskId: string; message?: string; progress?: number }) => {
+        if (event.taskId !== this.currentQuickTaskId) return;
+        // Only show progress if we don't have response content yet
+        if (!this.quickTaskAccumulatedResponse && event.message) {
+          this.quickInputWindow?.updateResponse(
+            `<p style="color: rgba(255,255,255,0.6);">${event.message}</p>`,
+            false,
+          );
+        }
+      },
+    );
 
     // Listen for task completion
-    this.agentDaemon.on('task_completed', (event: { taskId: string; message?: string; result?: string }) => {
-      if (event.taskId !== this.currentQuickTaskId) return;
-      // Show the accumulated response as complete (without step prefix)
-      const finalContent = this.quickTaskAccumulatedResponse || event.result || event.message || 'Task completed successfully';
-      this.quickInputWindow?.updateResponse(
-        this.formatResponseWithQuestion(finalContent),
-        true
-      );
-      this.currentQuickTaskId = null;
-      this.quickTaskAccumulatedResponse = '';
-      this.currentStepInfo = '';
-    });
+    this.agentDaemon.on(
+      "task_completed",
+      (event: { taskId: string; message?: string; result?: string }) => {
+        if (event.taskId !== this.currentQuickTaskId) return;
+        // Show the accumulated response as complete (without step prefix)
+        const finalContent =
+          this.quickTaskAccumulatedResponse ||
+          event.result ||
+          event.message ||
+          "Task completed successfully";
+        this.quickInputWindow?.updateResponse(this.formatResponseWithQuestion(finalContent), true);
+        this.currentQuickTaskId = null;
+        this.quickTaskAccumulatedResponse = "";
+        this.currentStepInfo = "";
+      },
+    );
 
     // Listen for errors
-    this.agentDaemon.on('error', (event: { taskId: string; message?: string }) => {
+    this.agentDaemon.on("error", (event: { taskId: string; message?: string }) => {
       if (event.taskId !== this.currentQuickTaskId) return;
-      const question = this.quickInputWindow?.getCurrentQuestion() || '';
-      const questionHtml = question ? `<div class="user-question"><strong>You:</strong> ${question.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>` : '';
+      const question = this.quickInputWindow?.getCurrentQuestion() || "";
+      const questionHtml = question
+        ? `<div class="user-question"><strong>You:</strong> ${question.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>`
+        : "";
       this.quickInputWindow?.updateResponse(
-        `${questionHtml}<div class="error-message">Error: ${event.message || 'An error occurred'}</div>`,
-        true
+        `${questionHtml}<div class="error-message">Error: ${event.message || "An error occurred"}</div>`,
+        true,
       );
       this.currentQuickTaskId = null;
-      this.quickTaskAccumulatedResponse = '';
-      this.currentStepInfo = '';
+      this.quickTaskAccumulatedResponse = "";
+      this.currentStepInfo = "";
     });
 
     // Listen for step started (show what step is being executed)
-    this.agentDaemon.on('step_started', (event: { taskId: string; step?: { id: number; description: string } }) => {
-      if (event.taskId !== this.currentQuickTaskId) return;
-      // Show step info above the response
-      if (event.step?.description) {
-        const stepInfo = `**Step ${event.step.id}:** ${event.step.description}\n\n`;
-        // Prepend step info (it will be replaced by next step)
-        this.currentStepInfo = stepInfo;
-        this.quickInputWindow?.updateResponse(
-          this.formatResponseWithQuestion(this.currentStepInfo + this.quickTaskAccumulatedResponse),
-          false
-        );
-      }
-    });
+    this.agentDaemon.on(
+      "step_started",
+      (event: { taskId: string; step?: { id: number; description: string } }) => {
+        if (event.taskId !== this.currentQuickTaskId) return;
+        // Show step info above the response
+        if (event.step?.description) {
+          const stepInfo = `**Step ${event.step.id}:** ${event.step.description}\n\n`;
+          // Prepend step info (it will be replaced by next step)
+          this.currentStepInfo = stepInfo;
+          this.quickInputWindow?.updateResponse(
+            this.formatResponseWithQuestion(
+              this.currentStepInfo + this.quickTaskAccumulatedResponse,
+            ),
+            false,
+          );
+        }
+      },
+    );
 
     // Listen for plan created (show what the agent is going to do)
-    this.agentDaemon.on('plan_created', (event: { taskId: string; plan?: { steps: Array<{ id: number; description: string }> } }) => {
-      if (event.taskId !== this.currentQuickTaskId) return;
-      if (event.plan?.steps && event.plan.steps.length > 0) {
-        const planSummary = event.plan.steps.map((s, i) => `${i + 1}. ${s.description}`).join('\n');
-        this.quickTaskAccumulatedResponse = `**Plan:**\n${planSummary}\n\n`;
-        this.quickInputWindow?.updateResponse(
-          this.formatResponseWithQuestion(this.quickTaskAccumulatedResponse),
-          false
-        );
-      }
-    });
+    this.agentDaemon.on(
+      "plan_created",
+      (event: { taskId: string; plan?: { steps: Array<{ id: number; description: string }> } }) => {
+        if (event.taskId !== this.currentQuickTaskId) return;
+        if (event.plan?.steps && event.plan.steps.length > 0) {
+          const planSummary = event.plan.steps
+            .map((s, i) => `${i + 1}. ${s.description}`)
+            .join("\n");
+          this.quickTaskAccumulatedResponse = `**Plan:**\n${planSummary}\n\n`;
+          this.quickInputWindow?.updateResponse(
+            this.formatResponseWithQuestion(this.quickTaskAccumulatedResponse),
+            false,
+          );
+        }
+      },
+    );
   }
 
   /**
@@ -260,33 +288,35 @@ export class TrayManager {
    */
   private formatResponseForDisplay(text: string): string {
     // Basic markdown-like formatting
-    return text
-      // Escape HTML
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      // Bold
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      // Code blocks
-      .replace(/```(\w*)\n?([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
-      // Inline code
-      .replace(/`([^`]+)`/g, '<code>$1</code>')
-      // Line breaks
-      .replace(/\n/g, '<br>');
+    return (
+      text
+        // Escape HTML
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        // Bold
+        .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+        // Code blocks
+        .replace(/```(\w*)\n?([\s\S]*?)```/g, "<pre><code>$2</code></pre>")
+        // Inline code
+        .replace(/`([^`]+)`/g, "<code>$1</code>")
+        // Line breaks
+        .replace(/\n/g, "<br>")
+    );
   }
 
   /**
    * Format response with user's question prepended
    */
   private formatResponseWithQuestion(text: string): string {
-    const question = this.quickInputWindow?.getCurrentQuestion() || '';
+    const question = this.quickInputWindow?.getCurrentQuestion() || "";
     const formattedResponse = this.formatResponseForDisplay(text);
 
     if (question) {
       const escapedQuestion = question
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
       return `<div class="user-question"><strong>You:</strong> ${escapedQuestion}</div>${formattedResponse}`;
     }
 
@@ -297,11 +327,15 @@ export class TrayManager {
    * Get or create the temp workspace
    */
   private async getOrCreateTempWorkspace(): Promise<Workspace> {
-    if (!this.dbManager) throw new Error('Database not available');
-    if (!this.workspaceRepo) throw new Error('Workspace repository not available');
+    if (!this.dbManager) throw new Error("Database not available");
+    if (!this.workspaceRepo) throw new Error("Workspace repository not available");
 
     const db = this.dbManager.getDatabase();
-    const ensureTempWorkspace = (workspaceId: string, workspacePath: string, existing?: Workspace): Workspace => {
+    const ensureTempWorkspace = (
+      workspaceId: string,
+      workspacePath: string,
+      existing?: Workspace,
+    ): Workspace => {
       if (!fs.existsSync(workspacePath)) {
         fs.mkdirSync(workspacePath, { recursive: true });
       }
@@ -333,7 +367,7 @@ export class TrayManager {
         workspacePath,
         createdAt,
         lastUsedAt,
-        JSON.stringify(permissions)
+        JSON.stringify(permissions),
       );
 
       return {
@@ -347,7 +381,9 @@ export class TrayManager {
       };
     };
 
-    const existing = this.workspaceRepo.findAll().find((workspace) => workspace.isTemp || isTempWorkspaceId(workspace.id));
+    const existing = this.workspaceRepo
+      .findAll()
+      .find((workspace) => workspace.isTemp || isTempWorkspaceId(workspace.id));
     let workspace: Workspace;
     if (existing) {
       workspace = ensureTempWorkspace(existing.id, existing.path, existing);
@@ -365,7 +401,7 @@ export class TrayManager {
         currentWorkspaceId: workspace.id,
       });
     } catch (error) {
-      console.warn('[TrayManager] Failed to prune temp workspaces:', error);
+      console.warn("[TrayManager] Failed to prune temp workspaces:", error);
     }
 
     return workspace;
@@ -377,16 +413,16 @@ export class TrayManager {
   private async handleQuickTaskSubmit(prompt: string, workspaceId?: string): Promise<void> {
     if (!this.taskRepo || !this.workspaceRepo || !this.agentDaemon) {
       // Fall back to sending to main window
-      console.log('[TrayManager] Agent daemon not available, falling back to main window');
+      console.log("[TrayManager] Agent daemon not available, falling back to main window");
       this.showMainWindow();
-      this.mainWindow?.webContents.send('tray:quick-task', { task: prompt, workspaceId });
+      this.mainWindow?.webContents.send("tray:quick-task", { task: prompt, workspaceId });
       return;
     }
 
     // Show loading state and reset accumulated response
     this.quickInputWindow?.showLoading();
-    this.quickTaskAccumulatedResponse = '';
-    this.currentStepInfo = '';
+    this.quickTaskAccumulatedResponse = "";
+    this.currentStepInfo = "";
 
     try {
       // Get or select workspace
@@ -407,10 +443,10 @@ export class TrayManager {
 
       // Create task
       const task = this.taskRepo.create({
-        title: prompt.slice(0, 50) + (prompt.length > 50 ? '...' : ''),
+        title: prompt.slice(0, 50) + (prompt.length > 50 ? "..." : ""),
         prompt,
         workspaceId: wsId,
-        status: 'queued',
+        status: "queued",
       });
 
       this.currentQuickTaskId = task.id;
@@ -419,15 +455,16 @@ export class TrayManager {
       await this.agentDaemon.startTask(task);
 
       // Also notify main window so it updates the task list
-      this.mainWindow?.webContents.send('tray:task-created', { taskId: task.id });
-
+      this.mainWindow?.webContents.send("tray:task-created", { taskId: task.id });
     } catch (error) {
-      console.error('[TrayManager] Failed to create quick task:', error);
-      const question = this.quickInputWindow?.getCurrentQuestion() || '';
-      const questionHtml = question ? `<div class="user-question"><strong>You:</strong> ${question.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>` : '';
+      console.error("[TrayManager] Failed to create quick task:", error);
+      const question = this.quickInputWindow?.getCurrentQuestion() || "";
+      const questionHtml = question
+        ? `<div class="user-question"><strong>You:</strong> ${question.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>`
+        : "";
       this.quickInputWindow?.updateResponse(
-        `${questionHtml}<div class="error-message">Failed to create task: ${error instanceof Error ? error.message : 'Unknown error'}</div>`,
-        true
+        `${questionHtml}<div class="error-message">Failed to create task: ${error instanceof Error ? error.message : "Unknown error"}</div>`,
+        true,
       );
       this.currentQuickTaskId = null;
     }
@@ -453,19 +490,21 @@ export class TrayManager {
   private registerGlobalShortcut(): void {
     try {
       // Unregister first in case it's already registered
-      globalShortcut.unregister('CommandOrControl+Shift+Space');
+      globalShortcut.unregister("CommandOrControl+Shift+Space");
 
-      const registered = globalShortcut.register('CommandOrControl+Shift+Space', () => {
+      const registered = globalShortcut.register("CommandOrControl+Shift+Space", () => {
         this.showQuickInput();
       });
 
       if (registered) {
-        console.log('[TrayManager] Global shortcut registered: Cmd+Shift+Space');
+        console.log("[TrayManager] Global shortcut registered: Cmd+Shift+Space");
       } else {
-        console.warn('[TrayManager] Failed to register global shortcut - may be in use by another app');
+        console.warn(
+          "[TrayManager] Failed to register global shortcut - may be in use by another app",
+        );
       }
     } catch (error) {
-      console.error('[TrayManager] Error registering global shortcut:', error);
+      console.error("[TrayManager] Error registering global shortcut:", error);
     }
   }
 
@@ -474,10 +513,10 @@ export class TrayManager {
    */
   private unregisterGlobalShortcut(): void {
     try {
-      globalShortcut.unregister('CommandOrControl+Shift+Space');
-      console.log('[TrayManager] Global shortcut unregistered');
+      globalShortcut.unregister("CommandOrControl+Shift+Space");
+      console.log("[TrayManager] Global shortcut unregistered");
     } catch (error) {
-      console.error('[TrayManager] Error unregistering global shortcut:', error);
+      console.error("[TrayManager] Error unregistering global shortcut:", error);
     }
   }
 
@@ -491,34 +530,34 @@ export class TrayManager {
 
     try {
       // Create tray icon (use template image for macOS)
-      const icon = this.getTrayIcon('idle');
+      const icon = this.getTrayIcon("idle");
 
       this.tray = new Tray(icon);
-      this.tray.setToolTip('CoWork OS');
+      this.tray.setToolTip("CoWork OS");
 
       // Build and set context menu
       this.updateContextMenu();
 
       // Handle click events - always show context menu on click
-      this.tray.on('click', () => {
+      this.tray.on("click", () => {
         this.tray?.popUpContextMenu();
       });
     } catch (error) {
-      console.error('[TrayManager] Failed to create tray:', error);
+      console.error("[TrayManager] Failed to create tray:", error);
     }
   }
 
   /**
    * Get or create tray icon
    */
-  private getTrayIcon(state: 'idle' | 'active' | 'error'): NativeImage {
+  private getTrayIcon(state: "idle" | "active" | "error"): NativeImage {
     // Try to load from file first
-    const iconPath = this.getIconPath(state === 'active' ? 'trayActiveTemplate' : 'trayTemplate');
-    const fs = require('fs');
+    const iconPath = this.getIconPath(state === "active" ? "trayActiveTemplate" : "trayTemplate");
+    const fs = require("fs");
 
     if (fs.existsSync(iconPath)) {
       const icon = nativeImage.createFromPath(iconPath);
-      if (process.platform === 'darwin') {
+      if (process.platform === "darwin") {
         icon.setTemplateImage(true);
       }
       return icon;
@@ -532,7 +571,7 @@ export class TrayManager {
    * Create a programmatic tray icon using raw RGBA bitmap
    * More reliable than SVG data URLs for Electron tray icons
    */
-  private createProgrammaticIcon(state: 'idle' | 'active' | 'error'): NativeImage {
+  private createProgrammaticIcon(state: "idle" | "active" | "error"): NativeImage {
     // Standard macOS menu bar icon size (16x16 for 1x, 32x32 for 2x retina)
     const size = 16;
     const scale = 2; // Create at 2x for retina
@@ -542,9 +581,12 @@ export class TrayManager {
     const buffer = Buffer.alloc(actualSize * actualSize * 4);
 
     // Get color based on state
-    const [r, g, b] = state === 'error' ? [255, 59, 48] :      // Red
-                       state === 'active' ? [0, 122, 255] :     // Blue
-                       [255, 255, 255];                          // White
+    const [r, g, b] =
+      state === "error"
+        ? [255, 59, 48] // Red
+        : state === "active"
+          ? [0, 122, 255] // Blue
+          : [255, 255, 255]; // White
 
     // Draw a simple filled circle
     const centerX = actualSize / 2;
@@ -596,13 +638,13 @@ export class TrayManager {
    * Get the path to a tray icon
    */
   private getIconPath(name: string): string {
-    const isDev = process.env.NODE_ENV === 'development';
+    const isDev = process.env.NODE_ENV === "development";
     const basePath = isDev
-      ? path.join(__dirname, '../../../assets/tray')
-      : path.join(process.resourcesPath, 'assets/tray');
+      ? path.join(__dirname, "../../../assets/tray")
+      : path.join(process.resourcesPath, "assets/tray");
 
     // Use PNG for cross-platform compatibility
-    const extension = process.platform === 'darwin' ? 'png' : 'png';
+    const extension = process.platform === "darwin" ? "png" : "png";
     return path.join(basePath, `${name}.${extension}`);
   }
 
@@ -622,82 +664,83 @@ export class TrayManager {
         enabled: false,
         icon: this.getStatusIcon(),
       },
-      { type: 'separator' },
+      { type: "separator" },
 
       // Quick actions
       {
-        label: 'Quick Task...',
-        accelerator: 'CmdOrCtrl+Shift+Space',
+        label: "Quick Task...",
+        accelerator: "CmdOrCtrl+Shift+Space",
         click: () => {
           this.showQuickInput();
         },
       },
       {
-        label: 'New Task...',
-        accelerator: 'CmdOrCtrl+N',
+        label: "New Task...",
+        accelerator: "CmdOrCtrl+N",
         click: () => {
           this.showMainWindow();
-          this.mainWindow?.webContents.send('tray:new-task');
+          this.mainWindow?.webContents.send("tray:new-task");
         },
       },
-      { type: 'separator' },
+      { type: "separator" },
 
       // Workspaces submenu
       {
-        label: 'Workspaces',
-        submenu: workspaces.length > 0
-          ? workspaces.map((ws) => ({
-              label: ws.name,
-              click: () => {
-                this.showMainWindow();
-                this.mainWindow?.webContents.send('tray:select-workspace', ws.id);
-              },
-            }))
-          : [{ label: 'No workspaces', enabled: false }],
+        label: "Workspaces",
+        submenu:
+          workspaces.length > 0
+            ? workspaces.map((ws) => ({
+                label: ws.name,
+                click: () => {
+                  this.showMainWindow();
+                  this.mainWindow?.webContents.send("tray:select-workspace", ws.id);
+                },
+              }))
+            : [{ label: "No workspaces", enabled: false }],
       },
 
       // Channels submenu
       {
-        label: 'Channels',
+        label: "Channels",
         submenu: this.buildChannelsSubmenu(),
       },
-      { type: 'separator' },
+      { type: "separator" },
 
       // Window controls
       {
-        label: this.mainWindow?.isVisible() ? 'Hide Window' : 'Show Window',
-        accelerator: 'CmdOrCtrl+H',
+        label: this.mainWindow?.isVisible() ? "Hide Window" : "Show Window",
+        accelerator: "CmdOrCtrl+H",
         click: () => this.toggleMainWindow(),
       },
       {
-        label: 'Settings...',
-        accelerator: 'CmdOrCtrl+,',
+        label: "Settings...",
+        accelerator: "CmdOrCtrl+,",
         click: () => {
           this.showMainWindow();
-          this.mainWindow?.webContents.send('tray:open-settings');
+          this.mainWindow?.webContents.send("tray:open-settings");
         },
       },
-      { type: 'separator' },
+      { type: "separator" },
 
       // App controls
       {
-        label: 'About CoWork OS',
+        label: "About CoWork OS",
         click: () => {
           this.showMainWindow();
-          this.mainWindow?.webContents.send('tray:open-about');
+          this.mainWindow?.webContents.send("tray:open-about");
         },
       },
       {
-        label: 'Check for Updates...',
+        label: "Check for Updates...",
         click: () => {
           this.showMainWindow();
-          this.mainWindow?.webContents.send('tray:check-updates');
+          this.mainWindow?.webContents.send("tray:check-updates");
         },
       },
-      { type: 'separator' },
+      { type: "separator" },
       {
-        label: 'Quit CoWork OS',
-        accelerator: 'CmdOrCtrl+Q',
+        label: "Quit CoWork OS",
+        accelerator: "CmdOrCtrl+Q",
         click: () => {
           // Force quit (bypass close-to-tray)
           this.settings.closeToTray = false;
@@ -717,13 +760,18 @@ export class TrayManager {
     const channels = this.gateway?.getChannels() || [];
 
     if (channels.length === 0) {
-      return [{ label: 'No channels configured', enabled: false }];
+      return [{ label: "No channels configured", enabled: false }];
     }
 
     return channels.map((channel) => {
-      const statusIcon = channel.status === 'connected' ? '🟢' :
-                         channel.status === 'connecting' ? '🟡' :
-                         channel.status === 'error' ? '🔴' : '⚪';
+      const statusIcon =
+        channel.status === "connected"
+          ? "🟢"
+          : channel.status === "connecting"
+            ? "🟡"
+            : channel.status === "error"
+              ? "🔴"
+              : "⚪";
       return {
         label: `${statusIcon} ${channel.name} (${channel.type})`,
         enabled: false,
@@ -736,17 +784,17 @@ export class TrayManager {
    */
   private getStatusText(): string {
     const channels = this.gateway?.getChannels() || [];
-    this.connectedChannels = channels.filter((c) => c.status === 'connected').length;
+    this.connectedChannels = channels.filter((c) => c.status === "connected").length;
 
     if (this.activeTaskCount > 0) {
-      return `Working on ${this.activeTaskCount} task${this.activeTaskCount > 1 ? 's' : ''}`;
+      return `Working on ${this.activeTaskCount} task${this.activeTaskCount > 1 ? "s" : ""}`;
     }
 
     if (this.connectedChannels > 0) {
-      return `${this.connectedChannels} channel${this.connectedChannels > 1 ? 's' : ''} connected`;
+      return `${this.connectedChannels} channel${this.connectedChannels > 1 ? "s" : ""} connected`;
     }
 
-    return 'Ready';
+    return "Ready";
   }
 
   /**
@@ -770,7 +818,7 @@ export class TrayManager {
         .map(({ id, name, path: workspacePath }) => ({ id, name, path: workspacePath }))
         .sort((a, b) => a.name.localeCompare(b.name));
     } catch (error) {
-      console.error('[TrayManager] Failed to get workspaces:', error);
+      console.error("[TrayManager] Failed to get workspaces:", error);
       return [];
     }
   }
@@ -801,7 +849,7 @@ export class TrayManager {
     this.mainWindow.focus();
 
     // On macOS, also bring app to foreground
-    if (process.platform === 'darwin') {
+    if (process.platform === "darwin") {
       app.dock?.show();
     }
   }
@@ -812,13 +860,13 @@ export class TrayManager {
   private setupCloseToTray(): void {
     if (!this.mainWindow) return;
 
-    this.mainWindow.on('close', (event) => {
+    this.mainWindow.on("close", (event) => {
       if (this.settings.closeToTray && this.tray) {
         event.preventDefault();
         this.mainWindow?.hide();
 
         // On macOS, hide from dock when minimized to tray
-        if (process.platform === 'darwin' && !this.settings.showDockIcon) {
+        if (process.platform === "darwin" && !this.settings.showDockIcon) {
           app.dock?.hide();
         }
       }
@@ -829,7 +877,7 @@ export class TrayManager {
    * Apply dock icon visibility setting (macOS only)
    */
   private applyDockIconSetting(): void {
-    if (process.platform !== 'darwin') return;
+    if (process.platform !== "darwin") return;
 
     if (this.settings.showDockIcon) {
       app.dock?.show();
@@ -856,7 +904,7 @@ export class TrayManager {
     if (!this.tray) return;
 
     // Determine icon state based on app status
-    const state: 'idle' | 'active' | 'error' = this.activeTaskCount > 0 ? 'active' : 'idle';
+    const state: "idle" | "active" | "error" = this.activeTaskCount > 0 ? "active" : "idle";
     const icon = this.getTrayIcon(state);
     this.tray.setImage(icon);
   }
@@ -884,7 +932,7 @@ export class TrayManager {
       const repository = SecureSettingsRepository.getInstance();
 
       // Check if already migrated
-      if (repository.exists('tray')) {
+      if (repository.exists("tray")) {
         TrayManager.migrationCompleted = true;
         return;
       }
@@ -895,32 +943,34 @@ export class TrayManager {
         return;
       }
 
-      console.log('[TrayManager] Migrating settings from legacy JSON file to encrypted database...');
+      console.log(
+        "[TrayManager] Migrating settings from legacy JSON file to encrypted database...",
+      );
 
       // Create backup before migration
-      const backupPath = this.legacySettingsPath + '.migration-backup';
+      const backupPath = this.legacySettingsPath + ".migration-backup";
       fs.copyFileSync(this.legacySettingsPath, backupPath);
 
       try {
-        const data = fs.readFileSync(this.legacySettingsPath, 'utf-8');
+        const data = fs.readFileSync(this.legacySettingsPath, "utf-8");
         const parsed = JSON.parse(data);
         const merged = { ...DEFAULT_SETTINGS, ...parsed };
 
-        repository.save('tray', merged);
-        console.log('[TrayManager] Settings migrated to encrypted database');
+        repository.save("tray", merged);
+        console.log("[TrayManager] Settings migrated to encrypted database");
 
         // Migration successful - delete backup and original
         fs.unlinkSync(backupPath);
         fs.unlinkSync(this.legacySettingsPath);
-        console.log('[TrayManager] Migration complete, cleaned up legacy files');
+        console.log("[TrayManager] Migration complete, cleaned up legacy files");
 
         TrayManager.migrationCompleted = true;
       } catch (migrationError) {
-        console.error('[TrayManager] Migration failed, backup preserved at:', backupPath);
+        console.error("[TrayManager] Migration failed, backup preserved at:", backupPath);
         throw migrationError;
       }
     } catch (error) {
-      console.error('[TrayManager] Migration failed:', error);
+      console.error("[TrayManager] Migration failed:", error);
     }
   }
 
@@ -934,15 +984,15 @@ export class TrayManager {
     try {
       if (SecureSettingsRepository.isInitialized()) {
         const repository = SecureSettingsRepository.getInstance();
-        const stored = repository.load<TraySettings>('tray');
+        const stored = repository.load<TraySettings>("tray");
         if (stored) {
           this.settings = { ...DEFAULT_SETTINGS, ...stored };
-          console.log('[TrayManager] Loaded settings from encrypted database');
+          console.log("[TrayManager] Loaded settings from encrypted database");
           return;
         }
       }
     } catch (error) {
-      console.error('[TrayManager] Failed to load settings:', error);
+      console.error("[TrayManager] Failed to load settings:", error);
     }
 
     // Fall back to defaults
@@ -958,10 +1008,12 @@ export class TrayManager {
     try {
       if (SecureSettingsRepository.isInitialized()) {
         const repository = SecureSettingsRepository.getInstance();
-        repository.save('tray', this.settings);
-        console.log('[TrayManager] Settings saved to encrypted database');
+        repository.save("tray", this.settings);
+        console.log("[TrayManager] Settings saved to encrypted database");
       } else {
-        console.warn('[TrayManager] SecureSettingsRepository not initialized, settings not persisted');
+        console.warn(
+          "[TrayManager] SecureSettingsRepository not initialized, settings not persisted",
+        );
       }
 
       // Apply settings immediately
@@ -976,7 +1028,7 @@ export class TrayManager {
         }
       }
     } catch (error) {
-      console.error('[TrayManager] Failed to save settings:', error);
+      console.error("[TrayManager] Failed to save settings:", error);
     }
   }
 
@@ -993,14 +1045,14 @@ export class TrayManager {
   showNotification(title: string, body: string): void {
     if (!this.settings.showNotifications) return;
 
-    const { Notification } = require('electron');
+    const { Notification } = require("electron");
     if (Notification.isSupported()) {
       const notification = new Notification({
         title,
         body,
         silent: false,
       });
-      notification.on('click', () => {
+      notification.on("click", () => {
         this.showMainWindow();
       });
       notification.show();

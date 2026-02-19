@@ -4,47 +4,48 @@
  * Handles client connection state, authentication, and tracking.
  */
 
-import { WebSocket } from 'ws';
-import { randomUUID } from 'crypto';
-import {
-  Frame,
-  EventFrame,
-  serializeFrame,
-  createEventFrame,
-  Events,
-} from './protocol';
+import { WebSocket } from "ws";
+import { randomUUID } from "crypto";
+import { Frame, EventFrame, serializeFrame, createEventFrame, Events } from "./protocol";
 
 /**
  * Client authentication state
  */
 export type ClientAuthState =
-  | 'pending'      // Initial state, awaiting handshake
-  | 'authenticated' // Successfully authenticated
-  | 'rejected';     // Authentication failed
+  | "pending" // Initial state, awaiting handshake
+  | "authenticated" // Successfully authenticated
+  | "rejected"; // Authentication failed
 
 /**
  * Client scope/permissions
  */
 export type ClientScope =
-  | 'admin'     // Full access
-  | 'read'      // Read-only access
-  | 'write'     // Read + write access
-  | 'operator'; // Task operations only
+  | "admin" // Full access
+  | "read" // Read-only access
+  | "write" // Read + write access
+  | "operator"; // Task operations only
 
 /**
  * Client role in the Control Plane
  */
-export type ClientRole = 'operator' | 'node';
+export type ClientRole = "operator" | "node";
 
 /**
  * Node capability categories
  */
-export type NodeCapabilityType = 'camera' | 'location' | 'screen' | 'sms' | 'voice' | 'canvas' | 'system';
+export type NodeCapabilityType =
+  | "camera"
+  | "location"
+  | "screen"
+  | "sms"
+  | "voice"
+  | "canvas"
+  | "system";
 
 /**
  * Node platform type
  */
-export type NodePlatform = 'ios' | 'android' | 'macos';
+export type NodePlatform = "ios" | "android" | "macos";
 
 /**
  * Information about a connected client
@@ -101,25 +102,20 @@ export class ControlPlaneClient {
   readonly info: ClientInfo;
   private eventSeq = 0;
 
-  constructor(
-    socket: WebSocket,
-    remoteAddress: string,
-    userAgent?: string,
-    origin?: string
-  ) {
+  constructor(socket: WebSocket, remoteAddress: string, userAgent?: string, origin?: string) {
     this.info = {
       id: randomUUID(),
       socket,
       remoteAddress,
       userAgent,
       origin,
-      authState: 'pending',
+      authState: "pending",
       scopes: [],
       connectedAt: Date.now(),
       lastActivityAt: Date.now(),
       lastHeartbeatAt: Date.now(),
       authNonce: randomUUID(),
-      role: 'operator', // Default role
+      role: "operator", // Default role
     };
   }
 
@@ -134,7 +130,7 @@ export class ControlPlaneClient {
    * Check if client is authenticated
    */
   get isAuthenticated(): boolean {
-    return this.info.authState === 'authenticated';
+    return this.info.authState === "authenticated";
   }
 
   /**
@@ -148,21 +144,21 @@ export class ControlPlaneClient {
    * Check if client has a specific scope
    */
   hasScope(scope: ClientScope): boolean {
-    return this.info.scopes.includes('admin') || this.info.scopes.includes(scope);
+    return this.info.scopes.includes("admin") || this.info.scopes.includes(scope);
   }
 
   /**
    * Check if client is a node (mobile companion)
    */
   get isNode(): boolean {
-    return this.info.role === 'node';
+    return this.info.role === "node";
   }
 
   /**
    * Mark client as authenticated with given scopes
    */
   authenticate(scopes: ClientScope[], deviceName?: string): void {
-    this.info.authState = 'authenticated';
+    this.info.authState = "authenticated";
     this.info.scopes = scopes;
     this.info.deviceName = deviceName;
     this.updateActivity();
@@ -181,9 +177,9 @@ export class ControlPlaneClient {
     commands: string[];
     permissions: Record<string, boolean>;
   }): void {
-    this.info.authState = 'authenticated';
-    this.info.role = 'node';
-    this.info.scopes = ['read']; // Nodes have limited scope
+    this.info.authState = "authenticated";
+    this.info.role = "node";
+    this.info.scopes = ["read"]; // Nodes have limited scope
     this.info.deviceName = options.deviceName;
     this.info.platform = options.platform;
     this.info.version = options.version;
@@ -202,9 +198,9 @@ export class ControlPlaneClient {
   updateCapabilities(
     capabilities: NodeCapabilityType[],
     commands: string[],
-    permissions: Record<string, boolean>
+    permissions: Record<string, boolean>,
   ): void {
-    if (this.info.role !== 'node') return;
+    if (this.info.role !== "node") return;
     this.info.capabilities = capabilities;
     this.info.commands = commands;
     this.info.permissions = permissions;
@@ -215,7 +211,7 @@ export class ControlPlaneClient {
    * Update node foreground state
    */
   setForeground(isForeground: boolean): void {
-    if (this.info.role !== 'node') return;
+    if (this.info.role !== "node") return;
     this.info.isForeground = isForeground;
     this.updateActivity();
   }
@@ -237,12 +233,12 @@ export class ControlPlaneClient {
     lastActivityAt: number;
     isForeground?: boolean;
   } | null {
-    if (this.info.role !== 'node') return null;
+    if (this.info.role !== "node") return null;
     return {
       id: this.info.id,
-      displayName: this.info.deviceName || 'Unknown Node',
-      platform: this.info.platform || 'ios',
-      version: this.info.version || '0.0.0',
+      displayName: this.info.deviceName || "Unknown Node",
+      platform: this.info.platform || "ios",
+      version: this.info.version || "0.0.0",
       deviceId: this.info.deviceId,
       modelIdentifier: this.info.modelIdentifier,
       capabilities: this.info.capabilities || [],
@@ -258,7 +254,7 @@ export class ControlPlaneClient {
    * Mark client as rejected
    */
   reject(): void {
-    this.info.authState = 'rejected';
+    this.info.authState = "rejected";
   }
 
   /**
@@ -317,7 +313,7 @@ export class ControlPlaneClient {
    */
   close(code?: number, reason?: string): void {
     if (this.isConnected) {
-      this.info.socket.close(code || 1000, reason || 'Connection closed');
+      this.info.socket.close(code || 1000, reason || "Connection closed");
     }
   }
 
@@ -450,13 +446,13 @@ export class ClientRegistry {
     total: number;
     authenticated: number;
     pending: number;
-    clients: ReturnType<ControlPlaneClient['getSummary']>[];
+    clients: ReturnType<ControlPlaneClient["getSummary"]>[];
   } {
     const all = this.getAll();
     return {
       total: all.length,
       authenticated: all.filter((c) => c.isAuthenticated).length,
-      pending: all.filter((c) => c.info.authState === 'pending').length,
+      pending: all.filter((c) => c.info.authState === "pending").length,
       clients: all.map((c) => c.getSummary()),
     };
   }
@@ -493,7 +489,7 @@ export class ClientRegistry {
   /**
    * Get all node info summaries
    */
-  getNodeInfoList(): NonNullable<ReturnType<ControlPlaneClient['getNodeInfo']>>[] {
+  getNodeInfoList(): NonNullable<ReturnType<ControlPlaneClient["getNodeInfo"]>>[] {
     return this.getNodes()
       .map((n) => n.getNodeInfo())
       .filter((info): info is NonNullable<typeof info> => info !== null);

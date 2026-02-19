@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   PersonalityId,
   PersonaId,
@@ -6,8 +6,15 @@ import {
   PersonalityQuirks,
   DEFAULT_QUIRKS,
   DEFAULT_RESPONSE_STYLE,
-} from '../../shared/types';
-import { getMessage, getRandomPlaceholder, getUiCopy, type MessageKey, type UiCopyKey, type AgentMessageContext } from '../utils/agentMessages';
+} from "../../shared/types";
+import {
+  getMessage,
+  getRandomPlaceholder,
+  getUiCopy,
+  type MessageKey,
+  type UiCopyKey,
+  type AgentMessageContext,
+} from "../utils/agentMessages";
 
 /**
  * Agent context returned by the hook
@@ -40,11 +47,11 @@ export interface AgentContext {
  * Hook that provides unified access to agent personality context
  */
 export function useAgentContext(): AgentContext {
-  const [agentName, setAgentName] = useState('CoWork');
+  const [agentName, setAgentName] = useState("CoWork");
   const [userName, setUserName] = useState<string | undefined>(undefined);
-  const [personality, setPersonality] = useState<PersonalityId>('professional');
+  const [personality, setPersonality] = useState<PersonalityId>("professional");
   const [persona, setPersona] = useState<PersonaId | undefined>(undefined);
-  const [emojiUsage, setEmojiUsage] = useState<EmojiUsage>('minimal');
+  const [emojiUsage, setEmojiUsage] = useState<EmojiUsage>("minimal");
   const [quirks, setQuirks] = useState<PersonalityQuirks>(DEFAULT_QUIRKS);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -60,25 +67,21 @@ export function useAgentContext(): AgentContext {
       ]);
 
       // Agent name priority: personalitySettings > appearanceSettings > default
-      const name =
-        personalitySettings.agentName ||
-        appearanceSettings.assistantName ||
-        'CoWork';
+      const name = personalitySettings.agentName || appearanceSettings.assistantName || "CoWork";
       setAgentName(name);
 
       // User name from relationship
       setUserName(personalitySettings.relationship?.userName);
 
       // Personality settings
-      setPersonality(personalitySettings.activePersonality || 'professional');
+      setPersonality(personalitySettings.activePersonality || "professional");
       setPersona(personalitySettings.activePersona);
       setEmojiUsage(
-        personalitySettings.responseStyle?.emojiUsage ||
-          DEFAULT_RESPONSE_STYLE.emojiUsage
+        personalitySettings.responseStyle?.emojiUsage || DEFAULT_RESPONSE_STYLE.emojiUsage,
       );
       setQuirks(personalitySettings.quirks || DEFAULT_QUIRKS);
     } catch (error) {
-      console.error('Failed to load agent context:', error);
+      console.error("Failed to load agent context:", error);
     } finally {
       setIsLoading(false);
     }
@@ -98,25 +101,25 @@ export function useAgentContext(): AgentContext {
       emojiUsage,
       quirks,
     }),
-    [agentName, userName, personality, persona, emojiUsage, quirks]
+    [agentName, userName, personality, persona, emojiUsage, quirks],
   );
 
   // getMessage helper
   const getMessageFn = useCallback(
     (key: MessageKey, detail?: string) => getMessage(key, messageContext, detail),
-    [messageContext]
+    [messageContext],
   );
 
   const getUiCopyFn = useCallback(
     (key: UiCopyKey, replacements?: Record<string, string | number>) =>
       getUiCopy(key, messageContext, replacements),
-    [messageContext]
+    [messageContext],
   );
 
   // getPlaceholder helper
   const getPlaceholderFn = useCallback(
     () => getRandomPlaceholder(messageContext),
-    [messageContext]
+    [messageContext],
   );
 
   // formatWithNames helper - replaces {agentName} and {userName} in templates
@@ -127,11 +130,11 @@ export function useAgentContext(): AgentContext {
         result = result.replace(/{userName}/g, userName);
       } else {
         // Remove patterns like ", {userName}" or "{userName}, " if no userName
-        result = result.replace(/,?\s*{userName}\s*,?/g, '');
+        result = result.replace(/,?\s*{userName}\s*,?/g, "");
       }
       return result;
     },
-    [agentName, userName]
+    [agentName, userName],
   );
 
   return {

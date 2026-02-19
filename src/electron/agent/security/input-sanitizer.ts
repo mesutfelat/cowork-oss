@@ -15,18 +15,18 @@
 export interface EncodedContentResult {
   hasEncoded: boolean;
   decodedPayload?: string;
-  encodingType?: 'base64' | 'rot13' | 'hex' | 'unicode';
+  encodingType?: "base64" | "rot13" | "hex" | "unicode";
 }
 
 export interface ImpersonationResult {
   detected: boolean;
-  type?: 'system' | 'admin' | 'directive' | 'mode';
+  type?: "system" | "admin" | "directive" | "mode";
   pattern?: string;
 }
 
 export interface ContentInjectionResult {
   detected: boolean;
-  type?: 'document' | 'email' | 'code' | 'html';
+  type?: "document" | "email" | "code" | "html";
   location?: string;
 }
 
@@ -41,7 +41,7 @@ export interface SanitizationReport {
   hasEncodedContent: EncodedContentResult;
   hasImpersonation: ImpersonationResult;
   hasContentInjection: ContentInjectionResult;
-  threatLevel: 'none' | 'low' | 'medium' | 'high';
+  threatLevel: "none" | "low" | "medium" | "high";
 }
 
 export class InputSanitizer {
@@ -61,39 +61,39 @@ export class InputSanitizer {
   // System impersonation patterns
   private static readonly IMPERSONATION_PATTERNS: Array<{
     pattern: RegExp;
-    type: 'system' | 'admin' | 'directive' | 'mode';
+    type: "system" | "admin" | "directive" | "mode";
   }> = [
-    { pattern: /\[SYSTEM\]/i, type: 'system' },
-    { pattern: /\[\/SYSTEM\]/i, type: 'system' },
-    { pattern: /<SYSTEM>/i, type: 'system' },
-    { pattern: /<\/SYSTEM>/i, type: 'system' },
-    { pattern: /\[ADMIN\s*OVERRIDE\]/i, type: 'admin' },
-    { pattern: /\[NEW\s*DIRECTIVE\]/i, type: 'directive' },
-    { pattern: /\[PRIORITY\s*INSTRUCTION\]/i, type: 'directive' },
-    { pattern: /INITIATING\s+\w+\s+MODE/i, type: 'mode' },
-    { pattern: /ACTIVATING\s+\w+\s+MODE/i, type: 'mode' },
-    { pattern: /<<\s*SYS\s*>>/i, type: 'system' },
-    { pattern: /<\|im_start\|>system/i, type: 'system' },
-    { pattern: /<\|system\|>/i, type: 'system' },
-    { pattern: /\[INST\]/i, type: 'system' },
-    { pattern: /###\s*System/i, type: 'system' },
+    { pattern: /\[SYSTEM\]/i, type: "system" },
+    { pattern: /\[\/SYSTEM\]/i, type: "system" },
+    { pattern: /<SYSTEM>/i, type: "system" },
+    { pattern: /<\/SYSTEM>/i, type: "system" },
+    { pattern: /\[ADMIN\s*OVERRIDE\]/i, type: "admin" },
+    { pattern: /\[NEW\s*DIRECTIVE\]/i, type: "directive" },
+    { pattern: /\[PRIORITY\s*INSTRUCTION\]/i, type: "directive" },
+    { pattern: /INITIATING\s+\w+\s+MODE/i, type: "mode" },
+    { pattern: /ACTIVATING\s+\w+\s+MODE/i, type: "mode" },
+    { pattern: /<<\s*SYS\s*>>/i, type: "system" },
+    { pattern: /<\|im_start\|>system/i, type: "system" },
+    { pattern: /<\|system\|>/i, type: "system" },
+    { pattern: /\[INST\]/i, type: "system" },
+    { pattern: /###\s*System/i, type: "system" },
   ];
 
   // Document injection patterns (hidden instructions in content)
   private static readonly CONTENT_INJECTION_PATTERNS: Array<{
     pattern: RegExp;
-    type: 'document' | 'email' | 'code' | 'html';
+    type: "document" | "email" | "code" | "html";
   }> = [
     {
       pattern: /---\s*BEGIN\s*DOCUMENT\s*---[\s\S]*?(?:AI|ASSISTANT|SYSTEM)\s*:/gi,
-      type: 'document',
+      type: "document",
     },
-    { pattern: /<!--[\s\S]*?(?:AI|ASSISTANT)\s*:[\s\S]*?-->/gi, type: 'html' },
+    { pattern: /<!--[\s\S]*?(?:AI|ASSISTANT)\s*:[\s\S]*?-->/gi, type: "html" },
     {
       pattern: /\[(?:AI|ASSISTANT|SYSTEM)[\s_]*(?:INSTRUCTION|NOTE|COMMAND)\s*:/gi,
-      type: 'document',
+      type: "document",
     },
-    { pattern: /From:.*\nSubject:.*\n[\s\S]*?(?:AI|ASSISTANT)\s*:/gi, type: 'email' },
+    { pattern: /From:.*\nSubject:.*\n[\s\S]*?(?:AI|ASSISTANT)\s*:/gi, type: "email" },
   ];
 
   // Patterns for hidden instructions in code
@@ -116,16 +116,16 @@ export class InputSanitizer {
     const hasContentInjection = this.detectContentInjection(input);
 
     // Calculate threat level
-    let threatLevel: 'none' | 'low' | 'medium' | 'high' = 'none';
+    let threatLevel: "none" | "low" | "medium" | "high" = "none";
 
     if (hasImpersonation.detected) {
-      threatLevel = 'high';
+      threatLevel = "high";
     } else if (hasEncodedContent.hasEncoded && hasEncodedContent.decodedPayload) {
-      threatLevel = 'high';
+      threatLevel = "high";
     } else if (hasContentInjection.detected) {
-      threatLevel = 'medium';
+      threatLevel = "medium";
     } else if (hasEncodedContent.hasEncoded) {
-      threatLevel = 'low';
+      threatLevel = "low";
     }
 
     return {
@@ -147,13 +147,13 @@ export class InputSanitizer {
 
     while ((match = base64Pattern.exec(input)) !== null) {
       try {
-        const decoded = Buffer.from(match[1], 'base64').toString('utf8');
+        const decoded = Buffer.from(match[1], "base64").toString("utf8");
         // Check if decoded content is readable text (not binary garbage)
         if (/^[\x20-\x7E\s]+$/.test(decoded) && this.containsInjectionPatterns(decoded)) {
           return {
             hasEncoded: true,
             decodedPayload: decoded,
-            encodingType: 'base64',
+            encodingType: "base64",
           };
         }
       } catch {
@@ -170,7 +170,7 @@ export class InputSanitizer {
 
     for (const pattern of rot13Patterns) {
       if (pattern.test(input)) {
-        return { hasEncoded: true, encodingType: 'rot13' };
+        return { hasEncoded: true, encodingType: "rot13" };
       }
     }
 
@@ -178,12 +178,12 @@ export class InputSanitizer {
     const hexPattern = /(?:hex|0x)\s*[:\s]*([0-9A-Fa-f]{20,})/gi;
     while ((match = hexPattern.exec(input)) !== null) {
       try {
-        const decoded = Buffer.from(match[1], 'hex').toString('utf8');
+        const decoded = Buffer.from(match[1], "hex").toString("utf8");
         if (/^[\x20-\x7E\s]+$/.test(decoded) && this.containsInjectionPatterns(decoded)) {
           return {
             hasEncoded: true,
             decodedPayload: decoded,
-            encodingType: 'hex',
+            encodingType: "hex",
           };
         }
       } catch {
@@ -236,10 +236,7 @@ export class InputSanitizer {
       if (matches) {
         detectedPatterns.push(...matches);
         // Replace with annotation that flags the suspicious content
-        sanitized = sanitized.replace(
-          pattern,
-          '[SUSPICIOUS_INJECTION_PATTERN_DETECTED: $&]'
-        );
+        sanitized = sanitized.replace(pattern, "[SUSPICIOUS_INJECTION_PATTERN_DETECTED: $&]");
       }
     }
 
@@ -255,28 +252,22 @@ export class InputSanitizer {
    * This doesn't block the message, just adds awareness for the LLM
    */
   static addSecurityContext(input: string, report: SanitizationReport): string {
-    if (report.threatLevel === 'none') {
+    if (report.threatLevel === "none") {
       return input;
     }
 
     const warnings: string[] = [];
 
     if (report.hasImpersonation.detected) {
-      warnings.push(
-        `system impersonation attempt detected (${report.hasImpersonation.type})`
-      );
+      warnings.push(`system impersonation attempt detected (${report.hasImpersonation.type})`);
     }
 
     if (report.hasEncodedContent.hasEncoded) {
-      warnings.push(
-        `encoded content detected (${report.hasEncodedContent.encodingType})`
-      );
+      warnings.push(`encoded content detected (${report.hasEncodedContent.encodingType})`);
     }
 
     if (report.hasContentInjection.detected) {
-      warnings.push(
-        `content injection pattern detected (${report.hasContentInjection.type})`
-      );
+      warnings.push(`content injection pattern detected (${report.hasContentInjection.type})`);
     }
 
     if (warnings.length === 0) {
@@ -284,7 +275,7 @@ export class InputSanitizer {
     }
 
     // Add security note as metadata, not blocking the content
-    return `[Security Analysis: ${warnings.join('; ')}]\n\n${input}`;
+    return `[Security Analysis: ${warnings.join("; ")}]\n\n${input}`;
   }
 
   /**
@@ -299,7 +290,7 @@ export class InputSanitizer {
    * Removes patterns that could be used to manipulate the agent
    */
   static sanitizeMemoryContent(memory: string): string {
-    if (!memory) return '';
+    if (!memory) return "";
 
     let sanitized = memory;
 
@@ -316,7 +307,7 @@ export class InputSanitizer {
     ];
 
     for (const pattern of memoryDangerousPatterns) {
-      sanitized = sanitized.replace(pattern, '[filtered_memory_content]');
+      sanitized = sanitized.replace(pattern, "[filtered_memory_content]");
     }
 
     return sanitized;
@@ -344,30 +335,30 @@ export class InputSanitizer {
       },
       {
         pattern: /your\s+system\s+prompt/gi,
-        issue: 'References system prompt',
+        issue: "References system prompt",
       },
       {
         pattern: /reveal\s+your\s+(instructions?|configuration)/gi,
-        issue: 'Attempts to request instruction disclosure',
+        issue: "Attempts to request instruction disclosure",
       },
       {
         pattern: /output\s+your\s+(system\s+)?prompt/gi,
-        issue: 'Attempts to extract prompt',
+        issue: "Attempts to extract prompt",
       },
       {
         pattern: /new\s+instructions?\s*:/gi,
-        issue: 'Contains instruction override marker',
+        issue: "Contains instruction override marker",
       },
       {
         pattern: /<<SYS>>|<\|im_start\|>|\[INST\]/gi,
-        issue: 'Contains model-specific injection markers',
+        issue: "Contains model-specific injection markers",
       },
     ];
 
     for (const { pattern, issue } of dangerousPatterns) {
       if (pattern.test(guidelines)) {
         issues.push(issue);
-        sanitized = sanitized.replace(pattern, '[filtered_guideline]');
+        sanitized = sanitized.replace(pattern, "[filtered_guideline]");
       }
     }
 

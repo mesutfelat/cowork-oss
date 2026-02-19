@@ -10,16 +10,16 @@
  * - No sandbox (fallback)
  */
 
-import { Workspace } from '../../../shared/types';
-import { MacOSSandbox } from './macos-sandbox';
-import { DockerSandbox } from './docker-sandbox';
-import { spawn } from 'child_process';
-import { createSecureTempFile } from './security-utils';
+import { Workspace } from "../../../shared/types";
+import { MacOSSandbox } from "./macos-sandbox";
+import { DockerSandbox } from "./docker-sandbox";
+import { spawn } from "child_process";
+import { createSecureTempFile } from "./security-utils";
 
 /**
  * Sandbox type enumeration
  */
-export type SandboxType = 'macos' | 'docker' | 'none';
+export type SandboxType = "macos" | "docker" | "none";
 
 /**
  * Sandbox execution options
@@ -70,19 +70,12 @@ export interface ISandbox {
   /**
    * Execute a command in the sandbox
    */
-  execute(
-    command: string,
-    args?: string[],
-    options?: SandboxOptions
-  ): Promise<SandboxResult>;
+  execute(command: string, args?: string[], options?: SandboxOptions): Promise<SandboxResult>;
 
   /**
    * Execute code in the sandbox (Python or JavaScript)
    */
-  executeCode(
-    code: string,
-    language: 'python' | 'javascript'
-  ): Promise<SandboxResult>;
+  executeCode(code: string, language: "python" | "javascript"): Promise<SandboxResult>;
 
   /**
    * Cleanup sandbox resources
@@ -95,7 +88,7 @@ export interface ISandbox {
  * Still enforces timeouts and output limits, but no OS-level isolation
  */
 export class NoSandbox implements ISandbox {
-  readonly type: SandboxType = 'none';
+  readonly type: SandboxType = "none";
   private workspace: Workspace;
 
   constructor(workspace: Workspace) {
@@ -109,51 +102,51 @@ export class NoSandbox implements ISandbox {
   async execute(
     command: string,
     args: string[] = [],
-    options: SandboxOptions = {}
+    options: SandboxOptions = {},
   ): Promise<SandboxResult> {
     const timeout = options.timeout ?? 5 * 60 * 1000;
     const maxOutputSize = options.maxOutputSize ?? 100 * 1024;
     const cwd = options.cwd || this.workspace.path;
 
     return new Promise((resolve) => {
-      let stdout = '';
-      let stderr = '';
+      let stdout = "";
+      let stderr = "";
       let killed = false;
       let timedOut = false;
 
-      const proc = spawn('/bin/sh', ['-c', `${command} ${args.join(' ')}`], {
+      const proc = spawn("/bin/sh", ["-c", `${command} ${args.join(" ")}`], {
         cwd,
         shell: true,
-        stdio: ['ignore', 'pipe', 'pipe'],
+        stdio: ["ignore", "pipe", "pipe"],
       });
 
       const timeoutHandle = setTimeout(() => {
         timedOut = true;
         killed = true;
-        proc.kill('SIGKILL');
+        proc.kill("SIGKILL");
       }, timeout);
 
-      proc.stdout?.on('data', (data: Buffer) => {
+      proc.stdout?.on("data", (data: Buffer) => {
         const chunk = data.toString();
         if (stdout.length + chunk.length <= maxOutputSize) {
           stdout += chunk;
         } else if (stdout.length < maxOutputSize) {
           stdout += chunk.slice(0, maxOutputSize - stdout.length);
-          stdout += '\n[Output truncated]';
+          stdout += "\n[Output truncated]";
         }
       });
 
-      proc.stderr?.on('data', (data: Buffer) => {
+      proc.stderr?.on("data", (data: Buffer) => {
         const chunk = data.toString();
         if (stderr.length + chunk.length <= maxOutputSize) {
           stderr += chunk;
         } else if (stderr.length < maxOutputSize) {
           stderr += chunk.slice(0, maxOutputSize - stderr.length);
-          stderr += '\n[Output truncated]';
+          stderr += "\n[Output truncated]";
         }
       });
 
-      proc.on('close', (code) => {
+      proc.on("close", (code) => {
         clearTimeout(timeoutHandle);
         resolve({
           exitCode: code ?? 1,
@@ -164,7 +157,7 @@ export class NoSandbox implements ISandbox {
         });
       });
 
-      proc.on('error', (err) => {
+      proc.on("error", (err) => {
         clearTimeout(timeoutHandle);
         resolve({
           exitCode: 1,
@@ -178,15 +171,12 @@ export class NoSandbox implements ISandbox {
     });
   }
 
-  async executeCode(
-    code: string,
-    language: 'python' | 'javascript'
-  ): Promise<SandboxResult> {
-    const ext = language === 'python' ? '.py' : '.js';
+  async executeCode(code: string, language: "python" | "javascript"): Promise<SandboxResult> {
+    const ext = language === "python" ? ".py" : ".js";
     const { filePath, cleanup } = createSecureTempFile(ext, code);
 
     try {
-      const interpreter = language === 'python' ? 'python3' : 'node';
+      const interpreter = language === "python" ? "python3" : "node";
       return await this.execute(interpreter, [filePath], {
         timeout: 60 * 1000,
         allowNetwork: false,
@@ -222,8 +212,8 @@ export async function isDockerAvailable(): Promise<boolean> {
   }
 
   dockerCheckPromise = new Promise((resolve) => {
-    const proc = spawn('docker', ['info'], {
-      stdio: ['ignore', 'pipe', 'pipe'],
+    const proc = spawn("docker", ["info"], {
+      stdio: ["ignore", "pipe", "pipe"],
     });
 
     let resolved = false;
@@ -237,7 +227,7 @@ export async function isDockerAvailable(): Promise<boolean> {
       }
     }, 5000);
 
-    proc.on('close', (code) => {
+    proc.on("close", (code) => {
       clearTimeout(timeout);
       if (!resolved) {
         resolved = true;
@@ -246,7 +236,7 @@ export async function isDockerAvailable(): Promise<boolean> {
       }
     });
 
-    proc.on('error', () => {
+    proc.on("error", () => {
       clearTimeout(timeout);
       if (!resolved) {
         resolved = true;
@@ -264,17 +254,17 @@ export async function isDockerAvailable(): Promise<boolean> {
  */
 export async function detectAvailableSandbox(): Promise<SandboxType> {
   // On macOS, prefer native sandbox-exec
-  if (process.platform === 'darwin') {
-    return 'macos';
+  if (process.platform === "darwin") {
+    return "macos";
   }
 
   // On other platforms, check for Docker
   if (await isDockerAvailable()) {
-    return 'docker';
+    return "docker";
   }
 
   // Fallback to no sandbox
-  return 'none';
+  return "none";
 }
 
 /**
@@ -286,20 +276,18 @@ export async function detectAvailableSandbox(): Promise<SandboxType> {
  */
 export async function createSandbox(
   workspace: Workspace,
-  preferredType?: SandboxType | 'auto'
+  preferredType?: SandboxType | "auto",
 ): Promise<ISandbox> {
   let sandboxType: SandboxType;
 
-  if (preferredType && preferredType !== 'auto') {
+  if (preferredType && preferredType !== "auto") {
     // Validate the preferred type is available
-    if (preferredType === 'macos' && process.platform !== 'darwin') {
-      console.warn(
-        'macOS sandbox requested but not on macOS, falling back to auto-detect'
-      );
+    if (preferredType === "macos" && process.platform !== "darwin") {
+      console.warn("macOS sandbox requested but not on macOS, falling back to auto-detect");
       sandboxType = await detectAvailableSandbox();
-    } else if (preferredType === 'docker' && !(await isDockerAvailable())) {
+    } else if (preferredType === "docker" && !(await isDockerAvailable())) {
       console.warn(
-        'Docker sandbox requested but Docker not available, falling back to auto-detect'
+        "Docker sandbox requested but Docker not available, falling back to auto-detect",
       );
       sandboxType = await detectAvailableSandbox();
     } else {
@@ -312,13 +300,13 @@ export async function createSandbox(
   let sandbox: ISandbox;
 
   switch (sandboxType) {
-    case 'macos':
+    case "macos":
       sandbox = new MacOSSandbox(workspace);
       break;
-    case 'docker':
+    case "docker":
       sandbox = new DockerSandbox(workspace);
       break;
-    case 'none':
+    case "none":
     default:
       sandbox = new NoSandbox(workspace);
       break;

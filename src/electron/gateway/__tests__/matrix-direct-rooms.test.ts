@@ -2,12 +2,12 @@
  * Tests for Matrix adapter direct rooms cache and isGroup field
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // Mock electron
-vi.mock('electron', () => ({
+vi.mock("electron", () => ({
   app: {
-    getPath: vi.fn().mockReturnValue('/tmp/test-cowork'),
+    getPath: vi.fn().mockReturnValue("/tmp/test-cowork"),
   },
 }));
 
@@ -58,7 +58,7 @@ function createMockMatrixAdapter() {
         this.directRoomsLoadedAt = now;
         return directRooms;
       } catch (error) {
-        console.warn('Failed to load Matrix direct rooms:', error);
+        console.warn("Failed to load Matrix direct rooms:", error);
         this.directRoomsLoadedAt = now; // Prevent repeated failures
         return null;
       }
@@ -73,7 +73,7 @@ function createMockMatrixAdapter() {
   };
 }
 
-describe('Matrix adapter direct rooms cache', () => {
+describe("Matrix adapter direct rooms cache", () => {
   let adapter: ReturnType<typeof createMockMatrixAdapter>;
 
   beforeEach(() => {
@@ -81,58 +81,58 @@ describe('Matrix adapter direct rooms cache', () => {
     adapter = createMockMatrixAdapter();
   });
 
-  describe('getDirectRooms', () => {
-    it('should return cached rooms if client is not available', async () => {
-      adapter.directRooms = new Set(['!room1:matrix.org', '!room2:matrix.org']);
+  describe("getDirectRooms", () => {
+    it("should return cached rooms if client is not available", async () => {
+      adapter.directRooms = new Set(["!room1:matrix.org", "!room2:matrix.org"]);
 
       const result = await adapter.getDirectRooms();
 
       expect(result).toEqual(adapter.directRooms);
     });
 
-    it('should return cached rooms if TTL has not expired', async () => {
+    it("should return cached rooms if TTL has not expired", async () => {
       const mockClient: MockMatrixClient = {
-        getDirectRooms: vi.fn().mockResolvedValue(['!new:matrix.org']),
+        getDirectRooms: vi.fn().mockResolvedValue(["!new:matrix.org"]),
       };
       adapter.client = mockClient;
-      adapter.directRooms = new Set(['!cached:matrix.org']);
+      adapter.directRooms = new Set(["!cached:matrix.org"]);
       adapter.directRoomsLoadedAt = Date.now(); // Just loaded
 
       const result = await adapter.getDirectRooms();
 
-      expect(result).toEqual(new Set(['!cached:matrix.org']));
+      expect(result).toEqual(new Set(["!cached:matrix.org"]));
       expect(mockClient.getDirectRooms).not.toHaveBeenCalled();
     });
 
-    it('should fetch fresh rooms when TTL has expired', async () => {
+    it("should fetch fresh rooms when TTL has expired", async () => {
       const mockClient: MockMatrixClient = {
-        getDirectRooms: vi.fn().mockResolvedValue(['!fresh1:matrix.org', '!fresh2:matrix.org']),
+        getDirectRooms: vi.fn().mockResolvedValue(["!fresh1:matrix.org", "!fresh2:matrix.org"]),
       };
       adapter.client = mockClient;
-      adapter.directRooms = new Set(['!old:matrix.org']);
-      adapter.directRoomsLoadedAt = Date.now() - (6 * 60 * 1000); // 6 minutes ago
+      adapter.directRooms = new Set(["!old:matrix.org"]);
+      adapter.directRoomsLoadedAt = Date.now() - 6 * 60 * 1000; // 6 minutes ago
 
       const result = await adapter.getDirectRooms();
 
-      expect(result).toEqual(new Set(['!fresh1:matrix.org', '!fresh2:matrix.org']));
+      expect(result).toEqual(new Set(["!fresh1:matrix.org", "!fresh2:matrix.org"]));
       expect(mockClient.getDirectRooms).toHaveBeenCalled();
     });
 
-    it('should fetch rooms when cache is empty', async () => {
+    it("should fetch rooms when cache is empty", async () => {
       const mockClient: MockMatrixClient = {
-        getDirectRooms: vi.fn().mockResolvedValue(['!room1:matrix.org']),
+        getDirectRooms: vi.fn().mockResolvedValue(["!room1:matrix.org"]),
       };
       adapter.client = mockClient;
 
       const result = await adapter.getDirectRooms();
 
-      expect(result).toEqual(new Set(['!room1:matrix.org']));
+      expect(result).toEqual(new Set(["!room1:matrix.org"]));
       expect(mockClient.getDirectRooms).toHaveBeenCalled();
     });
 
-    it('should return null on fetch error', async () => {
+    it("should return null on fetch error", async () => {
       const mockClient: MockMatrixClient = {
-        getDirectRooms: vi.fn().mockRejectedValue(new Error('Network error')),
+        getDirectRooms: vi.fn().mockRejectedValue(new Error("Network error")),
       };
       adapter.client = mockClient;
       adapter.directRooms = null;
@@ -143,9 +143,9 @@ describe('Matrix adapter direct rooms cache', () => {
       expect(result).toBeNull();
     });
 
-    it('should update loadedAt timestamp on successful fetch', async () => {
+    it("should update loadedAt timestamp on successful fetch", async () => {
       const mockClient: MockMatrixClient = {
-        getDirectRooms: vi.fn().mockResolvedValue(['!room:matrix.org']),
+        getDirectRooms: vi.fn().mockResolvedValue(["!room:matrix.org"]),
       };
       adapter.client = mockClient;
       adapter.directRoomsLoadedAt = 0;
@@ -156,9 +156,9 @@ describe('Matrix adapter direct rooms cache', () => {
       expect(adapter.directRoomsLoadedAt).toBeGreaterThanOrEqual(before);
     });
 
-    it('should update loadedAt timestamp on error to prevent rapid retries', async () => {
+    it("should update loadedAt timestamp on error to prevent rapid retries", async () => {
       const mockClient: MockMatrixClient = {
-        getDirectRooms: vi.fn().mockRejectedValue(new Error('Error')),
+        getDirectRooms: vi.fn().mockRejectedValue(new Error("Error")),
       };
       adapter.client = mockClient;
       adapter.directRoomsLoadedAt = 0;
@@ -170,46 +170,46 @@ describe('Matrix adapter direct rooms cache', () => {
     });
   });
 
-  describe('determineIsGroup', () => {
-    it('should return false for direct rooms', () => {
-      const directRoomsSet = new Set(['!dm1:matrix.org', '!dm2:matrix.org']);
+  describe("determineIsGroup", () => {
+    it("should return false for direct rooms", () => {
+      const directRoomsSet = new Set(["!dm1:matrix.org", "!dm2:matrix.org"]);
 
-      expect(adapter.determineIsGroup('!dm1:matrix.org', directRoomsSet)).toBe(false);
-      expect(adapter.determineIsGroup('!dm2:matrix.org', directRoomsSet)).toBe(false);
+      expect(adapter.determineIsGroup("!dm1:matrix.org", directRoomsSet)).toBe(false);
+      expect(adapter.determineIsGroup("!dm2:matrix.org", directRoomsSet)).toBe(false);
     });
 
-    it('should return true for group rooms', () => {
-      const directRoomsSet = new Set(['!dm1:matrix.org']);
+    it("should return true for group rooms", () => {
+      const directRoomsSet = new Set(["!dm1:matrix.org"]);
 
-      expect(adapter.determineIsGroup('!group:matrix.org', directRoomsSet)).toBe(true);
-      expect(adapter.determineIsGroup('!another-group:matrix.org', directRoomsSet)).toBe(true);
+      expect(adapter.determineIsGroup("!group:matrix.org", directRoomsSet)).toBe(true);
+      expect(adapter.determineIsGroup("!another-group:matrix.org", directRoomsSet)).toBe(true);
     });
 
-    it('should return undefined when direct rooms set is null', () => {
-      expect(adapter.determineIsGroup('!room:matrix.org', null)).toBeUndefined();
+    it("should return undefined when direct rooms set is null", () => {
+      expect(adapter.determineIsGroup("!room:matrix.org", null)).toBeUndefined();
     });
 
-    it('should return true when direct rooms set is empty', () => {
+    it("should return true when direct rooms set is empty", () => {
       const directRoomsSet = new Set<string>();
 
-      expect(adapter.determineIsGroup('!room:matrix.org', directRoomsSet)).toBe(true);
+      expect(adapter.determineIsGroup("!room:matrix.org", directRoomsSet)).toBe(true);
     });
   });
 });
 
-describe('Matrix message isGroup field', () => {
+describe("Matrix message isGroup field", () => {
   function createMatrixMessage(
     eventId: string,
     roomId: string,
     sender: string,
     body: string,
-    isGroup?: boolean
+    isGroup?: boolean,
   ) {
     return {
       messageId: eventId,
-      channel: 'matrix',
+      channel: "matrix",
       userId: sender,
-      userName: sender.split(':')[0].substring(1),
+      userName: sender.split(":")[0].substring(1),
       chatId: roomId,
       isGroup,
       text: body,
@@ -217,37 +217,37 @@ describe('Matrix message isGroup field', () => {
     };
   }
 
-  it('should include isGroup=false for direct messages', () => {
+  it("should include isGroup=false for direct messages", () => {
     const msg = createMatrixMessage(
-      '$event1',
-      '!dm-room:matrix.org',
-      '@user:matrix.org',
-      'Hello',
-      false
+      "$event1",
+      "!dm-room:matrix.org",
+      "@user:matrix.org",
+      "Hello",
+      false,
     );
 
     expect(msg.isGroup).toBe(false);
   });
 
-  it('should include isGroup=true for group messages', () => {
+  it("should include isGroup=true for group messages", () => {
     const msg = createMatrixMessage(
-      '$event2',
-      '!group-room:matrix.org',
-      '@user:matrix.org',
-      'Hello everyone',
-      true
+      "$event2",
+      "!group-room:matrix.org",
+      "@user:matrix.org",
+      "Hello everyone",
+      true,
     );
 
     expect(msg.isGroup).toBe(true);
   });
 
-  it('should include isGroup=undefined when unknown', () => {
+  it("should include isGroup=undefined when unknown", () => {
     const msg = createMatrixMessage(
-      '$event3',
-      '!unknown-room:matrix.org',
-      '@user:matrix.org',
-      'Message',
-      undefined
+      "$event3",
+      "!unknown-room:matrix.org",
+      "@user:matrix.org",
+      "Message",
+      undefined,
     );
 
     expect(msg.isGroup).toBeUndefined();

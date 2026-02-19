@@ -8,21 +8,22 @@
  * - Publishing skills (future)
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
-import { getUserDataDir } from '../utils/user-data-dir';
+import * as fs from "fs";
+import * as path from "path";
+import { getUserDataDir } from "../utils/user-data-dir";
 import {
   CustomSkill,
   SkillRegistryEntry,
   SkillSearchResult,
   SkillInstallProgress,
-} from '../../shared/types';
+} from "../../shared/types";
 
 // Default registry URL - can be overridden via SKILLHUB_REGISTRY env var.
 // When pointing to a GitHub raw URL with a catalog.json, the static catalog mode is used.
-const DEFAULT_REGISTRY_URL = process.env.SKILLHUB_REGISTRY
-  || 'https://raw.githubusercontent.com/CoWork-OS/CoWork-OS/main/registry';
-const SKILLS_FOLDER_NAME = 'skills';
+const DEFAULT_REGISTRY_URL =
+  process.env.SKILLHUB_REGISTRY ||
+  "https://raw.githubusercontent.com/CoWork-OS/CoWork-OS/main/registry";
+const SKILLS_FOLDER_NAME = "skills";
 
 // Cache for the static catalog (avoids re-fetching on every search)
 const CATALOG_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -36,7 +37,7 @@ const VALID_SKILL_ID = /^[a-z0-9_-]+$/;
  * Returns null if the skill ID is invalid/unsafe
  */
 function sanitizeSkillId(skillId: string): string | null {
-  if (!skillId || typeof skillId !== 'string') {
+  if (!skillId || typeof skillId !== "string") {
     return null;
   }
 
@@ -49,7 +50,7 @@ function sanitizeSkillId(skillId: string): string | null {
   }
 
   // Reject path traversal attempts
-  if (normalized.includes('..') || normalized.includes('/') || normalized.includes('\\')) {
+  if (normalized.includes("..") || normalized.includes("/") || normalized.includes("\\")) {
     console.warn(`[SkillRegistry] Path traversal attempt rejected: ${skillId}`);
     return null;
   }
@@ -78,8 +79,7 @@ export class SkillRegistry {
   constructor(config?: SkillRegistryConfig) {
     this.registryUrl = config?.registryUrl || DEFAULT_REGISTRY_URL;
     this.managedSkillsDir =
-      config?.managedSkillsDir ||
-      path.join(getUserDataDir(), SKILLS_FOLDER_NAME);
+      config?.managedSkillsDir || path.join(getUserDataDir(), SKILLS_FOLDER_NAME);
 
     // Ensure managed skills directory exists
     this.ensureSkillsDirectory();
@@ -92,10 +92,10 @@ export class SkillRegistry {
   private isStaticCatalog(): boolean {
     const url = this.registryUrl.toLowerCase();
     return (
-      url.includes('raw.githubusercontent.com') ||
-      url.includes('github.io') ||
-      url.endsWith('/registry') ||
-      url.endsWith('/registry/')
+      url.includes("raw.githubusercontent.com") ||
+      url.includes("github.io") ||
+      url.endsWith("/registry") ||
+      url.endsWith("/registry/")
     );
   }
 
@@ -103,12 +103,12 @@ export class SkillRegistry {
    * Fetch the static catalog.json and cache it.
    */
   private async fetchCatalog(): Promise<SkillRegistryEntry[]> {
-    if (this.catalogCache && (Date.now() - this.catalogCache.fetchedAt) < CATALOG_CACHE_TTL_MS) {
+    if (this.catalogCache && Date.now() - this.catalogCache.fetchedAt < CATALOG_CACHE_TTL_MS) {
       return this.catalogCache.entries;
     }
 
     try {
-      const catalogUrl = this.registryUrl.endsWith('/')
+      const catalogUrl = this.registryUrl.endsWith("/")
         ? `${this.registryUrl}catalog.json`
         : `${this.registryUrl}/catalog.json`;
 
@@ -117,13 +117,13 @@ export class SkillRegistry {
         throw new Error(`Failed to fetch catalog: ${response.status}`);
       }
 
-      const data = await response.json() as { skills?: SkillRegistryEntry[] };
+      const data = (await response.json()) as { skills?: SkillRegistryEntry[] };
       const entries = Array.isArray(data.skills) ? data.skills : [];
       this.catalogCache = { entries, fetchedAt: Date.now() };
       console.log(`[SkillRegistry] Loaded catalog with ${entries.length} skills`);
       return entries;
     } catch (error) {
-      console.error('[SkillRegistry] Failed to fetch catalog:', error);
+      console.error("[SkillRegistry] Failed to fetch catalog:", error);
       return this.catalogCache?.entries || [];
     }
   }
@@ -148,7 +148,10 @@ export class SkillRegistry {
   /**
    * Search the registry for skills
    */
-  async search(query: string, options?: { page?: number; pageSize?: number }): Promise<SkillSearchResult> {
+  async search(
+    query: string,
+    options?: { page?: number; pageSize?: number },
+  ): Promise<SkillSearchResult> {
     const page = options?.page ?? 1;
     const pageSize = options?.pageSize ?? 20;
 
@@ -159,9 +162,9 @@ export class SkillRegistry {
 
     try {
       const url = new URL(`${this.registryUrl}/skills/search`);
-      url.searchParams.set('q', query);
-      url.searchParams.set('page', String(page));
-      url.searchParams.set('pageSize', String(pageSize));
+      url.searchParams.set("q", query);
+      url.searchParams.set("page", String(page));
+      url.searchParams.set("pageSize", String(pageSize));
 
       const response = await fetch(url.toString());
 
@@ -172,7 +175,7 @@ export class SkillRegistry {
       const data = await response.json();
       return data as SkillSearchResult;
     } catch (error) {
-      console.error('[SkillRegistry] Search failed:', error);
+      console.error("[SkillRegistry] Search failed:", error);
       // Return empty result on error
       return {
         query,
@@ -187,10 +190,14 @@ export class SkillRegistry {
   /**
    * Search the cached catalog client-side
    */
-  private async searchCatalog(query: string, page: number, pageSize: number): Promise<SkillSearchResult> {
+  private async searchCatalog(
+    query: string,
+    page: number,
+    pageSize: number,
+  ): Promise<SkillSearchResult> {
     try {
       const entries = await this.fetchCatalog();
-      const q = (query || '').toLowerCase().trim();
+      const q = (query || "").toLowerCase().trim();
 
       const filtered = q
         ? entries.filter(
@@ -199,7 +206,7 @@ export class SkillRegistry {
               s.description.toLowerCase().includes(q) ||
               s.id.toLowerCase().includes(q) ||
               (s.tags || []).some((t) => t.toLowerCase().includes(q)) ||
-              (s.category || '').toLowerCase().includes(q)
+              (s.category || "").toLowerCase().includes(q),
           )
         : entries;
 
@@ -214,7 +221,7 @@ export class SkillRegistry {
         results,
       };
     } catch (error) {
-      console.error('[SkillRegistry] Catalog search failed:', error);
+      console.error("[SkillRegistry] Catalog search failed:", error);
       return { query, total: 0, page, pageSize, results: [] };
     }
   }
@@ -259,7 +266,7 @@ export class SkillRegistry {
   async install(
     skillId: string,
     version?: string,
-    onProgress?: InstallProgressCallback
+    onProgress?: InstallProgressCallback,
   ): Promise<{ success: boolean; skill?: CustomSkill; error?: string }> {
     // Validate skill ID before any operations
     const safeId = sanitizeSkillId(skillId);
@@ -270,17 +277,17 @@ export class SkillRegistry {
     const notify = (progress: Partial<SkillInstallProgress>) => {
       onProgress?.({
         skillId: safeId,
-        status: 'downloading',
+        status: "downloading",
         ...progress,
       } as SkillInstallProgress);
     };
 
     try {
-      notify({ status: 'downloading', progress: 0, message: 'Fetching skill from registry...' });
+      notify({ status: "downloading", progress: 0, message: "Fetching skill from registry..." });
 
       // Fetch skill data from registry
       const url = this.isStaticCatalog()
-        ? `${this.registryUrl.replace(/\/$/, '')}/skills/${safeId}.json`
+        ? `${this.registryUrl.replace(/\/$/, "")}/skills/${safeId}.json`
         : version
           ? `${this.registryUrl}/skills/${safeId}/download?version=${version}`
           : `${this.registryUrl}/skills/${safeId}/download`;
@@ -291,30 +298,30 @@ export class SkillRegistry {
         throw new Error(`Failed to download skill: ${response.status} ${response.statusText}`);
       }
 
-      notify({ status: 'downloading', progress: 50, message: 'Downloading skill data...' });
+      notify({ status: "downloading", progress: 50, message: "Downloading skill data..." });
 
       const skillData = await response.json();
 
-      notify({ status: 'extracting', progress: 70, message: 'Processing skill...' });
+      notify({ status: "extracting", progress: 70, message: "Processing skill..." });
 
       // Validate skill data
       if (!this.validateSkillData(skillData)) {
-        throw new Error('Invalid skill data received from registry');
+        throw new Error("Invalid skill data received from registry");
       }
 
-      notify({ status: 'installing', progress: 80, message: 'Installing skill...' });
+      notify({ status: "installing", progress: 80, message: "Installing skill..." });
 
       // Save skill to managed skills directory (using validated safeId)
       const skillPath = path.join(this.managedSkillsDir, `${safeId}.json`);
       const skill: CustomSkill = {
         ...skillData,
-        source: 'managed',
+        source: "managed",
         filePath: skillPath,
       };
 
-      fs.writeFileSync(skillPath, JSON.stringify(skill, null, 2), 'utf-8');
+      fs.writeFileSync(skillPath, JSON.stringify(skill, null, 2), "utf-8");
 
-      notify({ status: 'completed', progress: 100, message: 'Skill installed successfully' });
+      notify({ status: "completed", progress: 100, message: "Skill installed successfully" });
 
       console.log(`[SkillRegistry] Installed skill: ${safeId} at ${skillPath}`);
 
@@ -323,7 +330,7 @@ export class SkillRegistry {
       const errorMessage = error instanceof Error ? error.message : String(error);
       console.error(`[SkillRegistry] Install failed for ${safeId}:`, errorMessage);
 
-      notify({ status: 'failed', progress: 0, message: errorMessage, error: errorMessage });
+      notify({ status: "failed", progress: 0, message: errorMessage, error: errorMessage });
 
       return { success: false, error: errorMessage };
     }
@@ -335,7 +342,7 @@ export class SkillRegistry {
   async update(
     skillId: string,
     version?: string,
-    onProgress?: InstallProgressCallback
+    onProgress?: InstallProgressCallback,
   ): Promise<{ success: boolean; skill?: CustomSkill; error?: string }> {
     // Validate skill ID
     const safeId = sanitizeSkillId(skillId);
@@ -357,7 +364,7 @@ export class SkillRegistry {
    * Update all managed skills
    */
   async updateAll(
-    onProgress?: (skillId: string, progress: SkillInstallProgress) => void
+    onProgress?: (skillId: string, progress: SkillInstallProgress) => void,
   ): Promise<{ updated: string[]; failed: string[] }> {
     const updated: string[] = [];
     const failed: string[] = [];
@@ -419,14 +426,14 @@ export class SkillRegistry {
     const files = fs.readdirSync(this.managedSkillsDir);
 
     for (const file of files) {
-      if (!file.endsWith('.json')) continue;
+      if (!file.endsWith(".json")) continue;
 
       try {
         const filePath = path.join(this.managedSkillsDir, file);
-        const content = fs.readFileSync(filePath, 'utf-8');
+        const content = fs.readFileSync(filePath, "utf-8");
         const skill = JSON.parse(content) as CustomSkill;
         skill.filePath = filePath;
-        skill.source = 'managed';
+        skill.source = "managed";
         skills.push(skill);
       } catch (error) {
         console.error(`[SkillRegistry] Failed to load managed skill ${file}:`, error);
@@ -467,7 +474,7 @@ export class SkillRegistry {
     }
 
     try {
-      const content = fs.readFileSync(skillPath, 'utf-8');
+      const content = fs.readFileSync(skillPath, "utf-8");
       const skill = JSON.parse(content) as CustomSkill;
       return skill.metadata?.version || null;
     } catch {
@@ -509,15 +516,15 @@ export class SkillRegistry {
    * Validate skill data from registry
    */
   private validateSkillData(data: unknown): data is CustomSkill {
-    if (!data || typeof data !== 'object') return false;
+    if (!data || typeof data !== "object") return false;
 
     const skill = data as Record<string, unknown>;
 
     return (
-      typeof skill.id === 'string' &&
-      typeof skill.name === 'string' &&
-      typeof skill.description === 'string' &&
-      typeof skill.prompt === 'string'
+      typeof skill.id === "string" &&
+      typeof skill.name === "string" &&
+      typeof skill.description === "string" &&
+      typeof skill.prompt === "string"
     );
   }
 

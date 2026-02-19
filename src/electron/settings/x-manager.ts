@@ -4,13 +4,13 @@
  * Stores X integration settings in encrypted database.
  */
 
-import { SecureSettingsRepository } from '../database/SecureSettingsRepository';
-import { XSettingsData } from '../../shared/types';
+import { SecureSettingsRepository } from "../database/SecureSettingsRepository";
+import { XSettingsData } from "../../shared/types";
 
 const DEFAULT_SETTINGS: XSettingsData = {
   enabled: false,
-  authMethod: 'browser',
-  cookieSource: ['chrome'],
+  authMethod: "browser",
+  cookieSource: ["chrome"],
   timeoutMs: 20000,
   cookieTimeoutMs: 20000,
   quoteDepth: 1,
@@ -29,13 +29,13 @@ export class XSettingsManager {
     try {
       if (SecureSettingsRepository.isInitialized()) {
         const repository = SecureSettingsRepository.getInstance();
-        const stored = repository.load<XSettingsData>('x');
+        const stored = repository.load<XSettingsData>("x");
         if (stored) {
           settings = { ...DEFAULT_SETTINGS, ...stored };
         }
       }
     } catch (error) {
-      console.error('[XSettingsManager] Failed to load settings:', error);
+      console.error("[XSettingsManager] Failed to load settings:", error);
     }
 
     this.cachedSettings = settings;
@@ -45,14 +45,14 @@ export class XSettingsManager {
   static saveSettings(settings: XSettingsData): void {
     try {
       if (!SecureSettingsRepository.isInitialized()) {
-        throw new Error('SecureSettingsRepository not initialized');
+        throw new Error("SecureSettingsRepository not initialized");
       }
       const repository = SecureSettingsRepository.getInstance();
-      repository.save('x', settings);
+      repository.save("x", settings);
       this.cachedSettings = settings;
-      console.log('[XSettingsManager] Settings saved');
+      console.log("[XSettingsManager] Settings saved");
     } catch (error) {
-      console.error('[XSettingsManager] Failed to save settings:', error);
+      console.error("[XSettingsManager] Failed to save settings:", error);
     }
   }
 

@@ -9,18 +9,19 @@
  * as "verification steps" for UI suppression.
  */
 export function isVerificationStepDescription(description?: string | null): boolean {
-  const desc = String(description || '').trim().toLowerCase();
+  const desc = String(description || "")
+    .trim()
+    .toLowerCase();
   if (!desc) return false;
 
-  if (desc === 'verify') return true;
-  if (desc.startsWith('verify:')) return true;
-  if (desc.startsWith('verify -')) return true;
-  if (desc.startsWith('verify ')) return true;
+  if (desc === "verify") return true;
+  if (desc.startsWith("verify:")) return true;
+  if (desc.startsWith("verify -")) return true;
+  if (desc.startsWith("verify ")) return true;
 
-  if (desc === 'verification') return true;
-  if (desc.startsWith('verification:')) return true;
-  if (desc.startsWith('verification ')) return true;
+  if (desc === "verification") return true;
+  if (desc.startsWith("verification:")) return true;
+  if (desc.startsWith("verification ")) return true;
 
   return false;
 }
-

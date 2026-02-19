@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { AgentRoleData } from '../../electron/preload';
-import type { AgentPerformanceReview, AgentReviewGenerateRequest } from '../../shared/types';
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { AgentRoleData } from "../../electron/preload";
+import type { AgentPerformanceReview, AgentReviewGenerateRequest } from "../../shared/types";
 
 type AgentRole = AgentRoleData;
 
@@ -14,7 +14,7 @@ export function AgentPerformanceReviewViewer({
   onClose: () => void;
 }) {
   const activeAgents = useMemo(() => agents.filter((a) => a.isActive), [agents]);
-  const [selectedAgentRoleId, setSelectedAgentRoleId] = useState<string>(activeAgents[0]?.id || '');
+  const [selectedAgentRoleId, setSelectedAgentRoleId] = useState<string>(activeAgents[0]?.id || "");
   const [periodDays, setPeriodDays] = useState<number>(7);
   const [reviews, setReviews] = useState<AgentPerformanceReview[]>([]);
   const [latest, setLatest] = useState<AgentPerformanceReview | null>(null);
@@ -24,7 +24,7 @@ export function AgentPerformanceReviewViewer({
 
   const selectedAgent = useMemo(
     () => activeAgents.find((a) => a.id === selectedAgentRoleId) || null,
-    [activeAgents, selectedAgentRoleId]
+    [activeAgents, selectedAgentRoleId],
   );
 
   const load = useCallback(async () => {
@@ -33,13 +33,17 @@ export function AgentPerformanceReviewViewer({
       setLoading(true);
       setError(null);
       const [list, lat] = await Promise.all([
-        window.electronAPI.listAgentReviews({ workspaceId, agentRoleId: selectedAgentRoleId, limit: 50 }),
+        window.electronAPI.listAgentReviews({
+          workspaceId,
+          agentRoleId: selectedAgentRoleId,
+          limit: 50,
+        }),
         window.electronAPI.getLatestAgentReview(workspaceId, selectedAgentRoleId),
       ]);
       setReviews(list);
       setLatest(lat || null);
     } catch (e: any) {
-      setError(e?.message || 'Failed to load reviews');
+      setError(e?.message || "Failed to load reviews");
     } finally {
       setLoading(false);
     }
@@ -63,7 +67,7 @@ export function AgentPerformanceReviewViewer({
       setLatest(created);
       setReviews((prev) => [created, ...prev]);
     } catch (e: any) {
-      setError(e?.message || 'Failed to generate review');
+      setError(e?.message || "Failed to generate review");
     } finally {
       setGenerating(false);
     }
@@ -78,7 +82,7 @@ export function AgentPerformanceReviewViewer({
         autonomyLevel: latest.recommendedAutonomyLevel,
       });
     } catch (e: any) {
-      setError(e?.message || 'Failed to apply update');
+      setError(e?.message || "Failed to apply update");
     }
   }, [selectedAgent, latest?.recommendedAutonomyLevel]);
 
@@ -87,9 +91,13 @@ export function AgentPerformanceReviewViewer({
       <div className="review-header">
         <div className="review-title">
           <h3>Performance Reviews</h3>
-          <div className="review-subtitle">Generate and track role-level reviews per workspace.</div>
+          <div className="review-subtitle">
+            Generate and track role-level reviews per workspace.
+          </div>
         </div>
-        <button className="btn" onClick={onClose}>Close</button>
+        <button className="btn" onClick={onClose}>
+          Close
+        </button>
       </div>
 
       {error && <div className="review-error">{error}</div>}
@@ -97,9 +105,14 @@ export function AgentPerformanceReviewViewer({
       <div className="review-controls">
         <label>
           Agent
-          <select value={selectedAgentRoleId} onChange={(e) => setSelectedAgentRoleId(e.target.value)}>
+          <select
+            value={selectedAgentRoleId}
+            onChange={(e) => setSelectedAgentRoleId(e.target.value)}
+          >
             {activeAgents.map((a) => (
-              <option key={a.id} value={a.id}>{a.displayName}</option>
+              <option key={a.id} value={a.id}>
+                {a.displayName}
+              </option>
             ))}
           </select>
         </label>
@@ -113,8 +126,12 @@ export function AgentPerformanceReviewViewer({
             onChange={(e) => setPeriodDays(Number(e.target.value) || 7)}
           />
         </label>
-        <button className="btn primary" onClick={handleGenerate} disabled={generating || !selectedAgentRoleId}>
-          {generating ? 'Generating...' : 'Generate Review'}
+        <button
+          className="btn primary"
+          onClick={handleGenerate}
+          disabled={generating || !selectedAgentRoleId}
+        >
+          {generating ? "Generating..." : "Generate Review"}
         </button>
       </div>
 
@@ -128,7 +145,7 @@ export function AgentPerformanceReviewViewer({
                 <div>
                   <div className="review-card-title">Latest</div>
                   <div className="review-card-meta">
-                    {latest ? new Date(latest.createdAt).toLocaleString() : 'No reviews yet'}
+                    {latest ? new Date(latest.createdAt).toLocaleString() : "No reviews yet"}
                   </div>
                 </div>
                 {latest?.recommendedAutonomyLevel && selectedAgent && (
@@ -160,7 +177,9 @@ export function AgentPerformanceReviewViewer({
                 {reviews.map((r) => (
                   <div key={r.id} className="review-row">
                     <div className="review-row-meta">
-                      <div className="review-row-date">{new Date(r.createdAt).toLocaleString()}</div>
+                      <div className="review-row-date">
+                        {new Date(r.createdAt).toLocaleString()}
+                      </div>
                       <div className="review-row-rating">{r.rating}/5</div>
                     </div>
                     <div className="review-row-body">
@@ -296,4 +315,3 @@ export function AgentPerformanceReviewViewer({
     </div>
   );
 }
-

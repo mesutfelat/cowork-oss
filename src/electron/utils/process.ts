@@ -4,8 +4,8 @@
  * Helper functions for executing external commands.
  */
 
-import { spawn, exec } from 'child_process';
-import { promisify } from 'util';
+import { spawn, exec } from "child_process";
+import { promisify } from "util";
 
 const execAsync = promisify(exec);
 
@@ -26,7 +26,7 @@ export interface RunCommandOptions {
  */
 export async function checkBinaryExists(binary: string): Promise<boolean> {
   try {
-    const command = process.platform === 'win32' ? `where ${binary}` : `which ${binary}`;
+    const command = process.platform === "win32" ? `where ${binary}` : `which ${binary}`;
     await execAsync(command);
     return true;
   } catch {
@@ -45,36 +45,36 @@ export async function runCommand(
   const { timeoutMs = 30_000, cwd, env } = options;
 
   return new Promise((resolve) => {
-    let stdout = '';
-    let stderr = '';
+    let stdout = "";
+    let stderr = "";
     let resolved = false;
 
     const child = spawn(command, args, {
       cwd,
       env: env ? { ...process.env, ...env } : process.env,
-      stdio: ['ignore', 'pipe', 'pipe'],
+      stdio: ["ignore", "pipe", "pipe"],
     });
 
     const timeout = setTimeout(() => {
       if (resolved) return;
       resolved = true;
-      child.kill('SIGKILL');
+      child.kill("SIGKILL");
       resolve({
         code: -1,
         stdout,
-        stderr: stderr || 'Command timed out',
+        stderr: stderr || "Command timed out",
       });
     }, timeoutMs);
 
-    child.stdout?.on('data', (data: Buffer) => {
+    child.stdout?.on("data", (data: Buffer) => {
       stdout += data.toString();
     });
 
-    child.stderr?.on('data', (data: Buffer) => {
+    child.stderr?.on("data", (data: Buffer) => {
       stderr += data.toString();
     });
 
-    child.on('error', (err) => {
+    child.on("error", (err) => {
       if (resolved) return;
       resolved = true;
       clearTimeout(timeout);
@@ -85,7 +85,7 @@ export async function runCommand(
       });
     });
 
-    child.on('exit', (code) => {
+    child.on("exit", (code) => {
       if (resolved) return;
       resolved = true;
       clearTimeout(timeout);
@@ -117,7 +117,7 @@ export async function runShellCommand(
   } catch (error: any) {
     return {
       code: error.code ?? -1,
-      stdout: error.stdout ?? '',
+      stdout: error.stdout ?? "",
       stderr: error.stderr ?? error.message ?? String(error),
     };
   }

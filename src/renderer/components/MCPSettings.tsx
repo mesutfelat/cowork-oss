@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
-import { MCPRegistryBrowser } from './MCPRegistryBrowser';
-import { ConnectorSetupModal, ConnectorProvider } from './ConnectorSetupModal';
-import { useAgentContext } from '../hooks/useAgentContext';
+import { useState, useEffect } from "react";
+import { MCPRegistryBrowser } from "./MCPRegistryBrowser";
+import { ConnectorSetupModal, ConnectorProvider } from "./ConnectorSetupModal";
+import { useAgentContext } from "../hooks/useAgentContext";
 
 // Types (matching preload types)
-type MCPTransportType = 'stdio' | 'sse' | 'websocket';
-type MCPConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'reconnecting' | 'error';
+type MCPTransportType = "stdio" | "sse" | "websocket";
+type MCPConnectionStatus = "disconnected" | "connecting" | "connected" | "reconnecting" | "error";
 
 interface MCPServerConfig {
   id: string;
@@ -27,7 +27,7 @@ interface MCPTool {
   name: string;
   description?: string;
   inputSchema: {
-    type: 'object';
+    type: "object";
     properties?: Record<string, any>;
     required?: string[];
   };
@@ -65,14 +65,14 @@ export function MCPSettings() {
   const [serverStatuses, setServerStatuses] = useState<MCPServerStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [activeView, setActiveView] = useState<'servers' | 'registry' | 'settings'>('servers');
+  const [activeView, setActiveView] = useState<"servers" | "registry" | "settings">("servers");
 
   // Add server form state
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newServerName, setNewServerName] = useState('');
-  const [newServerCommand, setNewServerCommand] = useState('');
-  const [newServerArgs, setNewServerArgs] = useState('');
-  const [newServerEnv, setNewServerEnv] = useState('');
+  const [newServerName, setNewServerName] = useState("");
+  const [newServerCommand, setNewServerCommand] = useState("");
+  const [newServerArgs, setNewServerArgs] = useState("");
+  const [newServerEnv, setNewServerEnv] = useState("");
 
   // Tools modal state
   const [viewingToolsFor, setViewingToolsFor] = useState<string | null>(null);
@@ -81,7 +81,12 @@ export function MCPSettings() {
   // Test result
   const [testingServer, setTestingServer] = useState<string | null>(null);
   const agentContext = useAgentContext();
-  const [testResult, setTestResult] = useState<{ serverId: string; success: boolean; error?: string; tools?: number } | null>(null);
+  const [testResult, setTestResult] = useState<{
+    serverId: string;
+    success: boolean;
+    error?: string;
+    tools?: number;
+  } | null>(null);
 
   // Connecting/disconnecting state
   const [connectingServer, setConnectingServer] = useState<string | null>(null);
@@ -104,8 +109,8 @@ export function MCPSettings() {
 
   // Edit server modal state
   const [editingServer, setEditingServer] = useState<string | null>(null);
-  const [editServerArgs, setEditServerArgs] = useState('');
-  const [editServerEnv, setEditServerEnv] = useState('');
+  const [editServerArgs, setEditServerArgs] = useState("");
+  const [editServerEnv, setEditServerEnv] = useState("");
   const [editServerPaths, setEditServerPaths] = useState<string[]>([]);
 
   useEffect(() => {
@@ -129,7 +134,7 @@ export function MCPSettings() {
       setSettings(loadedSettings);
       setServerStatuses(statuses);
     } catch (error) {
-      console.error('Failed to load MCP settings:', error);
+      console.error("Failed to load MCP settings:", error);
     } finally {
       setLoading(false);
     }
@@ -140,21 +145,21 @@ export function MCPSettings() {
 
     try {
       setSaving(true);
-      const args = newServerArgs ? newServerArgs.split(' ').filter(a => a.trim()) : [];
+      const args = newServerArgs ? newServerArgs.split(" ").filter((a) => a.trim()) : [];
       const env: Record<string, string> = {};
 
       if (newServerEnv) {
-        newServerEnv.split('\n').forEach(line => {
-          const [key, ...valueParts] = line.split('=');
+        newServerEnv.split("\n").forEach((line) => {
+          const [key, ...valueParts] = line.split("=");
           if (key && valueParts.length > 0) {
-            env[key.trim()] = valueParts.join('=').trim();
+            env[key.trim()] = valueParts.join("=").trim();
           }
         });
       }
 
       await window.electronAPI.addMCPServer({
         name: newServerName,
-        transport: 'stdio' as MCPTransportType,
+        transport: "stdio" as MCPTransportType,
         command: newServerCommand,
         args: args.length > 0 ? args : undefined,
         env: Object.keys(env).length > 0 ? env : undefined,
@@ -162,16 +167,16 @@ export function MCPSettings() {
       });
 
       // Reset form
-      setNewServerName('');
-      setNewServerCommand('');
-      setNewServerArgs('');
-      setNewServerEnv('');
+      setNewServerName("");
+      setNewServerCommand("");
+      setNewServerArgs("");
+      setNewServerEnv("");
       setShowAddForm(false);
 
       // Reload data
       await loadData();
     } catch (error: any) {
-      console.error('Failed to add server:', error);
+      console.error("Failed to add server:", error);
       alert(`Failed to add server: ${error.message}`);
     } finally {
       setSaving(false);
@@ -179,13 +184,13 @@ export function MCPSettings() {
   };
 
   const handleRemoveServer = async (serverId: string) => {
-    if (!confirm('Are you sure you want to remove this server?')) return;
+    if (!confirm("Are you sure you want to remove this server?")) return;
 
     try {
       await window.electronAPI.removeMCPServer(serverId);
       await loadData();
     } catch (error: any) {
-      console.error('Failed to remove server:', error);
+      console.error("Failed to remove server:", error);
       alert(`Failed to remove server: ${error.message}`);
     }
   };
@@ -194,17 +199,17 @@ export function MCPSettings() {
     try {
       setConnectingServer(serverId);
       // Clear any previous error for this server
-      setConnectionErrors(prev => {
+      setConnectionErrors((prev) => {
         const { [serverId]: _, ...rest } = prev;
         return rest;
       });
       await window.electronAPI.connectMCPServer(serverId);
     } catch (error: any) {
-      console.error('Failed to connect server:', error);
+      console.error("Failed to connect server:", error);
       // Store error in state for inline display
-      setConnectionErrors(prev => ({
+      setConnectionErrors((prev) => ({
         ...prev,
-        [serverId]: error.message || 'Connection failed'
+        [serverId]: error.message || "Connection failed",
       }));
     } finally {
       setConnectingServer(null);
@@ -215,16 +220,16 @@ export function MCPSettings() {
     try {
       setConnectingServer(serverId);
       // Clear any previous error for this server
-      setConnectionErrors(prev => {
+      setConnectionErrors((prev) => {
         const { [serverId]: _, ...rest } = prev;
         return rest;
       });
       await window.electronAPI.disconnectMCPServer(serverId);
     } catch (error: any) {
-      console.error('Failed to disconnect server:', error);
-      setConnectionErrors(prev => ({
+      console.error("Failed to disconnect server:", error);
+      setConnectionErrors((prev) => ({
         ...prev,
-        [serverId]: error.message || 'Disconnect failed'
+        [serverId]: error.message || "Disconnect failed",
       }));
     } finally {
       setConnectingServer(null);
@@ -250,7 +255,7 @@ export function MCPSettings() {
       setServerTools(tools);
       setViewingToolsFor(serverId);
     } catch (error) {
-      console.error('Failed to get server tools:', error);
+      console.error("Failed to get server tools:", error);
     }
   };
 
@@ -259,21 +264,22 @@ export function MCPSettings() {
       await window.electronAPI.updateMCPServer(serverId, { enabled });
       await loadData();
     } catch (error: any) {
-      console.error('Failed to update server:', error);
+      console.error("Failed to update server:", error);
     }
   };
 
   const isFilesystemServer = (config: MCPServerConfig | undefined): boolean => {
     if (!config) return false;
     // Check if it's the filesystem server by command or name
-    const commandMatch = config.command?.includes('server-filesystem') ||
-      config.args?.some(arg => arg.includes('server-filesystem'));
-    const nameMatch = config.name?.toLowerCase() === 'filesystem';
+    const commandMatch =
+      config.command?.includes("server-filesystem") ||
+      config.args?.some((arg) => arg.includes("server-filesystem"));
+    const nameMatch = config.name?.toLowerCase() === "filesystem";
     return commandMatch || nameMatch;
   };
 
   const handleOpenEditServer = (serverId: string) => {
-    const config = settings?.servers.find(s => s.id === serverId);
+    const config = settings?.servers.find((s) => s.id === serverId);
     if (!config) return;
 
     // For Filesystem server, extract paths from args (after -y @modelcontextprotocol/server-filesystem)
@@ -283,11 +289,11 @@ export function MCPSettings() {
       // Find paths - they come after the package name
       let foundPackage = false;
       for (const arg of args) {
-        if (arg.includes('server-filesystem')) {
+        if (arg.includes("server-filesystem")) {
           foundPackage = true;
           continue;
         }
-        if (foundPackage && arg.startsWith('/')) {
+        if (foundPackage && arg.startsWith("/")) {
           paths.push(arg);
         }
       }
@@ -299,18 +305,20 @@ export function MCPSettings() {
     // Convert args array to space-separated string (excluding filesystem paths for that server)
     if (isFilesystemServer(config)) {
       // For filesystem server, only show non-path args
-      const nonPathArgs = (config.args || []).filter(arg =>
-        !arg.startsWith('/') || arg.includes('server-filesystem')
+      const nonPathArgs = (config.args || []).filter(
+        (arg) => !arg.startsWith("/") || arg.includes("server-filesystem"),
       );
-      setEditServerArgs(nonPathArgs.join(' '));
+      setEditServerArgs(nonPathArgs.join(" "));
     } else {
-      setEditServerArgs(config.args?.join(' ') || '');
+      setEditServerArgs(config.args?.join(" ") || "");
     }
 
     // Convert env object to KEY=VALUE format
     const envString = config.env
-      ? Object.entries(config.env).map(([k, v]) => `${k}=${v}`).join('\n')
-      : '';
+      ? Object.entries(config.env)
+          .map(([k, v]) => `${k}=${v}`)
+          .join("\n")
+      : "";
     setEditServerEnv(envString);
 
     setEditingServer(serverId);
@@ -320,10 +328,10 @@ export function MCPSettings() {
     if (!editingServer) return;
 
     try {
-      const config = settings?.servers.find(s => s.id === editingServer);
+      const config = settings?.servers.find((s) => s.id === editingServer);
 
       // Parse args from space-separated string
-      let args = editServerArgs ? editServerArgs.split(' ').filter(a => a.trim()) : [];
+      let args = editServerArgs ? editServerArgs.split(" ").filter((a) => a.trim()) : [];
 
       // For Filesystem server, append the paths to args
       if (isFilesystemServer(config)) {
@@ -333,10 +341,10 @@ export function MCPSettings() {
       // Parse env from KEY=VALUE format
       const env: Record<string, string> = {};
       if (editServerEnv) {
-        editServerEnv.split('\n').forEach(line => {
+        editServerEnv.split("\n").forEach((line) => {
           const trimmed = line.trim();
           if (trimmed) {
-            const idx = trimmed.indexOf('=');
+            const idx = trimmed.indexOf("=");
             if (idx > 0) {
               const key = trimmed.substring(0, idx).trim();
               const value = trimmed.substring(idx + 1).trim();
@@ -354,7 +362,7 @@ export function MCPSettings() {
       setEditingServer(null);
       await loadData();
     } catch (error: any) {
-      console.error('Failed to update server:', error);
+      console.error("Failed to update server:", error);
       alert(`Failed to update server: ${error.message}`);
     }
   };
@@ -366,12 +374,12 @@ export function MCPSettings() {
         setEditServerPaths([...editServerPaths, result]);
       }
     } catch (error) {
-      console.error('Failed to open folder picker:', error);
+      console.error("Failed to open folder picker:", error);
     }
   };
 
   const handleRemovePath = (pathToRemove: string) => {
-    setEditServerPaths(editServerPaths.filter(p => p !== pathToRemove));
+    setEditServerPaths(editServerPaths.filter((p) => p !== pathToRemove));
   };
 
   const handleSaveSettings = async () => {
@@ -381,7 +389,7 @@ export function MCPSettings() {
       setSaving(true);
       await window.electronAPI.saveMCPSettings(settings);
     } catch (error: any) {
-      console.error('Failed to save settings:', error);
+      console.error("Failed to save settings:", error);
       alert(`Failed to save settings: ${error.message}`);
     } finally {
       setSaving(false);
@@ -391,10 +399,10 @@ export function MCPSettings() {
   const getConnectorProvider = (name?: string): ConnectorProvider | null => {
     if (!name) return null;
     const normalized = name.toLowerCase();
-    if (normalized.includes('salesforce')) return 'salesforce';
-    if (normalized.includes('jira')) return 'jira';
-    if (normalized.includes('hubspot')) return 'hubspot';
-    if (normalized.includes('zendesk')) return 'zendesk';
+    if (normalized.includes("salesforce")) return "salesforce";
+    if (normalized.includes("jira")) return "jira";
+    if (normalized.includes("hubspot")) return "hubspot";
+    if (normalized.includes("zendesk")) return "zendesk";
     return null;
   };
 
@@ -402,7 +410,7 @@ export function MCPSettings() {
     provider: ConnectorProvider,
     serverId: string,
     serverName: string,
-    env?: Record<string, string>
+    env?: Record<string, string>,
   ) => {
     setConnectorSetup({ provider, serverId, serverName, env });
   };
@@ -413,10 +421,10 @@ export function MCPSettings() {
       const updates = await window.electronAPI.checkMCPUpdates();
       setAvailableUpdates(updates);
       if (updates.length === 0) {
-        alert('All MCP servers are up to date!');
+        alert("All MCP servers are up to date!");
       }
     } catch (error: any) {
-      console.error('Failed to check for updates:', error);
+      console.error("Failed to check for updates:", error);
       alert(`Failed to check for updates: ${error.message}`);
     } finally {
       setCheckingUpdates(false);
@@ -428,12 +436,12 @@ export function MCPSettings() {
       setUpdatingServer(serverId);
       await window.electronAPI.updateMCPServerFromRegistry(serverId);
       // Remove from available updates
-      setAvailableUpdates(prev => prev.filter(u => u.serverId !== serverId));
+      setAvailableUpdates((prev) => prev.filter((u) => u.serverId !== serverId));
       // Reload data
       await loadData();
-      alert('Server updated successfully!');
+      alert("Server updated successfully!");
     } catch (error: any) {
-      console.error('Failed to update server:', error);
+      console.error("Failed to update server:", error);
       alert(`Failed to update server: ${error.message}`);
     } finally {
       setUpdatingServer(null);
@@ -441,26 +449,35 @@ export function MCPSettings() {
   };
 
   const getUpdateInfo = (serverId: string): MCPUpdateInfo | undefined => {
-    return availableUpdates.find(u => u.serverId === serverId);
+    return availableUpdates.find((u) => u.serverId === serverId);
   };
 
   const getStatusColor = (status: MCPConnectionStatus): string => {
     switch (status) {
-      case 'connected': return 'var(--color-success)';
-      case 'connecting':
-      case 'reconnecting': return 'var(--color-warning)';
-      case 'error': return 'var(--color-error)';
-      default: return 'var(--color-text-tertiary)';
+      case "connected":
+        return "var(--color-success)";
+      case "connecting":
+      case "reconnecting":
+        return "var(--color-warning)";
+      case "error":
+        return "var(--color-error)";
+      default:
+        return "var(--color-text-tertiary)";
     }
   };
 
   const getStatusText = (status: MCPConnectionStatus): string => {
     switch (status) {
-      case 'connected': return 'Connected';
-      case 'connecting': return 'Connecting...';
-      case 'reconnecting': return 'Reconnecting...';
-      case 'error': return 'Error';
-      default: return 'Disconnected';
+      case "connected":
+        return "Connected";
+      case "connecting":
+        return "Connecting...";
+      case "reconnecting":
+        return "Reconnecting...";
+      case "error":
+        return "Error";
+      default:
+        return "Disconnected";
     }
   };
 
@@ -473,26 +490,26 @@ export function MCPSettings() {
       {/* Sub-navigation */}
       <div className="mcp-settings-nav">
         <button
-          className={`mcp-nav-button ${activeView === 'servers' ? 'active' : ''}`}
-          onClick={() => setActiveView('servers')}
+          className={`mcp-nav-button ${activeView === "servers" ? "active" : ""}`}
+          onClick={() => setActiveView("servers")}
         >
           Installed
         </button>
         <button
-          className={`mcp-nav-button ${activeView === 'registry' ? 'active' : ''}`}
-          onClick={() => setActiveView('registry')}
+          className={`mcp-nav-button ${activeView === "registry" ? "active" : ""}`}
+          onClick={() => setActiveView("registry")}
         >
           Browse Registry
         </button>
         <button
-          className={`mcp-nav-button ${activeView === 'settings' ? 'active' : ''}`}
-          onClick={() => setActiveView('settings')}
+          className={`mcp-nav-button ${activeView === "settings" ? "active" : ""}`}
+          onClick={() => setActiveView("settings")}
         >
           Settings
         </button>
       </div>
 
-      {activeView === 'servers' && (
+      {activeView === "servers" && (
         <>
           <div className="settings-section">
             <div className="settings-section-header">
@@ -503,19 +520,19 @@ export function MCPSettings() {
                   onClick={handleCheckUpdates}
                   disabled={checkingUpdates}
                 >
-                  {checkingUpdates ? 'Checking...' : 'Check for Updates'}
+                  {checkingUpdates ? "Checking..." : "Check for Updates"}
                 </button>
                 <button
                   className="button-small button-primary"
                   onClick={() => setShowAddForm(!showAddForm)}
                 >
-                  {showAddForm ? 'Cancel' : '+ Add Server'}
+                  {showAddForm ? "Cancel" : "+ Add Server"}
                 </button>
               </div>
             </div>
             <p className="settings-description">
-              Connect to MCP servers to extend CoWork with additional tools.
-              Tools from connected servers will be available to the AI agent.
+              Connect to MCP servers to extend CoWork with additional tools. Tools from connected
+              servers will be available to the AI agent.
             </p>
 
             {showAddForm && (
@@ -540,9 +557,7 @@ export function MCPSettings() {
                     value={newServerCommand}
                     onChange={(e) => setNewServerCommand(e.target.value)}
                   />
-                  <p className="settings-hint">
-                    The command to start the MCP server
-                  </p>
+                  <p className="settings-hint">The command to start the MCP server</p>
                 </div>
                 <div className="settings-field">
                   <label>Arguments (space-separated)</label>
@@ -570,7 +585,7 @@ export function MCPSettings() {
                     onClick={handleAddServer}
                     disabled={!newServerName || !newServerCommand || saving}
                   >
-                    {saving ? 'Adding...' : 'Add Server'}
+                    {saving ? "Adding..." : "Add Server"}
                   </button>
                 </div>
               </div>
@@ -578,15 +593,13 @@ export function MCPSettings() {
 
             {serverStatuses.length === 0 && !showAddForm ? (
               <div className="mcp-empty-state">
-                <p>{agentContext.getUiCopy('mcpEmptyTitle')}</p>
-                <p className="settings-hint">
-                  {agentContext.getUiCopy('mcpEmptyHint')}
-                </p>
+                <p>{agentContext.getUiCopy("mcpEmptyTitle")}</p>
+                <p className="settings-hint">{agentContext.getUiCopy("mcpEmptyHint")}</p>
               </div>
             ) : (
               <div className="mcp-server-list">
                 {serverStatuses.map((serverStatus) => {
-                  const config = settings?.servers.find(s => s.id === serverStatus.id);
+                  const config = settings?.servers.find((s) => s.id === serverStatus.id);
                   const isConnecting = connectingServer === serverStatus.id;
                   const isTesting = testingServer === serverStatus.id;
                   const updateInfo = getUpdateInfo(serverStatus.id);
@@ -600,7 +613,10 @@ export function MCPSettings() {
                           <div className="mcp-server-name-row">
                             <span className="mcp-server-name">{serverStatus.name}</span>
                             {updateInfo && (
-                              <span className="mcp-update-badge" title={`Update available: ${updateInfo.currentVersion} → ${updateInfo.latestVersion}`}>
+                              <span
+                                className="mcp-update-badge"
+                                title={`Update available: ${updateInfo.currentVersion} → ${updateInfo.latestVersion}`}
+                              >
                                 Update
                               </span>
                             )}
@@ -608,13 +624,16 @@ export function MCPSettings() {
                               className="mcp-server-status"
                               style={{ color: getStatusColor(serverStatus.status) }}
                             >
-                              <span className="mcp-status-dot" style={{ backgroundColor: getStatusColor(serverStatus.status) }} />
+                              <span
+                                className="mcp-status-dot"
+                                style={{ backgroundColor: getStatusColor(serverStatus.status) }}
+                              />
                               {getStatusText(serverStatus.status)}
                             </span>
                           </div>
                           {config?.command && (
                             <span className="mcp-server-command">
-                              {config.command} {config.args?.join(' ')}
+                              {config.command} {config.args?.join(" ")}
                             </span>
                           )}
                         </div>
@@ -623,7 +642,9 @@ export function MCPSettings() {
                             <input
                               type="checkbox"
                               checked={config?.enabled ?? false}
-                              onChange={(e) => handleToggleEnabled(serverStatus.id, e.target.checked)}
+                              onChange={(e) =>
+                                handleToggleEnabled(serverStatus.id, e.target.checked)
+                              }
                             />
                             <span className="toggle-slider" />
                           </label>
@@ -637,10 +658,12 @@ export function MCPSettings() {
                           {connectionErrors[serverStatus.id] && (
                             <button
                               className="mcp-error-dismiss"
-                              onClick={() => setConnectionErrors(prev => {
-                                const { [serverStatus.id]: _, ...rest } = prev;
-                                return rest;
-                              })}
+                              onClick={() =>
+                                setConnectionErrors((prev) => {
+                                  const { [serverStatus.id]: _, ...rest } = prev;
+                                  return rest;
+                                })
+                              }
                               title="Dismiss"
                             >
                               ×
@@ -650,17 +673,18 @@ export function MCPSettings() {
                       )}
 
                       <div className="mcp-server-tools-count">
-                        {serverStatus.tools.length} tool{serverStatus.tools.length !== 1 ? 's' : ''} available
+                        {serverStatus.tools.length} tool{serverStatus.tools.length !== 1 ? "s" : ""}{" "}
+                        available
                       </div>
 
                       <div className="mcp-server-actions">
-                        {serverStatus.status === 'connected' ? (
+                        {serverStatus.status === "connected" ? (
                           <button
                             className="button-small button-secondary"
                             onClick={() => handleDisconnectServer(serverStatus.id)}
                             disabled={isConnecting}
                           >
-                            {isConnecting ? 'Disconnecting...' : 'Disconnect'}
+                            {isConnecting ? "Disconnecting..." : "Disconnect"}
                           </button>
                         ) : (
                           <button
@@ -668,7 +692,7 @@ export function MCPSettings() {
                             onClick={() => handleConnectServer(serverStatus.id)}
                             disabled={isConnecting || !config?.enabled}
                           >
-                            {isConnecting ? 'Connecting...' : 'Connect'}
+                            {isConnecting ? "Connecting..." : "Connect"}
                           </button>
                         )}
 
@@ -680,7 +704,7 @@ export function MCPSettings() {
                                 connectorProvider,
                                 serverStatus.id,
                                 serverStatus.name,
-                                config?.env
+                                config?.env,
                               )
                             }
                           >
@@ -691,7 +715,7 @@ export function MCPSettings() {
                         <button
                           className="button-small button-secondary"
                           onClick={() => handleViewTools(serverStatus.id)}
-                          disabled={serverStatus.status !== 'connected'}
+                          disabled={serverStatus.status !== "connected"}
                         >
                           View Tools
                         </button>
@@ -709,7 +733,7 @@ export function MCPSettings() {
                           onClick={() => handleTestServer(serverStatus.id)}
                           disabled={isTesting}
                         >
-                          {isTesting ? 'Testing...' : 'Test'}
+                          {isTesting ? "Testing..." : "Test"}
                         </button>
 
                         {updateInfo && (
@@ -719,7 +743,7 @@ export function MCPSettings() {
                             disabled={isUpdating}
                             title={`Update from ${updateInfo.currentVersion} to ${updateInfo.latestVersion}`}
                           >
-                            {isUpdating ? 'Updating...' : `Update to ${updateInfo.latestVersion}`}
+                            {isUpdating ? "Updating..." : `Update to ${updateInfo.latestVersion}`}
                           </button>
                         )}
 
@@ -732,7 +756,9 @@ export function MCPSettings() {
                       </div>
 
                       {testResult?.serverId === serverStatus.id && (
-                        <div className={`mcp-test-result ${testResult.success ? 'success' : 'error'}`}>
+                        <div
+                          className={`mcp-test-result ${testResult.success ? "success" : "error"}`}
+                        >
                           {testResult.success
                             ? `✓ Connection successful (${testResult.tools} tools)`
                             : `✗ ${testResult.error}`}
@@ -747,24 +773,24 @@ export function MCPSettings() {
         </>
       )}
 
-      {activeView === 'registry' && (
+      {activeView === "registry" && (
         <div className="settings-section">
           <h3>MCP Server Registry</h3>
           <p className="settings-description">
-            Browse and install MCP servers from the official registry.
-            Click on a server to see details and install with one click.
+            Browse and install MCP servers from the official registry. Click on a server to see
+            details and install with one click.
           </p>
           <MCPRegistryBrowser
             onInstall={() => {
               loadData();
-              setActiveView('servers');
+              setActiveView("servers");
             }}
-            installedServerIds={settings?.servers.map(s => s.name) || []}
+            installedServerIds={settings?.servers.map((s) => s.name) || []}
           />
         </div>
       )}
 
-      {activeView === 'settings' && settings && (
+      {activeView === "settings" && settings && (
         <div className="settings-section">
           <h3>MCP Configuration</h3>
 
@@ -789,8 +815,8 @@ export function MCPSettings() {
               onChange={(e) => setSettings({ ...settings, toolNamePrefix: e.target.value })}
             />
             <p className="settings-hint">
-              Prefix added to MCP tool names to avoid conflicts with built-in tools.
-              For example, a tool named "read_file" becomes "{settings.toolNamePrefix || 'mcp_'}read_file".
+              Prefix added to MCP tool names to avoid conflicts with built-in tools. For example, a
+              tool named "read_file" becomes "{settings.toolNamePrefix || "mcp_"}read_file".
             </p>
           </div>
 
@@ -802,7 +828,9 @@ export function MCPSettings() {
               min={0}
               max={20}
               value={settings.maxReconnectAttempts}
-              onChange={(e) => setSettings({ ...settings, maxReconnectAttempts: parseInt(e.target.value) || 0 })}
+              onChange={(e) =>
+                setSettings({ ...settings, maxReconnectAttempts: parseInt(e.target.value) || 0 })
+              }
             />
             <p className="settings-hint">
               Number of times to attempt reconnection if a server disconnects unexpectedly.
@@ -817,7 +845,9 @@ export function MCPSettings() {
               min={100}
               max={60000}
               value={settings.reconnectDelayMs}
-              onChange={(e) => setSettings({ ...settings, reconnectDelayMs: parseInt(e.target.value) || 1000 })}
+              onChange={(e) =>
+                setSettings({ ...settings, reconnectDelayMs: parseInt(e.target.value) || 1000 })
+              }
             />
             <p className="settings-hint">
               Base delay between reconnection attempts (uses exponential backoff).
@@ -825,12 +855,8 @@ export function MCPSettings() {
           </div>
 
           <div className="settings-actions">
-            <button
-              className="button-primary"
-              onClick={handleSaveSettings}
-              disabled={saving}
-            >
-              {saving ? 'Saving...' : 'Save Settings'}
+            <button className="button-primary" onClick={handleSaveSettings} disabled={saving}>
+              {saving ? "Saving..." : "Save Settings"}
             </button>
           </div>
         </div>
@@ -843,7 +869,14 @@ export function MCPSettings() {
             <div className="mcp-modal-header">
               <h3>Available Tools</h3>
               <button className="mcp-modal-close" onClick={() => setViewingToolsFor(null)}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
                   <path d="M18 6L6 18M6 6l12 12" />
                 </svg>
               </button>
@@ -862,7 +895,7 @@ export function MCPSettings() {
                       {tool.inputSchema.properties && (
                         <div className="mcp-tool-params">
                           <span className="mcp-tool-params-label">Parameters: </span>
-                          {Object.keys(tool.inputSchema.properties).join(', ')}
+                          {Object.keys(tool.inputSchema.properties).join(", ")}
                         </div>
                       )}
                     </div>
@@ -881,18 +914,26 @@ export function MCPSettings() {
             <div className="mcp-modal-header">
               <h3>Configure Server</h3>
               <button className="mcp-modal-close" onClick={() => setEditingServer(null)}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
                   <path d="M18 6L6 18M6 6l12 12" />
                 </svg>
               </button>
             </div>
             <div className="mcp-modal-content">
               {/* Filesystem Server: Show Allowed Paths UI */}
-              {isFilesystemServer(settings?.servers.find(s => s.id === editingServer)) && (
+              {isFilesystemServer(settings?.servers.find((s) => s.id === editingServer)) && (
                 <div className="settings-field">
                   <label>Allowed Paths</label>
                   <p className="settings-description">
-                    The Filesystem server can only access these directories. Add folders you want to allow.
+                    The Filesystem server can only access these directories. Add folders you want to
+                    allow.
                   </p>
                   <div className="mcp-paths-list">
                     {editServerPaths.length === 0 ? (
@@ -903,7 +944,14 @@ export function MCPSettings() {
                       editServerPaths.map((path, index) => (
                         <div key={index} className="mcp-path-item">
                           <span className="mcp-path-icon">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                            >
                               <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
                             </svg>
                           </span>
@@ -913,7 +961,14 @@ export function MCPSettings() {
                             onClick={() => handleRemovePath(path)}
                             title="Remove path"
                           >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                            >
                               <path d="M18 6L6 18M6 6l12 12" />
                             </svg>
                           </button>
@@ -925,7 +980,14 @@ export function MCPSettings() {
                     className="button-small button-secondary mcp-add-path-btn"
                     onClick={handleAddPath}
                   >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
                       <path d="M12 5v14M5 12h14" />
                     </svg>
                     Add Folder
@@ -934,7 +996,7 @@ export function MCPSettings() {
               )}
 
               {/* Non-Filesystem Server: Show generic args */}
-              {!isFilesystemServer(settings?.servers.find(s => s.id === editingServer)) && (
+              {!isFilesystemServer(settings?.servers.find((s) => s.id === editingServer)) && (
                 <div className="settings-field">
                   <label>Command Arguments</label>
                   <input
@@ -944,8 +1006,8 @@ export function MCPSettings() {
                     placeholder="e.g., postgresql://user:pass@localhost/db"
                   />
                   <p className="settings-description">
-                    Space-separated arguments passed to the server command.
-                    For PostgreSQL, enter the database URL here.
+                    Space-separated arguments passed to the server command. For PostgreSQL, enter
+                    the database URL here.
                   </p>
                 </div>
               )}
@@ -960,22 +1022,16 @@ export function MCPSettings() {
                   className="mcp-env-textarea"
                 />
                 <p className="settings-description">
-                  One variable per line in KEY=value format.
-                  Examples: BRAVE_API_KEY, GITHUB_PERSONAL_ACCESS_TOKEN
+                  One variable per line in KEY=value format. Examples: BRAVE_API_KEY,
+                  GITHUB_PERSONAL_ACCESS_TOKEN
                 </p>
               </div>
 
               <div className="mcp-modal-actions">
-                <button
-                  className="button-secondary"
-                  onClick={() => setEditingServer(null)}
-                >
+                <button className="button-secondary" onClick={() => setEditingServer(null)}>
                   Cancel
                 </button>
-                <button
-                  className="button-primary"
-                  onClick={handleSaveEditServer}
-                >
+                <button className="button-primary" onClick={handleSaveEditServer}>
                   Save Configuration
                 </button>
               </div>

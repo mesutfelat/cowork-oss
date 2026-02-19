@@ -1,7 +1,13 @@
-import { useState, useEffect, useCallback } from 'react';
-import { ChannelData, ChannelUserData, SecurityMode, ContextType, ContextPolicy } from '../../shared/types';
-import { PairingCodeDisplay } from './PairingCodeDisplay';
-import { ContextPolicySettings } from './ContextPolicySettings';
+import { useState, useEffect, useCallback } from "react";
+import {
+  ChannelData,
+  ChannelUserData,
+  SecurityMode,
+  ContextType,
+  ContextPolicy,
+} from "../../shared/types";
+import { PairingCodeDisplay } from "./PairingCodeDisplay";
+import { ContextPolicySettings } from "./ContextPolicySettings";
 
 interface EmailSettingsProps {
   onStatusChange?: (connected: boolean) => void;
@@ -16,22 +22,22 @@ export function EmailSettings({ onStatusChange }: EmailSettingsProps) {
   const [testResult, setTestResult] = useState<{ success: boolean; error?: string } | null>(null);
 
   // Form state
-  const [channelName, setChannelName] = useState('Email');
-  const [securityMode, setSecurityMode] = useState<SecurityMode>('pairing');
-  const [emailProtocol, setEmailProtocol] = useState<'imap-smtp' | 'loom'>('imap-smtp');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [imapHost, setImapHost] = useState('');
+  const [channelName, setChannelName] = useState("Email");
+  const [securityMode, setSecurityMode] = useState<SecurityMode>("pairing");
+  const [emailProtocol, setEmailProtocol] = useState<"imap-smtp" | "loom">("imap-smtp");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [imapHost, setImapHost] = useState("");
   const [imapPort, setImapPort] = useState(993);
-  const [smtpHost, setSmtpHost] = useState('');
+  const [smtpHost, setSmtpHost] = useState("");
   const [smtpPort, setSmtpPort] = useState(587);
-  const [displayName, setDisplayName] = useState('');
-  const [allowedSenders, setAllowedSenders] = useState('');
-  const [subjectFilter, setSubjectFilter] = useState('');
-  const [loomBaseUrl, setLoomBaseUrl] = useState('http://127.0.0.1:8787');
-  const [loomAccessToken, setLoomAccessToken] = useState('');
-  const [loomIdentity, setLoomIdentity] = useState('');
-  const [loomMailboxFolder, setLoomMailboxFolder] = useState('INBOX');
+  const [displayName, setDisplayName] = useState("");
+  const [allowedSenders, setAllowedSenders] = useState("");
+  const [subjectFilter, setSubjectFilter] = useState("");
+  const [loomBaseUrl, setLoomBaseUrl] = useState("http://127.0.0.1:8787");
+  const [loomAccessToken, setLoomAccessToken] = useState("");
+  const [loomIdentity, setLoomIdentity] = useState("");
+  const [loomMailboxFolder, setLoomMailboxFolder] = useState("INBOX");
   const [loomPollInterval, setLoomPollInterval] = useState(30000);
 
   // Pairing code state
@@ -40,40 +46,42 @@ export function EmailSettings({ onStatusChange }: EmailSettingsProps) {
   const [generatingCode, setGeneratingCode] = useState(false);
 
   // Context policy state
-  const [contextPolicies, setContextPolicies] = useState<Record<ContextType, ContextPolicy>>({} as Record<ContextType, ContextPolicy>);
+  const [contextPolicies, setContextPolicies] = useState<Record<ContextType, ContextPolicy>>(
+    {} as Record<ContextType, ContextPolicy>,
+  );
   const [savingPolicy, setSavingPolicy] = useState(false);
 
   const loadChannel = useCallback(async () => {
     try {
       setLoading(true);
       const channels = await window.electronAPI.getGatewayChannels();
-      const emailChannel = channels.find((c: ChannelData) => c.type === 'email');
+      const emailChannel = channels.find((c: ChannelData) => c.type === "email");
 
       if (emailChannel) {
         setChannel(emailChannel);
         setChannelName(emailChannel.name);
         setSecurityMode(emailChannel.securityMode);
-        onStatusChange?.(emailChannel.status === 'connected');
+        onStatusChange?.(emailChannel.status === "connected");
 
         // Load config settings
         if (emailChannel.config) {
-          const protocol = emailChannel.config.protocol === 'loom' ? 'loom' : 'imap-smtp';
+          const protocol = emailChannel.config.protocol === "loom" ? "loom" : "imap-smtp";
           setEmailProtocol(protocol);
-          setEmail(emailChannel.config.email as string || '');
-          setPassword(emailChannel.config.password as string || '');
-          setImapHost(emailChannel.config.imapHost as string || '');
-          setImapPort(emailChannel.config.imapPort as number || 993);
-          setSmtpHost(emailChannel.config.smtpHost as string || '');
-          setSmtpPort(emailChannel.config.smtpPort as number || 587);
-          setDisplayName(emailChannel.config.displayName as string || '');
-          const senders = emailChannel.config.allowedSenders as string[] || [];
-          setAllowedSenders(senders.join(', '));
-          setSubjectFilter(emailChannel.config.subjectFilter as string || '');
-          setLoomBaseUrl(emailChannel.config.loomBaseUrl as string || 'http://127.0.0.1:8787');
-          setLoomAccessToken(emailChannel.config.loomAccessToken as string || '');
-          setLoomIdentity(emailChannel.config.loomIdentity as string || '');
-          setLoomMailboxFolder(emailChannel.config.loomMailboxFolder as string || 'INBOX');
-          setLoomPollInterval(emailChannel.config.loomPollInterval as number || 30000);
+          setEmail((emailChannel.config.email as string) || "");
+          setPassword((emailChannel.config.password as string) || "");
+          setImapHost((emailChannel.config.imapHost as string) || "");
+          setImapPort((emailChannel.config.imapPort as number) || 993);
+          setSmtpHost((emailChannel.config.smtpHost as string) || "");
+          setSmtpPort((emailChannel.config.smtpPort as number) || 587);
+          setDisplayName((emailChannel.config.displayName as string) || "");
+          const senders = (emailChannel.config.allowedSenders as string[]) || [];
+          setAllowedSenders(senders.join(", "));
+          setSubjectFilter((emailChannel.config.subjectFilter as string) || "");
+          setLoomBaseUrl((emailChannel.config.loomBaseUrl as string) || "http://127.0.0.1:8787");
+          setLoomAccessToken((emailChannel.config.loomAccessToken as string) || "");
+          setLoomIdentity((emailChannel.config.loomIdentity as string) || "");
+          setLoomMailboxFolder((emailChannel.config.loomMailboxFolder as string) || "INBOX");
+          setLoomPollInterval((emailChannel.config.loomPollInterval as number) || 30000);
         }
 
         // Load users for this channel
@@ -82,14 +90,17 @@ export function EmailSettings({ onStatusChange }: EmailSettingsProps) {
 
         // Load context policies
         const policies = await window.electronAPI.listContextPolicies(emailChannel.id);
-        const policyMap: Record<ContextType, ContextPolicy> = {} as Record<ContextType, ContextPolicy>;
+        const policyMap: Record<ContextType, ContextPolicy> = {} as Record<
+          ContextType,
+          ContextPolicy
+        >;
         for (const policy of policies) {
           policyMap[policy.contextType as ContextType] = policy;
         }
         setContextPolicies(policyMap);
       }
     } catch (error) {
-      console.error('Failed to load Email channel:', error);
+      console.error("Failed to load Email channel:", error);
     } finally {
       setLoading(false);
     }
@@ -101,7 +112,7 @@ export function EmailSettings({ onStatusChange }: EmailSettingsProps) {
 
   useEffect(() => {
     const unsubscribe = window.electronAPI?.onGatewayUsersUpdated?.((data) => {
-      if (data?.channelType !== 'email') return;
+      if (data?.channelType !== "email") return;
       if (channel && data?.channelId && data.channelId !== channel.id) return;
       loadChannel();
     });
@@ -111,13 +122,16 @@ export function EmailSettings({ onStatusChange }: EmailSettingsProps) {
   }, [channel?.id, loadChannel]);
 
   const handleAddChannel = async () => {
-    if (emailProtocol === 'loom') {
+    if (emailProtocol === "loom") {
       if (!loomBaseUrl.trim() || !loomAccessToken.trim()) {
-        setTestResult({ success: false, error: 'LOOM base URL and access token are required' });
+        setTestResult({ success: false, error: "LOOM base URL and access token are required" });
         return;
       }
     } else if (!email.trim() || !password.trim() || !imapHost.trim() || !smtpHost.trim()) {
-      setTestResult({ success: false, error: 'Email, password, IMAP host, and SMTP host are required' });
+      setTestResult({
+        success: false,
+        error: "Email, password, IMAP host, and SMTP host are required",
+      });
       return;
     }
 
@@ -126,29 +140,32 @@ export function EmailSettings({ onStatusChange }: EmailSettingsProps) {
       setTestResult(null);
 
       const senderList = allowedSenders
-        .split(',')
-        .map(s => s.trim())
+        .split(",")
+        .map((s) => s.trim())
         .filter(Boolean);
 
       await window.electronAPI.addGatewayChannel({
-        type: 'email',
+        type: "email",
         name: channelName,
         securityMode,
         emailProtocol,
-        emailAddress: emailProtocol === 'imap-smtp' ? email.trim() : undefined,
-        emailPassword: emailProtocol === 'imap-smtp' ? password.trim() : undefined,
-        emailImapHost: emailProtocol === 'imap-smtp' ? imapHost.trim() : undefined,
-        emailImapPort: emailProtocol === 'imap-smtp' ? imapPort : undefined,
-        emailSmtpHost: emailProtocol === 'imap-smtp' ? smtpHost.trim() : undefined,
-        emailSmtpPort: emailProtocol === 'imap-smtp' ? smtpPort : undefined,
+        emailAddress: emailProtocol === "imap-smtp" ? email.trim() : undefined,
+        emailPassword: emailProtocol === "imap-smtp" ? password.trim() : undefined,
+        emailImapHost: emailProtocol === "imap-smtp" ? imapHost.trim() : undefined,
+        emailImapPort: emailProtocol === "imap-smtp" ? imapPort : undefined,
+        emailSmtpHost: emailProtocol === "imap-smtp" ? smtpHost.trim() : undefined,
+        emailSmtpPort: emailProtocol === "imap-smtp" ? smtpPort : undefined,
         emailDisplayName: displayName.trim() || undefined,
-        emailAllowedSenders: emailProtocol === 'imap-smtp' && senderList.length > 0 ? senderList : undefined,
-        emailSubjectFilter: emailProtocol === 'imap-smtp' ? (subjectFilter.trim() || undefined) : undefined,
-        emailLoomBaseUrl: emailProtocol === 'loom' ? loomBaseUrl.trim() : undefined,
-        emailLoomAccessToken: emailProtocol === 'loom' ? loomAccessToken.trim() : undefined,
-        emailLoomIdentity: emailProtocol === 'loom' ? (loomIdentity.trim() || undefined) : undefined,
-        emailLoomMailboxFolder: emailProtocol === 'loom' ? (loomMailboxFolder.trim() || 'INBOX') : undefined,
-        emailLoomPollInterval: emailProtocol === 'loom' ? loomPollInterval : undefined,
+        emailAllowedSenders:
+          emailProtocol === "imap-smtp" && senderList.length > 0 ? senderList : undefined,
+        emailSubjectFilter:
+          emailProtocol === "imap-smtp" ? subjectFilter.trim() || undefined : undefined,
+        emailLoomBaseUrl: emailProtocol === "loom" ? loomBaseUrl.trim() : undefined,
+        emailLoomAccessToken: emailProtocol === "loom" ? loomAccessToken.trim() : undefined,
+        emailLoomIdentity: emailProtocol === "loom" ? loomIdentity.trim() || undefined : undefined,
+        emailLoomMailboxFolder:
+          emailProtocol === "loom" ? loomMailboxFolder.trim() || "INBOX" : undefined,
+        emailLoomPollInterval: emailProtocol === "loom" ? loomPollInterval : undefined,
       });
 
       await loadChannel();
@@ -196,7 +213,7 @@ export function EmailSettings({ onStatusChange }: EmailSettingsProps) {
   const handleRemoveChannel = async () => {
     if (!channel) return;
 
-    if (!confirm('Are you sure you want to remove the Email channel?')) {
+    if (!confirm("Are you sure you want to remove the Email channel?")) {
       return;
     }
 
@@ -224,7 +241,7 @@ export function EmailSettings({ onStatusChange }: EmailSettingsProps) {
       setSecurityMode(newMode);
       setChannel({ ...channel, securityMode: newMode });
     } catch (error: any) {
-      console.error('Failed to update security mode:', error);
+      console.error("Failed to update security mode:", error);
     }
   };
 
@@ -233,12 +250,12 @@ export function EmailSettings({ onStatusChange }: EmailSettingsProps) {
 
     try {
       setGeneratingCode(true);
-      const code = await window.electronAPI.generateGatewayPairing(channel.id, '');
+      const code = await window.electronAPI.generateGatewayPairing(channel.id, "");
       setPairingCode(code);
       // Default TTL is 5 minutes (300 seconds)
       setPairingExpiresAt(Date.now() + 5 * 60 * 1000);
     } catch (error: any) {
-      console.error('Failed to generate pairing code:', error);
+      console.error("Failed to generate pairing code:", error);
     } finally {
       setGeneratingCode(false);
     }
@@ -253,12 +270,12 @@ export function EmailSettings({ onStatusChange }: EmailSettingsProps) {
         securityMode: updates.securityMode,
         toolRestrictions: updates.toolRestrictions,
       });
-      setContextPolicies(prev => ({
+      setContextPolicies((prev) => ({
         ...prev,
         [contextType]: updated,
       }));
     } catch (error: any) {
-      console.error('Failed to update context policy:', error);
+      console.error("Failed to update context policy:", error);
     } finally {
       setSavingPolicy(false);
     }
@@ -271,42 +288,42 @@ export function EmailSettings({ onStatusChange }: EmailSettingsProps) {
       await window.electronAPI.revokeGatewayAccess(channel.id, channelUserId);
       await loadChannel();
     } catch (error: any) {
-      console.error('Failed to revoke access:', error);
+      console.error("Failed to revoke access:", error);
     }
   };
 
   // Common email provider presets
   const applyPreset = (provider: string) => {
     switch (provider) {
-      case 'gmail':
-        setImapHost('imap.gmail.com');
+      case "gmail":
+        setImapHost("imap.gmail.com");
         setImapPort(993);
-        setSmtpHost('smtp.gmail.com');
+        setSmtpHost("smtp.gmail.com");
         setSmtpPort(587);
         break;
-      case 'outlook':
-        setImapHost('outlook.office365.com');
+      case "outlook":
+        setImapHost("outlook.office365.com");
         setImapPort(993);
-        setSmtpHost('smtp.office365.com');
+        setSmtpHost("smtp.office365.com");
         setSmtpPort(587);
         break;
-      case 'yahoo':
-        setImapHost('imap.mail.yahoo.com');
+      case "yahoo":
+        setImapHost("imap.mail.yahoo.com");
         setImapPort(993);
-        setSmtpHost('smtp.mail.yahoo.com');
+        setSmtpHost("smtp.mail.yahoo.com");
         setSmtpPort(465);
         break;
     }
   };
 
-  const isLoomMode = emailProtocol === 'loom';
+  const isLoomMode = emailProtocol === "loom";
   const canAddChannel = isLoomMode
     ? Boolean(loomBaseUrl.trim() && loomAccessToken.trim())
     : Boolean(email.trim() && password.trim() && imapHost.trim() && smtpHost.trim());
   const configuredChannelHandle =
-    (typeof channel?.config?.email === 'string' && channel.config.email) ||
-    (typeof channel?.config?.loomIdentity === 'string' && channel.config.loomIdentity) ||
-    (typeof channel?.config?.loomBaseUrl === 'string' && channel.config.loomBaseUrl) ||
+    (typeof channel?.config?.email === "string" && channel.config.email) ||
+    (typeof channel?.config?.loomIdentity === "string" && channel.config.loomIdentity) ||
+    (typeof channel?.config?.loomBaseUrl === "string" && channel.config.loomBaseUrl) ||
     null;
 
   if (loading) {
@@ -320,7 +337,8 @@ export function EmailSettings({ onStatusChange }: EmailSettingsProps) {
         <div className="settings-section">
           <h3>Connect Email</h3>
           <p className="settings-description">
-            Choose IMAP/SMTP for traditional inboxes or LOOM for your agent-native email protocol node.
+            Choose IMAP/SMTP for traditional inboxes or LOOM for your agent-native email protocol
+            node.
           </p>
 
           <div className="settings-field">
@@ -339,7 +357,7 @@ export function EmailSettings({ onStatusChange }: EmailSettingsProps) {
             <select
               className="settings-select"
               value={emailProtocol}
-              onChange={(e) => setEmailProtocol(e.target.value as 'imap-smtp' | 'loom')}
+              onChange={(e) => setEmailProtocol(e.target.value as "imap-smtp" | "loom")}
             >
               <option value="imap-smtp">IMAP / SMTP (Legacy)</option>
               <option value="loom">LOOM Protocol</option>
@@ -350,13 +368,20 @@ export function EmailSettings({ onStatusChange }: EmailSettingsProps) {
             <>
               <div className="settings-callout info">
                 <strong>Quick Setup:</strong>
-                <div style={{ margin: '8px 0', display: 'flex', gap: '8px' }}>
-                  <button className="button-secondary" onClick={() => applyPreset('gmail')}>Gmail</button>
-                  <button className="button-secondary" onClick={() => applyPreset('outlook')}>Outlook</button>
-                  <button className="button-secondary" onClick={() => applyPreset('yahoo')}>Yahoo</button>
+                <div style={{ margin: "8px 0", display: "flex", gap: "8px" }}>
+                  <button className="button-secondary" onClick={() => applyPreset("gmail")}>
+                    Gmail
+                  </button>
+                  <button className="button-secondary" onClick={() => applyPreset("outlook")}>
+                    Outlook
+                  </button>
+                  <button className="button-secondary" onClick={() => applyPreset("yahoo")}>
+                    Yahoo
+                  </button>
                 </div>
-                <p style={{ fontSize: '13px', marginTop: '8px' }}>
-                  Note: For Gmail/Outlook, you may need to use an App Password instead of your regular password.
+                <p style={{ fontSize: "13px", marginTop: "8px" }}>
+                  Note: For Gmail/Outlook, you may need to use an App Password instead of your
+                  regular password.
                 </p>
               </div>
 
@@ -385,7 +410,7 @@ export function EmailSettings({ onStatusChange }: EmailSettingsProps) {
                 </p>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                 <div className="settings-field">
                   <label>IMAP Host *</label>
                   <input
@@ -409,7 +434,7 @@ export function EmailSettings({ onStatusChange }: EmailSettingsProps) {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                 <div className="settings-field">
                   <label>SMTP Host *</label>
                   <input
@@ -498,7 +523,7 @@ export function EmailSettings({ onStatusChange }: EmailSettingsProps) {
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                 <div className="settings-field">
                   <label>Mailbox Folder</label>
                   <input
@@ -533,9 +558,7 @@ export function EmailSettings({ onStatusChange }: EmailSettingsProps) {
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
             />
-            <p className="settings-hint">
-              Name shown in outgoing messages
-            </p>
+            <p className="settings-hint">Name shown in outgoing messages</p>
           </div>
 
           <div className="settings-field">
@@ -550,19 +573,16 @@ export function EmailSettings({ onStatusChange }: EmailSettingsProps) {
               <option value="open">Open (Anyone can use)</option>
             </select>
             <p className="settings-hint">
-              {securityMode === 'pairing' && 'Users must enter a code generated in this app to use the bot'}
-              {securityMode === 'allowlist' && 'Only pre-approved email addresses can use the bot'}
-              {securityMode === 'open' && 'Anyone who emails the bot can use it (not recommended)'}
+              {securityMode === "pairing" &&
+                "Users must enter a code generated in this app to use the bot"}
+              {securityMode === "allowlist" && "Only pre-approved email addresses can use the bot"}
+              {securityMode === "open" && "Anyone who emails the bot can use it (not recommended)"}
             </p>
           </div>
 
           {testResult && (
-            <div className={`test-result ${testResult.success ? 'success' : 'error'}`}>
-              {testResult.success ? (
-                <>✓ Connection successful</>
-              ) : (
-                <>✗ {testResult.error}</>
-              )}
+            <div className={`test-result ${testResult.success ? "success" : "error"}`}>
+              {testResult.success ? <>✓ Connection successful</> : <>✗ {testResult.error}</>}
             </div>
           )}
 
@@ -571,7 +591,7 @@ export function EmailSettings({ onStatusChange }: EmailSettingsProps) {
             onClick={handleAddChannel}
             disabled={saving || !canAddChannel}
           >
-            {saving ? 'Adding...' : 'Add Email'}
+            {saving ? "Adding..." : "Add Email"}
           </button>
         </div>
 
@@ -608,47 +628,41 @@ export function EmailSettings({ onStatusChange }: EmailSettingsProps) {
           <div className="channel-info">
             <h3>
               {channel.name}
-              {configuredChannelHandle && <span className="bot-username">{configuredChannelHandle}</span>}
+              {configuredChannelHandle && (
+                <span className="bot-username">{configuredChannelHandle}</span>
+              )}
             </h3>
             <div className={`channel-status ${channel.status}`}>
-              {channel.status === 'connected' && '● Connected'}
-              {channel.status === 'connecting' && '○ Connecting...'}
-              {channel.status === 'disconnected' && '○ Disconnected'}
-              {channel.status === 'error' && '● Error'}
+              {channel.status === "connected" && "● Connected"}
+              {channel.status === "connecting" && "○ Connecting..."}
+              {channel.status === "disconnected" && "○ Disconnected"}
+              {channel.status === "error" && "● Error"}
             </div>
           </div>
           <div className="channel-actions">
             <button
-              className={channel.enabled ? 'button-secondary' : 'button-primary'}
+              className={channel.enabled ? "button-secondary" : "button-primary"}
               onClick={handleToggleEnabled}
               disabled={saving}
             >
-              {channel.enabled ? 'Disable' : 'Enable'}
+              {channel.enabled ? "Disable" : "Enable"}
             </button>
             <button
               className="button-secondary"
               onClick={handleTestConnection}
               disabled={testing || !channel.enabled}
             >
-              {testing ? 'Testing...' : 'Test'}
+              {testing ? "Testing..." : "Test"}
             </button>
-            <button
-              className="button-danger"
-              onClick={handleRemoveChannel}
-              disabled={saving}
-            >
+            <button className="button-danger" onClick={handleRemoveChannel} disabled={saving}>
               Remove
             </button>
           </div>
         </div>
 
         {testResult && (
-          <div className={`test-result ${testResult.success ? 'success' : 'error'}`}>
-            {testResult.success ? (
-              <>✓ Connection successful</>
-            ) : (
-              <>✗ {testResult.error}</>
-            )}
+          <div className={`test-result ${testResult.success ? "success" : "error"}`}>
+            {testResult.success ? <>✓ Connection successful</> : <>✗ {testResult.error}</>}
           </div>
         )}
       </div>
@@ -666,7 +680,7 @@ export function EmailSettings({ onStatusChange }: EmailSettingsProps) {
         </select>
       </div>
 
-      {securityMode === 'pairing' && (
+      {securityMode === "pairing" && (
         <div className="settings-section">
           <h4>Generate Pairing Code</h4>
           <p className="settings-description">
@@ -685,7 +699,7 @@ export function EmailSettings({ onStatusChange }: EmailSettingsProps) {
               onClick={handleGeneratePairingCode}
               disabled={generatingCode}
             >
-              {generatingCode ? 'Generating...' : 'Generate Code'}
+              {generatingCode ? "Generating..." : "Generate Code"}
             </button>
           )}
         </div>
@@ -717,8 +731,8 @@ export function EmailSettings({ onStatusChange }: EmailSettingsProps) {
                 <div className="user-info">
                   <span className="user-name">{user.displayName}</span>
                   {user.username && <span className="user-username">{user.username}</span>}
-                  <span className={`user-status ${user.allowed ? 'allowed' : 'pending'}`}>
-                    {user.allowed ? '✓ Allowed' : '○ Pending'}
+                  <span className={`user-status ${user.allowed ? "allowed" : "pending"}`}>
+                    {user.allowed ? "✓ Allowed" : "○ Pending"}
                   </span>
                 </div>
                 {user.allowed && (

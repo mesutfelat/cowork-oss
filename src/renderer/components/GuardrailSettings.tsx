@@ -1,13 +1,17 @@
-import { useState, useEffect } from 'react';
-import { GuardrailSettings as GuardrailSettingsType, DEFAULT_BLOCKED_COMMAND_PATTERNS, DEFAULT_TRUSTED_COMMAND_PATTERNS } from '../../shared/types';
+import { useState, useEffect } from "react";
+import {
+  GuardrailSettings as GuardrailSettingsType,
+  DEFAULT_BLOCKED_COMMAND_PATTERNS,
+  DEFAULT_TRUSTED_COMMAND_PATTERNS,
+} from "../../shared/types";
 
 export function GuardrailSettings() {
   const [settings, setSettings] = useState<GuardrailSettingsType | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [newPattern, setNewPattern] = useState('');
-  const [newTrustedPattern, setNewTrustedPattern] = useState('');
-  const [newDomain, setNewDomain] = useState('');
+  const [newPattern, setNewPattern] = useState("");
+  const [newTrustedPattern, setNewTrustedPattern] = useState("");
+  const [newDomain, setNewDomain] = useState("");
 
   useEffect(() => {
     loadSettings();
@@ -19,7 +23,7 @@ export function GuardrailSettings() {
       const loaded = await window.electronAPI.getGuardrailSettings();
       setSettings(loaded);
     } catch (error) {
-      console.error('Failed to load guardrail settings:', error);
+      console.error("Failed to load guardrail settings:", error);
     } finally {
       setLoading(false);
     }
@@ -31,7 +35,7 @@ export function GuardrailSettings() {
       setSaving(true);
       await window.electronAPI.saveGuardrailSettings(settings);
     } catch (error) {
-      console.error('Failed to save guardrail settings:', error);
+      console.error("Failed to save guardrail settings:", error);
     } finally {
       setSaving(false);
     }
@@ -42,7 +46,7 @@ export function GuardrailSettings() {
       const defaults = await window.electronAPI.getGuardrailDefaults();
       setSettings(defaults);
     } catch (error) {
-      console.error('Failed to reset guardrail settings:', error);
+      console.error("Failed to reset guardrail settings:", error);
     }
   };
 
@@ -53,14 +57,14 @@ export function GuardrailSettings() {
       ...settings,
       customBlockedPatterns: [...settings.customBlockedPatterns, newPattern.trim()],
     });
-    setNewPattern('');
+    setNewPattern("");
   };
 
   const removeCustomPattern = (pattern: string) => {
     if (!settings) return;
     setSettings({
       ...settings,
-      customBlockedPatterns: settings.customBlockedPatterns.filter(p => p !== pattern),
+      customBlockedPatterns: settings.customBlockedPatterns.filter((p) => p !== pattern),
     });
   };
 
@@ -71,14 +75,14 @@ export function GuardrailSettings() {
       ...settings,
       trustedCommandPatterns: [...settings.trustedCommandPatterns, newTrustedPattern.trim()],
     });
-    setNewTrustedPattern('');
+    setNewTrustedPattern("");
   };
 
   const removeTrustedPattern = (pattern: string) => {
     if (!settings) return;
     setSettings({
       ...settings,
-      trustedCommandPatterns: settings.trustedCommandPatterns.filter(p => p !== pattern),
+      trustedCommandPatterns: settings.trustedCommandPatterns.filter((p) => p !== pattern),
     });
   };
 
@@ -89,14 +93,14 @@ export function GuardrailSettings() {
       ...settings,
       allowedDomains: [...settings.allowedDomains, newDomain.trim()],
     });
-    setNewDomain('');
+    setNewDomain("");
   };
 
   const removeDomain = (domain: string) => {
     if (!settings) return;
     setSettings({
       ...settings,
-      allowedDomains: settings.allowedDomains.filter(d => d !== domain),
+      allowedDomains: settings.allowedDomains.filter((d) => d !== domain),
     });
   };
 
@@ -128,7 +132,9 @@ export function GuardrailSettings() {
             type="number"
             className="settings-input settings-input-number"
             value={settings.maxTokensPerTask}
-            onChange={(e) => setSettings({ ...settings, maxTokensPerTask: parseInt(e.target.value) || 100000 })}
+            onChange={(e) =>
+              setSettings({ ...settings, maxTokensPerTask: parseInt(e.target.value) || 100000 })
+            }
             min={1000}
             max={10000000}
             step={1000}
@@ -136,7 +142,8 @@ export function GuardrailSettings() {
           />
         </div>
         <p className="settings-hint">
-          Typical tasks use 5,000-50,000 tokens. Default: 100,000 (about $0.30-$7.50 depending on model)
+          Typical tasks use 5,000-50,000 tokens. Default: 100,000 (about $0.30-$7.50 depending on
+          model)
         </p>
       </div>
 
@@ -162,10 +169,12 @@ export function GuardrailSettings() {
             type="number"
             className="settings-input settings-input-number"
             value={settings.maxCostPerTask}
-            onChange={(e) => setSettings({ ...settings, maxCostPerTask: parseFloat(e.target.value) || 1.00 })}
+            onChange={(e) =>
+              setSettings({ ...settings, maxCostPerTask: parseFloat(e.target.value) || 1.0 })
+            }
             min={0.01}
             max={100}
-            step={0.10}
+            step={0.1}
             disabled={!settings.costBudgetEnabled}
           />
         </div>
@@ -182,7 +191,9 @@ export function GuardrailSettings() {
             <input
               type="checkbox"
               checked={settings.iterationLimitEnabled}
-              onChange={(e) => setSettings({ ...settings, iterationLimitEnabled: e.target.checked })}
+              onChange={(e) =>
+                setSettings({ ...settings, iterationLimitEnabled: e.target.checked })
+              }
             />
             <span className="toggle-slider"></span>
           </label>
@@ -196,7 +207,9 @@ export function GuardrailSettings() {
             type="number"
             className="settings-input settings-input-number"
             value={settings.maxIterationsPerTask}
-            onChange={(e) => setSettings({ ...settings, maxIterationsPerTask: parseInt(e.target.value) || 50 })}
+            onChange={(e) =>
+              setSettings({ ...settings, maxIterationsPerTask: parseInt(e.target.value) || 50 })
+            }
             min={5}
             max={500}
             step={5}
@@ -216,7 +229,9 @@ export function GuardrailSettings() {
             <input
               type="checkbox"
               checked={settings.blockDangerousCommands}
-              onChange={(e) => setSettings({ ...settings, blockDangerousCommands: e.target.checked })}
+              onChange={(e) =>
+                setSettings({ ...settings, blockDangerousCommands: e.target.checked })
+              }
             />
             <span className="toggle-slider"></span>
           </label>
@@ -230,7 +245,7 @@ export function GuardrailSettings() {
           <div className="pattern-list">
             {DEFAULT_BLOCKED_COMMAND_PATTERNS.map((pattern, index) => (
               <span key={index} className="pattern-tag builtin" title={pattern}>
-                {pattern.length > 30 ? pattern.slice(0, 27) + '...' : pattern}
+                {pattern.length > 30 ? pattern.slice(0, 27) + "..." : pattern}
               </span>
             ))}
           </div>
@@ -248,7 +263,7 @@ export function GuardrailSettings() {
               placeholder="e.g., npm publish|yarn publish"
               value={newPattern}
               onChange={(e) => setNewPattern(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && addCustomPattern()}
+              onKeyDown={(e) => e.key === "Enter" && addCustomPattern()}
               disabled={!settings.blockDangerousCommands}
             />
             <button
@@ -288,14 +303,17 @@ export function GuardrailSettings() {
             <input
               type="checkbox"
               checked={settings.autoApproveTrustedCommands}
-              onChange={(e) => setSettings({ ...settings, autoApproveTrustedCommands: e.target.checked })}
+              onChange={(e) =>
+                setSettings({ ...settings, autoApproveTrustedCommands: e.target.checked })
+              }
             />
             <span className="toggle-slider"></span>
           </label>
         </div>
         <p className="settings-description">
-          Automatically approve shell commands that match trusted patterns without asking for confirmation.
-          This enables more autonomous operation while keeping dangerous commands blocked.
+          Automatically approve shell commands that match trusted patterns without asking for
+          confirmation. This enables more autonomous operation while keeping dangerous commands
+          blocked.
         </p>
 
         {settings.autoApproveTrustedCommands && (
@@ -331,7 +349,7 @@ export function GuardrailSettings() {
                   placeholder="e.g., cargo build* or make *"
                   value={newTrustedPattern}
                   onChange={(e) => setNewTrustedPattern(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && addTrustedPattern()}
+                  onKeyDown={(e) => e.key === "Enter" && addTrustedPattern()}
                 />
                 <button
                   className="button-small button-secondary"
@@ -390,7 +408,9 @@ export function GuardrailSettings() {
             type="number"
             className="settings-input settings-input-number"
             value={settings.maxFileSizeMB}
-            onChange={(e) => setSettings({ ...settings, maxFileSizeMB: parseInt(e.target.value) || 50 })}
+            onChange={(e) =>
+              setSettings({ ...settings, maxFileSizeMB: parseInt(e.target.value) || 50 })
+            }
             min={1}
             max={500}
             step={10}
@@ -410,7 +430,9 @@ export function GuardrailSettings() {
             <input
               type="checkbox"
               checked={settings.enforceAllowedDomains}
-              onChange={(e) => setSettings({ ...settings, enforceAllowedDomains: e.target.checked })}
+              onChange={(e) =>
+                setSettings({ ...settings, enforceAllowedDomains: e.target.checked })
+              }
             />
             <span className="toggle-slider"></span>
           </label>
@@ -428,7 +450,7 @@ export function GuardrailSettings() {
                 placeholder="e.g., github.com or *.google.com"
                 value={newDomain}
                 onChange={(e) => setNewDomain(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && addDomain()}
+                onKeyDown={(e) => e.key === "Enter" && addDomain()}
               />
               <button
                 className="button-small button-secondary"
@@ -459,7 +481,8 @@ export function GuardrailSettings() {
               </p>
             )}
             <p className="settings-hint">
-              Use *.example.com to allow all subdomains. Without any domains, all navigation is blocked.
+              Use *.example.com to allow all subdomains. Without any domains, all navigation is
+              blocked.
             </p>
           </div>
         )}
@@ -467,19 +490,11 @@ export function GuardrailSettings() {
 
       {/* Actions */}
       <div className="settings-actions">
-        <button
-          className="button-secondary"
-          onClick={handleReset}
-          disabled={saving}
-        >
+        <button className="button-secondary" onClick={handleReset} disabled={saving}>
           Reset to Defaults
         </button>
-        <button
-          className="button-primary"
-          onClick={handleSave}
-          disabled={saving}
-        >
-          {saving ? 'Saving...' : 'Save Settings'}
+        <button className="button-primary" onClick={handleSave} disabled={saving}>
+          {saving ? "Saving..." : "Save Settings"}
         </button>
       </div>
     </>

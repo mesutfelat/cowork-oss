@@ -39,7 +39,7 @@ export interface ACPAgentCard {
   /** Agent endpoint URL (for remote agents) */
   endpoint?: string;
   /** Agent origin: 'local' (CoWork role) or 'remote' (external agent) */
-  origin: 'local' | 'remote';
+  origin: "local" | "remote";
   /** The local agent role ID if origin is 'local' */
   localRoleId?: string;
   /** Registration timestamp */
@@ -47,7 +47,7 @@ export interface ACPAgentCard {
   /** Last activity timestamp */
   lastActiveAt: number;
   /** Agent status */
-  status: 'available' | 'busy' | 'offline';
+  status: "available" | "busy" | "offline";
   /** Custom metadata */
   metadata?: Record<string, unknown>;
 }
@@ -75,7 +75,7 @@ export interface ACPMessage {
   /** Recipient agent ID */
   to: string;
   /** Message content type */
-  contentType: 'text/plain' | 'application/json' | 'text/markdown';
+  contentType: "text/plain" | "application/json" | "text/markdown";
   /** Message body */
   body: string;
   /** Structured data payload (optional) */
@@ -85,7 +85,7 @@ export interface ACPMessage {
   /** Reference to a parent message (for threading) */
   replyTo?: string;
   /** Message priority */
-  priority?: 'low' | 'normal' | 'high';
+  priority?: "low" | "normal" | "high";
   /** Message timestamp */
   timestamp: number;
   /** Time-to-live in milliseconds (0 = no expiry) */
@@ -107,7 +107,7 @@ export interface ACPTask {
   /** Task prompt/instructions */
   prompt: string;
   /** Task status */
-  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
+  status: "pending" | "running" | "completed" | "failed" | "cancelled";
   /** Task result (when completed) */
   result?: string;
   /** Error message (when failed) */
@@ -131,9 +131,9 @@ export interface ACPDiscoverParams {
   /** Filter by capability */
   capability?: string;
   /** Filter by status */
-  status?: 'available' | 'busy' | 'offline';
+  status?: "available" | "busy" | "offline";
   /** Filter by origin */
-  origin?: 'local' | 'remote';
+  origin?: "local" | "remote";
   /** Search query (matches name, description, skills) */
   query?: string;
 }
@@ -166,7 +166,7 @@ export interface ACPMessageSendParams {
   /** Message content */
   body: string;
   /** Content type */
-  contentType?: 'text/plain' | 'application/json' | 'text/markdown';
+  contentType?: "text/plain" | "application/json" | "text/markdown";
   /** Structured data */
   data?: unknown;
   /** Correlation ID for request-response flows */
@@ -174,7 +174,7 @@ export interface ACPMessageSendParams {
   /** Reply to a previous message */
   replyTo?: string;
   /** Message priority */
-  priority?: 'low' | 'normal' | 'high';
+  priority?: "low" | "normal" | "high";
   /** Time-to-live in milliseconds */
   ttlMs?: number;
 }
@@ -198,15 +198,15 @@ export interface ACPTaskCreateParams {
  */
 export const ACPEvents = {
   /** Emitted when a new agent registers */
-  AGENT_REGISTERED: 'acp.agent.registered',
+  AGENT_REGISTERED: "acp.agent.registered",
   /** Emitted when an agent unregisters */
-  AGENT_UNREGISTERED: 'acp.agent.unregistered',
+  AGENT_UNREGISTERED: "acp.agent.unregistered",
   /** Emitted when an agent's status changes */
-  AGENT_STATUS_CHANGED: 'acp.agent.status_changed',
+  AGENT_STATUS_CHANGED: "acp.agent.status_changed",
   /** Emitted when a message is received */
-  MESSAGE_RECEIVED: 'acp.message.received',
+  MESSAGE_RECEIVED: "acp.message.received",
   /** Emitted when a task status changes */
-  TASK_UPDATED: 'acp.task.updated',
+  TASK_UPDATED: "acp.task.updated",
 } as const;
 
 /**
@@ -214,23 +214,23 @@ export const ACPEvents = {
  */
 export const ACPMethods = {
   /** Discover available agents */
-  DISCOVER: 'acp.discover',
+  DISCOVER: "acp.discover",
   /** Get a specific agent's card */
-  AGENT_GET: 'acp.agent.get',
+  AGENT_GET: "acp.agent.get",
   /** Register a remote agent */
-  AGENT_REGISTER: 'acp.agent.register',
+  AGENT_REGISTER: "acp.agent.register",
   /** Unregister a remote agent */
-  AGENT_UNREGISTER: 'acp.agent.unregister',
+  AGENT_UNREGISTER: "acp.agent.unregister",
   /** Send a message to an agent */
-  MESSAGE_SEND: 'acp.message.send',
+  MESSAGE_SEND: "acp.message.send",
   /** List messages for the calling agent */
-  MESSAGE_LIST: 'acp.message.list',
+  MESSAGE_LIST: "acp.message.list",
   /** Create a task for an agent */
-  TASK_CREATE: 'acp.task.create',
+  TASK_CREATE: "acp.task.create",
   /** Get task status */
-  TASK_GET: 'acp.task.get',
+  TASK_GET: "acp.task.get",
   /** List ACP tasks */
-  TASK_LIST: 'acp.task.list',
+  TASK_LIST: "acp.task.list",
   /** Cancel an ACP task */
-  TASK_CANCEL: 'acp.task.cancel',
+  TASK_CANCEL: "acp.task.cancel",
 } as const;

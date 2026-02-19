@@ -5,7 +5,7 @@
  * repository test style in this codebase.
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import type {
   AgentTeam,
   AgentTeamMember,
@@ -19,12 +19,12 @@ import type {
   AgentTeamRunStatus,
   CreateAgentTeamItemRequest,
   UpdateAgentTeamItemRequest,
-} from '../../../shared/types';
+} from "../../../shared/types";
 
 // Mock electron to avoid getPath errors in other imports
-vi.mock('electron', () => ({
+vi.mock("electron", () => ({
   app: {
-    getPath: vi.fn().mockReturnValue('/tmp/test-cowork'),
+    getPath: vi.fn().mockReturnValue("/tmp/test-cowork"),
   },
 }));
 
@@ -43,7 +43,7 @@ class MockAgentTeamRepository {
     // Enforce UNIQUE(workspace_id, name)
     for (const stored of mockTeams.values()) {
       if (stored.workspace_id === request.workspaceId && stored.name === request.name) {
-        throw new Error('UNIQUE constraint failed: agent_teams.workspace_id, agent_teams.name');
+        throw new Error("UNIQUE constraint failed: agent_teams.workspace_id, agent_teams.name");
       }
     }
 
@@ -112,8 +112,12 @@ class MockAgentTeamRepository {
     // Name uniqueness check within workspace when renaming
     if (request.name !== undefined && request.name !== stored.name) {
       for (const other of mockTeams.values()) {
-        if (other.id !== stored.id && other.workspace_id === stored.workspace_id && other.name === request.name) {
-          throw new Error('UNIQUE constraint failed: agent_teams.workspace_id, agent_teams.name');
+        if (
+          other.id !== stored.id &&
+          other.workspace_id === stored.workspace_id &&
+          other.name === request.name
+        ) {
+          throw new Error("UNIQUE constraint failed: agent_teams.workspace_id, agent_teams.name");
         }
       }
     }
@@ -121,9 +125,12 @@ class MockAgentTeamRepository {
     if (request.name !== undefined) stored.name = request.name;
     if (request.description !== undefined) stored.description = request.description;
     if (request.leadAgentRoleId !== undefined) stored.lead_agent_role_id = request.leadAgentRoleId;
-    if (request.maxParallelAgents !== undefined) stored.max_parallel_agents = request.maxParallelAgents;
-    if (request.defaultModelPreference !== undefined) stored.default_model_preference = request.defaultModelPreference;
-    if (request.defaultPersonality !== undefined) stored.default_personality = request.defaultPersonality;
+    if (request.maxParallelAgents !== undefined)
+      stored.max_parallel_agents = request.maxParallelAgents;
+    if (request.defaultModelPreference !== undefined)
+      stored.default_model_preference = request.defaultModelPreference;
+    if (request.defaultPersonality !== undefined)
+      stored.default_personality = request.defaultPersonality;
     if (request.isActive !== undefined) stored.is_active = request.isActive ? 1 : 0;
     stored.updated_at = Date.now();
 
@@ -265,7 +272,7 @@ class MockAgentTeamRunRepository {
       id,
       teamId: request.teamId,
       rootTaskId: request.rootTaskId,
-      status: request.status ?? 'pending',
+      status: request.status ?? "pending",
       startedAt: request.startedAt ?? now,
       completedAt: undefined,
       error: undefined,
@@ -301,14 +308,24 @@ class MockAgentTeamRunRepository {
 
   update(
     id: string,
-    updates: { status?: AgentTeamRunStatus; completedAt?: number | null; error?: string | null; summary?: string | null }
+    updates: {
+      status?: AgentTeamRunStatus;
+      completedAt?: number | null;
+      error?: string | null;
+      summary?: string | null;
+    },
   ): AgentTeamRun | undefined {
     const stored = mockRuns.get(id);
     if (!stored) return undefined;
 
     if (updates.status !== undefined) {
       stored.status = updates.status;
-      if ((updates.status === 'completed' || updates.status === 'failed' || updates.status === 'cancelled') && updates.completedAt === undefined) {
+      if (
+        (updates.status === "completed" ||
+          updates.status === "failed" ||
+          updates.status === "cancelled") &&
+        updates.completedAt === undefined
+      ) {
         stored.completed_at = Date.now();
       }
     }
@@ -346,7 +363,7 @@ class MockAgentTeamItemRepository {
       description: request.description,
       ownerAgentRoleId: request.ownerAgentRoleId,
       sourceTaskId: request.sourceTaskId,
-      status: request.status ?? 'todo',
+      status: request.status ?? "todo",
       resultSummary: undefined,
       sortOrder: request.sortOrder ?? 0,
       createdAt: now,
@@ -391,7 +408,8 @@ class MockAgentTeamItemRepository {
     if (request.parentItemId !== undefined) stored.parent_item_id = request.parentItemId;
     if (request.title !== undefined) stored.title = request.title;
     if (request.description !== undefined) stored.description = request.description;
-    if (request.ownerAgentRoleId !== undefined) stored.owner_agent_role_id = request.ownerAgentRoleId;
+    if (request.ownerAgentRoleId !== undefined)
+      stored.owner_agent_role_id = request.ownerAgentRoleId;
     if (request.sourceTaskId !== undefined) stored.source_task_id = request.sourceTaskId;
     if (request.status !== undefined) stored.status = request.status;
     if (request.resultSummary !== undefined) stored.result_summary = request.resultSummary;
@@ -437,7 +455,7 @@ class MockAgentTeamItemRepository {
   }
 }
 
-describe('Agent Teams repositories (contract)', () => {
+describe("Agent Teams repositories (contract)", () => {
   let teamRepo: MockAgentTeamRepository;
   let memberRepo: MockAgentTeamMemberRepository;
   let runRepo: MockAgentTeamRunRepository;
@@ -445,7 +463,7 @@ describe('Agent Teams repositories (contract)', () => {
 
   beforeEach(() => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date('2024-01-01T00:00:00Z'));
+    vi.setSystemTime(new Date("2024-01-01T00:00:00Z"));
 
     mockTeams = new Map();
     mockMembers = new Map();
@@ -467,68 +485,75 @@ describe('Agent Teams repositories (contract)', () => {
     vi.useRealTimers();
   });
 
-  describe('AgentTeamRepository', () => {
-    it('creates a team with defaults', () => {
+  describe("AgentTeamRepository", () => {
+    it("creates a team with defaults", () => {
       const team = teamRepo.create({
-        workspaceId: 'ws-1',
-        name: 'Core Team',
-        leadAgentRoleId: 'role-lead',
+        workspaceId: "ws-1",
+        name: "Core Team",
+        leadAgentRoleId: "role-lead",
       });
 
       expect(team.id).toBeDefined();
-      expect(team.workspaceId).toBe('ws-1');
-      expect(team.name).toBe('Core Team');
+      expect(team.workspaceId).toBe("ws-1");
+      expect(team.name).toBe("Core Team");
       expect(team.maxParallelAgents).toBe(4);
       expect(team.isActive).toBe(true);
       expect(team.createdAt).toBeGreaterThan(0);
       expect(team.updatedAt).toBe(team.createdAt);
     });
 
-    it('enforces unique team name within workspace', () => {
-      teamRepo.create({ workspaceId: 'ws-1', name: 'Team A', leadAgentRoleId: 'lead-1' });
+    it("enforces unique team name within workspace", () => {
+      teamRepo.create({ workspaceId: "ws-1", name: "Team A", leadAgentRoleId: "lead-1" });
 
-      expect(() => teamRepo.create({ workspaceId: 'ws-1', name: 'Team A', leadAgentRoleId: 'lead-2' }))
-        .toThrow(/UNIQUE constraint failed/);
+      expect(() =>
+        teamRepo.create({ workspaceId: "ws-1", name: "Team A", leadAgentRoleId: "lead-2" }),
+      ).toThrow(/UNIQUE constraint failed/);
 
       // Same name in a different workspace should be fine
-      expect(() => teamRepo.create({ workspaceId: 'ws-2', name: 'Team A', leadAgentRoleId: 'lead-3' }))
-        .not.toThrow();
+      expect(() =>
+        teamRepo.create({ workspaceId: "ws-2", name: "Team A", leadAgentRoleId: "lead-3" }),
+      ).not.toThrow();
     });
 
-    it('lists by workspace and filters inactive by default', () => {
-      teamRepo.create({ workspaceId: 'ws-1', name: 'B', leadAgentRoleId: 'lead' });
-      const inactive = teamRepo.create({ workspaceId: 'ws-1', name: 'A', leadAgentRoleId: 'lead', isActive: false });
+    it("lists by workspace and filters inactive by default", () => {
+      teamRepo.create({ workspaceId: "ws-1", name: "B", leadAgentRoleId: "lead" });
+      const inactive = teamRepo.create({
+        workspaceId: "ws-1",
+        name: "A",
+        leadAgentRoleId: "lead",
+        isActive: false,
+      });
 
-      const activeOnly = teamRepo.listByWorkspace('ws-1');
-      expect(activeOnly.map(t => t.id)).not.toContain(inactive.id);
+      const activeOnly = teamRepo.listByWorkspace("ws-1");
+      expect(activeOnly.map((t) => t.id)).not.toContain(inactive.id);
 
-      const allTeams = teamRepo.listByWorkspace('ws-1', true);
+      const allTeams = teamRepo.listByWorkspace("ws-1", true);
       expect(allTeams).toHaveLength(2);
-      expect(allTeams[0].name).toBe('A'); // Sorted by name
+      expect(allTeams[0].name).toBe("A"); // Sorted by name
     });
 
-    it('updates team fields and bumps updatedAt', () => {
-      const team = teamRepo.create({ workspaceId: 'ws-1', name: 'Team', leadAgentRoleId: 'lead' });
+    it("updates team fields and bumps updatedAt", () => {
+      const team = teamRepo.create({ workspaceId: "ws-1", name: "Team", leadAgentRoleId: "lead" });
 
       vi.advanceTimersByTime(5);
       const updated = teamRepo.update({
         id: team.id,
-        description: 'Updated description',
+        description: "Updated description",
         maxParallelAgents: 8,
         isActive: false,
       });
 
-      expect(updated?.description).toBe('Updated description');
+      expect(updated?.description).toBe("Updated description");
       expect(updated?.maxParallelAgents).toBe(8);
       expect(updated?.isActive).toBe(false);
       expect(updated?.updatedAt).toBeGreaterThan(team.updatedAt);
     });
 
-    it('deletes a team and cascades to members, runs, and items', () => {
-      const team = teamRepo.create({ workspaceId: 'ws-1', name: 'Team', leadAgentRoleId: 'lead' });
-      memberRepo.add({ teamId: team.id, agentRoleId: 'role-1' });
-      const run = runRepo.create({ teamId: team.id, rootTaskId: 'task-root' });
-      itemRepo.create({ teamRunId: run.id, title: 'Checklist item', sourceTaskId: 'task-1' });
+    it("deletes a team and cascades to members, runs, and items", () => {
+      const team = teamRepo.create({ workspaceId: "ws-1", name: "Team", leadAgentRoleId: "lead" });
+      memberRepo.add({ teamId: team.id, agentRoleId: "role-1" });
+      const run = runRepo.create({ teamId: team.id, rootTaskId: "task-root" });
+      itemRepo.create({ teamRunId: run.id, title: "Checklist item", sourceTaskId: "task-1" });
 
       expect(memberRepo.listByTeam(team.id)).toHaveLength(1);
       expect(runRepo.listByTeam(team.id)).toHaveLength(1);
@@ -544,96 +569,95 @@ describe('Agent Teams repositories (contract)', () => {
     });
   });
 
-  describe('AgentTeamMemberRepository', () => {
-    it('add is idempotent for the same team + agent role', () => {
-      const team = teamRepo.create({ workspaceId: 'ws-1', name: 'Team', leadAgentRoleId: 'lead' });
+  describe("AgentTeamMemberRepository", () => {
+    it("add is idempotent for the same team + agent role", () => {
+      const team = teamRepo.create({ workspaceId: "ws-1", name: "Team", leadAgentRoleId: "lead" });
 
-      const m1 = memberRepo.add({ teamId: team.id, agentRoleId: 'role-1', memberOrder: 2 });
-      const m2 = memberRepo.add({ teamId: team.id, agentRoleId: 'role-1', memberOrder: 5 });
+      const m1 = memberRepo.add({ teamId: team.id, agentRoleId: "role-1", memberOrder: 2 });
+      const m2 = memberRepo.add({ teamId: team.id, agentRoleId: "role-1", memberOrder: 5 });
 
       expect(m2.id).toBe(m1.id);
       expect(memberRepo.listByTeam(team.id)).toHaveLength(1);
       expect(memberRepo.listByTeam(team.id)[0].memberOrder).toBe(2);
     });
 
-    it('lists members ordered by memberOrder', () => {
-      const team = teamRepo.create({ workspaceId: 'ws-1', name: 'Team', leadAgentRoleId: 'lead' });
+    it("lists members ordered by memberOrder", () => {
+      const team = teamRepo.create({ workspaceId: "ws-1", name: "Team", leadAgentRoleId: "lead" });
 
-      memberRepo.add({ teamId: team.id, agentRoleId: 'role-b', memberOrder: 20 });
-      memberRepo.add({ teamId: team.id, agentRoleId: 'role-a', memberOrder: 10 });
+      memberRepo.add({ teamId: team.id, agentRoleId: "role-b", memberOrder: 20 });
+      memberRepo.add({ teamId: team.id, agentRoleId: "role-a", memberOrder: 10 });
 
       const members = memberRepo.listByTeam(team.id);
-      expect(members.map(m => m.agentRoleId)).toEqual(['role-a', 'role-b']);
+      expect(members.map((m) => m.agentRoleId)).toEqual(["role-a", "role-b"]);
     });
   });
 
-  describe('AgentTeamRunRepository', () => {
-    it('creates runs with defaults', () => {
-      const team = teamRepo.create({ workspaceId: 'ws-1', name: 'Team', leadAgentRoleId: 'lead' });
-      const run = runRepo.create({ teamId: team.id, rootTaskId: 'task-root' });
+  describe("AgentTeamRunRepository", () => {
+    it("creates runs with defaults", () => {
+      const team = teamRepo.create({ workspaceId: "ws-1", name: "Team", leadAgentRoleId: "lead" });
+      const run = runRepo.create({ teamId: team.id, rootTaskId: "task-root" });
 
-      expect(run.status).toBe('pending');
+      expect(run.status).toBe("pending");
       expect(run.startedAt).toBeGreaterThan(0);
       expect(run.completedAt).toBeUndefined();
     });
 
-    it('sets completedAt automatically when moving to a terminal status', () => {
-      const team = teamRepo.create({ workspaceId: 'ws-1', name: 'Team', leadAgentRoleId: 'lead' });
-      const run = runRepo.create({ teamId: team.id, rootTaskId: 'task-root' });
+    it("sets completedAt automatically when moving to a terminal status", () => {
+      const team = teamRepo.create({ workspaceId: "ws-1", name: "Team", leadAgentRoleId: "lead" });
+      const run = runRepo.create({ teamId: team.id, rootTaskId: "task-root" });
 
       vi.advanceTimersByTime(1000);
-      const updated = runRepo.update(run.id, { status: 'completed' });
+      const updated = runRepo.update(run.id, { status: "completed" });
 
-      expect(updated?.status).toBe('completed');
+      expect(updated?.status).toBe("completed");
       expect(updated?.completedAt).toBeGreaterThan(run.startedAt);
     });
   });
 
-  describe('AgentTeamItemRepository', () => {
-    it('creates items with defaults and lists ordered by sortOrder', () => {
-      const team = teamRepo.create({ workspaceId: 'ws-1', name: 'Team', leadAgentRoleId: 'lead' });
-      const run = runRepo.create({ teamId: team.id, rootTaskId: 'task-root' });
+  describe("AgentTeamItemRepository", () => {
+    it("creates items with defaults and lists ordered by sortOrder", () => {
+      const team = teamRepo.create({ workspaceId: "ws-1", name: "Team", leadAgentRoleId: "lead" });
+      const run = runRepo.create({ teamId: team.id, rootTaskId: "task-root" });
 
-      itemRepo.create({ teamRunId: run.id, title: 'B', sortOrder: 10 });
-      itemRepo.create({ teamRunId: run.id, title: 'A', sortOrder: 5 });
+      itemRepo.create({ teamRunId: run.id, title: "B", sortOrder: 10 });
+      itemRepo.create({ teamRunId: run.id, title: "A", sortOrder: 5 });
 
       const items = itemRepo.listByRun(run.id);
-      expect(items.map(i => i.title)).toEqual(['A', 'B']);
-      expect(items[0].status).toBe('todo');
+      expect(items.map((i) => i.title)).toEqual(["A", "B"]);
+      expect(items[0].status).toBe("todo");
     });
 
-    it('updates items and bumps updatedAt', () => {
-      const team = teamRepo.create({ workspaceId: 'ws-1', name: 'Team', leadAgentRoleId: 'lead' });
-      const run = runRepo.create({ teamId: team.id, rootTaskId: 'task-root' });
-      const item = itemRepo.create({ teamRunId: run.id, title: 'Item', sourceTaskId: 'task-1' });
+    it("updates items and bumps updatedAt", () => {
+      const team = teamRepo.create({ workspaceId: "ws-1", name: "Team", leadAgentRoleId: "lead" });
+      const run = runRepo.create({ teamId: team.id, rootTaskId: "task-root" });
+      const item = itemRepo.create({ teamRunId: run.id, title: "Item", sourceTaskId: "task-1" });
 
       vi.advanceTimersByTime(10);
       const updated = itemRepo.update({
         id: item.id,
-        status: 'done',
-        resultSummary: 'Completed',
+        status: "done",
+        resultSummary: "Completed",
       } satisfies UpdateAgentTeamItemRequest);
 
-      expect(updated?.status).toBe('done');
-      expect(updated?.resultSummary).toBe('Completed');
+      expect(updated?.status).toBe("done");
+      expect(updated?.resultSummary).toBe("Completed");
       expect(updated?.updatedAt).toBeGreaterThan(item.updatedAt);
     });
 
-    it('sets resultSummary by sourceTaskId', () => {
-      const team = teamRepo.create({ workspaceId: 'ws-1', name: 'Team', leadAgentRoleId: 'lead' });
-      const run = runRepo.create({ teamId: team.id, rootTaskId: 'task-root' });
+    it("sets resultSummary by sourceTaskId", () => {
+      const team = teamRepo.create({ workspaceId: "ws-1", name: "Team", leadAgentRoleId: "lead" });
+      const run = runRepo.create({ teamId: team.id, rootTaskId: "task-root" });
 
-      const a = itemRepo.create({ teamRunId: run.id, title: 'A', sourceTaskId: 'task-1' });
-      itemRepo.create({ teamRunId: run.id, title: 'B', sourceTaskId: 'task-2' });
+      const a = itemRepo.create({ teamRunId: run.id, title: "A", sourceTaskId: "task-1" });
+      itemRepo.create({ teamRunId: run.id, title: "B", sourceTaskId: "task-2" });
 
       vi.advanceTimersByTime(50);
-      const changed = itemRepo.setResultSummaryBySourceTaskId('task-1', 'Summary');
+      const changed = itemRepo.setResultSummaryBySourceTaskId("task-1", "Summary");
       expect(changed).toBe(1);
 
       const updatedA = itemRepo.findById(a.id);
-      expect(updatedA?.resultSummary).toBe('Summary');
+      expect(updatedA?.resultSummary).toBe("Summary");
       expect(updatedA?.updatedAt).toBeGreaterThan(a.updatedAt);
     });
   });
 });
-

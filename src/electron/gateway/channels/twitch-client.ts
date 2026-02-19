@@ -22,8 +22,8 @@
  * - Moderators/VIPs: 100 messages per 30 seconds
  */
 
-import { EventEmitter } from 'events';
-import WebSocket from 'ws';
+import { EventEmitter } from "events";
+import WebSocket from "ws";
 
 /**
  * Twitch chat message
@@ -127,18 +127,18 @@ export class TwitchClient extends EventEmitter {
   private readonly RATE_LIMIT_COUNT = 20; // 20 messages per window
   private rateLimitTimer?: NodeJS.Timeout;
 
-  private readonly IRC_URL = 'wss://irc-ws.chat.twitch.tv:443';
+  private readonly IRC_URL = "wss://irc-ws.chat.twitch.tv:443";
 
   constructor(options: TwitchClientOptions) {
     super();
     this.options = {
       ...options,
       // Ensure oauth: prefix
-      oauthToken: options.oauthToken.startsWith('oauth:')
+      oauthToken: options.oauthToken.startsWith("oauth:")
         ? options.oauthToken
         : `oauth:${options.oauthToken}`,
       // Ensure lowercase channels
-      channels: options.channels.map((c) => c.toLowerCase().replace(/^#/, '')),
+      channels: options.channels.map((c) => c.toLowerCase().replace(/^#/, "")),
     };
   }
 
@@ -151,34 +151,34 @@ export class TwitchClient extends EventEmitter {
 
       const timeout = setTimeout(() => {
         testWs.close();
-        resolve({ success: false, error: 'Connection timeout' });
+        resolve({ success: false, error: "Connection timeout" });
       }, 10000);
 
-      testWs.on('open', () => {
-        testWs.send('CAP REQ :twitch.tv/tags twitch.tv/commands');
+      testWs.on("open", () => {
+        testWs.send("CAP REQ :twitch.tv/tags twitch.tv/commands");
         testWs.send(`PASS ${this.options.oauthToken}`);
         testWs.send(`NICK ${this.options.username}`);
       });
 
-      testWs.on('message', (data: Buffer) => {
+      testWs.on("message", (data: Buffer) => {
         const message = data.toString();
 
         // Check for authentication success
-        if (message.includes('001') || message.includes(':Welcome')) {
+        if (message.includes("001") || message.includes(":Welcome")) {
           clearTimeout(timeout);
           testWs.close();
           resolve({ success: true, username: this.options.username });
         }
 
         // Check for authentication failure
-        if (message.includes('NOTICE * :Login authentication failed')) {
+        if (message.includes("NOTICE * :Login authentication failed")) {
           clearTimeout(timeout);
           testWs.close();
-          resolve({ success: false, error: 'Invalid OAuth token' });
+          resolve({ success: false, error: "Invalid OAuth token" });
         }
       });
 
-      testWs.on('error', (error: Error) => {
+      testWs.on("error", (error: Error) => {
         clearTimeout(timeout);
         testWs.close();
         resolve({ success: false, error: error.message });
@@ -196,48 +196,48 @@ export class TwitchClient extends EventEmitter {
 
     return new Promise((resolve, reject) => {
       if (this.options.verbose) {
-        console.log('Connecting to Twitch IRC...');
+        console.log("Connecting to Twitch IRC...");
       }
 
       this.ws = new WebSocket(this.IRC_URL);
 
-      this.ws.on('open', () => {
+      this.ws.on("open", () => {
         // Request capabilities for rich message info
-        this.ws!.send('CAP REQ :twitch.tv/tags twitch.tv/commands twitch.tv/membership');
+        this.ws!.send("CAP REQ :twitch.tv/tags twitch.tv/commands twitch.tv/membership");
         // Authenticate
         this.ws!.send(`PASS ${this.options.oauthToken}`);
         this.ws!.send(`NICK ${this.options.username}`);
       });
 
-      this.ws.on('message', (data: Buffer) => {
+      this.ws.on("message", (data: Buffer) => {
         this.handleMessage(data.toString());
       });
 
-      this.ws.on('error', (error: Error) => {
+      this.ws.on("error", (error: Error) => {
         if (this.options.verbose) {
-          console.error('Twitch WebSocket error:', error);
+          console.error("Twitch WebSocket error:", error);
         }
-        this.emit('error', error);
+        this.emit("error", error);
         if (!this.connected) {
           reject(error);
         }
       });
 
-      this.ws.on('close', () => {
+      this.ws.on("close", () => {
         this.connected = false;
         this.stopPing();
-        this.emit('disconnected');
+        this.emit("disconnected");
         this.scheduleReconnect();
       });
 
       // Wait for successful connection
       const connectionTimeout = setTimeout(() => {
         if (!this.connected) {
-          reject(new Error('Connection timeout'));
+          reject(new Error("Connection timeout"));
         }
       }, 15000);
 
-      this.once('connected', () => {
+      this.once("connected", () => {
         clearTimeout(connectionTimeout);
         resolve();
       });
@@ -248,12 +248,12 @@ export class TwitchClient extends EventEmitter {
    * Handle incoming IRC message
    */
   private handleMessage(raw: string): void {
-    const lines = raw.split('\r\n').filter(Boolean);
+    const lines = raw.split("\r\n").filter(Boolean);
 
     for (const line of lines) {
       // Handle PING
-      if (line.startsWith('PING')) {
-        this.ws?.send('PONG :tmi.twitch.tv');
+      if (line.startsWith("PING")) {
+        this.ws?.send("PONG :tmi.twitch.tv");
         continue;
       }
 
@@ -262,12 +262,12 @@ export class TwitchClient extends EventEmitter {
       if (!parsed) continue;
 
       switch (parsed.command) {
-        case '001': // Welcome - authentication successful
-        case '376': // End of MOTD - fully connected
+        case "001": // Welcome - authentication successful
+        case "376": // End of MOTD - fully connected
           if (!this.connected) {
             this.connected = true;
             this.startPing();
-            this.emit('connected');
+            this.emit("connected");
             // Join channels
             for (const channel of this.options.channels) {
               this.joinChannel(channel);
@@ -275,34 +275,34 @@ export class TwitchClient extends EventEmitter {
           }
           break;
 
-        case 'NOTICE':
+        case "NOTICE":
           // Check for auth failure
-          if (line.includes('Login authentication failed')) {
-            this.emit('error', new Error('Login authentication failed'));
+          if (line.includes("Login authentication failed")) {
+            this.emit("error", new Error("Login authentication failed"));
           }
           break;
 
-        case 'JOIN':
+        case "JOIN":
           if (parsed.prefix?.startsWith(this.options.username)) {
-            const channel = parsed.params[0].replace(/^#/, '');
+            const channel = parsed.params[0].replace(/^#/, "");
             this.joinedChannels.add(channel);
-            this.emit('join', channel);
+            this.emit("join", channel);
           }
           break;
 
-        case 'PART':
+        case "PART":
           if (parsed.prefix?.startsWith(this.options.username)) {
-            const channel = parsed.params[0].replace(/^#/, '');
+            const channel = parsed.params[0].replace(/^#/, "");
             this.joinedChannels.delete(channel);
-            this.emit('part', channel);
+            this.emit("part", channel);
           }
           break;
 
-        case 'PRIVMSG':
+        case "PRIVMSG":
           this.handlePrivmsg(parsed);
           break;
 
-        case 'WHISPER':
+        case "WHISPER":
           this.handleWhisper(parsed);
           break;
       }
@@ -322,33 +322,33 @@ export class TwitchClient extends EventEmitter {
     const tags: Record<string, string> = {};
 
     // Parse tags
-    if (line.startsWith('@')) {
-      const spaceIndex = line.indexOf(' ');
+    if (line.startsWith("@")) {
+      const spaceIndex = line.indexOf(" ");
       const tagString = line.substring(1, spaceIndex);
       position = spaceIndex + 1;
 
-      for (const tag of tagString.split(';')) {
-        const [key, value] = tag.split('=');
-        tags[key] = value?.replace(/\\s/g, ' ').replace(/\\:/g, ';') || '';
+      for (const tag of tagString.split(";")) {
+        const [key, value] = tag.split("=");
+        tags[key] = value?.replace(/\\s/g, " ").replace(/\\:/g, ";") || "";
       }
     }
 
     // Skip any additional spaces
-    while (line[position] === ' ') position++;
+    while (line[position] === " ") position++;
 
     // Parse prefix
     let prefix: string | undefined;
-    if (line[position] === ':') {
-      const spaceIndex = line.indexOf(' ', position);
+    if (line[position] === ":") {
+      const spaceIndex = line.indexOf(" ", position);
       prefix = line.substring(position + 1, spaceIndex);
       position = spaceIndex + 1;
     }
 
     // Skip any additional spaces
-    while (line[position] === ' ') position++;
+    while (line[position] === " ") position++;
 
     // Parse command
-    const nextSpace = line.indexOf(' ', position);
+    const nextSpace = line.indexOf(" ", position);
     const command =
       nextSpace === -1 ? line.substring(position) : line.substring(position, nextSpace);
     position = nextSpace === -1 ? line.length : nextSpace + 1;
@@ -357,17 +357,17 @@ export class TwitchClient extends EventEmitter {
     const params: string[] = [];
     while (position < line.length) {
       // Skip spaces
-      while (line[position] === ' ') position++;
+      while (line[position] === " ") position++;
 
       if (position >= line.length) break;
 
-      if (line[position] === ':') {
+      if (line[position] === ":") {
         // Rest of line is trailing param
         params.push(line.substring(position + 1));
         break;
       } else {
         // Regular param
-        const nextSpace = line.indexOf(' ', position);
+        const nextSpace = line.indexOf(" ", position);
         if (nextSpace === -1) {
           params.push(line.substring(position));
           break;
@@ -387,17 +387,17 @@ export class TwitchClient extends EventEmitter {
   private handlePrivmsg(parsed: ReturnType<typeof this.parseIrcMessage>): void {
     if (!parsed) return;
 
-    const channel = parsed.params[0].replace(/^#/, '');
-    const messageText = parsed.params[1] || '';
+    const channel = parsed.params[0].replace(/^#/, "");
+    const messageText = parsed.params[1] || "";
     const tags = parsed.tags;
 
     // Skip own messages
-    if (tags['user-id'] === this.getCurrentUserId()) {
+    if (tags["user-id"] === this.getCurrentUserId()) {
       return;
     }
 
     const message = this.createTwitchMessage(channel, messageText, tags, false);
-    this.emit('message', message);
+    this.emit("message", message);
   }
 
   /**
@@ -406,11 +406,11 @@ export class TwitchClient extends EventEmitter {
   private handleWhisper(parsed: ReturnType<typeof this.parseIrcMessage>): void {
     if (!parsed) return;
 
-    const messageText = parsed.params[1] || '';
+    const messageText = parsed.params[1] || "";
     const tags = parsed.tags;
 
-    const message = this.createTwitchMessage('', messageText, tags, true);
-    this.emit('whisper', message);
+    const message = this.createTwitchMessage("", messageText, tags, true);
+    this.emit("whisper", message);
   }
 
   /**
@@ -420,13 +420,13 @@ export class TwitchClient extends EventEmitter {
     channel: string,
     messageText: string,
     tags: Record<string, string>,
-    isWhisper: boolean
+    isWhisper: boolean,
   ): TwitchMessage {
     // Parse badges
     const badges: TwitchBadge[] = [];
     if (tags.badges) {
-      for (const badge of tags.badges.split(',')) {
-        const [name, version] = badge.split('/');
+      for (const badge of tags.badges.split(",")) {
+        const [name, version] = badge.split("/");
         if (name && version) {
           badges.push({ name, version });
         }
@@ -436,11 +436,11 @@ export class TwitchClient extends EventEmitter {
     // Parse emotes
     const emotes: TwitchEmote[] = [];
     if (tags.emotes) {
-      for (const emoteData of tags.emotes.split('/')) {
-        const [id, positions] = emoteData.split(':');
+      for (const emoteData of tags.emotes.split("/")) {
+        const [id, positions] = emoteData.split(":");
         if (id && positions) {
-          for (const pos of positions.split(',')) {
-            const [start, end] = pos.split('-').map(Number);
+          for (const pos of positions.split(",")) {
+            const [start, end] = pos.split("-").map(Number);
             emotes.push({
               id,
               name: messageText.substring(start, end + 1),
@@ -453,13 +453,13 @@ export class TwitchClient extends EventEmitter {
     }
 
     // Parse reply info
-    let replyTo: TwitchMessage['replyTo'];
-    if (tags['reply-parent-msg-id']) {
+    let replyTo: TwitchMessage["replyTo"];
+    if (tags["reply-parent-msg-id"]) {
       replyTo = {
-        messageId: tags['reply-parent-msg-id'],
-        userId: tags['reply-parent-user-id'] || '',
-        username: tags['reply-parent-user-login'] || '',
-        message: tags['reply-parent-msg-body'] || '',
+        messageId: tags["reply-parent-msg-id"],
+        userId: tags["reply-parent-user-id"] || "",
+        username: tags["reply-parent-user-login"] || "",
+        message: tags["reply-parent-msg-body"] || "",
       };
     }
 
@@ -469,21 +469,19 @@ export class TwitchClient extends EventEmitter {
     return {
       id: tags.id || `${Date.now()}-${Math.random().toString(36).substring(2)}`,
       channel,
-      userId: tags['user-id'] || '',
-      username: tags.login || tags['display-name']?.toLowerCase() || '',
-      displayName: tags['display-name'] || tags.login || '',
+      userId: tags["user-id"] || "",
+      username: tags.login || tags["display-name"]?.toLowerCase() || "",
+      displayName: tags["display-name"] || tags.login || "",
       message: messageText,
-      timestamp: tags['tmi-sent-ts']
-        ? new Date(parseInt(tags['tmi-sent-ts'], 10))
-        : new Date(),
+      timestamp: tags["tmi-sent-ts"] ? new Date(parseInt(tags["tmi-sent-ts"], 10)) : new Date(),
       isWhisper,
       color: tags.color || undefined,
       badges,
       emotes,
-      isBroadcaster: badgeNames.includes('broadcaster'),
-      isModerator: tags.mod === '1' || badgeNames.includes('moderator'),
-      isSubscriber: tags.subscriber === '1' || badgeNames.includes('subscriber'),
-      isVip: badgeNames.includes('vip'),
+      isBroadcaster: badgeNames.includes("broadcaster"),
+      isModerator: tags.mod === "1" || badgeNames.includes("moderator"),
+      isSubscriber: tags.subscriber === "1" || badgeNames.includes("subscriber"),
+      isVip: badgeNames.includes("vip"),
       replyTo,
       tags,
     };
@@ -503,7 +501,7 @@ export class TwitchClient extends EventEmitter {
   private startPing(): void {
     this.pingTimer = setInterval(() => {
       if (this.ws && this.connected) {
-        this.ws.send('PING :tmi.twitch.tv');
+        this.ws.send("PING :tmi.twitch.tv");
       }
     }, 60000); // Ping every minute
   }
@@ -531,7 +529,7 @@ export class TwitchClient extends EventEmitter {
       try {
         await this.startReceiving();
       } catch (error) {
-        console.error('Twitch reconnection failed:', error);
+        console.error("Twitch reconnection failed:", error);
         this.scheduleReconnect();
       }
     }, 5000);
@@ -560,14 +558,14 @@ export class TwitchClient extends EventEmitter {
 
     this.connected = false;
     this.joinedChannels.clear();
-    this.emit('disconnected');
+    this.emit("disconnected");
   }
 
   /**
    * Join a channel
    */
   joinChannel(channel: string): void {
-    const channelName = channel.toLowerCase().replace(/^#/, '');
+    const channelName = channel.toLowerCase().replace(/^#/, "");
     if (this.ws && this.connected) {
       this.ws.send(`JOIN #${channelName}`);
     }
@@ -577,7 +575,7 @@ export class TwitchClient extends EventEmitter {
    * Leave a channel
    */
   leaveChannel(channel: string): void {
-    const channelName = channel.toLowerCase().replace(/^#/, '');
+    const channelName = channel.toLowerCase().replace(/^#/, "");
     if (this.ws && this.connected) {
       this.ws.send(`PART #${channelName}`);
     }
@@ -588,10 +586,10 @@ export class TwitchClient extends EventEmitter {
    */
   async sendMessage(channel: string, message: string, replyTo?: string): Promise<void> {
     if (!this.ws || !this.connected) {
-      throw new Error('Not connected to Twitch');
+      throw new Error("Not connected to Twitch");
     }
 
-    const channelName = channel.toLowerCase().replace(/^#/, '');
+    const channelName = channel.toLowerCase().replace(/^#/, "");
 
     // Rate limiting
     await this.waitForRateLimit();
@@ -614,7 +612,7 @@ export class TwitchClient extends EventEmitter {
     // Note: Whispers are now sent through the API, not IRC
     // This is included for legacy support but may not work
     if (!this.ws || !this.connected) {
-      throw new Error('Not connected to Twitch');
+      throw new Error("Not connected to Twitch");
     }
 
     await this.waitForRateLimit();
@@ -629,7 +627,7 @@ export class TwitchClient extends EventEmitter {
     // Clean old timestamps
     const now = Date.now();
     this.messageSentTimestamps = this.messageSentTimestamps.filter(
-      (ts) => now - ts < this.RATE_LIMIT_WINDOW
+      (ts) => now - ts < this.RATE_LIMIT_WINDOW,
     );
 
     // Check if we need to wait

@@ -9,9 +9,9 @@
  * - Group: pairing mode, deny memory tools (clipboard)
  */
 
-import { v4 as uuidv4 } from 'uuid';
-import Database from 'better-sqlite3';
-import { ContextType, SecurityMode, ContextPolicy } from '../../shared/types';
+import { v4 as uuidv4 } from "uuid";
+import Database from "better-sqlite3";
+import { ContextType, SecurityMode, ContextPolicy } from "../../shared/types";
 
 /**
  * Database row representation of a context policy
@@ -57,7 +57,7 @@ export interface ContextAccessResult {
  * Default tool restrictions for group contexts
  * Prevents clipboard access in shared contexts for security
  */
-export const DEFAULT_GROUP_TOOL_RESTRICTIONS = ['group:memory'];
+export const DEFAULT_GROUP_TOOL_RESTRICTIONS = ["group:memory"];
 
 /**
  * ContextPolicyManager handles per-context security policies
@@ -87,12 +87,8 @@ export class ContextPolicyManager {
    * Get the effective policy based on chat characteristics
    * Determines if a chat is a group or DM based on the isGroup flag
    */
-  getPolicyForChat(
-    channelId: string,
-    _chatId: string,
-    isGroup: boolean
-  ): ContextPolicy {
-    const contextType: ContextType = isGroup ? 'group' : 'dm';
+  getPolicyForChat(channelId: string, _chatId: string, isGroup: boolean): ContextPolicy {
+    const contextType: ContextType = isGroup ? "group" : "dm";
     return this.getPolicy(channelId, contextType);
   }
 
@@ -101,9 +97,7 @@ export class ContextPolicyManager {
    */
   findPolicy(channelId: string, contextType: ContextType): ContextPolicy | null {
     const row = this.db
-      .prepare(
-        `SELECT * FROM context_policies WHERE channel_id = ? AND context_type = ?`
-      )
+      .prepare(`SELECT * FROM context_policies WHERE channel_id = ? AND context_type = ?`)
       .get(channelId, contextType) as ContextPolicyRow | undefined;
 
     if (!row) {
@@ -132,17 +126,17 @@ export class ContextPolicyManager {
     const now = Date.now();
     const id = uuidv4();
 
-    const securityMode = options.securityMode || 'pairing';
+    const securityMode = options.securityMode || "pairing";
     const toolRestrictions =
       options.toolRestrictions ||
-      (options.contextType === 'group' ? DEFAULT_GROUP_TOOL_RESTRICTIONS : []);
+      (options.contextType === "group" ? DEFAULT_GROUP_TOOL_RESTRICTIONS : []);
 
     // Use INSERT OR IGNORE to handle concurrent insertions
     // If another thread already inserted, we'll fetch that one
     const result = this.db
       .prepare(
         `INSERT OR IGNORE INTO context_policies (id, channel_id, context_type, security_mode, tool_restrictions, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         id,
@@ -151,7 +145,7 @@ export class ContextPolicyManager {
         securityMode,
         JSON.stringify(toolRestrictions),
         now,
-        now
+        now,
       );
 
     // If insert was ignored (duplicate), fetch the existing one
@@ -185,14 +179,13 @@ export class ContextPolicyManager {
 
     const now = Date.now();
     const securityMode = options.securityMode ?? existing.securityMode;
-    const toolRestrictions =
-      options.toolRestrictions ?? existing.toolRestrictions;
+    const toolRestrictions = options.toolRestrictions ?? existing.toolRestrictions;
 
     this.db
       .prepare(
         `UPDATE context_policies
          SET security_mode = ?, tool_restrictions = ?, updated_at = ?
-         WHERE id = ?`
+         WHERE id = ?`,
       )
       .run(securityMode, JSON.stringify(toolRestrictions), now, id);
 
@@ -210,7 +203,7 @@ export class ContextPolicyManager {
   updateByContext(
     channelId: string,
     contextType: ContextType,
-    options: UpdateContextPolicyOptions
+    options: UpdateContextPolicyOptions,
   ): ContextPolicy {
     let policy = this.findPolicy(channelId, contextType);
 
@@ -233,9 +226,7 @@ export class ContextPolicyManager {
    * Delete a context policy
    */
   delete(id: string): boolean {
-    const result = this.db
-      .prepare(`DELETE FROM context_policies WHERE id = ?`)
-      .run(id);
+    const result = this.db.prepare(`DELETE FROM context_policies WHERE id = ?`).run(id);
     return result.changes > 0;
   }
 
@@ -256,14 +247,14 @@ export class ContextPolicyManager {
     channelId: string,
     contextType: ContextType,
     toolName: string,
-    toolGroups: string[]
+    toolGroups: string[],
   ): boolean {
     const policy = this.getPolicy(channelId, contextType);
     const restrictions = policy.toolRestrictions || [];
 
     // SECURITY: Check for deny-all marker (set when JSON parsing fails)
     // This ensures corrupted data defaults to most restrictive behavior
-    if (restrictions.includes('*')) {
+    if (restrictions.includes("*")) {
       return false;
     }
 
@@ -295,18 +286,15 @@ export class ContextPolicyManager {
    */
   createDefaultPolicies(channelId: string): void {
     // Create DM policy (no restrictions)
-    this.createDefaultPolicy(channelId, 'dm');
+    this.createDefaultPolicy(channelId, "dm");
     // Create Group policy (with memory restrictions)
-    this.createDefaultPolicy(channelId, 'group');
+    this.createDefaultPolicy(channelId, "group");
   }
 
   /**
    * Create a default policy for a context if it doesn't exist
    */
-  private createDefaultPolicy(
-    channelId: string,
-    contextType: ContextType
-  ): ContextPolicy {
+  private createDefaultPolicy(channelId: string, contextType: ContextType): ContextPolicy {
     // Check if already exists
     const existing = this.findPolicy(channelId, contextType);
     if (existing) {
@@ -315,13 +303,12 @@ export class ContextPolicyManager {
 
     // Default: pairing mode
     // Groups get memory tool restrictions by default
-    const toolRestrictions =
-      contextType === 'group' ? DEFAULT_GROUP_TOOL_RESTRICTIONS : [];
+    const toolRestrictions = contextType === "group" ? DEFAULT_GROUP_TOOL_RESTRICTIONS : [];
 
     return this.create({
       channelId,
       contextType,
-      securityMode: 'pairing',
+      securityMode: "pairing",
       toolRestrictions,
     });
   }
@@ -330,9 +317,9 @@ export class ContextPolicyManager {
    * Find policy by ID
    */
   private findById(id: string): ContextPolicy | null {
-    const row = this.db
-      .prepare(`SELECT * FROM context_policies WHERE id = ?`)
-      .get(id) as ContextPolicyRow | undefined;
+    const row = this.db.prepare(`SELECT * FROM context_policies WHERE id = ?`).get(id) as
+      | ContextPolicyRow
+      | undefined;
 
     if (!row) {
       return null;
@@ -352,20 +339,20 @@ export class ContextPolicyManager {
       try {
         const parsed = JSON.parse(row.tool_restrictions);
         // Validate it's actually an array of strings
-        if (Array.isArray(parsed) && parsed.every((item) => typeof item === 'string')) {
+        if (Array.isArray(parsed) && parsed.every((item) => typeof item === "string")) {
           toolRestrictions = parsed;
         } else {
-          throw new Error('Invalid tool_restrictions format - not an array of strings');
+          throw new Error("Invalid tool_restrictions format - not an array of strings");
         }
       } catch (error) {
         // SECURITY: Default to DENY-ALL on parse error
         // This prevents bypassing restrictions through database corruption
         console.error(
           `[ContextPolicyManager] SECURITY: Corrupted tool_restrictions for policy ${row.id}, defaulting to DENY-ALL:`,
-          error
+          error,
         );
         // Block all tool groups - most restrictive default
-        toolRestrictions = ['*']; // Special marker meaning "deny all"
+        toolRestrictions = ["*"]; // Special marker meaning "deny all"
       }
     }
 

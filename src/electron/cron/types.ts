@@ -2,8 +2,8 @@
  * Cron/Scheduled Task Types for CoWork OS
  */
 
-import type { ChannelType } from '../gateway/channels/types';
-import type { AgentConfig } from '../../shared/types';
+import type { ChannelType } from "../gateway/channels/types";
+import type { AgentConfig } from "../../shared/types";
 
 /**
  * Schedule type definitions:
@@ -12,14 +12,14 @@ import type { AgentConfig } from '../../shared/types';
  * - "cron": Use standard cron expression
  */
 export type CronSchedule =
-  | { kind: 'at'; atMs: number }
-  | { kind: 'every'; everyMs: number; anchorMs?: number }
-  | { kind: 'cron'; expr: string; tz?: string };
+  | { kind: "at"; atMs: number }
+  | { kind: "every"; everyMs: number; anchorMs?: number }
+  | { kind: "cron"; expr: string; tz?: string };
 
 /**
  * Job status after execution
  */
-export type CronJobStatus = 'ok' | 'error' | 'skipped' | 'timeout';
+export type CronJobStatus = "ok" | "error" | "skipped" | "timeout";
 
 /**
  * Single run history entry
@@ -110,14 +110,14 @@ export interface CronStoreFile {
 /**
  * Input for creating a new cron job
  */
-export type CronJobCreate = Omit<CronJob, 'id' | 'createdAtMs' | 'updatedAtMs' | 'state'> & {
+export type CronJobCreate = Omit<CronJob, "id" | "createdAtMs" | "updatedAtMs" | "state"> & {
   state?: Partial<CronJobState>;
 };
 
 /**
  * Input for updating an existing cron job
  */
-export type CronJobPatch = Partial<Omit<CronJob, 'id' | 'createdAtMs' | 'state'>> & {
+export type CronJobPatch = Partial<Omit<CronJob, "id" | "createdAtMs" | "state">> & {
   state?: Partial<CronJobState>;
 };
 
@@ -126,7 +126,7 @@ export type CronJobPatch = Partial<Omit<CronJob, 'id' | 'createdAtMs' | 'state'>
  */
 export interface CronEvent {
   jobId: string;
-  action: 'added' | 'updated' | 'removed' | 'started' | 'finished';
+  action: "added" | "updated" | "removed" | "started" | "finished";
   runAtMs?: number;
   durationMs?: number;
   status?: CronJobStatus;
@@ -164,7 +164,9 @@ export interface CronServiceDeps {
     agentConfig?: AgentConfig; // Optional agent config override (gateway context, tool restrictions, etc.)
   }) => Promise<{ id: string }>;
   // Optional task status hooks (enables waiting for completion + delivering final output)
-  getTaskStatus?: (taskId: string) => Promise<{ status: string; error?: string | null; resultSummary?: string | null } | null>;
+  getTaskStatus?: (
+    taskId: string,
+  ) => Promise<{ status: string; error?: string | null; resultSummary?: string | null } | null>;
   getTaskResultText?: (taskId: string) => Promise<string | undefined>;
   // Channel delivery handler for sending results to messaging platforms
   deliverToChannel?: (params: {
@@ -231,10 +233,12 @@ export interface CronRunHistoryResult {
  */
 export type CronRunResult =
   | { ok: true; ran: true; taskId: string }
-  | { ok: true; ran: false; reason: 'not-due' | 'disabled' | 'not-found' }
+  | { ok: true; ran: false; reason: "not-due" | "disabled" | "not-found" }
   | { ok: false; error: string };
 
-export type CronRemoveResult = { ok: true; removed: boolean } | { ok: false; removed: false; error: string };
+export type CronRemoveResult =
+  | { ok: true; removed: boolean }
+  | { ok: false; removed: false; error: string };
 
 export type CronAddResult = { ok: true; job: CronJob } | { ok: false; error: string };
 export type CronUpdateResult = { ok: true; job: CronJob } | { ok: false; error: string };
@@ -245,39 +249,42 @@ export type CronListResult = CronJob[];
  */
 export function describeSchedule(schedule: CronSchedule): string {
   switch (schedule.kind) {
-    case 'at': {
+    case "at": {
       const date = new Date(schedule.atMs);
       return `Once at ${date.toLocaleString()}`;
     }
-    case 'every': {
+    case "every": {
       const ms = schedule.everyMs;
       if (ms >= 86400000) {
         const days = Math.round(ms / 86400000);
-        return `Every ${days} day${days > 1 ? 's' : ''}`;
+        return `Every ${days} day${days > 1 ? "s" : ""}`;
       }
       if (ms >= 3600000) {
         const hours = Math.round(ms / 3600000);
-        return `Every ${hours} hour${hours > 1 ? 's' : ''}`;
+        return `Every ${hours} hour${hours > 1 ? "s" : ""}`;
       }
       if (ms >= 60000) {
         const minutes = Math.round(ms / 60000);
-        return `Every ${minutes} minute${minutes > 1 ? 's' : ''}`;
+        return `Every ${minutes} minute${minutes > 1 ? "s" : ""}`;
       }
       return `Every ${Math.round(ms / 1000)} seconds`;
     }
-    case 'cron': {
+    case "cron": {
       // Common cron expressions with friendly names
       const commonPatterns: Record<string, string> = {
-        '0 * * * *': 'Every hour',
-        '*/15 * * * *': 'Every 15 minutes',
-        '*/30 * * * *': 'Every 30 minutes',
-        '0 0 * * *': 'Daily at midnight',
-        '0 9 * * *': 'Daily at 9:00 AM',
-        '0 9 * * 1-5': 'Weekdays at 9:00 AM',
-        '0 0 * * 0': 'Weekly on Sunday',
-        '0 0 1 * *': 'Monthly on the 1st',
+        "0 * * * *": "Every hour",
+        "*/15 * * * *": "Every 15 minutes",
+        "*/30 * * * *": "Every 30 minutes",
+        "0 0 * * *": "Daily at midnight",
+        "0 9 * * *": "Daily at 9:00 AM",
+        "0 9 * * 1-5": "Weekdays at 9:00 AM",
+        "0 0 * * 0": "Weekly on Sunday",
+        "0 0 1 * *": "Monthly on the 1st",
       };
-      return commonPatterns[schedule.expr] || `Cron: ${schedule.expr}${schedule.tz ? ` (${schedule.tz})` : ''}`;
+      return (
+        commonPatterns[schedule.expr] ||
+        `Cron: ${schedule.expr}${schedule.tz ? ` (${schedule.tz})` : ""}`
+      );
     }
   }
 }
@@ -287,31 +294,35 @@ export function describeSchedule(schedule: CronSchedule): string {
  * Examples: "5m", "1h", "30s", "1d"
  */
 export function parseIntervalToMs(interval: string): number | null {
-  const match = interval.trim().match(/^(\d+(?:\.\d+)?)\s*(s|sec|second|seconds|m|min|minute|minutes|h|hr|hour|hours|d|day|days)$/i);
+  const match = interval
+    .trim()
+    .match(
+      /^(\d+(?:\.\d+)?)\s*(s|sec|second|seconds|m|min|minute|minutes|h|hr|hour|hours|d|day|days)$/i,
+    );
   if (!match) return null;
 
   const value = parseFloat(match[1]);
   const unit = match[2].toLowerCase();
 
   switch (unit) {
-    case 's':
-    case 'sec':
-    case 'second':
-    case 'seconds':
+    case "s":
+    case "sec":
+    case "second":
+    case "seconds":
       return value * 1000;
-    case 'm':
-    case 'min':
-    case 'minute':
-    case 'minutes':
+    case "m":
+    case "min":
+    case "minute":
+    case "minutes":
       return value * 60 * 1000;
-    case 'h':
-    case 'hr':
-    case 'hour':
-    case 'hours':
+    case "h":
+    case "hr":
+    case "hour":
+    case "hours":
       return value * 60 * 60 * 1000;
-    case 'd':
-    case 'day':
-    case 'days':
+    case "d":
+    case "day":
+    case "days":
       return value * 24 * 60 * 60 * 1000;
     default:
       return null;

@@ -1,12 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
-import {
-  AgentWorkingStateData,
-  WorkingStateType,
-  AgentRoleData,
-} from '../../electron/preload';
-import { useAgentContext } from '../hooks/useAgentContext';
-import { ThemeIcon } from './ThemeIcon';
-import { ChartIcon, ClipboardIcon, EditIcon, TargetIcon } from './LineIcons';
+import { useState, useEffect, useCallback } from "react";
+import { AgentWorkingStateData, WorkingStateType, AgentRoleData } from "../../electron/preload";
+import { useAgentContext } from "../hooks/useAgentContext";
+import { ThemeIcon } from "./ThemeIcon";
+import { ChartIcon, ClipboardIcon, EditIcon, TargetIcon } from "./LineIcons";
 
 interface AgentWorkingStatePanelProps {
   agentRoleId: string;
@@ -15,33 +11,36 @@ interface AgentWorkingStatePanelProps {
   onEdit?: (state: AgentWorkingStateData) => void;
 }
 
-const STATE_TYPE_LABELS: Record<WorkingStateType, { label: string; icon: React.ReactNode; description: string }> = {
+const STATE_TYPE_LABELS: Record<
+  WorkingStateType,
+  { label: string; icon: React.ReactNode; description: string }
+> = {
   context: {
-    label: 'Context',
+    label: "Context",
     icon: <ThemeIcon emoji="📋" icon={<ClipboardIcon size={16} />} />,
-    description: 'Background information and current understanding',
+    description: "Background information and current understanding",
   },
   progress: {
-    label: 'Progress',
+    label: "Progress",
     icon: <ThemeIcon emoji="📊" icon={<ChartIcon size={16} />} />,
-    description: 'Current work progress and status',
+    description: "Current work progress and status",
   },
   notes: {
-    label: 'Notes',
+    label: "Notes",
     icon: <ThemeIcon emoji="📝" icon={<EditIcon size={16} />} />,
-    description: 'Important observations and reminders',
+    description: "Important observations and reminders",
   },
   plan: {
-    label: 'Plan',
+    label: "Plan",
     icon: <ThemeIcon emoji="🎯" icon={<TargetIcon size={16} />} />,
-    description: 'Action plan and next steps',
+    description: "Action plan and next steps",
   },
 };
 
 function formatTimeAgo(timestamp: number): string {
   const seconds = Math.floor((Date.now() - timestamp) / 1000);
 
-  if (seconds < 60) return 'just now';
+  if (seconds < 60) return "just now";
   if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
   if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
   if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
@@ -70,7 +69,7 @@ export function AgentWorkingStatePanel({
       setAgent(agentData ?? null);
 
       // Load all current working states for this agent/workspace
-      const stateTypes: WorkingStateType[] = ['context', 'progress', 'notes', 'plan'];
+      const stateTypes: WorkingStateType[] = ["context", "progress", "notes", "plan"];
       const loadedStates: AgentWorkingStateData[] = [];
 
       for (const stateType of stateTypes) {
@@ -87,7 +86,7 @@ export function AgentWorkingStatePanel({
 
       setStates(loadedStates);
     } catch (err) {
-      console.error('Failed to load working states:', err);
+      console.error("Failed to load working states:", err);
     } finally {
       setLoading(false);
     }
@@ -104,7 +103,7 @@ export function AgentWorkingStatePanel({
   if (loading) {
     return (
       <div className="working-state-panel loading">
-        <p>{agentContext.getUiCopy('workingStateLoading')}</p>
+        <p>{agentContext.getUiCopy("workingStateLoading")}</p>
       </div>
     );
   }
@@ -114,15 +113,12 @@ export function AgentWorkingStatePanel({
       <div className="panel-header">
         {agent && (
           <div className="agent-info">
-            <span
-              className="agent-avatar"
-              style={{ backgroundColor: agent.color }}
-            >
+            <span className="agent-avatar" style={{ backgroundColor: agent.color }}>
               {agent.icon}
             </span>
             <div className="agent-details">
               <span className="agent-name">{agent.displayName}</span>
-              <span className="agent-context">{agentContext.getUiCopy('workingStateTitle')}</span>
+              <span className="agent-context">{agentContext.getUiCopy("workingStateTitle")}</span>
             </div>
           </div>
         )}
@@ -137,7 +133,7 @@ export function AgentWorkingStatePanel({
           return (
             <div
               key={type}
-              className={`state-section ${state ? 'has-content' : 'empty'} ${isExpanded ? 'expanded' : ''}`}
+              className={`state-section ${state ? "has-content" : "empty"} ${isExpanded ? "expanded" : ""}`}
             >
               <div
                 className="section-header"
@@ -163,12 +159,12 @@ export function AgentWorkingStatePanel({
                         } else {
                           // Create new state
                           onEdit({
-                            id: '',
+                            id: "",
                             agentRoleId,
                             workspaceId,
                             taskId,
                             stateType: type,
-                            content: '',
+                            content: "",
                             isCurrent: true,
                             createdAt: Date.now(),
                             updatedAt: Date.now(),
@@ -177,11 +173,11 @@ export function AgentWorkingStatePanel({
                       }}
                     >
                       {state
-                        ? agentContext.getUiCopy('workingStateEdit')
-                        : agentContext.getUiCopy('workingStateAdd')}
+                        ? agentContext.getUiCopy("workingStateEdit")
+                        : agentContext.getUiCopy("workingStateAdd")}
                     </button>
                   )}
-                  <span className="expand-icon">{isExpanded ? '▼' : '▶'}</span>
+                  <span className="expand-icon">{isExpanded ? "▼" : "▶"}</span>
                 </div>
               </div>
 
@@ -192,7 +188,9 @@ export function AgentWorkingStatePanel({
                       <div className="content-text">{state.content}</div>
                       {state.fileReferences && state.fileReferences.length > 0 && (
                         <div className="file-references">
-                          <span className="ref-label">{agentContext.getUiCopy('workingStateReferencedFiles')}</span>
+                          <span className="ref-label">
+                            {agentContext.getUiCopy("workingStateReferencedFiles")}
+                          </span>
                           {state.fileReferences.map((file, idx) => (
                             <span key={idx} className="file-ref">
                               {file}
@@ -205,7 +203,9 @@ export function AgentWorkingStatePanel({
                     <div className="empty-state">
                       <p>{config.description}</p>
                       <p className="hint">
-                        {agentContext.getUiCopy('workingStateEmptyHint', { label: config.label.toLowerCase() })}
+                        {agentContext.getUiCopy("workingStateEmptyHint", {
+                          label: config.label.toLowerCase(),
+                        })}
                       </p>
                     </div>
                   )}

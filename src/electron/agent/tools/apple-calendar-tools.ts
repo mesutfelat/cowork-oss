@@ -1,8 +1,8 @@
-import { execFile } from 'child_process';
-import { promisify } from 'util';
-import * as os from 'os';
-import { Workspace } from '../../../shared/types';
-import { AgentDaemon } from '../daemon';
+import { execFile } from "child_process";
+import { promisify } from "util";
+import * as os from "os";
+import { Workspace } from "../../../shared/types";
+import { AgentDaemon } from "../daemon";
 
 const execFileAsync = promisify(execFile);
 
@@ -10,12 +10,12 @@ const APPLESCRIPT_TIMEOUT_MS = 30 * 1000; // 30 seconds
 const MAX_BUFFER = 1024 * 1024; // 1MB
 
 type CalendarAction =
-  | 'list_calendars'
-  | 'list_events'
-  | 'get_event'
-  | 'create_event'
-  | 'update_event'
-  | 'delete_event';
+  | "list_calendars"
+  | "list_events"
+  | "get_event"
+  | "create_event"
+  | "update_event"
+  | "delete_event";
 
 interface AppleCalendarActionInput {
   action: CalendarAction;
@@ -50,8 +50,8 @@ type ParsedEvent = {
   all_day?: boolean;
 };
 
-const RS = '\x1e'; // record separator
-const US = '\x1f'; // unit separator
+const RS = "\x1e"; // record separator
+const US = "\x1f"; // unit separator
 
 function parseEpochSeconds(iso?: string): number | null {
   if (!iso) return null;
@@ -64,15 +64,15 @@ function parseEpochSeconds(iso?: string): number | null {
 
 function epochToIso(epochSeconds: string | number | undefined): string | undefined {
   if (epochSeconds === undefined) return undefined;
-  const n = typeof epochSeconds === 'string' ? Number(epochSeconds) : epochSeconds;
+  const n = typeof epochSeconds === "string" ? Number(epochSeconds) : epochSeconds;
   if (!Number.isFinite(n)) return undefined;
   return new Date(n * 1000).toISOString();
 }
 
 function parseBool(value: string | undefined): boolean | undefined {
   if (value === undefined) return undefined;
-  if (value === 'true') return true;
-  if (value === 'false') return false;
+  if (value === "true") return true;
+  if (value === "false") return false;
   return undefined;
 }
 
@@ -353,7 +353,7 @@ export class AppleCalendarTools {
   constructor(
     private workspace: Workspace,
     private daemon: AgentDaemon,
-    private taskId: string
+    private taskId: string,
   ) {}
 
   setWorkspace(workspace: Workspace): void {
@@ -361,47 +361,49 @@ export class AppleCalendarTools {
   }
 
   static isAvailable(): boolean {
-    return os.platform() === 'darwin';
+    return os.platform() === "darwin";
   }
 
   private async requireApproval(summary: string, details: Record<string, unknown>): Promise<void> {
     const approved = await this.daemon.requestApproval(
       this.taskId,
-      'external_service',
+      "external_service",
       summary,
-      details
+      details,
     );
     if (!approved) {
-      throw new Error('User denied Apple Calendar action');
+      throw new Error("User denied Apple Calendar action");
     }
   }
 
   private async runAppleScript(argv: string[]): Promise<string> {
-    const lines = APPLESCRIPT
-      .split(/\r?\n/)
+    const lines = APPLESCRIPT.split(/\r?\n/)
       .map((l) => l.trim())
       .filter((l) => l.length > 0);
 
-    const args = lines.flatMap((line) => ['-e', line]);
+    const args = lines.flatMap((line) => ["-e", line]);
     args.push(...argv);
 
-    const { stdout, stderr } = await execFileAsync('osascript', args, {
+    const { stdout, stderr } = await execFileAsync("osascript", args, {
       timeout: APPLESCRIPT_TIMEOUT_MS,
       maxBuffer: MAX_BUFFER,
       env: process.env,
       cwd: this.workspace.path,
     });
 
-    return (stdout || stderr || '').trim();
+    return (stdout || stderr || "").trim();
   }
 
   private formatPermissionHint(message: string): string | null {
     // Common AppleScript automation permission error code
     if (/-1743/.test(message) || /not authorized to send apple events/i.test(message)) {
-      return 'macOS blocked Calendar automation. Enable access in System Settings > Privacy & Security > Automation (and Calendars), then retry.';
+      return "macOS blocked Calendar automation. Enable access in System Settings > Privacy & Security > Automation (and Calendars), then retry.";
     }
-    if (/Not permitted|operation not permitted|denied/i.test(message) && /calendar/i.test(message)) {
-      return 'Calendar access was denied by macOS privacy settings. Check System Settings > Privacy & Security > Calendars and Automation, then retry.';
+    if (
+      /Not permitted|operation not permitted|denied/i.test(message) &&
+      /calendar/i.test(message)
+    ) {
+      return "Calendar access was denied by macOS privacy settings. Check System Settings > Privacy & Security > Calendars and Automation, then retry.";
     }
     return null;
   }
@@ -415,7 +417,7 @@ export class AppleCalendarTools {
       calendars.push({
         calendar_id,
         name,
-        writable: writableRaw === 'true',
+        writable: writableRaw === "true",
       });
     }
     return calendars;
@@ -454,7 +456,7 @@ export class AppleCalendarTools {
 
   async executeAction(input: AppleCalendarActionInput): Promise<any> {
     if (!AppleCalendarTools.isAvailable()) {
-      throw new Error('Apple Calendar tools are only available on macOS.');
+      throw new Error("Apple Calendar tools are only available on macOS.");
     }
 
     const action = input.action;
@@ -468,17 +470,17 @@ export class AppleCalendarTools {
 
     try {
       switch (action) {
-        case 'list_calendars': {
+        case "list_calendars": {
           const out = await this.runAppleScript([action]);
           const calendars = this.parseCalendars(out);
           return { success: true, action, data: { calendars } };
         }
-        case 'list_events': {
+        case "list_events": {
           const minSec = parseEpochSeconds(input.time_min) ?? nowSec;
           const maxSec = parseEpochSeconds(input.time_max) ?? defaultMaxSec;
           const out = await this.runAppleScript([
             action,
-            input.calendar_id || '',
+            input.calendar_id || "",
             String(minSec),
             String(maxSec),
           ]);
@@ -486,7 +488,8 @@ export class AppleCalendarTools {
           if (input.query) {
             const q = input.query.toLowerCase();
             events = events.filter((e) => {
-              const hay = `${e.summary ?? ''} ${e.description ?? ''} ${e.location ?? ''}`.toLowerCase();
+              const hay =
+                `${e.summary ?? ""} ${e.description ?? ""} ${e.location ?? ""}`.toLowerCase();
               return hay.includes(q);
             });
           }
@@ -498,39 +501,39 @@ export class AppleCalendarTools {
           const limit = Math.min(Math.max(input.max_results ?? 50, 1), 500);
           return { success: true, action, data: { events: events.slice(0, limit) } };
         }
-        case 'get_event': {
-          if (!input.event_id) throw new Error('Missing event_id for get_event');
-          const out = await this.runAppleScript([action, input.calendar_id || '', input.event_id]);
+        case "get_event": {
+          if (!input.event_id) throw new Error("Missing event_id for get_event");
+          const out = await this.runAppleScript([action, input.calendar_id || "", input.event_id]);
           const [event] = this.parseEvents(out);
           if (!event) {
-            throw new Error('Event not found');
+            throw new Error("Event not found");
           }
           return { success: true, action, data: { event } };
         }
-        case 'create_event': {
+        case "create_event": {
           if (!input.summary || !input.start || !input.end) {
-            throw new Error('Missing summary/start/end for calendar event');
+            throw new Error("Missing summary/start/end for calendar event");
           }
           const startSec = parseEpochSeconds(input.start);
           const endSec = parseEpochSeconds(input.end);
           if (startSec === null || endSec === null) {
-            throw new Error('Invalid start/end time');
+            throw new Error("Invalid start/end time");
           }
-          await this.requireApproval('Create an Apple Calendar event', {
+          await this.requireApproval("Create an Apple Calendar event", {
             action,
-            calendar_id: input.calendar_id || '(default)',
+            calendar_id: input.calendar_id || "(default)",
             summary: input.summary,
             start: input.start,
             end: input.end,
           });
           const out = await this.runAppleScript([
             action,
-            input.calendar_id || '',
+            input.calendar_id || "",
             input.summary,
             String(startSec),
             String(endSec),
-            input.location || '',
-            input.description || '',
+            input.location || "",
+            input.description || "",
           ]);
           const [event_id, calendar_id, calendar_name] = splitFields(out);
           return {
@@ -550,13 +553,13 @@ export class AppleCalendarTools {
             },
           };
         }
-        case 'update_event': {
-          if (!input.event_id) throw new Error('Missing event_id for update_event');
+        case "update_event": {
+          if (!input.event_id) throw new Error("Missing event_id for update_event");
           const startSec = parseEpochSeconds(input.start ?? undefined);
           const endSec = parseEpochSeconds(input.end ?? undefined);
-          await this.requireApproval('Update an Apple Calendar event', {
+          await this.requireApproval("Update an Apple Calendar event", {
             action,
-            calendar_id: input.calendar_id || '(search)',
+            calendar_id: input.calendar_id || "(search)",
             event_id: input.event_id,
             summary: input.summary,
             start: input.start,
@@ -564,13 +567,13 @@ export class AppleCalendarTools {
           });
           const out = await this.runAppleScript([
             action,
-            input.calendar_id || '',
+            input.calendar_id || "",
             input.event_id,
-            input.summary || '',
-            startSec !== null ? String(startSec) : '',
-            endSec !== null ? String(endSec) : '',
-            input.location || '',
-            input.description || '',
+            input.summary || "",
+            startSec !== null ? String(startSec) : "",
+            endSec !== null ? String(endSec) : "",
+            input.location || "",
+            input.description || "",
           ]);
           const [event_id, calendar_id, calendar_name] = splitFields(out);
           return {
@@ -585,14 +588,14 @@ export class AppleCalendarTools {
             },
           };
         }
-        case 'delete_event': {
-          if (!input.event_id) throw new Error('Missing event_id for delete_event');
-          await this.requireApproval('Delete an Apple Calendar event', {
+        case "delete_event": {
+          if (!input.event_id) throw new Error("Missing event_id for delete_event");
+          await this.requireApproval("Delete an Apple Calendar event", {
             action,
-            calendar_id: input.calendar_id || '(search)',
+            calendar_id: input.calendar_id || "(search)",
             event_id: input.event_id,
           });
-          const out = await this.runAppleScript([action, input.calendar_id || '', input.event_id]);
+          const out = await this.runAppleScript([action, input.calendar_id || "", input.event_id]);
           const [event_id, calendar_id, calendar_name] = splitFields(out);
           return { success: true, action, data: { event_id, calendar_id, calendar_name } };
         }
@@ -603,8 +606,8 @@ export class AppleCalendarTools {
       const message = error instanceof Error ? error.message : String(error);
       const hint = this.formatPermissionHint(message);
       const finalMessage = hint ?? message;
-      this.daemon.logEvent(this.taskId, 'tool_error', {
-        tool: 'apple_calendar_action',
+      this.daemon.logEvent(this.taskId, "tool_error", {
+        tool: "apple_calendar_action",
         action,
         message: finalMessage,
       });

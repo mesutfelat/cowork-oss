@@ -6,13 +6,19 @@
  * Settings are stored encrypted in the database using SecureSettingsRepository.
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
-import { Task, TaskStatus, QueueSettings, QueueStatus, DEFAULT_QUEUE_SETTINGS } from '../../shared/types';
-import { SecureSettingsRepository } from '../database/SecureSettingsRepository';
-import { getUserDataDir } from '../utils/user-data-dir';
+import * as fs from "fs";
+import * as path from "path";
+import {
+  Task,
+  TaskStatus,
+  QueueSettings,
+  QueueStatus,
+  DEFAULT_QUEUE_SETTINGS,
+} from "../../shared/types";
+import { SecureSettingsRepository } from "../database/SecureSettingsRepository";
+import { getUserDataDir } from "../utils/user-data-dir";
 
-const LEGACY_SETTINGS_FILE = 'queue-settings.json';
+const LEGACY_SETTINGS_FILE = "queue-settings.json";
 
 // Forward declaration - will be set by daemon
 type DaemonCallbacks = {
@@ -20,11 +26,11 @@ type DaemonCallbacks = {
   emitQueueUpdate: (status: QueueStatus) => void;
   getTaskById: (taskId: string) => Task | undefined;
   updateTaskStatus: (taskId: string, status: TaskStatus) => void;
-  onTaskTimeout: (taskId: string) => Promise<void>;  // Called when a task times out
+  onTaskTimeout: (taskId: string) => Promise<void>; // Called when a task times out
 };
 
 export class TaskQueueManager {
-  private queuedTaskIds: string[] = [];           // FIFO queue of task IDs
+  private queuedTaskIds: string[] = []; // FIFO queue of task IDs
   private runningTaskIds: Set<string> = new Set(); // Currently executing task IDs
   private taskStartTimes: Map<string, number> = new Map(); // Track when each task started
   private settings: QueueSettings;
@@ -61,7 +67,7 @@ export class TaskQueueManager {
 
       const repository = SecureSettingsRepository.getInstance();
 
-      if (repository.exists('queue')) {
+      if (repository.exists("queue")) {
         TaskQueueManager.migrationCompleted = true;
         return;
       }
@@ -71,32 +77,34 @@ export class TaskQueueManager {
         return;
       }
 
-      console.log('[TaskQueueManager] Migrating settings from legacy JSON file to encrypted database...');
+      console.log(
+        "[TaskQueueManager] Migrating settings from legacy JSON file to encrypted database...",
+      );
 
       // Create backup before migration
-      const backupPath = this.legacySettingsPath + '.migration-backup';
+      const backupPath = this.legacySettingsPath + ".migration-backup";
       fs.copyFileSync(this.legacySettingsPath, backupPath);
 
       try {
-        const data = fs.readFileSync(this.legacySettingsPath, 'utf-8');
+        const data = fs.readFileSync(this.legacySettingsPath, "utf-8");
         const parsed = JSON.parse(data);
         const merged = { ...DEFAULT_QUEUE_SETTINGS, ...parsed };
 
-        repository.save('queue', merged);
-        console.log('[TaskQueueManager] Settings migrated to encrypted database');
+        repository.save("queue", merged);
+        console.log("[TaskQueueManager] Settings migrated to encrypted database");
 
         // Migration successful - delete backup and original
         fs.unlinkSync(backupPath);
         fs.unlinkSync(this.legacySettingsPath);
-        console.log('[TaskQueueManager] Migration complete, cleaned up legacy files');
+        console.log("[TaskQueueManager] Migration complete, cleaned up legacy files");
 
         TaskQueueManager.migrationCompleted = true;
       } catch (migrationError) {
-        console.error('[TaskQueueManager] Migration failed, backup preserved at:', backupPath);
+        console.error("[TaskQueueManager] Migration failed, backup preserved at:", backupPath);
         throw migrationError;
       }
     } catch (error) {
-      console.error('[TaskQueueManager] Migration failed:', error);
+      console.error("[TaskQueueManager] Migration failed:", error);
     }
   }
 
@@ -114,25 +122,22 @@ export class TaskQueueManager {
    * Initialize the queue manager - recover queue from database on startup
    * Should be called after database is ready
    */
-  async initialize(
-    queuedTasks: Task[],
-    runningTasks: Task[]
-  ): Promise<void> {
+  async initialize(queuedTasks: Task[], runningTasks: Task[]): Promise<void> {
     if (this.initialized) {
-      console.log('[TaskQueueManager] Already initialized, skipping');
+      console.log("[TaskQueueManager] Already initialized, skipping");
       return;
     }
 
-    console.log('[TaskQueueManager] Initializing queue manager');
-    console.log(`[TaskQueueManager] Found ${queuedTasks.length} queued tasks, ${runningTasks.length} running tasks`);
+    console.log("[TaskQueueManager] Initializing queue manager");
+    console.log(
+      `[TaskQueueManager] Found ${queuedTasks.length} queued tasks, ${runningTasks.length} running tasks`,
+    );
 
     // Restore queued tasks in FIFO order by creation time
-    this.queuedTaskIds = queuedTasks
-      .sort((a, b) => a.createdAt - b.createdAt)
-      .map(t => t.id);
+    this.queuedTaskIds = queuedTasks.sort((a, b) => a.createdAt - b.createdAt).map((t) => t.id);
 
     // Track currently running tasks
-    runningTasks.forEach(t => this.runningTaskIds.add(t.id));
+    runningTasks.forEach((t) => this.runningTaskIds.add(t.id));
 
     this.initialized = true;
 
@@ -162,12 +167,16 @@ export class TaskQueueManager {
       console.log(`[TaskQueueManager] Starting sub-agent immediately (bypasses concurrency limit)`);
       await this.startTask(task);
     } else if (this.canStartImmediately()) {
-      console.log(`[TaskQueueManager] Starting task immediately (${this.runningTaskIds.size}/${this.settings.maxConcurrentTasks} slots used)`);
+      console.log(
+        `[TaskQueueManager] Starting task immediately (${this.runningTaskIds.size}/${this.settings.maxConcurrentTasks} slots used)`,
+      );
       await this.startTask(task);
     } else {
-      console.log(`[TaskQueueManager] Queue full, adding task to queue (position: ${this.queuedTaskIds.length + 1})`);
+      console.log(
+        `[TaskQueueManager] Queue full, adding task to queue (position: ${this.queuedTaskIds.length + 1})`,
+      );
       this.queuedTaskIds.push(task.id);
-      this.callbacks.updateTaskStatus(task.id, 'queued');
+      this.callbacks.updateTaskStatus(task.id, "queued");
       this.emitQueueUpdate();
     }
   }
@@ -227,7 +236,9 @@ export class TaskQueueManager {
     const clearedRunning = this.runningTaskIds.size;
     const clearedQueued = this.queuedTaskIds.length;
 
-    console.log(`[TaskQueueManager] Clearing ${clearedRunning} running tasks and ${clearedQueued} queued tasks`);
+    console.log(
+      `[TaskQueueManager] Clearing ${clearedRunning} running tasks and ${clearedQueued} queued tasks`,
+    );
 
     // Clear running tasks and their start times
     this.runningTaskIds.clear();
@@ -281,13 +292,15 @@ export class TaskQueueManager {
     try {
       if (SecureSettingsRepository.isInitialized()) {
         const repository = SecureSettingsRepository.getInstance();
-        repository.save('queue', this.settings);
-        console.log('[TaskQueueManager] Settings saved to encrypted database');
+        repository.save("queue", this.settings);
+        console.log("[TaskQueueManager] Settings saved to encrypted database");
       } else {
-        console.warn('[TaskQueueManager] SecureSettingsRepository not initialized, settings not persisted');
+        console.warn(
+          "[TaskQueueManager] SecureSettingsRepository not initialized, settings not persisted",
+        );
       }
     } catch (error) {
-      console.error('[TaskQueueManager] Failed to save settings:', error);
+      console.error("[TaskQueueManager] Failed to save settings:", error);
     }
 
     // Process queue in case we increased concurrency
@@ -305,7 +318,7 @@ export class TaskQueueManager {
       const nextTaskId = this.queuedTaskIds.shift()!;
       const task = this.callbacks.getTaskById(nextTaskId);
 
-      if (task && task.status === 'queued') {
+      if (task && task.status === "queued") {
         console.log(`[TaskQueueManager] Dequeuing task ${nextTaskId}`);
         await this.startTask(task);
       } else {
@@ -359,7 +372,9 @@ export class TaskQueueManager {
       const elapsed = now - startTime;
       if (elapsed > timeoutMs) {
         const elapsedMinutes = Math.round(elapsed / 60000);
-        console.log(`[TaskQueueManager] Task ${taskId} has timed out (running for ${elapsedMinutes} minutes, timeout: ${this.settings.taskTimeoutMinutes} minutes)`);
+        console.log(
+          `[TaskQueueManager] Task ${taskId} has timed out (running for ${elapsedMinutes} minutes, timeout: ${this.settings.taskTimeoutMinutes} minutes)`,
+        );
         timedOutTasks.push(taskId);
       }
     }
@@ -395,15 +410,15 @@ export class TaskQueueManager {
     try {
       if (SecureSettingsRepository.isInitialized()) {
         const repository = SecureSettingsRepository.getInstance();
-        const stored = repository.load<QueueSettings>('queue');
+        const stored = repository.load<QueueSettings>("queue");
         if (stored) {
           // Merge with defaults to handle missing fields
-          console.log('[TaskQueueManager] Loaded settings from encrypted database');
+          console.log("[TaskQueueManager] Loaded settings from encrypted database");
           return { ...DEFAULT_QUEUE_SETTINGS, ...stored };
         }
       }
     } catch (error) {
-      console.error('[TaskQueueManager] Failed to load settings:', error);
+      console.error("[TaskQueueManager] Failed to load settings:", error);
     }
     return { ...DEFAULT_QUEUE_SETTINGS };
   }

@@ -2,10 +2,13 @@
  * Google Calendar API helpers
  */
 
-import { GoogleWorkspaceSettingsData } from '../../shared/types';
-import { getGoogleWorkspaceAccessToken, refreshGoogleWorkspaceAccessToken } from './google-workspace-auth';
+import { GoogleWorkspaceSettingsData } from "../../shared/types";
+import {
+  getGoogleWorkspaceAccessToken,
+  refreshGoogleWorkspaceAccessToken,
+} from "./google-workspace-auth";
 
-export const GOOGLE_CALENDAR_API_BASE = 'https://www.googleapis.com/calendar/v3';
+export const GOOGLE_CALENDAR_API_BASE = "https://www.googleapis.com/calendar/v3";
 const DEFAULT_TIMEOUT_MS = 20000;
 
 function parseJsonSafe(text: string): any | undefined {
@@ -19,16 +22,12 @@ function parseJsonSafe(text: string): any | undefined {
 }
 
 function formatCalendarError(status: number, data: any, fallback?: string): string {
-  const message =
-    data?.error?.message ||
-    data?.message ||
-    fallback ||
-    'Google Calendar API error';
+  const message = data?.error?.message || data?.message || fallback || "Google Calendar API error";
   return `Google Calendar API error ${status}: ${message}`;
 }
 
 export interface GoogleCalendarRequestOptions {
-  method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  method: "GET" | "POST" | "PATCH" | "DELETE";
   path: string;
   query?: Record<string, string | number | boolean | undefined>;
   body?: any;
@@ -43,7 +42,7 @@ export interface GoogleCalendarRequestResult {
 
 export async function googleCalendarRequest(
   settings: GoogleWorkspaceSettingsData,
-  options: GoogleCalendarRequestOptions
+  options: GoogleCalendarRequestOptions,
 ): Promise<GoogleCalendarRequestResult> {
   const params = new URLSearchParams();
   if (options.query) {
@@ -53,7 +52,7 @@ export async function googleCalendarRequest(
     }
   }
   const queryString = params.toString();
-  const url = `${GOOGLE_CALENDAR_API_BASE}${options.path}${queryString ? `?${queryString}` : ''}`;
+  const url = `${GOOGLE_CALENDAR_API_BASE}${options.path}${queryString ? `?${queryString}` : ""}`;
 
   const timeoutMs = options.timeoutMs ?? settings.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
@@ -62,8 +61,8 @@ export async function googleCalendarRequest(
       Authorization: `Bearer ${accessToken}`,
     };
 
-    if (options.method !== 'GET' && options.method !== 'DELETE') {
-      headers['Content-Type'] = 'application/json';
+    if (options.method !== "GET" && options.method !== "DELETE") {
+      headers["Content-Type"] = "application/json";
     }
 
     const controller = new AbortController();
@@ -77,14 +76,17 @@ export async function googleCalendarRequest(
         signal: controller.signal,
       });
 
-      const rawText = typeof response.text === 'function' ? await response.text() : '';
+      const rawText = typeof response.text === "function" ? await response.text() : "";
       const data = rawText ? parseJsonSafe(rawText) : undefined;
 
       if (!response.ok) {
-        throw Object.assign(new Error(formatCalendarError(response.status, data, response.statusText)), {
-          status: response.status,
-          data,
-        });
+        throw Object.assign(
+          new Error(formatCalendarError(response.status, data, response.statusText)),
+          {
+            status: response.status,
+            data,
+          },
+        );
       }
 
       return {
@@ -93,8 +95,8 @@ export async function googleCalendarRequest(
         raw: rawText || undefined,
       };
     } catch (error: any) {
-      if (error?.name === 'AbortError') {
-        throw new Error('Google Calendar API request timed out');
+      if (error?.name === "AbortError") {
+        throw new Error("Google Calendar API request timed out");
       }
       throw error;
     } finally {

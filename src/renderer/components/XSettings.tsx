@@ -1,13 +1,23 @@
-import { useEffect, useState } from 'react';
-import { XSettingsData } from '../../shared/types';
+import { useEffect, useState } from "react";
+import { XSettingsData } from "../../shared/types";
 
 export function XSettings() {
   const [settings, setSettings] = useState<XSettingsData | null>(null);
-  const [cookieSourcesInput, setCookieSourcesInput] = useState('');
+  const [cookieSourcesInput, setCookieSourcesInput] = useState("");
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<{ success: boolean; error?: string; username?: string; userId?: string } | null>(null);
-  const [status, setStatus] = useState<{ installed: boolean; connected: boolean; username?: string; error?: string } | null>(null);
+  const [testResult, setTestResult] = useState<{
+    success: boolean;
+    error?: string;
+    username?: string;
+    userId?: string;
+  } | null>(null);
+  const [status, setStatus] = useState<{
+    installed: boolean;
+    connected: boolean;
+    username?: string;
+    error?: string;
+  } | null>(null);
   const [statusLoading, setStatusLoading] = useState(false);
 
   useEffect(() => {
@@ -19,9 +29,9 @@ export function XSettings() {
     try {
       const loaded = await window.electronAPI.getXSettings();
       setSettings(loaded);
-      setCookieSourcesInput((loaded.cookieSource || []).join(', '));
+      setCookieSourcesInput((loaded.cookieSource || []).join(", "));
     } catch (error) {
-      console.error('Failed to load X settings:', error);
+      console.error("Failed to load X settings:", error);
     }
   };
 
@@ -36,7 +46,7 @@ export function XSettings() {
     setTestResult(null);
     try {
       const cookieSource = cookieSourcesInput
-        .split(',')
+        .split(",")
         .map((item) => item.trim())
         .filter(Boolean);
 
@@ -49,7 +59,7 @@ export function XSettings() {
       setSettings(payload);
       await refreshStatus();
     } catch (error) {
-      console.error('Failed to save X settings:', error);
+      console.error("Failed to save X settings:", error);
     } finally {
       setSaving(false);
     }
@@ -61,7 +71,7 @@ export function XSettings() {
       const result = await window.electronAPI.getXStatus();
       setStatus(result);
     } catch (error) {
-      console.error('Failed to load X status:', error);
+      console.error("Failed to load X status:", error);
     } finally {
       setStatusLoading(false);
     }
@@ -75,7 +85,7 @@ export function XSettings() {
       setTestResult(result);
       await refreshStatus();
     } catch (error: any) {
-      setTestResult({ success: false, error: error.message || 'Failed to test connection' });
+      setTestResult({ success: false, error: error.message || "Failed to test connection" });
     } finally {
       setTesting(false);
     }
@@ -93,16 +103,16 @@ export function XSettings() {
             <h3>Connect X (Twitter)</h3>
             {status && (
               <span
-                className={`x-status-badge ${!status.installed ? 'missing' : status.connected ? 'connected' : 'installed'}`}
+                className={`x-status-badge ${!status.installed ? "missing" : status.connected ? "connected" : "installed"}`}
                 title={
                   !status.installed
-                    ? 'Bird CLI not installed'
+                    ? "Bird CLI not installed"
                     : status.connected
-                      ? 'Connected to X'
-                      : 'Bird CLI installed'
+                      ? "Connected to X"
+                      : "Bird CLI installed"
                 }
               >
-                {!status.installed ? 'Missing CLI' : status.connected ? 'Connected' : 'Installed'}
+                {!status.installed ? "Missing CLI" : status.connected ? "Connected" : "Installed"}
               </span>
             )}
             {statusLoading && !status && (
@@ -110,22 +120,21 @@ export function XSettings() {
             )}
           </div>
           <button className="btn-secondary btn-sm" onClick={refreshStatus} disabled={statusLoading}>
-            {statusLoading ? 'Checking...' : 'Refresh Status'}
+            {statusLoading ? "Checking..." : "Refresh Status"}
           </button>
         </div>
         <p className="settings-description">
-          Connect the agent to an X account using the Bird CLI. Log in via your browser or provide cookie tokens,
-          then use the built-in `x_action` tool for reading and posting.
-          If a request is blocked (rate limit/challenge), the tool now attempts browser fallback automation for read and
-          post/reply/follow steps where possible, with manual fallback details when full automation is not possible.
+          Connect the agent to an X account using the Bird CLI. Log in via your browser or provide
+          cookie tokens, then use the built-in `x_action` tool for reading and posting. If a request
+          is blocked (rate limit/challenge), the tool now attempts browser fallback automation for
+          read and post/reply/follow steps where possible, with manual fallback details when full
+          automation is not possible.
         </p>
-        {status?.error && (
-          <p className="settings-hint">Status check: {status.error}</p>
-        )}
+        {status?.error && <p className="settings-hint">Status check: {status.error}</p>}
         <div className="settings-actions">
           <button
             className="btn-secondary btn-sm"
-            onClick={() => window.electronAPI.openExternal('https://x.com')}
+            onClick={() => window.electronAPI.openExternal("https://x.com")}
           >
             Open X.com
           </button>
@@ -150,14 +159,16 @@ export function XSettings() {
           <select
             className="settings-select"
             value={settings.authMethod}
-            onChange={(e) => updateSettings({ authMethod: e.target.value as XSettingsData['authMethod'] })}
+            onChange={(e) =>
+              updateSettings({ authMethod: e.target.value as XSettingsData["authMethod"] })
+            }
           >
             <option value="browser">Browser Cookies (Recommended)</option>
             <option value="manual">Manual Cookies (auth_token + ct0)</option>
           </select>
         </div>
 
-        {settings.authMethod === 'browser' ? (
+        {settings.authMethod === "browser" ? (
           <>
             <div className="settings-field">
               <label>Cookie Sources</label>
@@ -168,7 +179,9 @@ export function XSettings() {
                 value={cookieSourcesInput}
                 onChange={(e) => setCookieSourcesInput(e.target.value)}
               />
-              <p className="settings-hint">Comma-separated browser sources used for cookie extraction.</p>
+              <p className="settings-hint">
+                Comma-separated browser sources used for cookie extraction.
+              </p>
             </div>
 
             <div className="settings-field">
@@ -177,7 +190,7 @@ export function XSettings() {
                 type="text"
                 className="settings-input"
                 placeholder="Default"
-                value={settings.chromeProfile || ''}
+                value={settings.chromeProfile || ""}
                 onChange={(e) => updateSettings({ chromeProfile: e.target.value || undefined })}
               />
             </div>
@@ -188,7 +201,7 @@ export function XSettings() {
                 type="text"
                 className="settings-input"
                 placeholder="/path/to/Browser/Profile"
-                value={settings.chromeProfileDir || ''}
+                value={settings.chromeProfileDir || ""}
                 onChange={(e) => updateSettings({ chromeProfileDir: e.target.value || undefined })}
               />
             </div>
@@ -199,7 +212,7 @@ export function XSettings() {
                 type="text"
                 className="settings-input"
                 placeholder="default-release"
-                value={settings.firefoxProfile || ''}
+                value={settings.firefoxProfile || ""}
                 onChange={(e) => updateSettings({ firefoxProfile: e.target.value || undefined })}
               />
             </div>
@@ -212,7 +225,7 @@ export function XSettings() {
                 type="password"
                 className="settings-input"
                 placeholder="auth_token cookie"
-                value={settings.authToken || ''}
+                value={settings.authToken || ""}
                 onChange={(e) => updateSettings({ authToken: e.target.value || undefined })}
               />
             </div>
@@ -223,7 +236,7 @@ export function XSettings() {
                 type="password"
                 className="settings-input"
                 placeholder="ct0 cookie"
-                value={settings.ct0 || ''}
+                value={settings.ct0 || ""}
                 onChange={(e) => updateSettings({ ct0: e.target.value || undefined })}
               />
             </div>
@@ -267,18 +280,22 @@ export function XSettings() {
         </div>
 
         <div className="settings-actions">
-          <button className="btn-secondary btn-sm" onClick={handleTestConnection} disabled={testing}>
-            {testing ? 'Testing...' : 'Test Connection'}
+          <button
+            className="btn-secondary btn-sm"
+            onClick={handleTestConnection}
+            disabled={testing}
+          >
+            {testing ? "Testing..." : "Test Connection"}
           </button>
           <button className="btn-primary btn-sm" onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving...' : 'Save Settings'}
+            {saving ? "Saving..." : "Save Settings"}
           </button>
         </div>
 
         {testResult && (
-          <div className={`test-result ${testResult.success ? 'success' : 'error'}`}>
+          <div className={`test-result ${testResult.success ? "success" : "error"}`}>
             {testResult.success ? (
-              <span>Connected{testResult.username ? ` as @${testResult.username}` : ''}</span>
+              <span>Connected{testResult.username ? ` as @${testResult.username}` : ""}</span>
             ) : (
               <span>Connection failed: {testResult.error}</span>
             )}
@@ -294,7 +311,8 @@ export function XSettings() {
           <li>Choose cookie sources and optional profile info, then click “Test Connection”.</li>
         </ol>
         <p className="settings-hint">
-          Common cookie sources: <code>chrome</code>, <code>arc</code>, <code>brave</code>, <code>edge</code>, <code>firefox</code>.
+          Common cookie sources: <code>chrome</code>, <code>arc</code>, <code>brave</code>,{" "}
+          <code>edge</code>, <code>firefox</code>.
         </p>
         <p className="settings-hint">
           Manual auth is supported using the <code>auth_token</code> and <code>ct0</code> cookies.
@@ -304,7 +322,8 @@ export function XSettings() {
       <div className="settings-section">
         <h4>CLI Requirements</h4>
         <p className="settings-description">
-          Install the Bird CLI for X access. If posting is blocked, try using the browser tool instead.
+          Install the Bird CLI for X access. If posting is blocked, try using the browser tool
+          instead.
         </p>
         <pre className="settings-info-box">{`brew install steipete/tap/bird\n# or\nnpm install -g @steipete/bird`}</pre>
       </div>

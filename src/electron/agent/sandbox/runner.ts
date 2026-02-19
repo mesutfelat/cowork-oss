@@ -20,16 +20,16 @@ export {
   detectAvailableSandbox,
   isDockerAvailable,
   NoSandbox,
-} from './sandbox-factory';
+} from "./sandbox-factory";
 
-export { MacOSSandbox } from './macos-sandbox';
-export { DockerSandbox, DockerSandboxConfig } from './docker-sandbox';
+export { MacOSSandbox } from "./macos-sandbox";
+export { DockerSandbox, DockerSandboxConfig } from "./docker-sandbox";
 
-import { spawn, ChildProcess, SpawnOptions } from 'child_process';
-import * as path from 'path';
-import * as fs from 'fs';
-import * as os from 'os';
-import { Workspace } from '../../../shared/types';
+import { spawn, ChildProcess, SpawnOptions } from "child_process";
+import * as path from "path";
+import * as fs from "fs";
+import * as os from "os";
+import { Workspace } from "../../../shared/types";
 
 /**
  * Sandbox execution options
@@ -73,7 +73,7 @@ const DEFAULT_OPTIONS: Required<SandboxOptions> = {
   allowNetwork: false,
   allowedReadPaths: [],
   allowedWritePaths: [],
-  envPassthrough: ['PATH', 'HOME', 'USER', 'SHELL', 'LANG', 'TERM', 'TMPDIR'],
+  envPassthrough: ["PATH", "HOME", "USER", "SHELL", "LANG", "TERM", "TMPDIR"],
 };
 
 /**
@@ -101,7 +101,7 @@ export class SandboxRunner {
   async execute(
     command: string,
     args: string[] = [],
-    options: SandboxOptions = {}
+    options: SandboxOptions = {},
   ): Promise<SandboxResult> {
     const opts = { ...DEFAULT_OPTIONS, ...options };
 
@@ -109,14 +109,14 @@ export class SandboxRunner {
     const cwd = opts.cwd || this.workspace.path;
 
     // Validate working directory is within allowed paths
-    if (!this.isPathAllowed(cwd, 'read')) {
+    if (!this.isPathAllowed(cwd, "read")) {
       return {
         exitCode: 1,
-        stdout: '',
+        stdout: "",
         stderr: `Working directory not allowed: ${cwd}`,
         killed: false,
         timedOut: false,
-        error: 'Path access denied',
+        error: "Path access denied",
       };
     }
 
@@ -124,28 +124,32 @@ export class SandboxRunner {
     const env = this.buildSafeEnvironment(opts.envPassthrough);
 
     // Check if we can use macOS sandbox-exec
-    const useSandboxExec = process.platform === 'darwin' && this.sandboxProfile;
+    const useSandboxExec = process.platform === "darwin" && this.sandboxProfile;
 
     let proc: ChildProcess;
     const spawnOptions: SpawnOptions = {
       cwd,
       env,
       shell: true,
-      stdio: ['ignore', 'pipe', 'pipe'],
+      stdio: ["ignore", "pipe", "pipe"],
     };
 
     if (useSandboxExec && this.sandboxProfile) {
       // Use sandbox-exec on macOS
       const profilePath = this.writeTempProfile();
-      proc = spawn('sandbox-exec', ['-f', profilePath, '/bin/sh', '-c', `${command} ${args.join(' ')}`], spawnOptions);
+      proc = spawn(
+        "sandbox-exec",
+        ["-f", profilePath, "/bin/sh", "-c", `${command} ${args.join(" ")}`],
+        spawnOptions,
+      );
     } else {
       // Fallback: execute without OS-level sandboxing (still has resource limits)
-      proc = spawn('/bin/sh', ['-c', `${command} ${args.join(' ')}`], spawnOptions);
+      proc = spawn("/bin/sh", ["-c", `${command} ${args.join(" ")}`], spawnOptions);
     }
 
     return new Promise((resolve) => {
-      let stdout = '';
-      let stderr = '';
+      let stdout = "";
+      let stderr = "";
       let killed = false;
       let timedOut = false;
 
@@ -153,33 +157,33 @@ export class SandboxRunner {
       const timeoutHandle = setTimeout(() => {
         timedOut = true;
         killed = true;
-        proc.kill('SIGKILL');
+        proc.kill("SIGKILL");
       }, opts.timeout);
 
       // Collect stdout
-      proc.stdout?.on('data', (data: Buffer) => {
+      proc.stdout?.on("data", (data: Buffer) => {
         const chunk = data.toString();
         if (stdout.length + chunk.length <= opts.maxOutputSize) {
           stdout += chunk;
         } else if (stdout.length < opts.maxOutputSize) {
           stdout += chunk.slice(0, opts.maxOutputSize - stdout.length);
-          stdout += '\n[Output truncated]';
+          stdout += "\n[Output truncated]";
         }
       });
 
       // Collect stderr
-      proc.stderr?.on('data', (data: Buffer) => {
+      proc.stderr?.on("data", (data: Buffer) => {
         const chunk = data.toString();
         if (stderr.length + chunk.length <= opts.maxOutputSize) {
           stderr += chunk;
         } else if (stderr.length < opts.maxOutputSize) {
           stderr += chunk.slice(0, opts.maxOutputSize - stderr.length);
-          stderr += '\n[Output truncated]';
+          stderr += "\n[Output truncated]";
         }
       });
 
       // Process completion
-      proc.on('close', (code) => {
+      proc.on("close", (code) => {
         clearTimeout(timeoutHandle);
         resolve({
           exitCode: code ?? 1,
@@ -191,7 +195,7 @@ export class SandboxRunner {
       });
 
       // Process error
-      proc.on('error', (err) => {
+      proc.on("error", (err) => {
         clearTimeout(timeoutHandle);
         resolve({
           exitCode: 1,
@@ -208,15 +212,15 @@ export class SandboxRunner {
   /**
    * Execute code in sandbox (for future scripting support)
    */
-  async executeCode(code: string, language: 'python' | 'javascript'): Promise<SandboxResult> {
+  async executeCode(code: string, language: "python" | "javascript"): Promise<SandboxResult> {
     // Create temp file with code
-    const ext = language === 'python' ? '.py' : '.js';
+    const ext = language === "python" ? ".py" : ".js";
     const tempFile = path.join(os.tmpdir(), `cowork_script_${Date.now()}${ext}`);
 
     try {
-      fs.writeFileSync(tempFile, code, 'utf8');
+      fs.writeFileSync(tempFile, code, "utf8");
 
-      const interpreter = language === 'python' ? 'python3' : 'node';
+      const interpreter = language === "python" ? "python3" : "node";
       return await this.execute(interpreter, [tempFile], {
         timeout: 60 * 1000, // 1 minute for scripts
         allowNetwork: false,
@@ -242,7 +246,7 @@ export class SandboxRunner {
   /**
    * Check if a path is allowed based on workspace permissions
    */
-  private isPathAllowed(targetPath: string, mode: 'read' | 'write'): boolean {
+  private isPathAllowed(targetPath: string, mode: "read" | "write"): boolean {
     const normalizedTarget = path.resolve(targetPath);
     const normalizedWorkspace = path.resolve(this.workspace.path);
 
@@ -266,13 +270,13 @@ export class SandboxRunner {
     }
 
     // System paths for read-only access
-    if (mode === 'read') {
+    if (mode === "read") {
       const systemReadPaths = [
-        '/usr/bin',
-        '/usr/local/bin',
-        '/bin',
-        '/usr/lib',
-        '/System',
+        "/usr/bin",
+        "/usr/local/bin",
+        "/bin",
+        "/usr/lib",
+        "/System",
         os.tmpdir(),
       ];
       for (const sysPath of systemReadPaths) {
@@ -301,22 +305,16 @@ export class SandboxRunner {
     // Set safe defaults
     safeEnv.HOME = process.env.HOME || os.homedir();
     safeEnv.USER = process.env.USER || os.userInfo().username;
-    safeEnv.SHELL = process.env.SHELL || '/bin/bash';
-    safeEnv.TERM = 'xterm-256color';
-    safeEnv.LANG = process.env.LANG || 'en_US.UTF-8';
+    safeEnv.SHELL = process.env.SHELL || "/bin/bash";
+    safeEnv.TERM = "xterm-256color";
+    safeEnv.LANG = process.env.LANG || "en_US.UTF-8";
     safeEnv.TMPDIR = os.tmpdir();
 
     // Minimal PATH with only standard locations
-    safeEnv.PATH = [
-      '/usr/local/bin',
-      '/usr/bin',
-      '/bin',
-      '/usr/sbin',
-      '/sbin',
-    ].join(':');
+    safeEnv.PATH = ["/usr/local/bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin"].join(":");
 
     // Add homebrew paths on macOS
-    if (process.platform === 'darwin') {
+    if (process.platform === "darwin") {
       safeEnv.PATH = `/opt/homebrew/bin:/opt/homebrew/sbin:${safeEnv.PATH}`;
     }
 
@@ -428,7 +426,7 @@ export class SandboxRunner {
    */
   private writeTempProfile(): string {
     const profilePath = path.join(os.tmpdir(), `cowork_sandbox_${Date.now()}.sb`);
-    fs.writeFileSync(profilePath, this.sandboxProfile!, 'utf8');
+    fs.writeFileSync(profilePath, this.sandboxProfile!, "utf8");
 
     // Schedule cleanup
     setTimeout(() => {

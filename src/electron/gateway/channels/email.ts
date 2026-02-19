@@ -32,16 +32,20 @@ import {
   StatusHandler,
   ChannelInfo,
   EmailConfig,
-} from './types';
-import { EmailClient, EmailMessage } from './email-client';
-import { LoomEmailClient } from './loom-client';
-import { assertSafeLoomBaseUrl, assertSafeLoomMailboxFolder, normalizeEmailProtocol } from '../../utils/loom';
+} from "./types";
+import { EmailClient, EmailMessage } from "./email-client";
+import { LoomEmailClient } from "./loom-client";
+import {
+  assertSafeLoomBaseUrl,
+  assertSafeLoomMailboxFolder,
+  normalizeEmailProtocol,
+} from "../../utils/loom";
 
 export class EmailAdapter implements ChannelAdapter {
-  readonly type = 'email' as const;
+  readonly type = "email" as const;
 
   private client: EmailTransportClient | null = null;
-  private _status: ChannelStatus = 'disconnected';
+  private _status: ChannelStatus = "disconnected";
   private _botUsername?: string;
   private messageHandlers: MessageHandler[] = [];
   private errorHandlers: ErrorHandler[] = [];
@@ -74,11 +78,11 @@ export class EmailAdapter implements ChannelAdapter {
       imapSecure: config.imapSecure ?? true,
       smtpPort: config.smtpPort ?? 587,
       smtpSecure: config.smtpSecure ?? false,
-      mailbox: config.mailbox ?? 'INBOX',
+      mailbox: config.mailbox ?? "INBOX",
       pollInterval: config.pollInterval ?? 30000,
       markAsRead: config.markAsRead ?? true,
       deduplicationEnabled: config.deduplicationEnabled ?? true,
-      loomMailboxFolder: config.loomMailboxFolder ?? 'INBOX',
+      loomMailboxFolder: config.loomMailboxFolder ?? "INBOX",
       loomPollInterval: config.loomPollInterval ?? config.pollInterval ?? 30000,
     };
   }
@@ -95,24 +99,24 @@ export class EmailAdapter implements ChannelAdapter {
    * Connect to email servers
    */
   async connect(): Promise<void> {
-    if (this._status === 'connected' || this._status === 'connecting') {
+    if (this._status === "connected" || this._status === "connecting") {
       return;
     }
 
-    this.setStatus('connecting');
+    this.setStatus("connecting");
     this.shouldReconnect = true;
 
     try {
       const protocol = normalizeEmailProtocol(this.config.protocol);
-      if (protocol === 'loom') {
+      if (protocol === "loom") {
         const loomBaseUrl = this.config.loomBaseUrl;
         if (!loomBaseUrl) {
-          throw new Error('LOOM base URL is required');
+          throw new Error("LOOM base URL is required");
         }
 
         const getLoomAccessToken = () => this.config.loomAccessToken;
         if (!getLoomAccessToken()) {
-          throw new Error('LOOM access token is required');
+          throw new Error("LOOM access token is required");
         }
 
         this.client = new LoomEmailClient({
@@ -120,25 +124,25 @@ export class EmailAdapter implements ChannelAdapter {
           accessTokenProvider: () => {
             const token = getLoomAccessToken();
             if (!token) {
-              throw new Error('LOOM access token is required');
+              throw new Error("LOOM access token is required");
             }
             return token;
           },
           identity: this.config.loomIdentity,
-          folder: assertSafeLoomMailboxFolder(this.config.loomMailboxFolder || 'INBOX'),
+          folder: assertSafeLoomMailboxFolder(this.config.loomMailboxFolder || "INBOX"),
           pollInterval: this.config.loomPollInterval || this.config.pollInterval || 30000,
           stateFilePath: this.config.loomStatePath,
-          verbose: process.env.NODE_ENV === 'development',
+          verbose: process.env.NODE_ENV === "development",
         });
       } else {
         const imapHost = this.config.imapHost;
         const smtpHost = this.config.smtpHost;
         const email = this.config.email;
         const password = this.config.password;
-        if (!imapHost) throw new Error('IMAP host is required');
-        if (!smtpHost) throw new Error('SMTP host is required');
-        if (!email) throw new Error('Email address is required');
-        if (!password) throw new Error('Email password is required');
+        if (!imapHost) throw new Error("IMAP host is required");
+        if (!smtpHost) throw new Error("SMTP host is required");
+        if (!email) throw new Error("Email address is required");
+        if (!password) throw new Error("Email password is required");
 
         this.client = new EmailClient({
           imapHost,
@@ -150,38 +154,41 @@ export class EmailAdapter implements ChannelAdapter {
           email,
           password,
           displayName: this.config.displayName,
-          mailbox: this.config.mailbox || 'INBOX',
+          mailbox: this.config.mailbox || "INBOX",
           pollInterval: this.config.pollInterval || 30000,
-          verbose: process.env.NODE_ENV === 'development',
+          verbose: process.env.NODE_ENV === "development",
         });
       }
 
       // Check connection
       const check = await this.client.checkConnection();
       if (!check.success) {
-        throw new Error(check.error || 'Failed to connect to email server');
+        throw new Error(check.error || "Failed to connect to email server");
       }
 
       this._botUsername =
-        this.config.displayName || this.client.getEmail?.() || this.config.email || this.config.loomIdentity;
+        this.config.displayName ||
+        this.client.getEmail?.() ||
+        this.config.email ||
+        this.config.loomIdentity;
 
       // Set up event handlers
-      this.client.on('message', (message: EmailMessage) => {
+      this.client.on("message", (message: EmailMessage) => {
         this.handleIncomingMessage(message);
       });
 
-      this.client.on('error', (error: Error) => {
-        this.handleError(error, 'client');
+      this.client.on("error", (error: Error) => {
+        this.handleError(error, "client");
       });
 
-      this.client.on('connected', () => {
-        console.log('Email client connected');
+      this.client.on("connected", () => {
+        console.log("Email client connected");
       });
 
-      this.client.on('disconnected', () => {
-        console.log('Email client disconnected');
-        if (this._status === 'connected') {
-          this.setStatus('disconnected');
+      this.client.on("disconnected", () => {
+        console.log("Email client disconnected");
+        if (this._status === "connected") {
+          this.setStatus("disconnected");
           // Attempt to reconnect if not intentionally disconnected
           this.scheduleReconnect();
         }
@@ -195,11 +202,11 @@ export class EmailAdapter implements ChannelAdapter {
         this.startDedupCleanup();
       }
 
-      this.setStatus('connected');
+      this.setStatus("connected");
       console.log(`Email adapter connected as ${this._botUsername}`);
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
-      this.setStatus('error', err);
+      this.setStatus("error", err);
       throw err;
     }
   }
@@ -233,7 +240,7 @@ export class EmailAdapter implements ChannelAdapter {
     }
 
     this._botUsername = undefined;
-    this.setStatus('disconnected');
+    this.setStatus("disconnected");
   }
 
   /**
@@ -241,12 +248,16 @@ export class EmailAdapter implements ChannelAdapter {
    */
   private scheduleReconnect(): void {
     if (!this.shouldReconnect || this.reconnectAttempts >= this.MAX_RECONNECT_ATTEMPTS) {
-      console.log(`Email: Not reconnecting (shouldReconnect=${this.shouldReconnect}, attempts=${this.reconnectAttempts})`);
+      console.log(
+        `Email: Not reconnecting (shouldReconnect=${this.shouldReconnect}, attempts=${this.reconnectAttempts})`,
+      );
       return;
     }
 
     const delay = this.RECONNECT_BASE_DELAY * Math.pow(2, this.reconnectAttempts);
-    console.log(`Email: Scheduling reconnect attempt ${this.reconnectAttempts + 1}/${this.MAX_RECONNECT_ATTEMPTS} in ${delay}ms`);
+    console.log(
+      `Email: Scheduling reconnect attempt ${this.reconnectAttempts + 1}/${this.MAX_RECONNECT_ATTEMPTS} in ${delay}ms`,
+    );
 
     this.reconnectTimer = setTimeout(async () => {
       this.reconnectAttempts++;
@@ -254,9 +265,9 @@ export class EmailAdapter implements ChannelAdapter {
         await this.connect();
         // Reset attempts on successful connection
         this.reconnectAttempts = 0;
-        console.log('Email: Reconnected successfully');
+        console.log("Email: Reconnected successfully");
       } catch (error) {
-        console.error('Email: Reconnect failed:', error);
+        console.error("Email: Reconnect failed:", error);
         // Schedule next attempt
         this.scheduleReconnect();
       }
@@ -267,8 +278,8 @@ export class EmailAdapter implements ChannelAdapter {
    * Send an email (reply or new)
    */
   async sendMessage(message: OutgoingMessage): Promise<string> {
-    if (!this.client || this._status !== 'connected') {
-      throw new Error('Email client is not connected');
+    if (!this.client || this._status !== "connected") {
+      throw new Error("Email client is not connected");
     }
 
     // Add response prefix if configured
@@ -278,7 +289,7 @@ export class EmailAdapter implements ChannelAdapter {
     }
 
     // Determine subject
-    let subject = 'Message from CoWork';
+    let subject = "Message from CoWork";
     let inReplyTo: string | undefined;
     let references: string[] = [];
 
@@ -288,12 +299,12 @@ export class EmailAdapter implements ChannelAdapter {
       inReplyTo = context.messageId;
       references = [...context.references, context.messageId];
       // Assume original subject with Re: prefix
-      subject = `Re: ${message.chatId.split('|')[1] || 'Message'}`;
+      subject = `Re: ${message.chatId.split("|")[1] || "Message"}`;
     }
 
     // Send email
     const messageId = await this.client.sendEmail({
-      to: message.chatId.split('|')[0], // chatId format: "email@address.com|subject"
+      to: message.chatId.split("|")[0], // chatId format: "email@address.com|subject"
       subject,
       text,
       inReplyTo,
@@ -307,28 +318,28 @@ export class EmailAdapter implements ChannelAdapter {
    * Edit a message (not supported by email)
    */
   async editMessage(chatId: string, messageId: string, text: string): Promise<void> {
-    throw new Error('Email does not support message editing');
+    throw new Error("Email does not support message editing");
   }
 
   /**
    * Delete a message (not supported)
    */
   async deleteMessage(chatId: string, messageId: string): Promise<void> {
-    throw new Error('Email message deletion not implemented');
+    throw new Error("Email message deletion not implemented");
   }
 
   /**
    * Send a document/file
    */
   async sendDocument(chatId: string, filePath: string, caption?: string): Promise<string> {
-    throw new Error('Email attachment sending not implemented');
+    throw new Error("Email attachment sending not implemented");
   }
 
   /**
    * Send a photo/image
    */
   async sendPhoto(chatId: string, filePath: string, caption?: string): Promise<string> {
-    throw new Error('Email image sending not implemented');
+    throw new Error("Email image sending not implemented");
   }
 
   /**
@@ -357,11 +368,11 @@ export class EmailAdapter implements ChannelAdapter {
    */
   async getInfo(): Promise<ChannelInfo> {
     return {
-      type: 'email',
+      type: "email",
       status: this._status,
       botId: this.config.email || this.config.loomIdentity || this.config.loomBaseUrl,
       botUsername: this._botUsername,
-      botDisplayName: `Email (${this._botUsername || 'Not connected'})`,
+      botDisplayName: `Email (${this._botUsername || "Not connected"})`,
       extra: {
         protocol: normalizeEmailProtocol(this.config.protocol),
         email: this.config.email,
@@ -402,8 +413,8 @@ export class EmailAdapter implements ChannelAdapter {
     // Check sender allowlist if configured
     if (this.config.allowedSenders && this.config.allowedSenders.length > 0) {
       const senderAddress = email.from.address.toLowerCase();
-      const isAllowed = this.config.allowedSenders.some(
-        (allowed) => senderAddress.includes(allowed.toLowerCase())
+      const isAllowed = this.config.allowedSenders.some((allowed) =>
+        senderAddress.includes(allowed.toLowerCase()),
       );
       if (!isAllowed) {
         console.log(`Email: Ignoring message from non-allowed sender: ${senderAddress}`);
@@ -420,7 +431,7 @@ export class EmailAdapter implements ChannelAdapter {
     }
 
     // Create chat ID for threading (sender|subject)
-    const chatId = `${email.from.address}|${email.subject.replace(/^(Re:\s*)+/i, '')}`;
+    const chatId = `${email.from.address}|${email.subject.replace(/^(Re:\s*)+/i, "")}`;
 
     // Store reply context for threading
     this.replyContext.set(chatId, {
@@ -429,24 +440,24 @@ export class EmailAdapter implements ChannelAdapter {
     });
 
     // Get text content (prefer plain text over HTML)
-    let text = email.text || '';
+    let text = email.text || "";
     if (!text && email.html) {
       // Basic HTML to text conversion
       text = email.html
-        .replace(/<br\s*\/?>/gi, '\n')
-        .replace(/<\/p>/gi, '\n\n')
-        .replace(/<[^>]+>/g, '')
-        .replace(/&nbsp;/g, ' ')
-        .replace(/&amp;/g, '&')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
+        .replace(/<br\s*\/?>/gi, "\n")
+        .replace(/<\/p>/gi, "\n\n")
+        .replace(/<[^>]+>/g, "")
+        .replace(/&nbsp;/g, " ")
+        .replace(/&amp;/g, "&")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
         .trim();
     }
 
     // Convert to IncomingMessage
     const message: IncomingMessage = {
       messageId: email.messageId,
-      channel: 'email',
+      channel: "email",
       userId: email.from.address,
       userName: email.from.name || email.from.address,
       chatId,
@@ -460,10 +471,10 @@ export class EmailAdapter implements ChannelAdapter {
       try {
         await handler(message);
       } catch (error) {
-        console.error('Error in Email message handler:', error);
+        console.error("Error in Email message handler:", error);
         this.handleError(
           error instanceof Error ? error : new Error(String(error)),
-          'messageHandler'
+          "messageHandler",
         );
       }
     }
@@ -526,7 +537,7 @@ export class EmailAdapter implements ChannelAdapter {
       try {
         handler(error, context);
       } catch (e) {
-        console.error('Error in error handler:', e);
+        console.error("Error in error handler:", e);
       }
     }
   }
@@ -540,7 +551,7 @@ export class EmailAdapter implements ChannelAdapter {
       try {
         handler(status, error);
       } catch (e) {
-        console.error('Error in status handler:', e);
+        console.error("Error in status handler:", e);
       }
     }
   }
@@ -552,36 +563,36 @@ export class EmailAdapter implements ChannelAdapter {
 export function createEmailAdapter(config: EmailConfig): EmailAdapter {
   const protocol = normalizeEmailProtocol(config.protocol);
 
-  if (protocol === 'loom') {
+  if (protocol === "loom") {
     if (!config.loomBaseUrl) {
-      throw new Error('LOOM base URL is required');
+      throw new Error("LOOM base URL is required");
     }
     if (!config.loomAccessToken) {
-      throw new Error('LOOM access token is required');
+      throw new Error("LOOM access token is required");
     }
     assertSafeLoomBaseUrl(config.loomBaseUrl);
     const safeLoomMailboxFolder = assertSafeLoomMailboxFolder(config.loomMailboxFolder);
     return new EmailAdapter({
       ...config,
-      protocol: 'loom',
+      protocol: "loom",
       loomMailboxFolder: safeLoomMailboxFolder,
     });
   }
 
   if (!config.imapHost) {
-    throw new Error('IMAP host is required');
+    throw new Error("IMAP host is required");
   }
   if (!config.smtpHost) {
-    throw new Error('SMTP host is required');
+    throw new Error("SMTP host is required");
   }
   if (!config.email) {
-    throw new Error('Email address is required');
+    throw new Error("Email address is required");
   }
   if (!config.password) {
-    throw new Error('Email password is required');
+    throw new Error("Email password is required");
   }
   return new EmailAdapter({
     ...config,
-    protocol: 'imap-smtp',
+    protocol: "imap-smtp",
   });
 }

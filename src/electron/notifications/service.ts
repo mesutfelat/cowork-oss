@@ -3,16 +3,16 @@
  * Provides CRUD operations and emits events for UI updates
  */
 
-import { randomUUID } from 'node:crypto';
-import type { AppNotification, NotificationType, NotificationStoreFile } from '../../shared/types';
+import { randomUUID } from "node:crypto";
+import type { AppNotification, NotificationType, NotificationStoreFile } from "../../shared/types";
 import {
   loadNotificationStore,
   loadNotificationStoreSync,
   saveNotificationStore,
   getNotificationStorePath,
-} from './store';
+} from "./store";
 
-export type NotificationEventType = 'added' | 'updated' | 'removed' | 'cleared';
+export type NotificationEventType = "added" | "updated" | "removed" | "cleared";
 
 export interface NotificationEvent {
   type: NotificationEventType;
@@ -80,7 +80,7 @@ export class NotificationService {
     this.notifications.unshift(notification);
     await this.save();
 
-    this.emit({ type: 'added', notification });
+    this.emit({ type: "added", notification });
     return notification;
   }
 
@@ -94,7 +94,7 @@ export class NotificationService {
     notification.read = true;
     await this.save();
 
-    this.emit({ type: 'updated', notification });
+    this.emit({ type: "updated", notification });
     return notification;
   }
 
@@ -110,7 +110,7 @@ export class NotificationService {
     }
     await this.save();
 
-    this.emit({ type: 'updated', notifications: this.notifications });
+    this.emit({ type: "updated", notifications: this.notifications });
   }
 
   /**
@@ -123,7 +123,7 @@ export class NotificationService {
     const [removed] = this.notifications.splice(index, 1);
     await this.save();
 
-    this.emit({ type: 'removed', notification: removed });
+    this.emit({ type: "removed", notification: removed });
     return true;
   }
 
@@ -136,7 +136,7 @@ export class NotificationService {
     this.notifications = [];
     await this.save();
 
-    this.emit({ type: 'cleared' });
+    this.emit({ type: "cleared" });
   }
 
   /**

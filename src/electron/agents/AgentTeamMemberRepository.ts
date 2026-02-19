@@ -1,10 +1,10 @@
-import Database from 'better-sqlite3';
-import { v4 as uuidv4 } from 'uuid';
+import Database from "better-sqlite3";
+import { v4 as uuidv4 } from "uuid";
 import {
   AgentTeamMember,
   CreateAgentTeamMemberRequest,
   UpdateAgentTeamMemberRequest,
-} from '../../shared/types';
+} from "../../shared/types";
 
 /**
  * Repository for managing agent team members (teammates) in the database.
@@ -44,7 +44,7 @@ export class AgentTeamMemberRepository {
       member.memberOrder,
       member.isRequired ? 1 : 0,
       member.roleGuidance || null,
-      member.createdAt
+      member.createdAt,
     );
 
     return member;
@@ -54,7 +54,7 @@ export class AgentTeamMemberRepository {
    * Find a member by ID.
    */
   findById(id: string): AgentTeamMember | undefined {
-    const stmt = this.db.prepare('SELECT * FROM agent_team_members WHERE id = ?');
+    const stmt = this.db.prepare("SELECT * FROM agent_team_members WHERE id = ?");
     const row = stmt.get(id) as any;
     return row ? this.mapRowToMember(row) : undefined;
   }
@@ -64,7 +64,7 @@ export class AgentTeamMemberRepository {
    */
   findByTeamAndRole(teamId: string, agentRoleId: string): AgentTeamMember | undefined {
     const stmt = this.db.prepare(
-      'SELECT * FROM agent_team_members WHERE team_id = ? AND agent_role_id = ?'
+      "SELECT * FROM agent_team_members WHERE team_id = ? AND agent_role_id = ?",
     );
     const row = stmt.get(teamId, agentRoleId) as any;
     return row ? this.mapRowToMember(row) : undefined;
@@ -95,15 +95,15 @@ export class AgentTeamMemberRepository {
     const values: any[] = [];
 
     if (request.memberOrder !== undefined) {
-      fields.push('member_order = ?');
+      fields.push("member_order = ?");
       values.push(request.memberOrder);
     }
     if (request.isRequired !== undefined) {
-      fields.push('is_required = ?');
+      fields.push("is_required = ?");
       values.push(request.isRequired ? 1 : 0);
     }
     if (request.roleGuidance !== undefined) {
-      fields.push('role_guidance = ?');
+      fields.push("role_guidance = ?");
       values.push(request.roleGuidance);
     }
 
@@ -111,7 +111,7 @@ export class AgentTeamMemberRepository {
 
     values.push(request.id);
 
-    const sql = `UPDATE agent_team_members SET ${fields.join(', ')} WHERE id = ?`;
+    const sql = `UPDATE agent_team_members SET ${fields.join(", ")} WHERE id = ?`;
     this.db.prepare(sql).run(...values);
 
     return this.findById(request.id);
@@ -121,7 +121,7 @@ export class AgentTeamMemberRepository {
    * Remove a member by ID.
    */
   remove(id: string): boolean {
-    const stmt = this.db.prepare('DELETE FROM agent_team_members WHERE id = ?');
+    const stmt = this.db.prepare("DELETE FROM agent_team_members WHERE id = ?");
     const result = stmt.run(id);
     return result.changes > 0;
   }
@@ -131,7 +131,7 @@ export class AgentTeamMemberRepository {
    */
   removeByTeamAndRole(teamId: string, agentRoleId: string): boolean {
     const stmt = this.db.prepare(
-      'DELETE FROM agent_team_members WHERE team_id = ? AND agent_role_id = ?'
+      "DELETE FROM agent_team_members WHERE team_id = ? AND agent_role_id = ?",
     );
     const result = stmt.run(teamId, agentRoleId);
     return result.changes > 0;
@@ -141,7 +141,7 @@ export class AgentTeamMemberRepository {
    * Delete all members for a team.
    */
   deleteByTeam(teamId: string): number {
-    const stmt = this.db.prepare('DELETE FROM agent_team_members WHERE team_id = ?');
+    const stmt = this.db.prepare("DELETE FROM agent_team_members WHERE team_id = ?");
     const result = stmt.run(teamId);
     return result.changes;
   }
@@ -163,7 +163,7 @@ export class AgentTeamMemberRepository {
 
     const tx = this.db.transaction(() => {
       const stmt = this.db.prepare(
-        'UPDATE agent_team_members SET member_order = ? WHERE id = ? AND team_id = ?'
+        "UPDATE agent_team_members SET member_order = ? WHERE id = ? AND team_id = ?",
       );
       finalOrder.forEach((id, index) => {
         // Use gaps to allow future inserts without full reindex.

@@ -12,8 +12,8 @@
  * - Task delegation between agents (acp.task.create / acp.task.get)
  */
 
-export { registerACPMethods, getACPRegistry, shutdownACP, type ACPHandlerDeps } from './handler';
-export { ACPAgentRegistry } from './agent-registry';
+export { registerACPMethods, getACPRegistry, shutdownACP, type ACPHandlerDeps } from "./handler";
+export { ACPAgentRegistry } from "./agent-registry";
 export {
   type ACPAgentCard,
   type ACPCapability,
@@ -25,4 +25,4 @@ export {
   type ACPTaskCreateParams,
   ACPEvents,
   ACPMethods,
-} from './types';
+} from "./types";

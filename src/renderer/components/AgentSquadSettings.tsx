@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
-import { AgentRoleData, AgentCapability } from '../../electron/preload';
-import { AgentRoleCard } from './AgentRoleCard';
-import { AgentRoleEditor } from './AgentRoleEditor';
+import { useState, useEffect } from "react";
+import { AgentRoleData, AgentCapability } from "../../electron/preload";
+import { AgentRoleCard } from "./AgentRoleCard";
+import { AgentRoleEditor } from "./AgentRoleEditor";
 
 // Alias for UI usage
 type AgentRole = AgentRoleData;
@@ -29,8 +29,8 @@ export function AgentSquadSettings({ onSettingsChanged }: AgentSquadSettingsProp
       setRoles(loadedRoles);
       setError(null);
     } catch (err) {
-      setError('Failed to load agent roles');
-      console.error('Failed to load agent roles:', err);
+      setError("Failed to load agent roles");
+      console.error("Failed to load agent roles:", err);
     } finally {
       setLoading(false);
     }
@@ -38,13 +38,13 @@ export function AgentSquadSettings({ onSettingsChanged }: AgentSquadSettingsProp
 
   const handleCreate = () => {
     setEditingRole({
-      id: '',
-      name: '',
-      displayName: '',
-      description: '',
-      icon: '🤖',
-      color: '#6366f1',
-      capabilities: ['code'] as AgentCapability[],
+      id: "",
+      name: "",
+      displayName: "",
+      description: "",
+      icon: "🤖",
+      color: "#6366f1",
+      capabilities: ["code"] as AgentCapability[],
       isSystem: false,
       isActive: true,
       sortOrder: 100,
@@ -101,12 +101,12 @@ export function AgentSquadSettings({ onSettingsChanged }: AgentSquadSettingsProp
       setError(null);
       onSettingsChanged?.();
     } catch (err: any) {
-      setError(err.message || 'Failed to save agent role');
+      setError(err.message || "Failed to save agent role");
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this agent role?')) return;
+    if (!confirm("Are you sure you want to delete this agent role?")) return;
 
     try {
       const success = await window.electronAPI.deleteAgentRole(id);
@@ -114,10 +114,10 @@ export function AgentSquadSettings({ onSettingsChanged }: AgentSquadSettingsProp
         setRoles((prev) => prev.filter((r) => r.id !== id));
         onSettingsChanged?.();
       } else {
-        setError('Cannot delete system agent roles');
+        setError("Cannot delete system agent roles");
       }
     } catch (err) {
-      setError('Failed to delete agent role');
+      setError("Failed to delete agent role");
     }
   };
 
@@ -132,7 +132,7 @@ export function AgentSquadSettings({ onSettingsChanged }: AgentSquadSettingsProp
         onSettingsChanged?.();
       }
     } catch (err) {
-      setError('Failed to update agent role');
+      setError("Failed to update agent role");
     }
   };
 
@@ -149,7 +149,7 @@ export function AgentSquadSettings({ onSettingsChanged }: AgentSquadSettingsProp
         onSettingsChanged?.();
       }
     } catch (err) {
-      setError('Failed to seed default agent roles');
+      setError("Failed to seed default agent roles");
     }
   };
 
@@ -180,7 +180,7 @@ export function AgentSquadSettings({ onSettingsChanged }: AgentSquadSettingsProp
         <div className="settings-section-header">
           <h3>Agent Squad</h3>
           <div className="settings-section-actions">
-            <label className="checkbox-label" style={{ marginRight: '12px', fontSize: '13px' }}>
+            <label className="checkbox-label" style={{ marginRight: "12px", fontSize: "13px" }}>
               <input
                 type="checkbox"
                 checked={showInactive}
@@ -189,7 +189,14 @@ export function AgentSquadSettings({ onSettingsChanged }: AgentSquadSettingsProp
               Show inactive
             </label>
             <button className="btn-primary btn-sm" onClick={handleCreate}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
                 <line x1="12" y1="5" x2="12" y2="19" />
                 <line x1="5" y1="12" x2="19" y2="12" />
               </svg>
@@ -208,8 +215,14 @@ export function AgentSquadSettings({ onSettingsChanged }: AgentSquadSettingsProp
       {roles.length === 0 ? (
         <div className="agent-squad-empty">
           <p>No agent roles configured.</p>
-          <p>Click "New Agent Role" to create your first specialized agent, or seed the defaults.</p>
-          <button className="btn-secondary" onClick={handleSeedDefaults} style={{ marginTop: '12px' }}>
+          <p>
+            Click "New Agent Role" to create your first specialized agent, or seed the defaults.
+          </p>
+          <button
+            className="btn-secondary"
+            onClick={handleSeedDefaults}
+            style={{ marginTop: "12px" }}
+          >
             Seed Default Roles
           </button>
         </div>

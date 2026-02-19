@@ -1,4 +1,4 @@
-import { EventEmitter } from 'events';
+import { EventEmitter } from "events";
 import {
   AgentRole,
   HeartbeatResult,
@@ -8,16 +8,16 @@ import {
   AgentMention,
   Task,
   Activity,
-} from '../../shared/types';
-import { AgentRoleRepository } from './AgentRoleRepository';
-import { MentionRepository } from './MentionRepository';
-import { ActivityRepository } from '../activity/ActivityRepository';
-import { WorkingStateRepository } from './WorkingStateRepository';
-import { buildRolePersonaPrompt } from './role-persona';
+} from "../../shared/types";
+import { AgentRoleRepository } from "./AgentRoleRepository";
+import { MentionRepository } from "./MentionRepository";
+import { ActivityRepository } from "../activity/ActivityRepository";
+import { WorkingStateRepository } from "./WorkingStateRepository";
+import { buildRolePersonaPrompt } from "./role-persona";
 
-type HeartbeatWakeMode = 'now' | 'next-heartbeat';
+type HeartbeatWakeMode = "now" | "next-heartbeat";
 
-type HeartbeatWakeSource = 'hook' | 'cron' | 'api' | 'manual';
+type HeartbeatWakeSource = "hook" | "cron" | "api" | "manual";
 
 interface HeartbeatWakeRequest {
   mode: HeartbeatWakeMode;
@@ -48,7 +48,12 @@ export interface HeartbeatServiceDeps {
   mentionRepo: MentionRepository;
   activityRepo: ActivityRepository;
   workingStateRepo: WorkingStateRepository;
-  createTask: (workspaceId: string, prompt: string, title: string, agentRoleId?: string) => Promise<Task>;
+  createTask: (
+    workspaceId: string,
+    prompt: string,
+    title: string,
+    agentRoleId?: string,
+  ) => Promise<Task>;
   getTasksForAgent: (agentRoleId: string, workspaceId?: string) => Task[];
   getDefaultWorkspaceId: () => string | undefined;
   getDefaultWorkspacePath: () => string | undefined;
@@ -124,7 +129,7 @@ export class HeartbeatService extends EventEmitter {
     }
     this.wakeImmediateTimers.clear();
 
-    console.log('[HeartbeatService] Stopped');
+    console.log("[HeartbeatService] Stopped");
   }
 
   /**
@@ -135,11 +140,11 @@ export class HeartbeatService extends EventEmitter {
     if (!agent) {
       return {
         agentRoleId,
-        status: 'error',
+        status: "error",
         pendingMentions: 0,
         assignedTasks: 0,
         relevantActivities: 0,
-        error: 'Agent role not found',
+        error: "Agent role not found",
       };
     }
 
@@ -151,7 +156,7 @@ export class HeartbeatService extends EventEmitter {
    */
   submitWakeRequest(
     agentRoleId: string,
-    request: { text?: string; mode?: HeartbeatWakeMode; source?: HeartbeatWakeSource }
+    request: { text?: string; mode?: HeartbeatWakeMode; source?: HeartbeatWakeSource },
   ): void {
     const agent = this.deps.agentRoleRepo.findById(agentRoleId);
     if (!agent || !agent.heartbeatEnabled) {
@@ -159,8 +164,8 @@ export class HeartbeatService extends EventEmitter {
     }
 
     const wakeRequest: HeartbeatWakeRequest = {
-      mode: request.mode === 'now' ? 'now' : 'next-heartbeat',
-      source: request.source || 'manual',
+      mode: request.mode === "now" ? "now" : "next-heartbeat",
+      source: request.source || "manual",
       text: this.normalizeWakeText(request.text),
       requestedAt: Date.now(),
     };
@@ -171,9 +176,11 @@ export class HeartbeatService extends EventEmitter {
   /**
    * Submit a wake request to all enabled agents.
    */
-  submitWakeForAll(
-    request: { text?: string; mode?: HeartbeatWakeMode; source?: HeartbeatWakeSource }
-  ): void {
+  submitWakeForAll(request: {
+    text?: string;
+    mode?: HeartbeatWakeMode;
+    source?: HeartbeatWakeSource;
+  }): void {
     const enabledAgents = this.deps.agentRoleRepo.findHeartbeatEnabled();
     for (const agent of enabledAgents) {
       this.submitWakeRequest(agent.id, request);
@@ -228,11 +235,11 @@ export class HeartbeatService extends EventEmitter {
   }> {
     const agents = this.deps.agentRoleRepo.findAll(true);
 
-    return agents.map(agent => ({
+    return agents.map((agent) => ({
       agentRoleId: agent.id,
       agentName: agent.displayName,
       heartbeatEnabled: agent.heartbeatEnabled || false,
-      heartbeatStatus: agent.heartbeatStatus || 'idle',
+      heartbeatStatus: agent.heartbeatStatus || "idle",
       lastHeartbeatAt: agent.lastHeartbeatAt,
       nextHeartbeatAt: this.getNextHeartbeatTime(agent),
     }));
@@ -241,13 +248,15 @@ export class HeartbeatService extends EventEmitter {
   /**
    * Get status of a specific agent
    */
-  getStatus(agentRoleId: string): {
-    heartbeatEnabled: boolean;
-    heartbeatStatus: HeartbeatStatus;
-    lastHeartbeatAt?: number;
-    nextHeartbeatAt?: number;
-    isRunning: boolean;
-  } | undefined {
+  getStatus(agentRoleId: string):
+    | {
+        heartbeatEnabled: boolean;
+        heartbeatStatus: HeartbeatStatus;
+        lastHeartbeatAt?: number;
+        nextHeartbeatAt?: number;
+        isRunning: boolean;
+      }
+    | undefined {
     const agent = this.deps.agentRoleRepo.findById(agentRoleId);
     if (!agent) {
       return undefined;
@@ -255,7 +264,7 @@ export class HeartbeatService extends EventEmitter {
 
     return {
       heartbeatEnabled: agent.heartbeatEnabled || false,
-      heartbeatStatus: agent.heartbeatStatus || 'idle',
+      heartbeatStatus: agent.heartbeatStatus || "idle",
       lastHeartbeatAt: agent.lastHeartbeatAt,
       nextHeartbeatAt: this.getNextHeartbeatTime(agent),
       isRunning: this.running.get(agentRoleId) || false,
@@ -299,7 +308,7 @@ export class HeartbeatService extends EventEmitter {
     this.timers.set(agent.id, timer);
 
     console.log(
-      `[HeartbeatService] Scheduled ${agent.displayName} in ${Math.round(delayMs / 1000)}s`
+      `[HeartbeatService] Scheduled ${agent.displayName} in ${Math.round(delayMs / 1000)}s`,
     );
   }
 
@@ -311,20 +320,20 @@ export class HeartbeatService extends EventEmitter {
     if (this.running.get(agent.id)) {
       return {
         agentRoleId: agent.id,
-        status: 'error',
+        status: "error",
         pendingMentions: 0,
         assignedTasks: 0,
         relevantActivities: 0,
-        error: 'Heartbeat already running',
+        error: "Heartbeat already running",
       };
     }
 
     this.running.set(agent.id, true);
-    this.updateHeartbeatStatus(agent.id, 'running');
+    this.updateHeartbeatStatus(agent.id, "running");
 
     // Emit started event
     this.emitHeartbeatEvent({
-      type: 'started',
+      type: "started",
       agentRoleId: agent.id,
       agentName: agent.displayName,
       timestamp: Date.now(),
@@ -337,7 +346,7 @@ export class HeartbeatService extends EventEmitter {
       const workItems = await this.checkForWork(agent);
       const result: HeartbeatResult = {
         agentRoleId: agent.id,
-        status: 'ok',
+        status: "ok",
         pendingMentions: workItems.pendingMentions.length,
         assignedTasks: workItems.assignedTasks.length,
         relevantActivities: workItems.relevantActivities.length,
@@ -350,7 +359,7 @@ export class HeartbeatService extends EventEmitter {
         wakeRequests.length > 0;
 
       if (hasWork) {
-        result.status = 'work_done';
+        result.status = "work_done";
 
         const selectedWorkspace = this.selectWorkspaceForWork(workItems);
         const workspacePath = selectedWorkspace
@@ -366,15 +375,17 @@ export class HeartbeatService extends EventEmitter {
             workspaceId,
             prompt,
             `Heartbeat: ${agent.displayName}`,
-            agent.id
+            agent.id,
           );
           result.taskCreated = task.id;
         } else {
-          console.warn('[HeartbeatService] Heartbeat skipped task creation: no workspace available');
+          console.warn(
+            "[HeartbeatService] Heartbeat skipped task creation: no workspace available",
+          );
         }
 
         this.emitHeartbeatEvent({
-          type: 'work_found',
+          type: "work_found",
           agentRoleId: agent.id,
           agentName: agent.displayName,
           timestamp: Date.now(),
@@ -382,7 +393,7 @@ export class HeartbeatService extends EventEmitter {
         });
       } else {
         this.emitHeartbeatEvent({
-          type: 'no_work',
+          type: "no_work",
           agentRoleId: agent.id,
           agentName: agent.displayName,
           timestamp: Date.now(),
@@ -391,11 +402,11 @@ export class HeartbeatService extends EventEmitter {
       }
 
       // Update status
-      this.updateHeartbeatStatus(agent.id, 'sleeping', Date.now());
+      this.updateHeartbeatStatus(agent.id, "sleeping", Date.now());
 
       // Emit completed event
       this.emitHeartbeatEvent({
-        type: 'completed',
+        type: "completed",
         agentRoleId: agent.id,
         agentName: agent.displayName,
         timestamp: Date.now(),
@@ -406,11 +417,11 @@ export class HeartbeatService extends EventEmitter {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
 
-      this.updateHeartbeatStatus(agent.id, 'error');
+      this.updateHeartbeatStatus(agent.id, "error");
 
       const result: HeartbeatResult = {
         agentRoleId: agent.id,
-        status: 'error',
+        status: "error",
         pendingMentions: 0,
         assignedTasks: 0,
         relevantActivities: 0,
@@ -418,7 +429,7 @@ export class HeartbeatService extends EventEmitter {
       };
 
       this.emitHeartbeatEvent({
-        type: 'error',
+        type: "error",
         agentRoleId: agent.id,
         agentName: agent.displayName,
         timestamp: Date.now(),
@@ -435,7 +446,7 @@ export class HeartbeatService extends EventEmitter {
       if (hasNowWakeRequest) {
         const currentAgent = this.deps.agentRoleRepo.findById(agent.id);
         if (currentAgent && currentAgent.heartbeatEnabled) {
-          this.scheduleImmediateWake(currentAgent, 'drain');
+          this.scheduleImmediateWake(currentAgent, "drain");
         }
       }
     }
@@ -453,7 +464,7 @@ export class HeartbeatService extends EventEmitter {
       now - existing.requestedAt < HeartbeatService.WAKE_COALESCE_MS
     ) {
       this.emitHeartbeatEvent({
-        type: 'wake_coalesced',
+        type: "wake_coalesced",
         agentRoleId,
         agentName: agent.displayName,
         timestamp: now,
@@ -469,14 +480,14 @@ export class HeartbeatService extends EventEmitter {
     const queue = this.getWakeQueue(agentRoleId);
     queue.push(request);
     if (queue.length > HeartbeatService.MAX_WAKE_QUEUE_SIZE) {
-      let dropIndex = queue.findIndex((queuedRequest) => queuedRequest.mode !== 'now');
+      let dropIndex = queue.findIndex((queuedRequest) => queuedRequest.mode !== "now");
       if (dropIndex === -1) {
         dropIndex = 0;
       }
       const droppedRequest = queue[dropIndex];
       queue.splice(dropIndex, 1);
       this.emitHeartbeatEvent({
-        type: 'wake_queue_saturated',
+        type: "wake_queue_saturated",
         agentRoleId,
         agentName: agent.displayName,
         timestamp: now,
@@ -488,7 +499,7 @@ export class HeartbeatService extends EventEmitter {
       });
     } else {
       this.emitHeartbeatEvent({
-        type: 'wake_queued',
+        type: "wake_queued",
         agentRoleId,
         agentName: agent.displayName,
         timestamp: now,
@@ -505,8 +516,8 @@ export class HeartbeatService extends EventEmitter {
       requestedAt: now,
     });
 
-    if (request.mode === 'now') {
-      this.scheduleImmediateWake(agent, 'ready', request);
+    if (request.mode === "now") {
+      this.scheduleImmediateWake(agent, "ready", request);
     }
 
     return true;
@@ -514,8 +525,8 @@ export class HeartbeatService extends EventEmitter {
 
   private scheduleImmediateWake(
     agent: AgentRole,
-    reason: 'ready' | 'drain',
-    wakeRequest?: HeartbeatWakeRequest
+    reason: "ready" | "drain",
+    wakeRequest?: HeartbeatWakeRequest,
   ): void {
     const agentRoleId = agent.id;
     if (this.wakeImmediateTimers.has(agentRoleId) || this.running.get(agentRoleId)) {
@@ -529,7 +540,7 @@ export class HeartbeatService extends EventEmitter {
     if (delayMs === 0) {
       this.wakeNowThrottleUntil.set(agentRoleId, now);
       void this.executeHeartbeat(agent).catch((error) => {
-        console.error('[HeartbeatService] Failed to process immediate wake heartbeat:', error);
+        console.error("[HeartbeatService] Failed to process immediate wake heartbeat:", error);
       });
       return;
     }
@@ -541,21 +552,24 @@ export class HeartbeatService extends EventEmitter {
       }
       this.wakeNowThrottleUntil.set(agentRoleId, Date.now());
       void this.executeHeartbeat(agent).catch((error) => {
-        console.error('[HeartbeatService] Failed to process delayed immediate wake heartbeat:', error);
+        console.error(
+          "[HeartbeatService] Failed to process delayed immediate wake heartbeat:",
+          error,
+        );
       });
     }, delayMs);
 
     this.wakeImmediateTimers.set(agentRoleId, timer);
 
     const deferredWake = wakeRequest ?? {
-      source: 'api',
-      mode: 'now',
+      source: "api",
+      mode: "now",
       text: `${reason}: ${delayMs}ms`,
       requestedAt: now,
     };
 
     this.emitHeartbeatEvent({
-      type: 'wake_immediate_deferred',
+      type: "wake_immediate_deferred",
       agentRoleId,
       agentName: agent.displayName,
       timestamp: now,
@@ -583,7 +597,7 @@ export class HeartbeatService extends EventEmitter {
       return false;
     }
 
-    return requests.some((request) => request.mode === 'now');
+    return requests.some((request) => request.mode === "now");
   }
 
   private consumeWakeRequests(agentRoleId: string): HeartbeatWakeRequest[] {
@@ -630,7 +644,7 @@ export class HeartbeatService extends EventEmitter {
   }
 
   private normalizeWakeText(text?: string): string {
-    return (text || '').trim();
+    return (text || "").trim();
   }
 
   /**
@@ -655,16 +669,23 @@ export class HeartbeatService extends EventEmitter {
   }
 
   private selectWorkspaceForWork(
-    work: WorkItems
+    work: WorkItems,
   ): { workspaceId: string; workspacePath: string } | undefined {
     const candidates = new Map<string, { score: number; priority: number }>();
-    const addCandidate = (workspaceIdRaw: string | undefined, score: number, priority: number): void => {
-      const workspaceId =
-        typeof workspaceIdRaw === 'string' ? workspaceIdRaw.trim() : '';
+    const addCandidate = (
+      workspaceIdRaw: string | undefined,
+      score: number,
+      priority: number,
+    ): void => {
+      const workspaceId = typeof workspaceIdRaw === "string" ? workspaceIdRaw.trim() : "";
       if (!workspaceId) return;
 
       const existing = candidates.get(workspaceId);
-      if (!existing || score > existing.score || (score === existing.score && priority > existing.priority)) {
+      if (
+        !existing ||
+        score > existing.score ||
+        (score === existing.score && priority > existing.priority)
+      ) {
         candidates.set(workspaceId, { score, priority });
       }
     };
@@ -687,7 +708,7 @@ export class HeartbeatService extends EventEmitter {
 
     for (const candidate of sortedCandidates) {
       const workspacePath = this.deps.getWorkspacePath(candidate.workspaceId);
-      if (typeof workspacePath === 'string' && workspacePath.trim().length === 0) {
+      if (typeof workspacePath === "string" && workspacePath.trim().length === 0) {
         continue;
       }
 
@@ -711,68 +732,66 @@ export class HeartbeatService extends EventEmitter {
     agent: AgentRole,
     work: WorkItems,
     wakeRequests: HeartbeatWakeRequest[],
-    workspacePath?: string
+    workspacePath?: string,
   ): string {
     const lines: string[] = [
       `You are ${agent.displayName}, waking up for a scheduled heartbeat check.`,
-      '',
+      "",
     ];
 
     if (wakeRequests.length > 0) {
-      lines.push('## Wake Requests');
+      lines.push("## Wake Requests");
       for (const request of wakeRequests) {
-        const detail = request.text || '[no detail provided]';
+        const detail = request.text || "[no detail provided]";
         lines.push(`- ${request.mode} / ${request.source}: ${detail}`);
       }
-      lines.push('');
+      lines.push("");
     }
 
     const rolePersona = buildRolePersonaPrompt(agent, workspacePath);
     if (rolePersona) {
       lines.push(rolePersona);
-      lines.push('');
+      lines.push("");
     }
 
     // Add pending mentions
     if (work.pendingMentions.length > 0) {
-      lines.push('## Pending @Mentions');
+      lines.push("## Pending @Mentions");
       for (const mention of work.pendingMentions) {
         lines.push(`- Type: ${mention.mentionType}`);
         if (mention.context) {
           lines.push(`  Context: ${mention.context}`);
         }
       }
-      lines.push('');
+      lines.push("");
     }
 
     // Add assigned tasks
     if (work.assignedTasks.length > 0) {
-      lines.push('## Assigned Tasks');
+      lines.push("## Assigned Tasks");
       for (const task of work.assignedTasks) {
         lines.push(`- [${task.status}] ${task.title}`);
       }
-      lines.push('');
+      lines.push("");
     }
 
     // Add instructions
-    lines.push('## Instructions');
+    lines.push("## Instructions");
     const hasWorkOrSignal =
-      work.pendingMentions.length > 0 ||
-      work.assignedTasks.length > 0 ||
-      wakeRequests.length > 0;
+      work.pendingMentions.length > 0 || work.assignedTasks.length > 0 || wakeRequests.length > 0;
 
     if (hasWorkOrSignal) {
-      lines.push('Please review the above items and take appropriate action.');
-      lines.push('For mentions, acknowledge them and respond as needed.');
-      lines.push('For assigned tasks, continue working on them or report any blockers.');
+      lines.push("Please review the above items and take appropriate action.");
+      lines.push("For mentions, acknowledge them and respond as needed.");
+      lines.push("For assigned tasks, continue working on them or report any blockers.");
       if (wakeRequests.length > 0) {
-        lines.push('For wake requests, treat them as explicit check-in prompts.');
+        lines.push("For wake requests, treat them as explicit check-in prompts.");
       }
     } else {
-      lines.push('No pending work found. HEARTBEAT_OK.');
+      lines.push("No pending work found. HEARTBEAT_OK.");
     }
 
-    return lines.join('\n');
+    return lines.join("\n");
   }
 
   /**
@@ -781,7 +800,7 @@ export class HeartbeatService extends EventEmitter {
   private updateHeartbeatStatus(
     agentRoleId: string,
     status: HeartbeatStatus,
-    lastHeartbeatAt?: number
+    lastHeartbeatAt?: number,
   ): void {
     this.deps.agentRoleRepo.updateHeartbeatStatus(agentRoleId, status, lastHeartbeatAt);
   }
@@ -805,10 +824,12 @@ export class HeartbeatService extends EventEmitter {
    * Emit a heartbeat event
    */
   private emitHeartbeatEvent(event: HeartbeatEvent): void {
-    this.emit('heartbeat', event);
+    this.emit("heartbeat", event);
     console.log(
       `[HeartbeatService] ${event.agentName}: ${event.type}`,
-      event.result ? `(mentions: ${event.result.pendingMentions}, tasks: ${event.result.assignedTasks})` : ''
+      event.result
+        ? `(mentions: ${event.result.pendingMentions}, tasks: ${event.result.assignedTasks})`
+        : "",
     );
   }
 }

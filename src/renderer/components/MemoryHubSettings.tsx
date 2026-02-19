@@ -1,22 +1,25 @@
-import { useEffect, useMemo, useState } from 'react';
-import type { MemoryFeaturesSettings, Workspace, WorkspaceKitStatus } from '../../shared/types';
-import { MemorySettings } from './MemorySettings';
+import { useEffect, useMemo, useState } from "react";
+import type { MemoryFeaturesSettings, Workspace, WorkspaceKitStatus } from "../../shared/types";
+import { MemorySettings } from "./MemorySettings";
 
 const DEFAULT_FEATURES: MemoryFeaturesSettings = {
   contextPackInjectionEnabled: true,
   heartbeatMaintenanceEnabled: true,
 };
 
-export function MemoryHubSettings(props?: { initialWorkspaceId?: string; onSettingsChanged?: () => void }) {
+export function MemoryHubSettings(props?: {
+  initialWorkspaceId?: string;
+  onSettingsChanged?: () => void;
+}) {
   const [features, setFeatures] = useState<MemoryFeaturesSettings | null>(null);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
-  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string>('');
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string>("");
   const [kitStatus, setKitStatus] = useState<WorkspaceKitStatus | null>(null);
   const [kitLoading, setKitLoading] = useState(false);
   const [kitBusy, setKitBusy] = useState(false);
-  const [newProjectId, setNewProjectId] = useState('');
+  const [newProjectId, setNewProjectId] = useState("");
 
   const selectedWorkspace = useMemo(() => {
     return workspaces.find((w) => w.id === selectedWorkspaceId) || null;
@@ -52,10 +55,10 @@ export function MemoryHubSettings(props?: { initialWorkspaceId?: string; onSetti
       setFeatures(loadedFeatures);
       setWorkspaces(combined);
       setSelectedWorkspaceId((prev) => {
-        const preferred = (props?.initialWorkspaceId || '').trim();
+        const preferred = (props?.initialWorkspaceId || "").trim();
         if (preferred && combined.some((w) => w.id === preferred)) return preferred;
         if (prev && combined.some((w) => w.id === prev)) return prev;
-        return combined[0]?.id || '';
+        return combined[0]?.id || "";
       });
     } finally {
       setLoading(false);
@@ -69,7 +72,7 @@ export function MemoryHubSettings(props?: { initialWorkspaceId?: string; onSetti
       const status = await window.electronAPI.getWorkspaceKitStatus(selectedWorkspaceId);
       setKitStatus(status);
     } catch (error) {
-      console.error('Failed to load workspace kit status:', error);
+      console.error("Failed to load workspace kit status:", error);
       setKitStatus(null);
     } finally {
       setKitLoading(false);
@@ -80,10 +83,13 @@ export function MemoryHubSettings(props?: { initialWorkspaceId?: string; onSetti
     if (!selectedWorkspaceId) return;
     try {
       setKitBusy(true);
-      const status = await window.electronAPI.initWorkspaceKit({ workspaceId: selectedWorkspaceId, mode: 'missing' });
+      const status = await window.electronAPI.initWorkspaceKit({
+        workspaceId: selectedWorkspaceId,
+        mode: "missing",
+      });
       setKitStatus(status);
     } catch (error) {
-      console.error('Failed to initialize workspace kit:', error);
+      console.error("Failed to initialize workspace kit:", error);
     } finally {
       setKitBusy(false);
     }
@@ -95,11 +101,14 @@ export function MemoryHubSettings(props?: { initialWorkspaceId?: string; onSetti
     if (!projectId) return;
     try {
       setKitBusy(true);
-      await window.electronAPI.createWorkspaceKitProject({ workspaceId: selectedWorkspaceId, projectId });
-      setNewProjectId('');
+      await window.electronAPI.createWorkspaceKitProject({
+        workspaceId: selectedWorkspaceId,
+        projectId,
+      });
+      setNewProjectId("");
       await refreshKit();
     } catch (error) {
-      console.error('Failed to create project folder:', error);
+      console.error("Failed to create project folder:", error);
     } finally {
       setKitBusy(false);
     }
@@ -112,7 +121,7 @@ export function MemoryHubSettings(props?: { initialWorkspaceId?: string; onSetti
       setSaving(true);
       await window.electronAPI.saveMemoryFeaturesSettings(next);
     } catch (error) {
-      console.error('Failed to save memory feature settings:', error);
+      console.error("Failed to save memory feature settings:", error);
     } finally {
       setSaving(false);
     }
@@ -147,8 +156,8 @@ export function MemoryHubSettings(props?: { initialWorkspaceId?: string; onSetti
             <span className="settings-toggle-label">Enable Workspace Context Pack Injection</span>
           </label>
           <p className="settings-form-hint">
-            When enabled, the app may inject redacted notes from <code>.cowork/</code> into agent context
-            to improve continuity.
+            When enabled, the app may inject redacted notes from <code>.cowork/</code> into agent
+            context to improve continuity.
           </p>
         </div>
 
@@ -163,7 +172,8 @@ export function MemoryHubSettings(props?: { initialWorkspaceId?: string; onSetti
             <span className="settings-toggle-label">Enable Maintenance Heartbeats</span>
           </label>
           <p className="settings-form-hint">
-            When enabled, lead agents can create a daily maintenance task if <code>.cowork/HEARTBEAT.md</code> exists.
+            When enabled, lead agents can create a daily maintenance task if{" "}
+            <code>.cowork/HEARTBEAT.md</code> exists.
           </p>
         </div>
       </div>
@@ -196,63 +206,92 @@ export function MemoryHubSettings(props?: { initialWorkspaceId?: string; onSetti
         )}
 
         {selectedWorkspaceId && (
-          <div className="settings-form-group" style={{ marginTop: '10px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+          <div className="settings-form-group" style={{ marginTop: "10px" }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: "10px",
+              }}
+            >
               <div>
-                <div style={{ fontWeight: 500, color: 'var(--color-text-primary)' }}>Workspace Kit</div>
+                <div style={{ fontWeight: 500, color: "var(--color-text-primary)" }}>
+                  Workspace Kit
+                </div>
                 <p className="settings-form-hint" style={{ margin: 0 }}>
                   Creates recommended <code>.cowork/</code> files for shared, durable context.
                 </p>
               </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div style={{ display: "flex", gap: "8px" }}>
                 <button
                   className="settings-button"
                   onClick={() => void refreshKit()}
                   disabled={kitLoading || kitBusy}
                 >
-                  {kitLoading ? 'Refreshing…' : 'Refresh'}
+                  {kitLoading ? "Refreshing…" : "Refresh"}
                 </button>
                 <button
                   className="settings-button primary"
                   onClick={() => void initKit()}
                   disabled={kitBusy}
                 >
-                  {kitBusy ? 'Working…' : 'Initialize'}
+                  {kitBusy ? "Working…" : "Initialize"}
                 </button>
               </div>
             </div>
 
             {kitStatus && (
-              <div style={{ marginTop: '10px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>
+              <div style={{ marginTop: "10px" }}>
+                <div
+                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}
+                >
+                  <div style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}>
                     Missing: <strong>{kitStatus.missingCount}</strong>
                   </div>
-                  <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>
-                    {kitStatus.hasKitDir ? 'Found .cowork/' : 'No .cowork/ directory'}
+                  <div style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}>
+                    {kitStatus.hasKitDir ? "Found .cowork/" : "No .cowork/ directory"}
                   </div>
                 </div>
                 {kitStatus.files.length > 0 && (
-                  <details style={{ marginTop: '8px' }}>
-                    <summary style={{ cursor: 'pointer', fontSize: '12px', color: 'var(--color-text-secondary)' }}>
+                  <details style={{ marginTop: "8px" }}>
+                    <summary
+                      style={{
+                        cursor: "pointer",
+                        fontSize: "12px",
+                        color: "var(--color-text-secondary)",
+                      }}
+                    >
                       Show kit files
                     </summary>
-                    <div style={{ marginTop: '8px', border: '1px solid var(--color-border)', borderRadius: '6px' }}>
+                    <div
+                      style={{
+                        marginTop: "8px",
+                        border: "1px solid var(--color-border)",
+                        borderRadius: "6px",
+                      }}
+                    >
                       {kitStatus.files.map((f) => (
                         <div
                           key={f.relPath}
                           style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            gap: '10px',
-                            padding: '8px 10px',
-                            borderBottom: '1px solid var(--color-border)',
-                            fontSize: '12px',
+                            display: "flex",
+                            justifyContent: "space-between",
+                            gap: "10px",
+                            padding: "8px 10px",
+                            borderBottom: "1px solid var(--color-border)",
+                            fontSize: "12px",
                           }}
                         >
-                          <code style={{ color: 'var(--color-text-primary)' }}>{f.relPath}</code>
-                          <span style={{ color: f.exists ? 'var(--color-success, #22c55e)' : 'var(--color-error, #ef4444)' }}>
-                            {f.exists ? 'OK' : 'MISSING'}
+                          <code style={{ color: "var(--color-text-primary)" }}>{f.relPath}</code>
+                          <span
+                            style={{
+                              color: f.exists
+                                ? "var(--color-success, #22c55e)"
+                                : "var(--color-error, #ef4444)",
+                            }}
+                          >
+                            {f.exists ? "OK" : "MISSING"}
                           </span>
                         </div>
                       ))}
@@ -262,7 +301,7 @@ export function MemoryHubSettings(props?: { initialWorkspaceId?: string; onSetti
               </div>
             )}
 
-            <div style={{ marginTop: '12px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <div style={{ marginTop: "12px", display: "flex", gap: "8px", alignItems: "center" }}>
               <input
                 className="settings-input"
                 value={newProjectId}
@@ -282,7 +321,10 @@ export function MemoryHubSettings(props?: { initialWorkspaceId?: string; onSetti
         )}
 
         {selectedWorkspaceId && (
-          <MemorySettings workspaceId={selectedWorkspaceId} onSettingsChanged={props?.onSettingsChanged} />
+          <MemorySettings
+            workspaceId={selectedWorkspaceId}
+            onSettingsChanged={props?.onSettingsChanged}
+          />
         )}
       </div>
     </div>

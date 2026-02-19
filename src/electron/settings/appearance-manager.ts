@@ -5,19 +5,25 @@
  * Settings are stored encrypted in the database using SecureSettingsRepository.
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
-import { AppearanceSettings, ThemeMode, VisualTheme, AccentColor, UiDensity } from '../../shared/types';
-import { SecureSettingsRepository } from '../database/SecureSettingsRepository';
-import { getUserDataDir } from '../utils/user-data-dir';
+import * as fs from "fs";
+import * as path from "path";
+import {
+  AppearanceSettings,
+  ThemeMode,
+  VisualTheme,
+  AccentColor,
+  UiDensity,
+} from "../../shared/types";
+import { SecureSettingsRepository } from "../database/SecureSettingsRepository";
+import { getUserDataDir } from "../utils/user-data-dir";
 
-const LEGACY_SETTINGS_FILE = 'appearance-settings.json';
+const LEGACY_SETTINGS_FILE = "appearance-settings.json";
 
 const DEFAULT_SETTINGS: AppearanceSettings = {
-  themeMode: 'dark',
-  visualTheme: 'warm',
-  accentColor: 'cyan',
-  uiDensity: 'focused',
+  themeMode: "dark",
+  visualTheme: "warm",
+  accentColor: "cyan",
+  uiDensity: "focused",
   disclaimerAccepted: false,
   onboardingCompleted: false,
   onboardingCompletedAt: undefined,
@@ -34,7 +40,7 @@ export class AppearanceManager {
   static initialize(): void {
     const userDataPath = getUserDataDir();
     this.legacySettingsPath = path.join(userDataPath, LEGACY_SETTINGS_FILE);
-    console.log('[AppearanceManager] Initialized');
+    console.log("[AppearanceManager] Initialized");
 
     // Migrate from legacy JSON file to encrypted database
     this.migrateFromLegacyFile();
@@ -49,53 +55,57 @@ export class AppearanceManager {
     try {
       // Check if SecureSettingsRepository is initialized
       if (!SecureSettingsRepository.isInitialized()) {
-        console.log('[AppearanceManager] SecureSettingsRepository not yet initialized, skipping migration');
+        console.log(
+          "[AppearanceManager] SecureSettingsRepository not yet initialized, skipping migration",
+        );
         return;
       }
 
       const repository = SecureSettingsRepository.getInstance();
 
       // Check if already migrated to database
-      if (repository.exists('appearance')) {
+      if (repository.exists("appearance")) {
         this.migrationCompleted = true;
         return;
       }
 
       // Check if legacy file exists
       if (!fs.existsSync(this.legacySettingsPath)) {
-        console.log('[AppearanceManager] No legacy settings file found');
+        console.log("[AppearanceManager] No legacy settings file found");
         this.migrationCompleted = true;
         return;
       }
 
-      console.log('[AppearanceManager] Migrating settings from legacy JSON file to encrypted database...');
+      console.log(
+        "[AppearanceManager] Migrating settings from legacy JSON file to encrypted database...",
+      );
 
       // Create backup before migration
-      const backupPath = this.legacySettingsPath + '.migration-backup';
+      const backupPath = this.legacySettingsPath + ".migration-backup";
       fs.copyFileSync(this.legacySettingsPath, backupPath);
 
       try {
         // Read legacy settings
-        const data = fs.readFileSync(this.legacySettingsPath, 'utf-8');
+        const data = fs.readFileSync(this.legacySettingsPath, "utf-8");
         const parsed = JSON.parse(data);
         const legacySettings = { ...DEFAULT_SETTINGS, ...parsed };
 
         // Save to encrypted database
-        repository.save('appearance', legacySettings);
-        console.log('[AppearanceManager] Settings migrated to encrypted database');
+        repository.save("appearance", legacySettings);
+        console.log("[AppearanceManager] Settings migrated to encrypted database");
 
         // Migration successful - delete backup and original
         fs.unlinkSync(backupPath);
         fs.unlinkSync(this.legacySettingsPath);
-        console.log('[AppearanceManager] Migration complete, cleaned up legacy files');
+        console.log("[AppearanceManager] Migration complete, cleaned up legacy files");
 
         this.migrationCompleted = true;
       } catch (migrationError) {
-        console.error('[AppearanceManager] Migration failed, backup preserved at:', backupPath);
+        console.error("[AppearanceManager] Migration failed, backup preserved at:", backupPath);
         throw migrationError;
       }
     } catch (error) {
-      console.error('[AppearanceManager] Migration failed:', error);
+      console.error("[AppearanceManager] Migration failed:", error);
     }
   }
 
@@ -114,7 +124,7 @@ export class AppearanceManager {
       // Try to load from encrypted database
       if (SecureSettingsRepository.isInitialized()) {
         const repository = SecureSettingsRepository.getInstance();
-        const stored = repository.load<AppearanceSettings>('appearance');
+        const stored = repository.load<AppearanceSettings>("appearance");
         if (stored) {
           settings = { ...DEFAULT_SETTINGS, ...stored };
           // If stored data was missing uiDensity, persist the default back
@@ -132,8 +142,8 @@ export class AppearanceManager {
         settings.visualTheme = DEFAULT_SETTINGS.visualTheme;
       }
       // Normalize deprecated 'oblivion' theme to 'warm'
-      if (settings.visualTheme === 'oblivion') {
-        settings.visualTheme = 'warm';
+      if (settings.visualTheme === "oblivion") {
+        settings.visualTheme = "warm";
       }
       if (!isValidAccentColor(settings.accentColor)) {
         settings.accentColor = DEFAULT_SETTINGS.accentColor;
@@ -143,7 +153,7 @@ export class AppearanceManager {
         needsWrite = true;
       }
     } catch (error) {
-      console.error('[AppearanceManager] Failed to load settings:', error);
+      console.error("[AppearanceManager] Failed to load settings:", error);
       settings = { ...DEFAULT_SETTINGS };
     }
 
@@ -153,14 +163,14 @@ export class AppearanceManager {
     if (needsWrite && SecureSettingsRepository.isInitialized()) {
       try {
         const repository = SecureSettingsRepository.getInstance();
-        repository.save('appearance', settings);
-        console.log('[AppearanceManager] Persisted default uiDensity:', settings.uiDensity);
+        repository.save("appearance", settings);
+        console.log("[AppearanceManager] Persisted default uiDensity:", settings.uiDensity);
       } catch (e) {
         // Non-fatal: cache is correct, DB will catch up on next save
       }
     }
 
-    console.debug('[AppearanceManager] Loaded settings → uiDensity:', settings.uiDensity);
+    console.debug("[AppearanceManager] Loaded settings → uiDensity:", settings.uiDensity);
     return settings;
   }
 
@@ -170,7 +180,7 @@ export class AppearanceManager {
   static saveSettings(settings: AppearanceSettings): void {
     try {
       if (!SecureSettingsRepository.isInitialized()) {
-        throw new Error('SecureSettingsRepository not initialized');
+        throw new Error("SecureSettingsRepository not initialized");
       }
 
       // Load existing settings to preserve fields not being updated
@@ -178,28 +188,37 @@ export class AppearanceManager {
 
       // Validate and merge with existing settings
       // Normalize deprecated 'oblivion' to 'warm' before saving
-      let normalizedVisualTheme = isValidVisualTheme(settings.visualTheme) ? settings.visualTheme : existingSettings.visualTheme;
-      if (normalizedVisualTheme === 'oblivion') {
-        normalizedVisualTheme = 'warm';
+      let normalizedVisualTheme = isValidVisualTheme(settings.visualTheme)
+        ? settings.visualTheme
+        : existingSettings.visualTheme;
+      if (normalizedVisualTheme === "oblivion") {
+        normalizedVisualTheme = "warm";
       }
       const validatedSettings: AppearanceSettings = {
-        themeMode: isValidThemeMode(settings.themeMode) ? settings.themeMode : existingSettings.themeMode,
+        themeMode: isValidThemeMode(settings.themeMode)
+          ? settings.themeMode
+          : existingSettings.themeMode,
         visualTheme: normalizedVisualTheme,
-        accentColor: isValidAccentColor(settings.accentColor) ? settings.accentColor : existingSettings.accentColor,
+        accentColor: isValidAccentColor(settings.accentColor)
+          ? settings.accentColor
+          : existingSettings.accentColor,
         language: settings.language ?? existingSettings.language,
         disclaimerAccepted: settings.disclaimerAccepted ?? existingSettings.disclaimerAccepted,
         onboardingCompleted: settings.onboardingCompleted ?? existingSettings.onboardingCompleted,
-        onboardingCompletedAt: settings.onboardingCompletedAt ?? existingSettings.onboardingCompletedAt,
+        onboardingCompletedAt:
+          settings.onboardingCompletedAt ?? existingSettings.onboardingCompletedAt,
         assistantName: settings.assistantName ?? existingSettings.assistantName,
-        uiDensity: isValidUiDensity(settings.uiDensity) ? settings.uiDensity : existingSettings.uiDensity,
+        uiDensity: isValidUiDensity(settings.uiDensity)
+          ? settings.uiDensity
+          : existingSettings.uiDensity,
       };
 
       const repository = SecureSettingsRepository.getInstance();
-      repository.save('appearance', validatedSettings);
+      repository.save("appearance", validatedSettings);
       this.cachedSettings = validatedSettings;
-      console.log('[AppearanceManager] Settings saved to encrypted database');
+      console.log("[AppearanceManager] Settings saved to encrypted database");
     } catch (error) {
-      console.error('[AppearanceManager] Failed to save settings:', error);
+      console.error("[AppearanceManager] Failed to save settings:", error);
       throw error;
     }
   }
@@ -213,18 +232,28 @@ export class AppearanceManager {
 }
 
 function isValidThemeMode(value: unknown): value is ThemeMode {
-  return value === 'light' || value === 'dark' || value === 'system';
+  return value === "light" || value === "dark" || value === "system";
 }
 
 function isValidVisualTheme(value: unknown): value is VisualTheme {
-  return value === 'terminal' || value === 'warm' || value === 'oblivion';
+  return value === "terminal" || value === "warm" || value === "oblivion";
 }
 
 function isValidAccentColor(value: unknown): value is AccentColor {
-  const validColors: AccentColor[] = ['cyan', 'blue', 'purple', 'pink', 'rose', 'orange', 'green', 'teal', 'coral'];
+  const validColors: AccentColor[] = [
+    "cyan",
+    "blue",
+    "purple",
+    "pink",
+    "rose",
+    "orange",
+    "green",
+    "teal",
+    "coral",
+  ];
   return validColors.includes(value as AccentColor);
 }
 
 function isValidUiDensity(value: unknown): value is UiDensity {
-  return value === 'focused' || value === 'full';
+  return value === "focused" || value === "full";
 }

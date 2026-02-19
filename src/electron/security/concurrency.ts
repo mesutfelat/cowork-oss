@@ -105,7 +105,7 @@ interface IdempotencyEntry {
   result: any;
   createdAt: number;
   expiresAt: number;
-  status: 'pending' | 'completed' | 'failed';
+  status: "pending" | "completed" | "failed";
 }
 
 /**
@@ -119,7 +119,8 @@ export class IdempotencyManager {
   private defaultTTLMs: number;
   private cleanupIntervalId?: ReturnType<typeof setInterval>;
 
-  constructor(defaultTTLMs = 5 * 60 * 1000) { // 5 minutes default
+  constructor(defaultTTLMs = 5 * 60 * 1000) {
+    // 5 minutes default
     this.defaultTTLMs = defaultTTLMs;
 
     // Periodic cleanup of expired entries
@@ -132,14 +133,18 @@ export class IdempotencyManager {
    * Generate an idempotency key for an operation
    */
   static generateKey(operation: string, ...args: (string | number | undefined)[]): string {
-    const parts = [operation, ...args.filter(a => a !== undefined)];
-    return parts.join(':');
+    const parts = [operation, ...args.filter((a) => a !== undefined)];
+    return parts.join(":");
   }
 
   /**
    * Check if an operation with this key is already in progress or completed
    */
-  check(key: string): { exists: boolean; status?: 'pending' | 'completed' | 'failed'; result?: any } {
+  check(key: string): {
+    exists: boolean;
+    status?: "pending" | "completed" | "failed";
+    result?: any;
+  } {
     const entry = this.entries.get(key);
 
     if (!entry) {
@@ -177,7 +182,7 @@ export class IdempotencyManager {
       result: undefined,
       createdAt: now,
       expiresAt: now + (ttlMs || this.defaultTTLMs),
-      status: 'pending',
+      status: "pending",
     });
 
     return true;
@@ -189,7 +194,7 @@ export class IdempotencyManager {
   complete(key: string, result: any): void {
     const entry = this.entries.get(key);
     if (entry) {
-      entry.status = 'completed';
+      entry.status = "completed";
       entry.result = result;
     }
   }
@@ -200,7 +205,7 @@ export class IdempotencyManager {
   fail(key: string, error?: any): void {
     const entry = this.entries.get(key);
     if (entry) {
-      entry.status = 'failed';
+      entry.status = "failed";
       entry.result = error;
     }
   }
@@ -220,15 +225,15 @@ export class IdempotencyManager {
   async execute<T>(
     key: string,
     operation: () => Promise<T>,
-    ttlMs?: number
+    ttlMs?: number,
   ): Promise<{ result: T; cached: boolean }> {
     const existing = this.check(key);
 
-    if (existing.exists && existing.status === 'completed') {
+    if (existing.exists && existing.status === "completed") {
       return { result: existing.result as T, cached: true };
     }
 
-    if (existing.exists && existing.status === 'pending') {
+    if (existing.exists && existing.status === "pending") {
       // Wait for completion
       const result = await this.waitForCompletion<T>(key);
       return { result, cached: true };
@@ -264,16 +269,16 @@ export class IdempotencyManager {
         throw new Error(`Operation ${key} expired or not found`);
       }
 
-      if (entry.status === 'completed') {
+      if (entry.status === "completed") {
         return entry.result as T;
       }
 
-      if (entry.status === 'failed') {
+      if (entry.status === "failed") {
         throw entry.result || new Error(`Operation ${key} failed`);
       }
 
       // Wait a bit before checking again
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
 
     throw new Error(`Timeout waiting for operation ${key}`);
@@ -301,9 +306,15 @@ export class IdempotencyManager {
 
     for (const entry of this.entries.values()) {
       switch (entry.status) {
-        case 'pending': pending++; break;
-        case 'completed': completed++; break;
-        case 'failed': failed++; break;
+        case "pending":
+          pending++;
+          break;
+        case "completed":
+          completed++;
+          break;
+        case "failed":
+          failed++;
+          break;
       }
     }
 

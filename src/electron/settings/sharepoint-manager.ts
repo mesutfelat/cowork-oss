@@ -4,8 +4,8 @@
  * Stores SharePoint integration settings in encrypted database.
  */
 
-import { SecureSettingsRepository } from '../database/SecureSettingsRepository';
-import { SharePointSettingsData } from '../../shared/types';
+import { SecureSettingsRepository } from "../database/SecureSettingsRepository";
+import { SharePointSettingsData } from "../../shared/types";
 
 const DEFAULT_SETTINGS: SharePointSettingsData = {
   enabled: false,
@@ -25,13 +25,13 @@ export class SharePointSettingsManager {
     try {
       if (SecureSettingsRepository.isInitialized()) {
         const repository = SecureSettingsRepository.getInstance();
-        const stored = repository.load<SharePointSettingsData>('sharepoint');
+        const stored = repository.load<SharePointSettingsData>("sharepoint");
         if (stored) {
           settings = { ...DEFAULT_SETTINGS, ...stored };
         }
       }
     } catch (error) {
-      console.error('[SharePointSettingsManager] Failed to load settings:', error);
+      console.error("[SharePointSettingsManager] Failed to load settings:", error);
     }
 
     this.cachedSettings = settings;
@@ -41,14 +41,14 @@ export class SharePointSettingsManager {
   static saveSettings(settings: SharePointSettingsData): void {
     try {
       if (!SecureSettingsRepository.isInitialized()) {
-        throw new Error('SecureSettingsRepository not initialized');
+        throw new Error("SecureSettingsRepository not initialized");
       }
       const repository = SecureSettingsRepository.getInstance();
-      repository.save('sharepoint', settings);
+      repository.save("sharepoint", settings);
       this.cachedSettings = settings;
-      console.log('[SharePointSettingsManager] Settings saved');
+      console.log("[SharePointSettingsManager] Settings saved");
     } catch (error) {
-      console.error('[SharePointSettingsManager] Failed to save settings:', error);
+      console.error("[SharePointSettingsManager] Failed to save settings:", error);
     }
   }
 

@@ -1,12 +1,12 @@
-import Database from 'better-sqlite3';
-import { v4 as uuidv4 } from 'uuid';
+import Database from "better-sqlite3";
+import { v4 as uuidv4 } from "uuid";
 import {
   AgentMention,
   CreateMentionRequest,
   MentionListQuery,
   MentionType,
   MentionStatus,
-} from '../../shared/types';
+} from "../../shared/types";
 
 /**
  * Repository for managing agent @mentions in the database
@@ -27,7 +27,7 @@ export class MentionRepository {
       toAgentRoleId: request.toAgentRoleId,
       mentionType: request.mentionType,
       context: request.context,
-      status: 'pending',
+      status: "pending",
       createdAt: now,
     };
 
@@ -47,7 +47,7 @@ export class MentionRepository {
       mention.mentionType,
       mention.context || null,
       mention.status,
-      mention.createdAt
+      mention.createdAt,
     );
 
     return mention;
@@ -57,7 +57,7 @@ export class MentionRepository {
    * Find a mention by ID
    */
   findById(id: string): AgentMention | undefined {
-    const stmt = this.db.prepare('SELECT * FROM agent_mentions WHERE id = ?');
+    const stmt = this.db.prepare("SELECT * FROM agent_mentions WHERE id = ?");
     const row = stmt.get(id) as any;
     return row ? this.mapRowToMention(row) : undefined;
   }
@@ -70,40 +70,40 @@ export class MentionRepository {
     const params: any[] = [];
 
     if (query.workspaceId) {
-      conditions.push('workspace_id = ?');
+      conditions.push("workspace_id = ?");
       params.push(query.workspaceId);
     }
 
     if (query.taskId) {
-      conditions.push('task_id = ?');
+      conditions.push("task_id = ?");
       params.push(query.taskId);
     }
 
     if (query.toAgentRoleId) {
-      conditions.push('to_agent_role_id = ?');
+      conditions.push("to_agent_role_id = ?");
       params.push(query.toAgentRoleId);
     }
 
     if (query.fromAgentRoleId) {
-      conditions.push('from_agent_role_id = ?');
+      conditions.push("from_agent_role_id = ?");
       params.push(query.fromAgentRoleId);
     }
 
     if (query.status) {
       if (Array.isArray(query.status)) {
-        conditions.push(`status IN (${query.status.map(() => '?').join(', ')})`);
+        conditions.push(`status IN (${query.status.map(() => "?").join(", ")})`);
         params.push(...query.status);
       } else {
-        conditions.push('status = ?');
+        conditions.push("status = ?");
         params.push(query.status);
       }
     }
 
-    let sql = 'SELECT * FROM agent_mentions';
+    let sql = "SELECT * FROM agent_mentions";
     if (conditions.length > 0) {
-      sql += ` WHERE ${conditions.join(' AND ')}`;
+      sql += ` WHERE ${conditions.join(" AND ")}`;
     }
-    sql += ' ORDER BY created_at DESC';
+    sql += " ORDER BY created_at DESC";
 
     if (query.limit) {
       sql += ` LIMIT ${query.limit}`;
@@ -121,15 +121,15 @@ export class MentionRepository {
    * Get pending mentions for a specific agent role
    */
   getPendingForAgent(toAgentRoleId: string, workspaceId?: string): AgentMention[] {
-    const conditions = ['to_agent_role_id = ?', 'status = ?'];
-    const params: any[] = [toAgentRoleId, 'pending'];
+    const conditions = ["to_agent_role_id = ?", "status = ?"];
+    const params: any[] = [toAgentRoleId, "pending"];
 
     if (workspaceId) {
-      conditions.push('workspace_id = ?');
+      conditions.push("workspace_id = ?");
       params.push(workspaceId);
     }
 
-    const sql = `SELECT * FROM agent_mentions WHERE ${conditions.join(' AND ')} ORDER BY created_at DESC`;
+    const sql = `SELECT * FROM agent_mentions WHERE ${conditions.join(" AND ")} ORDER BY created_at DESC`;
     const stmt = this.db.prepare(sql);
     const rows = stmt.all(...params) as any[];
     return rows.map((row) => this.mapRowToMention(row));
@@ -139,11 +139,12 @@ export class MentionRepository {
    * Get pending mention count for an agent role
    */
   getPendingCount(toAgentRoleId: string, workspaceId?: string): number {
-    let sql = 'SELECT COUNT(*) as count FROM agent_mentions WHERE to_agent_role_id = ? AND status = ?';
-    const params: any[] = [toAgentRoleId, 'pending'];
+    let sql =
+      "SELECT COUNT(*) as count FROM agent_mentions WHERE to_agent_role_id = ? AND status = ?";
+    const params: any[] = [toAgentRoleId, "pending"];
 
     if (workspaceId) {
-      sql += ' AND workspace_id = ?';
+      sql += " AND workspace_id = ?";
       params.push(workspaceId);
     }
 
@@ -157,15 +158,15 @@ export class MentionRepository {
    */
   acknowledge(id: string): AgentMention | undefined {
     const existing = this.findById(id);
-    if (!existing || existing.status !== 'pending') return existing;
+    if (!existing || existing.status !== "pending") return existing;
 
     const now = Date.now();
     const stmt = this.db.prepare(
-      'UPDATE agent_mentions SET status = ?, acknowledged_at = ? WHERE id = ?'
+      "UPDATE agent_mentions SET status = ?, acknowledged_at = ? WHERE id = ?",
     );
-    stmt.run('acknowledged', now, id);
+    stmt.run("acknowledged", now, id);
 
-    return { ...existing, status: 'acknowledged', acknowledgedAt: now };
+    return { ...existing, status: "acknowledged", acknowledgedAt: now };
   }
 
   /**
@@ -174,17 +175,17 @@ export class MentionRepository {
   complete(id: string): AgentMention | undefined {
     const existing = this.findById(id);
     if (!existing) return undefined;
-    if (existing.status === 'completed' || existing.status === 'dismissed') {
+    if (existing.status === "completed" || existing.status === "dismissed") {
       return existing;
     }
 
     const now = Date.now();
     const stmt = this.db.prepare(
-      'UPDATE agent_mentions SET status = ?, completed_at = ? WHERE id = ?'
+      "UPDATE agent_mentions SET status = ?, completed_at = ? WHERE id = ?",
     );
-    stmt.run('completed', now, id);
+    stmt.run("completed", now, id);
 
-    return { ...existing, status: 'completed', completedAt: now };
+    return { ...existing, status: "completed", completedAt: now };
   }
 
   /**
@@ -193,21 +194,21 @@ export class MentionRepository {
   dismiss(id: string): AgentMention | undefined {
     const existing = this.findById(id);
     if (!existing) return undefined;
-    if (existing.status === 'completed' || existing.status === 'dismissed') {
+    if (existing.status === "completed" || existing.status === "dismissed") {
       return existing;
     }
 
-    const stmt = this.db.prepare('UPDATE agent_mentions SET status = ? WHERE id = ?');
-    stmt.run('dismissed', id);
+    const stmt = this.db.prepare("UPDATE agent_mentions SET status = ? WHERE id = ?");
+    stmt.run("dismissed", id);
 
-    return { ...existing, status: 'dismissed' };
+    return { ...existing, status: "dismissed" };
   }
 
   /**
    * Delete a mention
    */
   delete(id: string): boolean {
-    const stmt = this.db.prepare('DELETE FROM agent_mentions WHERE id = ?');
+    const stmt = this.db.prepare("DELETE FROM agent_mentions WHERE id = ?");
     const result = stmt.run(id);
     return result.changes > 0;
   }
@@ -216,7 +217,7 @@ export class MentionRepository {
    * Delete all mentions for a task
    */
   deleteByTask(taskId: string): number {
-    const stmt = this.db.prepare('DELETE FROM agent_mentions WHERE task_id = ?');
+    const stmt = this.db.prepare("DELETE FROM agent_mentions WHERE task_id = ?");
     const result = stmt.run(taskId);
     return result.changes;
   }

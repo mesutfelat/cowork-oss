@@ -9,14 +9,9 @@
  * - Operating system (os)
  */
 
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import {
-  CustomSkill,
-  SkillEligibility,
-  SkillStatusEntry,
-  SkillsConfig,
-} from '../../shared/types';
+import { exec } from "child_process";
+import { promisify } from "util";
+import { CustomSkill, SkillEligibility, SkillStatusEntry, SkillsConfig } from "../../shared/types";
 
 const execAsync = promisify(exec);
 
@@ -29,7 +24,7 @@ const VALID_BINARY_NAME = /^[a-zA-Z0-9._-]+$/;
  * Returns null if the binary name is invalid/unsafe
  */
 function sanitizeBinaryName(bin: string): string | null {
-  if (!bin || typeof bin !== 'string') {
+  if (!bin || typeof bin !== "string") {
     return null;
   }
 
@@ -76,7 +71,7 @@ export class SkillEligibilityChecker {
 
     try {
       // Use 'which' on Unix-like systems, 'where' on Windows
-      const command = process.platform === 'win32' ? `where ${safeBin}` : `which ${safeBin}`;
+      const command = process.platform === "win32" ? `where ${safeBin}` : `which ${safeBin}`;
       await execAsync(command);
       this.binCache.set(safeBin, true);
       return true;
@@ -94,7 +89,7 @@ export class SkillEligibilityChecker {
       bins.map(async (bin) => ({
         bin,
         exists: await this.checkBinary(bin),
-      }))
+      })),
     );
 
     return {
@@ -111,7 +106,7 @@ export class SkillEligibilityChecker {
       bins.map(async (bin) => ({
         bin,
         exists: await this.checkBinary(bin),
-      }))
+      })),
     );
 
     const found = results.filter((r) => r.exists).map((r) => r.bin);
@@ -127,7 +122,7 @@ export class SkillEligibilityChecker {
    */
   checkEnvVar(envVar: string): boolean {
     const value = process.env[envVar];
-    return value !== undefined && value !== '';
+    return value !== undefined && value !== "";
   }
 
   /**

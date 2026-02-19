@@ -1,11 +1,5 @@
-import {
-  LLMContent,
-  LLMImageContent,
-  LLMMessage,
-  LLMResponse,
-  LLMTool,
-} from './types';
-import { imageToTextFallback } from './image-utils';
+import { LLMContent, LLMImageContent, LLMMessage, LLMResponse, LLMTool } from "./types";
+import { imageToTextFallback } from "./image-utils";
 
 export interface OpenAICompatibleMessageOptions {
   /** Set to false to replace image blocks with text fallback (default: false) */
@@ -17,15 +11,16 @@ export function toOpenAICompatibleMessages(
   system?: string,
   options?: OpenAICompatibleMessageOptions,
 ): Array<{ role: string; content: any; tool_call_id?: string; tool_calls?: any[] }> {
-  const result: Array<{ role: string; content: any; tool_call_id?: string; tool_calls?: any[] }> = [];
+  const result: Array<{ role: string; content: any; tool_call_id?: string; tool_calls?: any[] }> =
+    [];
   const supportsImages = options?.supportsImages === true;
 
   if (system) {
-    result.push({ role: 'system', content: system });
+    result.push({ role: "system", content: system });
   }
 
   for (const msg of messages) {
-    if (typeof msg.content === 'string') {
+    if (typeof msg.content === "string") {
       result.push({ role: msg.role, content: msg.content });
       continue;
     }
@@ -37,27 +32,27 @@ export function toOpenAICompatibleMessages(
     const imageBlocks: LLMImageContent[] = [];
     const textParts: string[] = [];
     const toolCalls: any[] = [];
-    const shouldInlineImages = supportsImages && msg.role === 'user';
+    const shouldInlineImages = supportsImages && msg.role === "user";
 
     for (const item of msg.content) {
-      if (item.type === 'tool_result') {
+      if (item.type === "tool_result") {
         result.push({
-          role: 'tool',
+          role: "tool",
           content: item.content,
           tool_call_id: item.tool_use_id,
         });
-      } else if (item.type === 'tool_use') {
+      } else if (item.type === "tool_use") {
         toolCalls.push({
           id: item.id,
-          type: 'function',
+          type: "function",
           function: {
             name: item.name,
             arguments: JSON.stringify(item.input),
           },
         });
-      } else if (item.type === 'text') {
+      } else if (item.type === "text") {
         textParts.push(item.text);
-      } else if (item.type === 'image') {
+      } else if (item.type === "image") {
         if (shouldInlineImages) {
           imageBlocks.push(item);
         } else {
@@ -66,8 +61,8 @@ export function toOpenAICompatibleMessages(
       }
     }
 
-    if (msg.role === 'assistant' && toolCalls.length > 0) {
-      const assistantContent = textParts.length > 0 ? textParts.join('\n') : null;
+    if (msg.role === "assistant" && toolCalls.length > 0) {
+      const assistantContent = textParts.length > 0 ? textParts.join("\n") : null;
       result.push({
         role: msg.role,
         content: assistantContent,
@@ -79,11 +74,11 @@ export function toOpenAICompatibleMessages(
     if (imageBlocks.length > 0) {
       const contentParts: any[] = [];
       if (textParts.length > 0) {
-        contentParts.push({ type: 'text', text: textParts.join('\n') });
+        contentParts.push({ type: "text", text: textParts.join("\n") });
       }
       for (const img of imageBlocks) {
         contentParts.push({
-          type: 'image_url',
+          type: "image_url",
           image_url: { url: `data:${img.mimeType};base64,${img.data}` },
         });
       }
@@ -92,7 +87,7 @@ export function toOpenAICompatibleMessages(
     }
 
     if (textParts.length > 0) {
-      result.push({ role: msg.role, content: textParts.join('\n') });
+      result.push({ role: msg.role, content: textParts.join("\n") });
     }
   }
 
@@ -100,7 +95,7 @@ export function toOpenAICompatibleMessages(
 }
 
 export function toOpenAICompatibleTools(tools: LLMTool[]): Array<{
-  type: 'function';
+  type: "function";
   function: {
     name: string;
     description: string;
@@ -108,7 +103,7 @@ export function toOpenAICompatibleTools(tools: LLMTool[]): Array<{
   };
 }> {
   return tools.map((tool) => ({
-    type: 'function' as const,
+    type: "function" as const,
     function: {
       name: tool.name,
       description: tool.description,
@@ -123,8 +118,8 @@ export function fromOpenAICompatibleResponse(response: any): LLMResponse {
 
   if (!choice) {
     return {
-      content: [{ type: 'text', text: '' }],
-      stopReason: 'end_turn',
+      content: [{ type: "text", text: "" }],
+      stopReason: "end_turn",
     };
   }
 
@@ -132,26 +127,26 @@ export function fromOpenAICompatibleResponse(response: any): LLMResponse {
 
   if (message?.content) {
     content.push({
-      type: 'text',
+      type: "text",
       text: message.content,
     });
   }
 
   if (message?.tool_calls) {
     for (const toolCall of message.tool_calls) {
-      if (toolCall.type === 'function') {
+      if (toolCall.type === "function") {
         content.push({
-          type: 'tool_use',
+          type: "tool_use",
           id: toolCall.id,
           name: toolCall.function.name,
-          input: JSON.parse(toolCall.function.arguments || '{}'),
+          input: JSON.parse(toolCall.function.arguments || "{}"),
         });
       }
     }
   }
 
   if (content.length === 0) {
-    content.push({ type: 'text', text: '' });
+    content.push({ type: "text", text: "" });
   }
 
   return {
@@ -166,17 +161,17 @@ export function fromOpenAICompatibleResponse(response: any): LLMResponse {
   };
 }
 
-export function mapStopReason(finishReason?: string): LLMResponse['stopReason'] {
+export function mapStopReason(finishReason?: string): LLMResponse["stopReason"] {
   switch (finishReason) {
-    case 'stop':
-      return 'end_turn';
-    case 'length':
-      return 'max_tokens';
-    case 'tool_calls':
-      return 'tool_use';
-    case 'content_filter':
-      return 'stop_sequence';
+    case "stop":
+      return "end_turn";
+    case "length":
+      return "max_tokens";
+    case "tool_calls":
+      return "tool_use";
+    case "content_filter":
+      return "stop_sequence";
     default:
-      return 'end_turn';
+      return "end_turn";
   }
 }

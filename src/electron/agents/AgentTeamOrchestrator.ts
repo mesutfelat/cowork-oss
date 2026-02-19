@@ -1,31 +1,56 @@
-import type { AgentConfig, Task, AgentTeam, AgentTeamItem, AgentTeamRun, AgentTeamRunStatus, AgentTeamItemStatus, UpdateAgentTeamItemRequest } from '../../shared/types';
-import { IPC_CHANNELS } from '../../shared/types';
-import { resolveModelPreferenceToModelKey, resolvePersonalityPreference } from '../../shared/agent-preferences';
-import { AgentTeamRepository } from './AgentTeamRepository';
-import { AgentTeamRunRepository } from './AgentTeamRunRepository';
-import { AgentTeamItemRepository } from './AgentTeamItemRepository';
+import type {
+  AgentConfig,
+  Task,
+  AgentTeam,
+  AgentTeamItem,
+  AgentTeamRun,
+  AgentTeamRunStatus,
+  AgentTeamItemStatus,
+  UpdateAgentTeamItemRequest,
+} from "../../shared/types";
+import { IPC_CHANNELS } from "../../shared/types";
+import {
+  resolveModelPreferenceToModelKey,
+  resolvePersonalityPreference,
+} from "../../shared/agent-preferences";
+import { AgentTeamRepository } from "./AgentTeamRepository";
+import { AgentTeamRunRepository } from "./AgentTeamRunRepository";
+import { AgentTeamItemRepository } from "./AgentTeamItemRepository";
 
-type AgentTeamRepositoryLike = Pick<AgentTeamRepository, 'findById'> | { findById: (id: string) => AgentTeam | undefined };
+type AgentTeamRepositoryLike =
+  | Pick<AgentTeamRepository, "findById">
+  | { findById: (id: string) => AgentTeam | undefined };
 type AgentTeamRunRepositoryLike =
-  Pick<AgentTeamRunRepository, 'findById' | 'update'>
-  | { findById: (id: string) => AgentTeamRun | undefined; update: (id: string, updates: { status?: AgentTeamRunStatus; completedAt?: number | null; error?: string | null; summary?: string | null }) => AgentTeamRun | undefined };
-type AgentTeamItemRepositoryLike =
-  Pick<AgentTeamItemRepository, 'listByRun' | 'listBySourceTaskId' | 'update'>
+  | Pick<AgentTeamRunRepository, "findById" | "update">
   | {
-    listByRun: (teamRunId: string) => AgentTeamItem[];
-    listBySourceTaskId: (sourceTaskId: string) => AgentTeamItem[];
-    update: (request: UpdateAgentTeamItemRequest) => AgentTeamItem | undefined;
-  };
+      findById: (id: string) => AgentTeamRun | undefined;
+      update: (
+        id: string,
+        updates: {
+          status?: AgentTeamRunStatus;
+          completedAt?: number | null;
+          error?: string | null;
+          summary?: string | null;
+        },
+      ) => AgentTeamRun | undefined;
+    };
+type AgentTeamItemRepositoryLike =
+  | Pick<AgentTeamItemRepository, "listByRun" | "listBySourceTaskId" | "update">
+  | {
+      listByRun: (teamRunId: string) => AgentTeamItem[];
+      listBySourceTaskId: (sourceTaskId: string) => AgentTeamItem[];
+      update: (request: UpdateAgentTeamItemRequest) => AgentTeamItem | undefined;
+    };
 
 export type AgentTeamOrchestratorDeps = {
-  getDatabase: () => import('better-sqlite3').Database;
+  getDatabase: () => import("better-sqlite3").Database;
   getTaskById: (taskId: string) => Promise<Task | undefined>;
   createChildTask: (params: {
     title: string;
     prompt: string;
     workspaceId: string;
     parentTaskId: string;
-    agentType: 'sub' | 'parallel';
+    agentType: "sub" | "parallel";
     agentConfig?: AgentConfig;
     depth?: number;
     assignedAgentRoleId?: string;
@@ -36,8 +61,8 @@ export type AgentTeamOrchestratorDeps = {
 function getAllElectronWindows(): any[] {
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const electron = require('electron') as any;
-    if (!electron || typeof electron !== 'object') return [];
+    const electron = require("electron") as any;
+    if (!electron || typeof electron !== "object") return [];
     const BrowserWindow = electron?.BrowserWindow;
     if (BrowserWindow?.getAllWindows) return BrowserWindow.getAllWindows();
   } catch {
@@ -60,11 +85,11 @@ function emitTeamEvent(event: any): void {
 }
 
 function isTerminalItemStatus(status: AgentTeamItemStatus): boolean {
-  return status === 'done' || status === 'failed' || status === 'blocked';
+  return status === "done" || status === "failed" || status === "blocked";
 }
 
-function isTerminalTaskStatus(status: Task['status']): boolean {
-  return status === 'completed' || status === 'failed' || status === 'cancelled';
+function isTerminalTaskStatus(status: Task["status"]): boolean {
+  return status === "completed" || status === "failed" || status === "cancelled";
 }
 
 export class AgentTeamOrchestrator {
@@ -75,7 +100,11 @@ export class AgentTeamOrchestrator {
 
   constructor(
     private deps: AgentTeamOrchestratorDeps,
-    repos?: { teamRepo?: AgentTeamRepositoryLike; runRepo?: AgentTeamRunRepositoryLike; itemRepo?: AgentTeamItemRepositoryLike }
+    repos?: {
+      teamRepo?: AgentTeamRepositoryLike;
+      runRepo?: AgentTeamRunRepositoryLike;
+      itemRepo?: AgentTeamItemRepositoryLike;
+    },
   ) {
     if (repos?.teamRepo && repos?.runRepo && repos?.itemRepo) {
       this.teamRepo = repos.teamRepo;
@@ -90,13 +119,13 @@ export class AgentTeamOrchestrator {
     this.itemRepo = new AgentTeamItemRepository(db);
   }
 
-  async tickRun(runId: string, reason: string = 'tick'): Promise<void> {
+  async tickRun(runId: string, reason: string = "tick"): Promise<void> {
     if (this.runLocks.get(runId)) return;
     this.runLocks.set(runId, true);
     try {
       const run = this.runRepo.findById(runId);
       if (!run) return;
-      if (run.status !== 'running') return;
+      if (run.status !== "running") return;
 
       const team = this.teamRepo.findById(run.teamId);
       if (!team) return;
@@ -104,11 +133,11 @@ export class AgentTeamOrchestrator {
       const rootTask = await this.deps.getTaskById(run.rootTaskId);
       if (!rootTask) {
         const updated = this.runRepo.update(run.id, {
-          status: 'failed',
+          status: "failed",
           error: `Root task not found: ${run.rootTaskId}`,
         });
         if (updated) {
-          emitTeamEvent({ type: 'team_run_updated', timestamp: Date.now(), run: updated, reason });
+          emitTeamEvent({ type: "team_run_updated", timestamp: Date.now(), run: updated, reason });
         }
         return;
       }
@@ -117,7 +146,7 @@ export class AgentTeamOrchestrator {
 
       // Reconcile any in-progress items whose tasks are already terminal.
       for (const item of items) {
-        if (item.status !== 'in_progress') continue;
+        if (item.status !== "in_progress") continue;
         if (!item.sourceTaskId) continue;
         const task = await this.deps.getTaskById(item.sourceTaskId);
         if (!task) continue;
@@ -126,17 +155,22 @@ export class AgentTeamOrchestrator {
       }
 
       const refreshedItems = this.itemRepo.listByRun(run.id);
-      const inProgress = refreshedItems.filter((i) => i.status === 'in_progress');
+      const inProgress = refreshedItems.filter((i) => i.status === "in_progress");
 
       // If everything is terminal, complete the run.
       const nonTerminal = refreshedItems.filter((i) => !isTerminalItemStatus(i.status));
       if (nonTerminal.length === 0) {
-        const hasFailures = refreshedItems.some((i) => i.status === 'failed');
-        const status = hasFailures ? 'failed' : 'completed';
+        const hasFailures = refreshedItems.some((i) => i.status === "failed");
+        const status = hasFailures ? "failed" : "completed";
         const summary = this.buildRunSummary(refreshedItems);
         const updated = this.runRepo.update(run.id, { status, summary });
         if (updated) {
-          emitTeamEvent({ type: 'team_run_updated', timestamp: Date.now(), run: updated, reason: 'all_items_terminal' });
+          emitTeamEvent({
+            type: "team_run_updated",
+            timestamp: Date.now(),
+            run: updated,
+            reason: "all_items_terminal",
+          });
         }
         return;
       }
@@ -146,15 +180,15 @@ export class AgentTeamOrchestrator {
       if (slots <= 0) return;
 
       const candidates = refreshedItems
-        .filter((i) => i.status === 'todo' && !i.sourceTaskId)
-        .sort((a, b) => (a.sortOrder - b.sortOrder) || (a.createdAt - b.createdAt));
+        .filter((i) => i.status === "todo" && !i.sourceTaskId)
+        .sort((a, b) => a.sortOrder - b.sortOrder || a.createdAt - b.createdAt);
 
       const toSpawn = candidates.slice(0, slots);
       for (const item of toSpawn) {
         const childTitle = `Team: ${team.name} - ${item.title}`;
         const childPrompt = this.buildItemPrompt(team.name, rootTask, item.title, item.description);
         const assignedRoleId = item.ownerAgentRoleId || team.leadAgentRoleId;
-        const depth = (typeof rootTask.depth === 'number' ? rootTask.depth : 0) + 1;
+        const depth = (typeof rootTask.depth === "number" ? rootTask.depth : 0) + 1;
 
         const agentConfig: AgentConfig = {
           retainMemory: false,
@@ -171,7 +205,7 @@ export class AgentTeamOrchestrator {
           prompt: childPrompt,
           workspaceId: rootTask.workspaceId,
           parentTaskId: rootTask.id,
-          agentType: 'sub',
+          agentType: "sub",
           agentConfig,
           depth,
           assignedAgentRoleId: assignedRoleId,
@@ -180,12 +214,12 @@ export class AgentTeamOrchestrator {
         const updatedItem = this.itemRepo.update({
           id: item.id,
           sourceTaskId: child.id,
-          status: 'in_progress',
+          status: "in_progress",
         });
 
         if (updatedItem) {
           emitTeamEvent({
-            type: 'team_item_spawned',
+            type: "team_item_spawned",
             timestamp: Date.now(),
             runId: run.id,
             item: updatedItem,
@@ -194,7 +228,12 @@ export class AgentTeamOrchestrator {
         }
       }
     } catch (error: any) {
-      emitTeamEvent({ type: 'team_run_event_error', timestamp: Date.now(), runId, error: error?.message || String(error) });
+      emitTeamEvent({
+        type: "team_run_event_error",
+        timestamp: Date.now(),
+        runId,
+        error: error?.message || String(error),
+      });
     } finally {
       this.runLocks.set(runId, false);
     }
@@ -208,9 +247,9 @@ export class AgentTeamOrchestrator {
     if (!task) return;
 
     const nextStatus: AgentTeamItemStatus | null = (() => {
-      if (task.status === 'completed') return 'done';
-      if (task.status === 'failed') return 'failed';
-      if (task.status === 'cancelled') return 'blocked';
+      if (task.status === "completed") return "done";
+      if (task.status === "failed") return "failed";
+      if (task.status === "cancelled") return "blocked";
       return null;
     })();
 
@@ -218,9 +257,9 @@ export class AgentTeamOrchestrator {
 
     for (const item of items) {
       const resultSummary =
-        (typeof task.resultSummary === 'string' && task.resultSummary.trim().length > 0)
+        typeof task.resultSummary === "string" && task.resultSummary.trim().length > 0
           ? task.resultSummary.trim()
-          : (typeof task.error === 'string' && task.error.trim().length > 0)
+          : typeof task.error === "string" && task.error.trim().length > 0
             ? `Error: ${task.error.trim()}`
             : null;
 
@@ -231,12 +270,12 @@ export class AgentTeamOrchestrator {
       });
       if (updated) {
         emitTeamEvent({
-          type: 'team_item_updated',
+          type: "team_item_updated",
           timestamp: Date.now(),
           teamRunId: updated.teamRunId,
           item: updated,
         });
-        await this.tickRun(updated.teamRunId, 'task_terminal');
+        await this.tickRun(updated.teamRunId, "task_terminal");
       }
     }
   }
@@ -245,26 +284,31 @@ export class AgentTeamOrchestrator {
     const run = this.runRepo.findById(runId);
     if (!run) return;
 
-    const updatedRun = this.runRepo.update(runId, { status: 'cancelled' });
+    const updatedRun = this.runRepo.update(runId, { status: "cancelled" });
     if (updatedRun) {
-      emitTeamEvent({ type: 'team_run_updated', timestamp: Date.now(), run: updatedRun, reason: 'cancel' });
+      emitTeamEvent({
+        type: "team_run_updated",
+        timestamp: Date.now(),
+        run: updatedRun,
+        reason: "cancel",
+      });
     }
 
     const items = this.itemRepo.listByRun(runId);
     for (const item of items) {
-      if (item.status === 'in_progress' && item.sourceTaskId) {
+      if (item.status === "in_progress" && item.sourceTaskId) {
         await this.deps.cancelTask(item.sourceTaskId).catch(() => {});
       }
 
       if (!isTerminalItemStatus(item.status)) {
         const updated = this.itemRepo.update({
           id: item.id,
-          status: 'blocked',
-          resultSummary: item.resultSummary || 'Cancelled by user',
+          status: "blocked",
+          resultSummary: item.resultSummary || "Cancelled by user",
         });
         if (updated) {
           emitTeamEvent({
-            type: 'team_item_updated',
+            type: "team_item_updated",
             timestamp: Date.now(),
             teamRunId: updated.teamRunId,
             item: updated,
@@ -274,36 +318,39 @@ export class AgentTeamOrchestrator {
     }
   }
 
-  private buildItemPrompt(teamName: string, rootTask: Task, itemTitle: string, itemDescription?: string): string {
+  private buildItemPrompt(
+    teamName: string,
+    rootTask: Task,
+    itemTitle: string,
+    itemDescription?: string,
+  ): string {
     const parts: string[] = [];
     parts.push(`You are working as part of the team "${teamName}".`);
-    parts.push('');
-    parts.push('ROOT TASK CONTEXT:');
+    parts.push("");
+    parts.push("ROOT TASK CONTEXT:");
     parts.push(`- Title: ${rootTask.title}`);
-    parts.push('Request:');
+    parts.push("Request:");
     parts.push(rootTask.prompt);
-    parts.push('');
-    parts.push('YOUR CHECKLIST ITEM:');
+    parts.push("");
+    parts.push("YOUR CHECKLIST ITEM:");
     parts.push(`- Title: ${itemTitle}`);
     if (itemDescription && itemDescription.trim().length > 0) {
       parts.push(`- Details: ${itemDescription.trim()}`);
     }
-    parts.push('');
-    parts.push('DELIVERABLES:');
-    parts.push('- Provide a concise summary of what you did and what you found.');
-    parts.push('- If you created or modified files, list the file paths.');
-    parts.push('- Call out risks or open questions.');
-    return parts.join('\n');
+    parts.push("");
+    parts.push("DELIVERABLES:");
+    parts.push("- Provide a concise summary of what you did and what you found.");
+    parts.push("- If you created or modified files, list the file paths.");
+    parts.push("- Call out risks or open questions.");
+    return parts.join("\n");
   }
 
   private buildRunSummary(items: Array<{ status: AgentTeamItemStatus; title: string }>): string {
-    const done = items.filter((i) => i.status === 'done').length;
-    const failed = items.filter((i) => i.status === 'failed').length;
-    const blocked = items.filter((i) => i.status === 'blocked').length;
+    const done = items.filter((i) => i.status === "done").length;
+    const failed = items.filter((i) => i.status === "failed").length;
+    const blocked = items.filter((i) => i.status === "blocked").length;
     const total = items.length;
-    const lines = [
-      `Items: ${done} done, ${failed} failed, ${blocked} blocked (total: ${total})`,
-    ];
-    return lines.join('\n');
+    const lines = [`Items: ${done} done, ${failed} failed, ${blocked} blocked (total: ${total})`];
+    return lines.join("\n");
   }
 }

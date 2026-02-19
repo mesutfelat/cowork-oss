@@ -1,12 +1,22 @@
-import { useEffect, useState } from 'react';
-import { BoxSettingsData } from '../../shared/types';
+import { useEffect, useState } from "react";
+import { BoxSettingsData } from "../../shared/types";
 
 export function BoxSettings() {
   const [settings, setSettings] = useState<BoxSettingsData | null>(null);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<{ success: boolean; error?: string; name?: string; userId?: string } | null>(null);
-  const [status, setStatus] = useState<{ configured: boolean; connected: boolean; name?: string; error?: string } | null>(null);
+  const [testResult, setTestResult] = useState<{
+    success: boolean;
+    error?: string;
+    name?: string;
+    userId?: string;
+  } | null>(null);
+  const [status, setStatus] = useState<{
+    configured: boolean;
+    connected: boolean;
+    name?: string;
+    error?: string;
+  } | null>(null);
   const [statusLoading, setStatusLoading] = useState(false);
 
   useEffect(() => {
@@ -19,7 +29,7 @@ export function BoxSettings() {
       const loaded = await window.electronAPI.getBoxSettings();
       setSettings(loaded);
     } catch (error) {
-      console.error('Failed to load Box settings:', error);
+      console.error("Failed to load Box settings:", error);
     }
   };
 
@@ -38,7 +48,7 @@ export function BoxSettings() {
       setSettings(payload);
       await refreshStatus();
     } catch (error) {
-      console.error('Failed to save Box settings:', error);
+      console.error("Failed to save Box settings:", error);
     } finally {
       setSaving(false);
     }
@@ -50,7 +60,7 @@ export function BoxSettings() {
       const result = await window.electronAPI.getBoxStatus();
       setStatus(result);
     } catch (error) {
-      console.error('Failed to load Box status:', error);
+      console.error("Failed to load Box status:", error);
     } finally {
       setStatusLoading(false);
     }
@@ -64,7 +74,7 @@ export function BoxSettings() {
       setTestResult(result);
       await refreshStatus();
     } catch (error: any) {
-      setTestResult({ success: false, error: error.message || 'Failed to test connection' });
+      setTestResult({ success: false, error: error.message || "Failed to test connection" });
     } finally {
       setTesting(false);
     }
@@ -75,16 +85,16 @@ export function BoxSettings() {
   }
 
   const statusLabel = !status?.configured
-    ? 'Missing Token'
+    ? "Missing Token"
     : status.connected
-      ? 'Connected'
-      : 'Configured';
+      ? "Connected"
+      : "Configured";
 
   const statusClass = !status?.configured
-    ? 'missing'
+    ? "missing"
     : status.connected
-      ? 'connected'
-      : 'configured';
+      ? "connected"
+      : "configured";
 
   return (
     <div className="box-settings">
@@ -95,7 +105,13 @@ export function BoxSettings() {
             {status && (
               <span
                 className={`box-status-badge ${statusClass}`}
-                title={!status.configured ? 'Access token not configured' : status.connected ? 'Connected to Box' : 'Configured'}
+                title={
+                  !status.configured
+                    ? "Access token not configured"
+                    : status.connected
+                      ? "Connected to Box"
+                      : "Configured"
+                }
               >
                 {statusLabel}
               </span>
@@ -105,20 +121,20 @@ export function BoxSettings() {
             )}
           </div>
           <button className="btn-secondary btn-sm" onClick={refreshStatus} disabled={statusLoading}>
-            {statusLoading ? 'Checking...' : 'Refresh Status'}
+            {statusLoading ? "Checking..." : "Refresh Status"}
           </button>
         </div>
         <p className="settings-description">
-          Connect the agent to Box using a developer token or OAuth access token, then use the built-in `box_action`
-          tool to search and manage files.
+          Connect the agent to Box using a developer token or OAuth access token, then use the
+          built-in `box_action` tool to search and manage files.
         </p>
-        {status?.error && (
-          <p className="settings-hint">Status check: {status.error}</p>
-        )}
+        {status?.error && <p className="settings-hint">Status check: {status.error}</p>}
         <div className="settings-actions">
           <button
             className="btn-secondary btn-sm"
-            onClick={() => window.electronAPI.openExternal('https://app.box.com/developers/console')}
+            onClick={() =>
+              window.electronAPI.openExternal("https://app.box.com/developers/console")
+            }
           >
             Open Box Console
           </button>
@@ -144,10 +160,12 @@ export function BoxSettings() {
             type="password"
             className="settings-input"
             placeholder="Box access token"
-            value={settings.accessToken || ''}
+            value={settings.accessToken || ""}
             onChange={(e) => updateSettings({ accessToken: e.target.value || undefined })}
           />
-          <p className="settings-hint">Use a developer token or OAuth access token with required scopes.</p>
+          <p className="settings-hint">
+            Use a developer token or OAuth access token with required scopes.
+          </p>
         </div>
 
         <div className="settings-field">
@@ -163,18 +181,22 @@ export function BoxSettings() {
         </div>
 
         <div className="settings-actions">
-          <button className="btn-secondary btn-sm" onClick={handleTestConnection} disabled={testing}>
-            {testing ? 'Testing...' : 'Test Connection'}
+          <button
+            className="btn-secondary btn-sm"
+            onClick={handleTestConnection}
+            disabled={testing}
+          >
+            {testing ? "Testing..." : "Test Connection"}
           </button>
           <button className="btn-primary btn-sm" onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving...' : 'Save Settings'}
+            {saving ? "Saving..." : "Save Settings"}
           </button>
         </div>
 
         {testResult && (
-          <div className={`test-result ${testResult.success ? 'success' : 'error'}`}>
+          <div className={`test-result ${testResult.success ? "success" : "error"}`}>
             {testResult.success ? (
-              <span>Connected{testResult.name ? ` as ${testResult.name}` : ''}</span>
+              <span>Connected{testResult.name ? ` as ${testResult.name}` : ""}</span>
             ) : (
               <span>Connection failed: {testResult.error}</span>
             )}

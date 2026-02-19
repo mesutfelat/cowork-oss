@@ -1,7 +1,7 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from "vitest";
 
 // Mock MentionTools to avoid DatabaseManager dependency during ToolRegistry construction.
-vi.mock('../mention-tools', () => {
+vi.mock("../mention-tools", () => {
   return {
     MentionTools: class MockMentionTools {
       static getToolDefinitions() {
@@ -11,43 +11,43 @@ vi.mock('../mention-tools', () => {
   };
 });
 
-vi.mock('../../../mcp/client/MCPClientManager', () => ({
+vi.mock("../../../mcp/client/MCPClientManager", () => ({
   MCPClientManager: {
     getInstance: vi.fn().mockImplementation(() => {
-      throw new Error('MCP not initialized');
+      throw new Error("MCP not initialized");
     }),
   },
 }));
 
-vi.mock('../../../mcp/settings', () => ({
+vi.mock("../../../mcp/settings", () => ({
   MCPSettingsManager: {
     initialize: vi.fn(),
-    loadSettings: vi.fn().mockReturnValue({ toolNamePrefix: 'mcp_' }),
+    loadSettings: vi.fn().mockReturnValue({ toolNamePrefix: "mcp_" }),
     updateServer: vi.fn().mockReturnValue({}),
   },
 }));
 
-vi.mock('../../../mcp/registry/MCPRegistryManager', () => ({
+vi.mock("../../../mcp/registry/MCPRegistryManager", () => ({
   MCPRegistryManager: {
     installServer: vi.fn(),
   },
 }));
 
-vi.mock('../../../hooks/settings', () => ({
+vi.mock("../../../hooks/settings", () => ({
   HooksSettingsManager: {
     initialize: vi.fn(),
     loadSettings: vi.fn().mockReturnValue({
       enabled: false,
-      token: '',
-      path: '/hooks',
+      token: "",
+      path: "/hooks",
       maxBodyBytes: 256 * 1024,
       presets: [],
       mappings: [],
     }),
     enableHooks: vi.fn().mockReturnValue({
       enabled: true,
-      token: 'token',
-      path: '/hooks',
+      token: "token",
+      path: "/hooks",
       maxBodyBytes: 256 * 1024,
       presets: [],
       mappings: [],
@@ -56,14 +56,14 @@ vi.mock('../../../hooks/settings', () => ({
   },
 }));
 
-import { ToolRegistry } from '../registry';
+import { ToolRegistry } from "../registry";
 
-describe('ToolRegistry tool restrictions', () => {
+describe("ToolRegistry tool restrictions", () => {
   it('denies all tools when restrictions include "*"', () => {
     const workspace: any = {
-      id: 'test-workspace',
-      name: 'Test Workspace',
-      path: '/mock/workspace',
+      id: "test-workspace",
+      name: "Test Workspace",
+      path: "/mock/workspace",
       permissions: {
         read: true,
         write: true,
@@ -79,10 +79,10 @@ describe('ToolRegistry tool restrictions', () => {
       registerArtifact: vi.fn(),
     };
 
-    const registry = new ToolRegistry(workspace, daemon, 'test-task', 'private', ['*']);
+    const registry = new ToolRegistry(workspace, daemon, "test-task", "private", ["*"]);
 
-    expect(registry.isToolAllowed('read_file')).toBe(false);
-    expect(registry.isToolAllowed('web_search')).toBe(false);
-    expect(registry.isToolAllowed('spawn_agent')).toBe(false);
+    expect(registry.isToolAllowed("read_file")).toBe(false);
+    expect(registry.isToolAllowed("web_search")).toBe(false);
+    expect(registry.isToolAllowed("spawn_agent")).toBe(false);
   });
 });

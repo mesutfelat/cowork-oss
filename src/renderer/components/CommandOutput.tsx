@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useCallback } from 'react';
+import { useRef, useEffect, useState, useCallback } from "react";
 
 interface CommandOutputProps {
   command: string;
@@ -9,11 +9,18 @@ interface CommandOutputProps {
   onClose?: () => void;
 }
 
-export function CommandOutput({ command, output, isRunning, exitCode, taskId, onClose }: CommandOutputProps) {
+export function CommandOutput({
+  command,
+  output,
+  isRunning,
+  exitCode,
+  taskId,
+  onClose,
+}: CommandOutputProps) {
   const outputRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
-  const [stdinInput, setStdinInput] = useState('');
+  const [stdinInput, setStdinInput] = useState("");
   const [stopClicked, setStopClicked] = useState(false);
 
   // Auto-scroll to bottom when new output arrives
@@ -38,11 +45,11 @@ export function CommandOutput({ command, output, isRunning, exitCode, taskId, on
 
     try {
       // Append newline to simulate pressing Enter
-      const inputWithNewline = stdinInput + '\n';
+      const inputWithNewline = stdinInput + "\n";
       await window.electronAPI.sendStdin(taskId, inputWithNewline);
-      setStdinInput('');
+      setStdinInput("");
     } catch (error) {
-      console.error('Failed to send stdin:', error);
+      console.error("Failed to send stdin:", error);
     }
   }, [taskId, stdinInput, isRunning]);
 
@@ -54,7 +61,7 @@ export function CommandOutput({ command, output, isRunning, exitCode, taskId, on
       setStopClicked(true);
       await window.electronAPI.killCommand(taskId, false);
     } catch (error) {
-      console.error('Failed to kill command:', error);
+      console.error("Failed to kill command:", error);
     }
   }, [taskId, isRunning]);
 
@@ -65,7 +72,7 @@ export function CommandOutput({ command, output, isRunning, exitCode, taskId, on
     try {
       await window.electronAPI.killCommand(taskId, true);
     } catch (error) {
-      console.error('Failed to force kill command:', error);
+      console.error("Failed to force kill command:", error);
     }
   }, [taskId, isRunning]);
 
@@ -78,7 +85,7 @@ export function CommandOutput({ command, output, isRunning, exitCode, taskId, on
 
   // Handle Enter key in input field
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       sendInput();
     }
@@ -102,7 +109,14 @@ export function CommandOutput({ command, output, isRunning, exitCode, taskId, on
     <div className="command-output-container">
       <div className="command-output-header">
         <div className="command-output-title">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
             <path d="M4 17l6-6-6-6M12 19h8" />
           </svg>
           <span className="command-text">{command}</span>
@@ -114,7 +128,14 @@ export function CommandOutput({ command, output, isRunning, exitCode, taskId, on
               onClick={killCommand}
               title="Stop command (Ctrl+C)"
             >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
                 <rect x="3" y="3" width="18" height="18" rx="2" />
               </svg>
               Stop
@@ -128,7 +149,14 @@ export function CommandOutput({ command, output, isRunning, exitCode, taskId, on
                 onClick={forceKillCommand}
                 title="Force kill (SIGKILL) - immediate termination"
               >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
                   <line x1="18" y1="6" x2="6" y2="18" />
                   <line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
@@ -139,12 +167,15 @@ export function CommandOutput({ command, output, isRunning, exitCode, taskId, on
           {getStatusIndicator()}
           {/* Close button - only show when not running */}
           {!isRunning && onClose && (
-            <button
-              className="command-close-btn"
-              onClick={onClose}
-              title="Close output"
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <button className="command-close-btn" onClick={onClose} title="Close output">
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
                 <line x1="18" y1="6" x2="6" y2="18" />
                 <line x1="6" y1="6" x2="18" y2="18" />
               </svg>
@@ -152,12 +183,8 @@ export function CommandOutput({ command, output, isRunning, exitCode, taskId, on
           )}
         </div>
       </div>
-      <div
-        ref={outputRef}
-        className="command-output-content"
-        onScroll={handleScroll}
-      >
-        <pre>{output || (isRunning ? 'Waiting for output...' : '')}</pre>
+      <div ref={outputRef} className="command-output-content" onScroll={handleScroll}>
+        <pre>{output || (isRunning ? "Waiting for output..." : "")}</pre>
       </div>
       {!autoScroll && isRunning && (
         <button
@@ -191,7 +218,14 @@ export function CommandOutput({ command, output, isRunning, exitCode, taskId, on
             disabled={!stdinInput}
             title="Send input (Enter)"
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
               <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
             </svg>
           </button>

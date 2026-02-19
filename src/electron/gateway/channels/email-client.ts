@@ -22,13 +22,13 @@
  * - Yahoo: imap.mail.yahoo.com:993, smtp.mail.yahoo.com:465
  */
 
-import { EventEmitter } from 'events';
-import * as tls from 'tls';
-import * as net from 'net';
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
-import { execFileSync } from 'child_process';
+import { EventEmitter } from "events";
+import * as tls from "tls";
+import * as net from "net";
+import fs from "fs";
+import os from "os";
+import path from "path";
+import { execFileSync } from "child_process";
 
 /**
  * Load CA certificates from the macOS system keychain so that TLS connections
@@ -41,13 +41,13 @@ function readKeychainCerts(keychains: string[]): string[] {
   const existing = keychains.filter((k) => fs.existsSync(k));
   if (existing.length === 0) return [];
   try {
-    const pem = execFileSync('security', ['find-certificate', '-a', '-p', ...existing], {
-      encoding: 'utf-8',
+    const pem = execFileSync("security", ["find-certificate", "-a", "-p", ...existing], {
+      encoding: "utf-8",
       timeout: 8000,
     });
     return pem
       .split(/(?=-----BEGIN CERTIFICATE-----)/)
-      .filter((c) => c.includes('BEGIN CERTIFICATE'));
+      .filter((c) => c.includes("BEGIN CERTIFICATE"));
   } catch {
     return [];
   }
@@ -58,21 +58,18 @@ function getSystemCA(): string[] {
 
   // System keychains (always present on macOS).
   const systemKeychains = [
-    '/Library/Keychains/System.keychain',
-    '/System/Library/Keychains/SystemRootCertificates.keychain',
+    "/Library/Keychains/System.keychain",
+    "/System/Library/Keychains/SystemRootCertificates.keychain",
   ];
 
   // User keychains (some enterprise tools install trusted roots here).
   const home = os.homedir();
   const userKeychains = [
-    path.join(home, 'Library', 'Keychains', 'login.keychain-db'),
-    path.join(home, 'Library', 'Keychains', 'login.keychain'),
+    path.join(home, "Library", "Keychains", "login.keychain-db"),
+    path.join(home, "Library", "Keychains", "login.keychain"),
   ];
 
-  const certs = [
-    ...readKeychainCerts(systemKeychains),
-    ...readKeychainCerts(userKeychains),
-  ];
+  const certs = [...readKeychainCerts(systemKeychains), ...readKeychainCerts(userKeychains)];
 
   _cachedSystemCA = [...tls.rootCertificates, ...certs];
   return _cachedSystemCA;
@@ -176,7 +173,7 @@ export class EmailClient extends EventEmitter {
   // For this simplified IMAP client we allow one in-flight command at a time.
   // currentCallback returns true when the buffered response is complete.
   private currentCallback?: (buffer: string) => boolean;
-  private responseBuffer = '';
+  private responseBuffer = "";
 
   constructor(options: EmailClientOptions) {
     super();
@@ -194,7 +191,7 @@ export class EmailClient extends EventEmitter {
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error.message : "Unknown error",
       };
     }
   }
@@ -211,12 +208,12 @@ export class EmailClient extends EventEmitter {
       await this.connectImap();
       await this.selectMailbox();
       this.connected = true;
-      this.emit('connected');
+      this.emit("connected");
 
       // Start polling (IDLE requires more complex handling)
       this.startPolling();
     } catch (error) {
-      this.emit('error', error);
+      this.emit("error", error);
       throw error;
     }
   }
@@ -244,22 +241,22 @@ export class EmailClient extends EventEmitter {
         }
 
         const timeout = setTimeout(() => {
-          reject(new Error('IMAP connection timeout'));
+          reject(new Error("IMAP connection timeout"));
         }, 30000);
 
-        this.imapSocket.on('error', (error) => {
+        this.imapSocket.on("error", (error) => {
           clearTimeout(timeout);
           reject(error);
         });
 
-        this.imapSocket.on('data', (data) => {
+        this.imapSocket.on("data", (data) => {
           this.handleImapData(data.toString());
         });
 
-        this.imapSocket.once('connect', async () => {
+        this.imapSocket.once("connect", async () => {
           try {
             // Wait for server greeting
-            await this.waitForResponse('OK');
+            await this.waitForResponse("OK");
 
             // Login
             await this.imapCommand(`LOGIN "${this.options.email}" "${this.options.password}"`);
@@ -272,8 +269,8 @@ export class EmailClient extends EventEmitter {
         });
 
         if (!this.options.imapSecure) {
-          (this.imapSocket as net.Socket).once('connect', () => {
-            this.imapSocket!.emit('connect');
+          (this.imapSocket as net.Socket).once("connect", () => {
+            this.imapSocket!.emit("connect");
           });
         }
       };
@@ -292,7 +289,7 @@ export class EmailClient extends EventEmitter {
 
     const done = this.currentCallback(this.responseBuffer);
     if (done) {
-      this.responseBuffer = '';
+      this.responseBuffer = "";
       this.currentCallback = undefined;
     }
   }
@@ -304,8 +301,8 @@ export class EmailClient extends EventEmitter {
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         this.currentCallback = undefined;
-        this.responseBuffer = '';
-        reject(new Error('IMAP response timeout'));
+        this.responseBuffer = "";
+        reject(new Error("IMAP response timeout"));
       }, 10000);
 
       const cb = (buffer: string): boolean => {
@@ -314,7 +311,7 @@ export class EmailClient extends EventEmitter {
           resolve(buffer);
           return true;
         }
-        if (buffer.includes('NO') || buffer.includes('BAD')) {
+        if (buffer.includes("NO") || buffer.includes("BAD")) {
           clearTimeout(timeout);
           reject(new Error(`IMAP error: ${buffer}`));
           return true;
@@ -328,7 +325,7 @@ export class EmailClient extends EventEmitter {
       if (this.responseBuffer) {
         const done = cb(this.responseBuffer);
         if (done) {
-          this.responseBuffer = '';
+          this.responseBuffer = "";
           this.currentCallback = undefined;
         }
       }
@@ -341,7 +338,7 @@ export class EmailClient extends EventEmitter {
   private async imapCommand(command: string): Promise<string> {
     return new Promise((resolve, reject) => {
       if (!this.imapSocket) {
-        reject(new Error('Not connected'));
+        reject(new Error("Not connected"));
         return;
       }
 
@@ -350,12 +347,12 @@ export class EmailClient extends EventEmitter {
 
       const timeout = setTimeout(() => {
         this.currentCallback = undefined;
-        this.responseBuffer = '';
-        reject(new Error('IMAP command timeout'));
+        this.responseBuffer = "";
+        reject(new Error("IMAP command timeout"));
       }, 30000);
 
       // Clear any leftover buffered data before issuing a new command.
-      this.responseBuffer = '';
+      this.responseBuffer = "";
 
       this.currentCallback = (buffer: string): boolean => {
         if (buffer.includes(`${tag} OK`)) {
@@ -396,7 +393,7 @@ export class EmailClient extends EventEmitter {
         await this.checkNewEmails();
       } catch (error) {
         if (this.options.verbose) {
-          console.error('Email poll error:', error);
+          console.error("Email poll error:", error);
         }
       }
     }, this.options.pollInterval);
@@ -423,7 +420,7 @@ export class EmailClient extends EventEmitter {
           try {
             const email = await this.fetchEmail(uid);
             if (email) {
-              this.emit('message', email);
+              this.emit("message", email);
               this.lastSeenUid = Math.max(this.lastSeenUid, uid);
             }
           } catch (error) {
@@ -454,7 +451,7 @@ export class EmailClient extends EventEmitter {
       const response = await this.imapCommand(
         // Use BODY.PEEK so reading does not implicitly set \\Seen.
         // Mark-as-read is handled explicitly (see EmailAdapter + markAsRead config).
-        `UID FETCH ${uid} (FLAGS BODY.PEEK[HEADER] BODY.PEEK[TEXT])`
+        `UID FETCH ${uid} (FLAGS BODY.PEEK[HEADER] BODY.PEEK[TEXT])`,
       );
 
       // Parse email from response (simplified)
@@ -479,7 +476,7 @@ export class EmailClient extends EventEmitter {
     try {
       await this.selectMailbox();
 
-      const response = await this.imapCommand('UID SEARCH UNSEEN');
+      const response = await this.imapCommand("UID SEARCH UNSEEN");
       const uidMatch = response.match(/SEARCH\s+([\d\s]+)/i);
       const uids = uidMatch
         ? uidMatch[1]
@@ -519,12 +516,12 @@ export class EmailClient extends EventEmitter {
       const headerLines = headerText.split(/\r\n(?=[^\s])/);
 
       for (const line of headerLines) {
-        const colonIndex = line.indexOf(':');
+        const colonIndex = line.indexOf(":");
         if (colonIndex > 0) {
           const key = line.substring(0, colonIndex).trim().toLowerCase();
           const value = line
             .substring(colonIndex + 1)
-            .replace(/\r\n\s+/g, ' ')
+            .replace(/\r\n\s+/g, " ")
             .trim();
           headers.set(key, value);
         }
@@ -532,43 +529,43 @@ export class EmailClient extends EventEmitter {
     }
 
     // Extract text body (simplified)
-    let text = '';
+    let text = "";
     const textMatch = response.match(/BODY\[TEXT\]\s*\{(\d+)\}\r\n([\s\S]*?)(?=\)|\*)/i);
     if (textMatch) {
       text = textMatch[2].trim();
     }
 
     // Parse From address
-    const fromHeader = headers.get('from') || '';
+    const fromHeader = headers.get("from") || "";
     const from = this.parseEmailAddress(fromHeader);
 
     // Parse To addresses
-    const toHeader = headers.get('to') || '';
+    const toHeader = headers.get("to") || "";
     const to = this.parseEmailAddresses(toHeader);
 
     // Parse Message-ID
-    const messageId = headers.get('message-id') || `${uid}@${this.options.imapHost}`;
+    const messageId = headers.get("message-id") || `${uid}@${this.options.imapHost}`;
 
     // Parse Date
-    const dateHeader = headers.get('date') || '';
+    const dateHeader = headers.get("date") || "";
     const date = dateHeader ? new Date(dateHeader) : new Date();
 
     // Check if read
-    const isRead = response.toLowerCase().includes('\\seen');
+    const isRead = response.toLowerCase().includes("\\seen");
 
     return {
-      messageId: messageId.replace(/[<>]/g, ''),
+      messageId: messageId.replace(/[<>]/g, ""),
       uid,
       from,
       to,
-      subject: this.decodeHeader(headers.get('subject') || '(No Subject)'),
+      subject: this.decodeHeader(headers.get("subject") || "(No Subject)"),
       text: this.decodeBody(text),
       date,
-      inReplyTo: headers.get('in-reply-to')?.replace(/[<>]/g, ''),
+      inReplyTo: headers.get("in-reply-to")?.replace(/[<>]/g, ""),
       references: headers
-        .get('references')
+        .get("references")
         ?.split(/\s+/)
-        .map((r) => r.replace(/[<>]/g, '')),
+        .map((r) => r.replace(/[<>]/g, "")),
       isRead,
       headers,
     };
@@ -592,7 +589,7 @@ export class EmailClient extends EventEmitter {
    * Parse multiple email addresses
    */
   private parseEmailAddresses(header: string): EmailAddress[] {
-    return header.split(',').map((addr) => this.parseEmailAddress(addr.trim()));
+    return header.split(",").map((addr) => this.parseEmailAddress(addr.trim()));
   }
 
   /**
@@ -600,15 +597,20 @@ export class EmailClient extends EventEmitter {
    */
   private decodeHeader(header: string): string {
     // Handle =?charset?encoding?text?= format
-    return header.replace(/=\?([^?]+)\?([BQ])\?([^?]+)\?=/gi, (_: string, charset: string, encoding: string, text: string) => {
-      if (encoding.toUpperCase() === 'B') {
-        return Buffer.from(text, 'base64').toString('utf8');
-      } else {
-        return text.replace(/_/g, ' ').replace(/=([0-9A-F]{2})/gi, (__: string, hex: string) =>
-          String.fromCharCode(parseInt(hex, 16))
-        );
-      }
-    });
+    return header.replace(
+      /=\?([^?]+)\?([BQ])\?([^?]+)\?=/gi,
+      (_: string, charset: string, encoding: string, text: string) => {
+        if (encoding.toUpperCase() === "B") {
+          return Buffer.from(text, "base64").toString("utf8");
+        } else {
+          return text
+            .replace(/_/g, " ")
+            .replace(/=([0-9A-F]{2})/gi, (__: string, hex: string) =>
+              String.fromCharCode(parseInt(hex, 16)),
+            );
+        }
+      },
+    );
   }
 
   /**
@@ -617,7 +619,7 @@ export class EmailClient extends EventEmitter {
   private decodeBody(text: string): string {
     // Handle quoted-printable
     return text
-      .replace(/=\r?\n/g, '')
+      .replace(/=\r?\n/g, "")
       .replace(/=([0-9A-F]{2})/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
   }
 
@@ -627,7 +629,7 @@ export class EmailClient extends EventEmitter {
   private async disconnectImap(): Promise<void> {
     if (this.imapSocket) {
       try {
-        await this.imapCommand('LOGOUT');
+        await this.imapCommand("LOGOUT");
       } catch {
         // Ignore logout errors
       }
@@ -647,7 +649,7 @@ export class EmailClient extends EventEmitter {
 
     await this.disconnectImap();
     this.connected = false;
-    this.emit('disconnected');
+    this.emit("disconnected");
   }
 
   /**
@@ -667,13 +669,13 @@ export class EmailClient extends EventEmitter {
 
       // Build email
       const headers = [
-        `From: ${this.options.displayName ? `"${this.options.displayName}" ` : ''}<${this.options.email}>`,
-        `To: ${toAddresses.join(', ')}`,
+        `From: ${this.options.displayName ? `"${this.options.displayName}" ` : ""}<${this.options.email}>`,
+        `To: ${toAddresses.join(", ")}`,
         `Subject: ${options.subject}`,
         `Message-ID: ${messageId}`,
         `Date: ${new Date().toUTCString()}`,
-        'MIME-Version: 1.0',
-        'Content-Type: text/plain; charset=UTF-8',
+        "MIME-Version: 1.0",
+        "Content-Type: text/plain; charset=UTF-8",
       ];
 
       if (options.inReplyTo) {
@@ -681,11 +683,11 @@ export class EmailClient extends EventEmitter {
       }
 
       if (options.references && options.references.length > 0) {
-        headers.push(`References: ${options.references.map((r) => `<${r}>`).join(' ')}`);
+        headers.push(`References: ${options.references.map((r) => `<${r}>`).join(" ")}`);
       }
 
-      const body = options.text || '';
-      const email = headers.join('\r\n') + '\r\n\r\n' + body + '\r\n.\r\n';
+      const body = options.text || "";
+      const email = headers.join("\r\n") + "\r\n\r\n" + body + "\r\n.\r\n";
 
       // Connect to SMTP
       const connectSmtp = () => {
@@ -708,26 +710,26 @@ export class EmailClient extends EventEmitter {
         }
 
         let step = 0;
-        let responseBuffer = '';
+        let responseBuffer = "";
 
-        socket.on('data', (data) => {
+        socket.on("data", (data) => {
           responseBuffer += data.toString();
 
           // Check for complete response
-          if (!responseBuffer.includes('\r\n')) return;
+          if (!responseBuffer.includes("\r\n")) return;
 
-          const lines = responseBuffer.split('\r\n');
-          responseBuffer = lines.pop() || '';
+          const lines = responseBuffer.split("\r\n");
+          responseBuffer = lines.pop() || "";
 
           for (const line of lines) {
             if (this.options.verbose) {
-              console.log('SMTP <', line);
+              console.log("SMTP <", line);
             }
 
             const code = parseInt(line.substring(0, 3), 10);
 
             // Handle multi-line responses
-            if (line[3] === '-') continue;
+            if (line[3] === "-") continue;
 
             if (code >= 400) {
               socket.destroy();
@@ -741,18 +743,20 @@ export class EmailClient extends EventEmitter {
                 socket.write(`EHLO ${this.options.smtpHost}\r\n`);
                 break;
               case 2: // After EHLO
-                if (!this.options.smtpSecure && line.includes('STARTTLS')) {
-                  socket.write('STARTTLS\r\n');
+                if (!this.options.smtpSecure && line.includes("STARTTLS")) {
+                  socket.write("STARTTLS\r\n");
                 } else {
                   socket.write(
-                    `AUTH PLAIN ${Buffer.from(`\0${this.options.email}\0${this.options.password}`).toString('base64')}\r\n`
+                    `AUTH PLAIN ${Buffer.from(`\0${this.options.email}\0${this.options.password}`).toString("base64")}\r\n`,
                   );
                 }
                 break;
               case 3: // After STARTTLS or AUTH
-                if (line.includes('220') && !this.options.smtpSecure) {
+                if (line.includes("220") && !this.options.smtpSecure) {
                   // Upgrade to TLS
-                  const servername = net.isIP(this.options.smtpHost) ? undefined : this.options.smtpHost;
+                  const servername = net.isIP(this.options.smtpHost)
+                    ? undefined
+                    : this.options.smtpHost;
                   const tlsSocket = tls.connect({
                     socket: socket as net.Socket,
                     host: this.options.smtpHost,
@@ -771,30 +775,30 @@ export class EmailClient extends EventEmitter {
                 socket.write(`RCPT TO:<${toAddresses[0]}>\r\n`);
                 break;
               case 5: // After RCPT TO
-                socket.write('DATA\r\n');
+                socket.write("DATA\r\n");
                 break;
               case 6: // After DATA
                 socket.write(email);
                 break;
               case 7: // After email sent
-                socket.write('QUIT\r\n');
+                socket.write("QUIT\r\n");
                 socket.end();
-                resolve(messageId.replace(/[<>]/g, ''));
+                resolve(messageId.replace(/[<>]/g, ""));
                 break;
             }
           }
         });
 
-        socket.on('error', (error) => {
+        socket.on("error", (error) => {
           reject(error);
         });
 
         const timeout = setTimeout(() => {
           socket.destroy();
-          reject(new Error('SMTP connection timeout'));
+          reject(new Error("SMTP connection timeout"));
         }, 30000);
 
-        socket.on('close', () => {
+        socket.on("close", () => {
           clearTimeout(timeout);
         });
       };

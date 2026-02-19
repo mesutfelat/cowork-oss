@@ -1,11 +1,11 @@
-import Database from 'better-sqlite3';
-import { v4 as uuidv4 } from 'uuid';
+import Database from "better-sqlite3";
+import { v4 as uuidv4 } from "uuid";
 import {
   AgentTeamItem,
   AgentTeamItemStatus,
   CreateAgentTeamItemRequest,
   UpdateAgentTeamItemRequest,
-} from '../../shared/types';
+} from "../../shared/types";
 
 /**
  * Repository for managing agent team items (shared checklist) in the database.
@@ -26,7 +26,7 @@ export class AgentTeamItemRepository {
       description: request.description,
       ownerAgentRoleId: request.ownerAgentRoleId,
       sourceTaskId: request.sourceTaskId,
-      status: request.status ?? 'todo',
+      status: request.status ?? "todo",
       resultSummary: undefined,
       sortOrder: request.sortOrder ?? 0,
       createdAt: now,
@@ -53,7 +53,7 @@ export class AgentTeamItemRepository {
       null,
       item.sortOrder,
       item.createdAt,
-      item.updatedAt
+      item.updatedAt,
     );
 
     return item;
@@ -63,7 +63,7 @@ export class AgentTeamItemRepository {
    * Find an item by ID.
    */
   findById(id: string): AgentTeamItem | undefined {
-    const stmt = this.db.prepare('SELECT * FROM agent_team_items WHERE id = ?');
+    const stmt = this.db.prepare("SELECT * FROM agent_team_items WHERE id = ?");
     const row = stmt.get(id) as any;
     return row ? this.mapRowToItem(row) : undefined;
   }
@@ -93,45 +93,45 @@ export class AgentTeamItemRepository {
     const values: any[] = [];
 
     if (request.parentItemId !== undefined) {
-      fields.push('parent_item_id = ?');
+      fields.push("parent_item_id = ?");
       values.push(request.parentItemId);
     }
     if (request.title !== undefined) {
-      fields.push('title = ?');
+      fields.push("title = ?");
       values.push(request.title);
     }
     if (request.description !== undefined) {
-      fields.push('description = ?');
+      fields.push("description = ?");
       values.push(request.description);
     }
     if (request.ownerAgentRoleId !== undefined) {
-      fields.push('owner_agent_role_id = ?');
+      fields.push("owner_agent_role_id = ?");
       values.push(request.ownerAgentRoleId);
     }
     if (request.sourceTaskId !== undefined) {
-      fields.push('source_task_id = ?');
+      fields.push("source_task_id = ?");
       values.push(request.sourceTaskId);
     }
     if (request.status !== undefined) {
-      fields.push('status = ?');
+      fields.push("status = ?");
       values.push(request.status);
     }
     if (request.resultSummary !== undefined) {
-      fields.push('result_summary = ?');
+      fields.push("result_summary = ?");
       values.push(request.resultSummary);
     }
     if (request.sortOrder !== undefined) {
-      fields.push('sort_order = ?');
+      fields.push("sort_order = ?");
       values.push(request.sortOrder);
     }
 
     if (fields.length === 0) return existing;
 
-    fields.push('updated_at = ?');
+    fields.push("updated_at = ?");
     values.push(Date.now());
     values.push(request.id);
 
-    const sql = `UPDATE agent_team_items SET ${fields.join(', ')} WHERE id = ?`;
+    const sql = `UPDATE agent_team_items SET ${fields.join(", ")} WHERE id = ?`;
     this.db.prepare(sql).run(...values);
 
     return this.findById(request.id);
@@ -141,7 +141,7 @@ export class AgentTeamItemRepository {
    * Delete an item by ID.
    */
   delete(id: string): boolean {
-    const stmt = this.db.prepare('DELETE FROM agent_team_items WHERE id = ?');
+    const stmt = this.db.prepare("DELETE FROM agent_team_items WHERE id = ?");
     const result = stmt.run(id);
     return result.changes > 0;
   }
@@ -150,7 +150,7 @@ export class AgentTeamItemRepository {
    * Delete all items for a run.
    */
   deleteByRun(teamRunId: string): number {
-    const stmt = this.db.prepare('DELETE FROM agent_team_items WHERE team_run_id = ?');
+    const stmt = this.db.prepare("DELETE FROM agent_team_items WHERE team_run_id = ?");
     const result = stmt.run(teamRunId);
     return result.changes;
   }
@@ -160,10 +160,7 @@ export class AgentTeamItemRepository {
    *
    * Used to propagate `tasks.result_summary` into the shared team checklist.
    */
-  setResultSummaryBySourceTaskId(
-    sourceTaskId: string,
-    resultSummary: string | null
-  ): number {
+  setResultSummaryBySourceTaskId(sourceTaskId: string, resultSummary: string | null): number {
     const stmt = this.db.prepare(`
       UPDATE agent_team_items
       SET result_summary = ?, updated_at = ?

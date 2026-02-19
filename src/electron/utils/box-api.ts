@@ -2,10 +2,10 @@
  * Box API helpers
  */
 
-import { BoxConnectionTestResult, BoxSettingsData } from '../../shared/types';
+import { BoxConnectionTestResult, BoxSettingsData } from "../../shared/types";
 
-export const BOX_API_BASE = 'https://api.box.com/2.0';
-export const BOX_UPLOAD_BASE = 'https://upload.box.com/api/2.0';
+export const BOX_API_BASE = "https://api.box.com/2.0";
+export const BOX_UPLOAD_BASE = "https://upload.box.com/api/2.0";
 const DEFAULT_TIMEOUT_MS = 20000;
 
 function parseJsonSafe(text: string): any | undefined {
@@ -20,16 +20,12 @@ function parseJsonSafe(text: string): any | undefined {
 
 function formatBoxError(status: number, data: any, fallback?: string): string {
   const message =
-    data?.message ||
-    data?.error?.message ||
-    data?.error_description ||
-    fallback ||
-    'Box API error';
+    data?.message || data?.error?.message || data?.error_description || fallback || "Box API error";
   return `Box API error ${status}: ${message}`;
 }
 
 export interface BoxRequestOptions {
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  method: "GET" | "POST" | "PUT" | "DELETE";
   path: string;
   query?: Record<string, string | number | boolean | undefined>;
   body?: Record<string, any>;
@@ -44,10 +40,10 @@ export interface BoxRequestResult {
 
 export async function boxRequest(
   settings: BoxSettingsData,
-  options: BoxRequestOptions
+  options: BoxRequestOptions,
 ): Promise<BoxRequestResult> {
   if (!settings.accessToken) {
-    throw new Error('Box access token not configured. Add it in Settings > Integrations > Box.');
+    throw new Error("Box access token not configured. Add it in Settings > Integrations > Box.");
   }
 
   const params = new URLSearchParams();
@@ -58,14 +54,14 @@ export async function boxRequest(
     }
   }
   const queryString = params.toString();
-  const url = `${BOX_API_BASE}${options.path}${queryString ? `?${queryString}` : ''}`;
+  const url = `${BOX_API_BASE}${options.path}${queryString ? `?${queryString}` : ""}`;
 
   const headers: Record<string, string> = {
     Authorization: `Bearer ${settings.accessToken}`,
   };
 
-  if (options.method !== 'GET' && options.method !== 'DELETE') {
-    headers['Content-Type'] = 'application/json';
+  if (options.method !== "GET" && options.method !== "DELETE") {
+    headers["Content-Type"] = "application/json";
   }
 
   const timeoutMs = options.timeoutMs ?? settings.timeoutMs ?? DEFAULT_TIMEOUT_MS;
@@ -80,7 +76,7 @@ export async function boxRequest(
       signal: controller.signal,
     });
 
-    const rawText = typeof response.text === 'function' ? await response.text() : '';
+    const rawText = typeof response.text === "function" ? await response.text() : "";
     const data = rawText ? parseJsonSafe(rawText) : undefined;
 
     if (!response.ok) {
@@ -93,8 +89,8 @@ export async function boxRequest(
       raw: rawText || undefined,
     };
   } catch (error: any) {
-    if (error?.name === 'AbortError') {
-      throw new Error('Box API request timed out');
+    if (error?.name === "AbortError") {
+      throw new Error("Box API request timed out");
     }
     throw error;
   } finally {
@@ -104,21 +100,21 @@ export async function boxRequest(
 
 export async function boxUploadFile(
   settings: BoxSettingsData,
-  opts: { fileName: string; parentId: string; data: Uint8Array; timeoutMs?: number }
+  opts: { fileName: string; parentId: string; data: Uint8Array; timeoutMs?: number },
 ): Promise<BoxRequestResult> {
   if (!settings.accessToken) {
-    throw new Error('Box access token not configured. Add it in Settings > Integrations > Box.');
+    throw new Error("Box access token not configured. Add it in Settings > Integrations > Box.");
   }
 
-  if (typeof FormData === 'undefined') {
-    throw new Error('FormData not available in this environment');
+  if (typeof FormData === "undefined") {
+    throw new Error("FormData not available in this environment");
   }
 
   const form = new FormData();
-  form.append('attributes', JSON.stringify({ name: opts.fileName, parent: { id: opts.parentId } }));
+  form.append("attributes", JSON.stringify({ name: opts.fileName, parent: { id: opts.parentId } }));
   // Create a copy with a regular ArrayBuffer to satisfy BlobPart type requirements
   const fileData = new Uint8Array(opts.data);
-  form.append('file', new Blob([fileData]), opts.fileName);
+  form.append("file", new Blob([fileData]), opts.fileName);
 
   const url = `${BOX_UPLOAD_BASE}/files/content`;
   const headers: Record<string, string> = {
@@ -131,13 +127,13 @@ export async function boxUploadFile(
 
   try {
     const response = await fetch(url, {
-      method: 'POST',
+      method: "POST",
       headers,
       body: form,
       signal: controller.signal,
     });
 
-    const rawText = typeof response.text === 'function' ? await response.text() : '';
+    const rawText = typeof response.text === "function" ? await response.text() : "";
     const data = rawText ? parseJsonSafe(rawText) : undefined;
 
     if (!response.ok) {
@@ -150,8 +146,8 @@ export async function boxUploadFile(
       raw: rawText || undefined,
     };
   } catch (error: any) {
-    if (error?.name === 'AbortError') {
-      throw new Error('Box upload request timed out');
+    if (error?.name === "AbortError") {
+      throw new Error("Box upload request timed out");
     }
     throw error;
   } finally {
@@ -160,15 +156,17 @@ export async function boxUploadFile(
 }
 
 function extractUserInfo(data: any): { name?: string; userId?: string } {
-  if (!data || typeof data !== 'object') return {};
+  if (!data || typeof data !== "object") return {};
   const name = data.name || data.login || undefined;
   const userId = data.id || data.user_id || undefined;
   return { name, userId };
 }
 
-export async function testBoxConnection(settings: BoxSettingsData): Promise<BoxConnectionTestResult> {
+export async function testBoxConnection(
+  settings: BoxSettingsData,
+): Promise<BoxConnectionTestResult> {
   try {
-    const result = await boxRequest(settings, { method: 'GET', path: '/users/me' });
+    const result = await boxRequest(settings, { method: "GET", path: "/users/me" });
     const extracted = extractUserInfo(result.data);
     return {
       success: true,
@@ -178,7 +176,7 @@ export async function testBoxConnection(settings: BoxSettingsData): Promise<BoxC
   } catch (error: any) {
     return {
       success: false,
-      error: error?.message || 'Failed to connect to Box',
+      error: error?.message || "Failed to connect to Box",
     };
   }
 }

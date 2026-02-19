@@ -1,8 +1,8 @@
-import { execFile } from 'child_process';
-import { promisify } from 'util';
-import * as os from 'os';
-import { Workspace } from '../../../shared/types';
-import { AgentDaemon } from '../daemon';
+import { execFile } from "child_process";
+import { promisify } from "util";
+import * as os from "os";
+import { Workspace } from "../../../shared/types";
+import { AgentDaemon } from "../daemon";
 
 const execFileAsync = promisify(execFile);
 
@@ -10,13 +10,13 @@ const APPLESCRIPT_TIMEOUT_MS = 30 * 1000; // 30 seconds
 const MAX_BUFFER = 1024 * 1024; // 1MB
 
 type RemindersAction =
-  | 'list_lists'
-  | 'list_reminders'
-  | 'get_reminder'
-  | 'create_reminder'
-  | 'update_reminder'
-  | 'complete_reminder'
-  | 'delete_reminder';
+  | "list_lists"
+  | "list_reminders"
+  | "get_reminder"
+  | "create_reminder"
+  | "update_reminder"
+  | "complete_reminder"
+  | "delete_reminder";
 
 interface AppleRemindersActionInput {
   action: RemindersAction;
@@ -47,8 +47,8 @@ type ParsedReminder = {
   completed?: boolean;
 };
 
-const RS = '\x1e'; // record separator
-const US = '\x1f'; // unit separator
+const RS = "\x1e"; // record separator
+const US = "\x1f"; // unit separator
 
 function parseEpochSeconds(iso?: string): number | null {
   if (!iso) return null;
@@ -61,15 +61,15 @@ function parseEpochSeconds(iso?: string): number | null {
 
 function epochToIso(epochSeconds: string | number | undefined): string | undefined {
   if (epochSeconds === undefined) return undefined;
-  const n = typeof epochSeconds === 'string' ? Number(epochSeconds) : epochSeconds;
+  const n = typeof epochSeconds === "string" ? Number(epochSeconds) : epochSeconds;
   if (!Number.isFinite(n)) return undefined;
   return new Date(n * 1000).toISOString();
 }
 
 function parseBool(value: string | undefined): boolean | undefined {
   if (value === undefined) return undefined;
-  if (value === 'true') return true;
-  if (value === 'false') return false;
+  if (value === "true") return true;
+  if (value === "false") return false;
   return undefined;
 }
 
@@ -383,7 +383,7 @@ export class AppleRemindersTools {
   constructor(
     private workspace: Workspace,
     private daemon: AgentDaemon,
-    private taskId: string
+    private taskId: string,
   ) {}
 
   setWorkspace(workspace: Workspace): void {
@@ -391,46 +391,48 @@ export class AppleRemindersTools {
   }
 
   static isAvailable(): boolean {
-    return os.platform() === 'darwin';
+    return os.platform() === "darwin";
   }
 
   private async requireApproval(summary: string, details: Record<string, unknown>): Promise<void> {
     const approved = await this.daemon.requestApproval(
       this.taskId,
-      'external_service',
+      "external_service",
       summary,
-      details
+      details,
     );
     if (!approved) {
-      throw new Error('User denied Apple Reminders action');
+      throw new Error("User denied Apple Reminders action");
     }
   }
 
   private async runAppleScript(argv: string[]): Promise<string> {
-    const lines = APPLESCRIPT
-      .split(/\r?\n/)
+    const lines = APPLESCRIPT.split(/\r?\n/)
       .map((l) => l.trim())
       .filter((l) => l.length > 0);
 
-    const args = lines.flatMap((line) => ['-e', line]);
+    const args = lines.flatMap((line) => ["-e", line]);
     args.push(...argv);
 
-    const { stdout, stderr } = await execFileAsync('osascript', args, {
+    const { stdout, stderr } = await execFileAsync("osascript", args, {
       timeout: APPLESCRIPT_TIMEOUT_MS,
       maxBuffer: MAX_BUFFER,
       env: process.env,
       cwd: this.workspace.path,
     });
 
-    return (stdout || stderr || '').trim();
+    return (stdout || stderr || "").trim();
   }
 
   private formatPermissionHint(message: string): string | null {
     if (/-1743/.test(message) || /not authorized to send apple events/i.test(message)) {
-      return 'macOS blocked Reminders automation. Enable access in System Settings > Privacy & Security > Automation (and Reminders), then retry.';
+      return "macOS blocked Reminders automation. Enable access in System Settings > Privacy & Security > Automation (and Reminders), then retry.";
     }
-    if (/Not permitted|operation not permitted|denied/i.test(message) && /reminders/i.test(message)) {
-      return 'Reminders access was denied by macOS privacy settings. Check System Settings > Privacy & Security > Reminders and Automation, then retry.';
+    if (
+      /Not permitted|operation not permitted|denied/i.test(message) &&
+      /reminders/i.test(message)
+    ) {
+      return "Reminders access was denied by macOS privacy settings. Check System Settings > Privacy & Security > Reminders and Automation, then retry.";
     }
     return null;
   }
@@ -450,7 +452,8 @@ export class AppleRemindersTools {
     const records = splitRecords(output);
     const reminders: ParsedReminder[] = [];
     for (const record of records) {
-      const [reminder_id, list_id, list_name, title, dueEpoch, notes, completedRaw] = splitFields(record);
+      const [reminder_id, list_id, list_name, title, dueEpoch, notes, completedRaw] =
+        splitFields(record);
       if (!reminder_id || !list_id) continue;
       reminders.push({
         reminder_id,
@@ -467,7 +470,7 @@ export class AppleRemindersTools {
 
   async executeAction(input: AppleRemindersActionInput): Promise<any> {
     if (!AppleRemindersTools.isAvailable()) {
-      throw new Error('Apple Reminders tools are only available on macOS.');
+      throw new Error("Apple Reminders tools are only available on macOS.");
     }
 
     const action = input.action;
@@ -477,26 +480,26 @@ export class AppleRemindersTools {
 
     try {
       switch (action) {
-        case 'list_lists': {
+        case "list_lists": {
           const out = await this.runAppleScript([action]);
           const lists = this.parseLists(out);
           return { success: true, action, data: { lists } };
         }
-        case 'list_reminders': {
-          const minSec = parseEpochSeconds(input.due_min) ?? '';
-          const maxSec = parseEpochSeconds(input.due_max) ?? '';
+        case "list_reminders": {
+          const minSec = parseEpochSeconds(input.due_min) ?? "";
+          const maxSec = parseEpochSeconds(input.due_max) ?? "";
           const out = await this.runAppleScript([
             action,
-            input.list_id || '',
-            input.include_completed ? 'true' : 'false',
-            minSec === '' ? '' : String(minSec),
-            maxSec === '' ? '' : String(maxSec),
+            input.list_id || "",
+            input.include_completed ? "true" : "false",
+            minSec === "" ? "" : String(minSec),
+            maxSec === "" ? "" : String(maxSec),
           ]);
           let reminders = this.parseReminders(out);
           if (input.query) {
             const q = input.query.toLowerCase();
             reminders = reminders.filter((r) => {
-              const hay = `${r.title ?? ''} ${r.notes ?? ''} ${r.list_name ?? ''}`.toLowerCase();
+              const hay = `${r.title ?? ""} ${r.notes ?? ""} ${r.list_name ?? ""}`.toLowerCase();
               return hay.includes(q);
             });
           }
@@ -508,77 +511,77 @@ export class AppleRemindersTools {
           const limit = Math.min(Math.max(input.max_results ?? 100, 1), 500);
           return { success: true, action, data: { reminders: reminders.slice(0, limit) } };
         }
-        case 'get_reminder': {
-          if (!input.reminder_id) throw new Error('Missing reminder_id for get_reminder');
-          const out = await this.runAppleScript([action, input.list_id || '', input.reminder_id]);
+        case "get_reminder": {
+          if (!input.reminder_id) throw new Error("Missing reminder_id for get_reminder");
+          const out = await this.runAppleScript([action, input.list_id || "", input.reminder_id]);
           const [reminder] = this.parseReminders(out);
-          if (!reminder) throw new Error('Reminder not found');
+          if (!reminder) throw new Error("Reminder not found");
           return { success: true, action, data: { reminder } };
         }
-        case 'create_reminder': {
-          if (!input.title) throw new Error('Missing title for create_reminder');
+        case "create_reminder": {
+          if (!input.title) throw new Error("Missing title for create_reminder");
           const dueSec = input.due ? parseEpochSeconds(input.due) : null;
-          if (input.due && dueSec === null) throw new Error('Invalid due datetime');
-          await this.requireApproval('Create an Apple Reminders item', {
+          if (input.due && dueSec === null) throw new Error("Invalid due datetime");
+          await this.requireApproval("Create an Apple Reminders item", {
             action,
-            list_id: input.list_id || '(default)',
+            list_id: input.list_id || "(default)",
             title: input.title,
             due: input.due,
           });
           const out = await this.runAppleScript([
             action,
-            input.list_id || '',
+            input.list_id || "",
             input.title,
-            dueSec === null ? '' : String(dueSec),
-            input.notes || '',
+            dueSec === null ? "" : String(dueSec),
+            input.notes || "",
           ]);
           const [reminder] = this.parseReminders(out);
-          if (!reminder) throw new Error('Failed to create reminder');
+          if (!reminder) throw new Error("Failed to create reminder");
           return { success: true, action, data: { reminder } };
         }
-        case 'update_reminder': {
-          if (!input.reminder_id) throw new Error('Missing reminder_id for update_reminder');
+        case "update_reminder": {
+          if (!input.reminder_id) throw new Error("Missing reminder_id for update_reminder");
           const dueSec = input.due ? parseEpochSeconds(input.due) : null;
-          if (input.due && dueSec === null) throw new Error('Invalid due datetime');
-          await this.requireApproval('Update an Apple Reminders item', {
+          if (input.due && dueSec === null) throw new Error("Invalid due datetime");
+          await this.requireApproval("Update an Apple Reminders item", {
             action,
-            list_id: input.list_id || '(search)',
+            list_id: input.list_id || "(search)",
             reminder_id: input.reminder_id,
             title: input.title,
             due: input.due,
           });
           const out = await this.runAppleScript([
             action,
-            input.list_id || '',
+            input.list_id || "",
             input.reminder_id,
-            input.title || '',
-            dueSec === null ? '' : String(dueSec),
-            input.notes || '',
+            input.title || "",
+            dueSec === null ? "" : String(dueSec),
+            input.notes || "",
           ]);
           const [reminder] = this.parseReminders(out);
-          if (!reminder) throw new Error('Failed to update reminder');
+          if (!reminder) throw new Error("Failed to update reminder");
           return { success: true, action, data: { reminder } };
         }
-        case 'complete_reminder': {
-          if (!input.reminder_id) throw new Error('Missing reminder_id for complete_reminder');
-          await this.requireApproval('Complete an Apple Reminders item', {
+        case "complete_reminder": {
+          if (!input.reminder_id) throw new Error("Missing reminder_id for complete_reminder");
+          await this.requireApproval("Complete an Apple Reminders item", {
             action,
-            list_id: input.list_id || '(search)',
+            list_id: input.list_id || "(search)",
             reminder_id: input.reminder_id,
           });
-          const out = await this.runAppleScript([action, input.list_id || '', input.reminder_id]);
+          const out = await this.runAppleScript([action, input.list_id || "", input.reminder_id]);
           const [reminder] = this.parseReminders(out);
-          if (!reminder) throw new Error('Failed to complete reminder');
+          if (!reminder) throw new Error("Failed to complete reminder");
           return { success: true, action, data: { reminder } };
         }
-        case 'delete_reminder': {
-          if (!input.reminder_id) throw new Error('Missing reminder_id for delete_reminder');
-          await this.requireApproval('Delete an Apple Reminders item', {
+        case "delete_reminder": {
+          if (!input.reminder_id) throw new Error("Missing reminder_id for delete_reminder");
+          await this.requireApproval("Delete an Apple Reminders item", {
             action,
-            list_id: input.list_id || '(search)',
+            list_id: input.list_id || "(search)",
             reminder_id: input.reminder_id,
           });
-          const out = await this.runAppleScript([action, input.list_id || '', input.reminder_id]);
+          const out = await this.runAppleScript([action, input.list_id || "", input.reminder_id]);
           const [reminder_id, list_id, list_name] = splitFields(out);
           return { success: true, action, data: { reminder_id, list_id, list_name } };
         }
@@ -589,8 +592,8 @@ export class AppleRemindersTools {
       const message = error instanceof Error ? error.message : String(error);
       const hint = this.formatPermissionHint(message);
       const finalMessage = hint ?? message;
-      this.daemon.logEvent(this.taskId, 'tool_error', {
-        tool: 'apple_reminders_action',
+      this.daemon.logEvent(this.taskId, "tool_error", {
+        tool: "apple_reminders_action",
         action,
         message: finalMessage,
       });
@@ -598,4 +601,3 @@ export class AppleRemindersTools {
     }
   }
 }
-

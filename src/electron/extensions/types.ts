@@ -8,7 +8,7 @@
  * - Providers (LLM, search, etc.)
  */
 
-import { ChannelAdapter, ChannelConfig } from '../gateway/channels/types';
+import { ChannelAdapter, ChannelConfig } from "../gateway/channels/types";
 
 /**
  * Plugin manifest schema (cowork.plugin.json)
@@ -71,14 +71,14 @@ export interface PluginManifest {
 /**
  * Plugin types
  */
-export type PluginType = 'channel' | 'tool' | 'provider' | 'integration';
+export type PluginType = "channel" | "tool" | "provider" | "integration";
 
 /**
  * Plugin configuration schema
  */
 export interface PluginConfigSchema {
   /** Schema type (always "object") */
-  type: 'object';
+  type: "object";
 
   /** Configuration properties */
   properties: Record<string, PluginConfigProperty>;
@@ -92,7 +92,7 @@ export interface PluginConfigSchema {
  */
 export interface PluginConfigProperty {
   /** Property type */
-  type: 'string' | 'number' | 'boolean' | 'array' | 'object';
+  type: "string" | "number" | "boolean" | "array" | "object";
 
   /** Human-readable description */
   description: string;
@@ -204,7 +204,7 @@ export interface PluginAPI {
   getSecureStorage(): SecureStorage;
 
   /** Log a message */
-  log(level: 'debug' | 'info' | 'warn' | 'error', message: string, ...args: unknown[]): void;
+  log(level: "debug" | "info" | "warn" | "error", message: string, ...args: unknown[]): void;
 
   /** Emit a plugin event */
   emit(event: string, data?: unknown): void;
@@ -324,7 +324,7 @@ export interface LoadedPlugin {
 /**
  * Plugin states
  */
-export type PluginState = 'loading' | 'loaded' | 'registered' | 'active' | 'error' | 'disabled';
+export type PluginState = "loading" | "loaded" | "registered" | "active" | "error" | "disabled";
 
 /**
  * Plugin load result
@@ -355,11 +355,11 @@ export interface PluginDiscoveryResult {
  * Plugin event types
  */
 export type PluginEventType =
-  | 'plugin:loaded'
-  | 'plugin:registered'
-  | 'plugin:unregistered'
-  | 'plugin:error'
-  | 'plugin:config-changed';
+  | "plugin:loaded"
+  | "plugin:registered"
+  | "plugin:unregistered"
+  | "plugin:error"
+  | "plugin:config-changed";
 
 /**
  * Plugin event

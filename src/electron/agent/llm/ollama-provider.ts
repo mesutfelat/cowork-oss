@@ -7,7 +7,7 @@ import {
   LLMMessage,
   LLMTool,
   LLMToolUse,
-} from './types';
+} from "./types";
 
 /**
  * Ollama API provider implementation
@@ -15,16 +15,16 @@ import {
  * https://ollama.ai/
  */
 export class OllamaProvider implements LLMProvider {
-  readonly type = 'ollama' as const;
+  readonly type = "ollama" as const;
   private baseUrl: string;
   private apiKey?: string;
 
   constructor(config: LLMProviderConfig) {
-    this.baseUrl = config.ollamaBaseUrl || 'http://localhost:11434';
+    this.baseUrl = config.ollamaBaseUrl || "http://localhost:11434";
     this.apiKey = config.ollamaApiKey;
 
     // Remove trailing slash if present
-    if (this.baseUrl.endsWith('/')) {
+    if (this.baseUrl.endsWith("/")) {
       this.baseUrl = this.baseUrl.slice(0, -1);
     }
   }
@@ -34,11 +34,11 @@ export class OllamaProvider implements LLMProvider {
     const tools = request.tools ? this.convertTools(request.tools) : undefined;
 
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     };
 
     if (this.apiKey) {
-      headers['Authorization'] = `Bearer ${this.apiKey}`;
+      headers["Authorization"] = `Bearer ${this.apiKey}`;
     }
 
     // Use AbortController for timeout (5 minutes for large models)
@@ -50,7 +50,7 @@ export class OllamaProvider implements LLMProvider {
 
     // If external signal provided, abort our controller when it fires
     if (request.signal) {
-      request.signal.addEventListener('abort', () => {
+      request.signal.addEventListener("abort", () => {
         abortedByExternalSignal = true;
         timeoutController.abort();
       });
@@ -66,7 +66,7 @@ export class OllamaProvider implements LLMProvider {
       const startTime = Date.now();
 
       const response = await fetch(`${this.baseUrl}/api/chat`, {
-        method: 'POST',
+        method: "POST",
         headers,
         signal: timeoutController.signal,
         body: JSON.stringify({
@@ -89,7 +89,7 @@ export class OllamaProvider implements LLMProvider {
         throw new Error(`Ollama API error: ${response.status} - ${error}`);
       }
 
-      const data = await response.json() as OllamaChatResponse;
+      const data = (await response.json()) as OllamaChatResponse;
       return this.convertResponse(data);
     } catch (error: any) {
       clearTimeout(timeoutId);
@@ -98,12 +98,14 @@ export class OllamaProvider implements LLMProvider {
         message: error.message,
         code: error.code,
       });
-      if (error.name === 'AbortError') {
+      if (error.name === "AbortError") {
         if (abortedByExternalSignal) {
           console.log(`[Ollama] Request aborted by user`);
-          throw new Error('Request cancelled');
+          throw new Error("Request cancelled");
         }
-        throw new Error('Ollama request timed out after 5 minutes. The model may be too slow or not responding.');
+        throw new Error(
+          "Ollama request timed out after 5 minutes. The model may be too slow or not responding.",
+        );
       }
       throw error;
     }
@@ -113,7 +115,7 @@ export class OllamaProvider implements LLMProvider {
     try {
       const headers: Record<string, string> = {};
       if (this.apiKey) {
-        headers['Authorization'] = `Bearer ${this.apiKey}`;
+        headers["Authorization"] = `Bearer ${this.apiKey}`;
       }
 
       // First check if Ollama is running
@@ -122,7 +124,7 @@ export class OllamaProvider implements LLMProvider {
         throw new Error(`Failed to connect to Ollama: ${response.status}`);
       }
 
-      const data = await response.json() as { models?: Array<{ name: string }> };
+      const data = (await response.json()) as { models?: Array<{ name: string }> };
       if (!data.models || data.models.length === 0) {
         return {
           success: false,
@@ -134,7 +136,7 @@ export class OllamaProvider implements LLMProvider {
     } catch (error: any) {
       return {
         success: false,
-        error: error.message || 'Failed to connect to Ollama server',
+        error: error.message || "Failed to connect to Ollama server",
       };
     }
   }
@@ -146,7 +148,7 @@ export class OllamaProvider implements LLMProvider {
     try {
       const headers: Record<string, string> = {};
       if (this.apiKey) {
-        headers['Authorization'] = `Bearer ${this.apiKey}`;
+        headers["Authorization"] = `Bearer ${this.apiKey}`;
       }
 
       const response = await fetch(`${this.baseUrl}/api/tags`, { headers });
@@ -154,39 +156,36 @@ export class OllamaProvider implements LLMProvider {
         throw new Error(`Failed to fetch models: ${response.status}`);
       }
 
-      const data = await response.json() as {
+      const data = (await response.json()) as {
         models?: Array<{ name: string; size: number; modified_at: string }>;
       };
 
-      return (data.models || []).map(m => ({
+      return (data.models || []).map((m) => ({
         name: m.name,
         size: m.size,
         modified: m.modified_at,
       }));
     } catch (error: any) {
-      console.error('Failed to fetch Ollama models:', error);
+      console.error("Failed to fetch Ollama models:", error);
       return [];
     }
   }
 
-  private convertMessages(
-    messages: LLMMessage[],
-    systemPrompt: string
-  ): OllamaMessage[] {
+  private convertMessages(messages: LLMMessage[], systemPrompt: string): OllamaMessage[] {
     const ollamaMessages: OllamaMessage[] = [];
 
     // Add system message first
     if (systemPrompt) {
       ollamaMessages.push({
-        role: 'system',
+        role: "system",
         content: systemPrompt,
       });
     }
 
     for (const msg of messages) {
-      if (typeof msg.content === 'string') {
+      if (typeof msg.content === "string") {
         ollamaMessages.push({
-          role: msg.role === 'user' ? 'user' : 'assistant',
+          role: msg.role === "user" ? "user" : "assistant",
           content: msg.content,
         });
       } else {
@@ -196,22 +195,22 @@ export class OllamaProvider implements LLMProvider {
         const images: string[] = [];
 
         for (const item of msg.content) {
-          if (item.type === 'text') {
+          if (item.type === "text") {
             textParts.push(item.text);
-          } else if (item.type === 'tool_use') {
+          } else if (item.type === "tool_use") {
             toolCalls.push({
               function: {
                 name: item.name,
                 arguments: item.input,
               },
             });
-          } else if (item.type === 'tool_result') {
+          } else if (item.type === "tool_result") {
             // Tool results in Ollama format
             ollamaMessages.push({
-              role: 'tool',
+              role: "tool",
               content: item.content,
             });
-          } else if (item.type === 'image') {
+          } else if (item.type === "image") {
             // Ollama expects raw base64 in a top-level images array
             images.push(item.data);
           }
@@ -219,8 +218,8 @@ export class OllamaProvider implements LLMProvider {
 
         if (textParts.length > 0 || toolCalls.length > 0 || images.length > 0) {
           ollamaMessages.push({
-            role: msg.role === 'user' ? 'user' : 'assistant',
-            content: textParts.join('\n') || '',
+            role: msg.role === "user" ? "user" : "assistant",
+            content: textParts.join("\n") || "",
             ...(toolCalls.length > 0 && { tool_calls: toolCalls }),
             ...(images.length > 0 && { images }),
           });
@@ -232,8 +231,8 @@ export class OllamaProvider implements LLMProvider {
   }
 
   private convertTools(tools: LLMTool[]): OllamaTool[] {
-    return tools.map(tool => ({
-      type: 'function',
+    return tools.map((tool) => ({
+      type: "function",
       function: {
         name: tool.name,
         description: tool.description,
@@ -248,10 +247,10 @@ export class OllamaProvider implements LLMProvider {
 
     // Handle missing message
     if (!message) {
-      console.error('Ollama response missing message:', response);
+      console.error("Ollama response missing message:", response);
       return {
-        content: [{ type: 'text', text: 'Error: Ollama returned an empty response' }],
-        stopReason: 'end_turn',
+        content: [{ type: "text", text: "Error: Ollama returned an empty response" }],
+        stopReason: "end_turn",
         usage: { inputTokens: 0, outputTokens: 0 },
       };
     }
@@ -259,7 +258,7 @@ export class OllamaProvider implements LLMProvider {
     // Handle text content
     if (message.content) {
       content.push({
-        type: 'text',
+        type: "text",
         text: message.content,
       });
     }
@@ -269,15 +268,16 @@ export class OllamaProvider implements LLMProvider {
       for (const toolCall of message.tool_calls) {
         let args: Record<string, any>;
         try {
-          args = typeof toolCall.function.arguments === 'string'
-            ? JSON.parse(toolCall.function.arguments)
-            : toolCall.function.arguments || {};
+          args =
+            typeof toolCall.function.arguments === "string"
+              ? JSON.parse(toolCall.function.arguments)
+              : toolCall.function.arguments || {};
         } catch (e) {
-          console.error('Failed to parse tool arguments:', toolCall.function.arguments);
+          console.error("Failed to parse tool arguments:", toolCall.function.arguments);
           args = {};
         }
         content.push({
-          type: 'tool_use',
+          type: "tool_use",
           id: `tool_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
           name: toolCall.function.name,
           input: args,
@@ -286,13 +286,13 @@ export class OllamaProvider implements LLMProvider {
     }
 
     // Determine stop reason
-    let stopReason: LLMResponse['stopReason'] = 'end_turn';
+    let stopReason: LLMResponse["stopReason"] = "end_turn";
     if (message.tool_calls && message.tool_calls.length > 0) {
-      stopReason = 'tool_use';
-    } else if (response.done_reason === 'length') {
-      stopReason = 'max_tokens';
-    } else if (response.done_reason === 'stop') {
-      stopReason = 'stop_sequence';
+      stopReason = "tool_use";
+    } else if (response.done_reason === "length") {
+      stopReason = "max_tokens";
+    } else if (response.done_reason === "stop") {
+      stopReason = "stop_sequence";
     }
 
     return {
@@ -308,7 +308,7 @@ export class OllamaProvider implements LLMProvider {
 
 // Ollama API types
 interface OllamaMessage {
-  role: 'system' | 'user' | 'assistant' | 'tool';
+  role: "system" | "user" | "assistant" | "tool";
   content: string;
   tool_calls?: OllamaToolCall[];
   images?: string[]; // Base64-encoded image data for vision models
@@ -322,12 +322,12 @@ interface OllamaToolCall {
 }
 
 interface OllamaTool {
-  type: 'function';
+  type: "function";
   function: {
     name: string;
     description: string;
     parameters: {
-      type: 'object';
+      type: "object";
       properties: Record<string, any>;
       required?: string[];
     };

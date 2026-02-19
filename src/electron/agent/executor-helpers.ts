@@ -17,7 +17,7 @@
 export class AwaitingUserInputError extends Error {
   constructor(message: string) {
     super(message);
-    this.name = 'AwaitingUserInputError';
+    this.name = "AwaitingUserInputError";
   }
 }
 
@@ -57,8 +57,8 @@ export const MAX_TOTAL_STEPS = 20;
 
 // Exponential backoff configuration
 export const INITIAL_BACKOFF_MS = 1000; // Start with 1 second
-export const MAX_BACKOFF_MS = 30000;    // Cap at 30 seconds
-export const BACKOFF_MULTIPLIER = 2;   // Double each time
+export const MAX_BACKOFF_MS = 30000; // Cap at 30 seconds
+export const BACKOFF_MULTIPLIER = 2; // Double each time
 
 // Patterns that indicate non-retryable errors (quota, rate limits, etc.)
 // These errors should immediately disable the tool
@@ -80,49 +80,49 @@ export const NON_RETRYABLE_ERROR_PATTERNS = [
 // Patterns that indicate input-dependent errors (not tool failures)
 // These are normal operational errors that should NOT count towards circuit breaker
 export const INPUT_DEPENDENT_ERROR_PATTERNS = [
-  /ENOENT/i,           // File/directory not found
-  /ENOTDIR/i,          // Not a directory
-  /EISDIR/i,           // Is a directory (when expecting file)
-  /no such file/i,     // File not found
-  /not found/i,        // Generic not found
-  /does not exist/i,   // Resource doesn't exist
-  /invalid path/i,     // Invalid path provided
-  /path.*invalid/i,    // Path is invalid
-  /cannot find/i,      // Cannot find resource
+  /ENOENT/i, // File/directory not found
+  /ENOTDIR/i, // Not a directory
+  /EISDIR/i, // Is a directory (when expecting file)
+  /no such file/i, // File not found
+  /not found/i, // Generic not found
+  /does not exist/i, // Resource doesn't exist
+  /invalid path/i, // Invalid path provided
+  /path.*invalid/i, // Path is invalid
+  /cannot find/i, // Cannot find resource
   /permission denied/i, // Permission on specific file (not API permission)
-  /EACCES/i,           // Access denied to specific file
+  /EACCES/i, // Access denied to specific file
   // Missing/invalid parameter errors (LLM didn't provide required params)
-  /parameter.*required/i,      // "parameter is required"
-  /required.*not provided/i,   // "required but was not provided"
-  /invalid.*parameter/i,       // "Invalid content" type errors
-  /must be.*string/i,          // Type validation: "must be a non-empty string"
-  /expected.*but received/i,   // Type validation: "expected string but received undefined"
-  /cannot specify both/i,      // Parameter conflict: "Cannot specify both head and tail"
-  /mutually exclusive/i,       // "parameters are mutually exclusive"
-  /invalid.*argument/i,        // "Invalid argument" from tool validation
-  /unexpected.*parameter/i,    // "Unexpected parameter" from strict schemas
-  /not a valid/i,              // "X is not a valid value for Y"
-  /timed out/i,        // Command/operation timed out (often due to slow query)
+  /parameter.*required/i, // "parameter is required"
+  /required.*not provided/i, // "required but was not provided"
+  /invalid.*parameter/i, // "Invalid content" type errors
+  /must be.*string/i, // Type validation: "must be a non-empty string"
+  /expected.*but received/i, // Type validation: "expected string but received undefined"
+  /cannot specify both/i, // Parameter conflict: "Cannot specify both head and tail"
+  /mutually exclusive/i, // "parameters are mutually exclusive"
+  /invalid.*argument/i, // "Invalid argument" from tool validation
+  /unexpected.*parameter/i, // "Unexpected parameter" from strict schemas
+  /not a valid/i, // "X is not a valid value for Y"
+  /timed out/i, // Command/operation timed out (often due to slow query)
   // Network/navigation failures are often domain- or environment-specific
-  /net::ERR_/i,        // Playwright/Chromium navigation errors
+  /net::ERR_/i, // Playwright/Chromium navigation errors
   /ERR_HTTP2_PROTOCOL_ERROR/i, // Common site-specific failure
-  /syntax error/i,     // Script syntax errors (AppleScript, shell, etc.)
+  /syntax error/i, // Script syntax errors (AppleScript, shell, etc.)
   /applescript execution failed/i, // AppleScript errors are input-related
-  /user denied/i,      // User denied an approval request
+  /user denied/i, // User denied an approval request
 ];
 
 // Keywords that imply a step wants image verification.
 export const IMAGE_VERIFICATION_KEYWORDS = [
-  'image',
-  'photo',
-  'photograph',
-  'picture',
-  'render',
-  'illustration',
-  'png',
-  'jpg',
-  'jpeg',
-  'webp',
+  "image",
+  "photo",
+  "photograph",
+  "picture",
+  "render",
+  "illustration",
+  "png",
+  "jpg",
+  "jpeg",
+  "webp",
 ];
 
 export const IMAGE_FILE_EXTENSION_REGEX = /\.(png|jpe?g|webp|gif|bmp)$/i;
@@ -144,7 +144,7 @@ export const PRE_COMPACTION_FLUSH_MIN_TOKEN_DELTA = 250;
  * These errors indicate a systemic problem with the tool/API
  */
 export function isNonRetryableError(errorMessage: string): boolean {
-  return NON_RETRYABLE_ERROR_PATTERNS.some(pattern => pattern.test(errorMessage));
+  return NON_RETRYABLE_ERROR_PATTERNS.some((pattern) => pattern.test(errorMessage));
 }
 
 /**
@@ -152,7 +152,7 @@ export function isNonRetryableError(errorMessage: string): boolean {
  * These errors are due to bad input, not tool failure, and should not trigger circuit breaker
  */
 export function isInputDependentError(errorMessage: string): boolean {
-  return INPUT_DEPENDENT_ERROR_PATTERNS.some(pattern => pattern.test(errorMessage));
+  return INPUT_DEPENDENT_ERROR_PATTERNS.some((pattern) => pattern.test(errorMessage));
 }
 
 // ===== Date/Time Utilities =====
@@ -163,11 +163,11 @@ export function isInputDependentError(errorMessage: string): boolean {
  */
 export function getCurrentDateString(): string {
   const now = new Date();
-  return now.toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
+  return now.toLocaleDateString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
   });
 }
 
@@ -177,20 +177,23 @@ export function getCurrentDateString(): string {
  */
 export function getCurrentDateTimeContext(): string {
   const now = new Date();
-  const dateStr = now.toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
+  const dateStr = now.toLocaleDateString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
   });
-  const timeStr = now.toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true
+  const timeStr = now.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
   });
   // Get timezone name
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const timezoneOffset = now.toLocaleTimeString('en-US', { timeZoneName: 'short' }).split(' ').pop();
+  const timezoneOffset = now
+    .toLocaleTimeString("en-US", { timeZoneName: "short" })
+    .split(" ")
+    .pop();
 
   return `${dateStr} at ${timeStr} (${timezone}, ${timezoneOffset})`;
 }
@@ -206,7 +209,10 @@ export function isAskingQuestion(text: string): boolean {
 
   const maxLengthForAnalysis = 4000;
   const sample = trimmed.slice(0, maxLengthForAnalysis);
-  const lines = sample.split('\n').map(l => l.trim()).filter(Boolean);
+  const lines = sample
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
   if (lines.length === 0) return false;
   const tailLines = lines.slice(-2);
 
@@ -221,11 +227,13 @@ export function isAskingQuestion(text: string): boolean {
     /\bdoes\s+that\s+(?:help|make\s+sense)\b/i,
   ];
 
-  const looksLikeNonBlockingTail = tailLines.length > 0 && tailLines.every((line) => {
-    const normalized = line.replace(/^[-*]?\s*\d*[).]?\s*/, '').trim();
-    if (!normalized) return true;
-    return nonBlockingQuestionPatterns.some(pattern => pattern.test(normalized));
-  });
+  const looksLikeNonBlockingTail =
+    tailLines.length > 0 &&
+    tailLines.every((line) => {
+      const normalized = line.replace(/^[-*]?\s*\d*[).]?\s*/, "").trim();
+      if (!normalized) return true;
+      return nonBlockingQuestionPatterns.some((pattern) => pattern.test(normalized));
+    });
   if (looksLikeNonBlockingTail) return false;
 
   const blockingCuePatterns = [
@@ -248,9 +256,7 @@ export function isAskingQuestion(text: string): boolean {
     /\bif\s+you\s+don't\s+(?:respond|answer|reply)\b/i,
   ];
 
-  const questionWordPatterns = [
-    /^(?:who|what|where|when|why|how|which)\b/i,
-  ];
+  const questionWordPatterns = [/^(?:who|what|where|when|why|how|which)\b/i];
 
   const imperativePatterns = [
     /^(?:please\s+)?(?:provide|share|send|upload|enter|paste|specify|clarify|confirm|choose|pick|select|list|tell|give)\b/i,
@@ -279,24 +285,23 @@ export function isAskingQuestion(text: string): boolean {
     /^(?:do\s+you\s+want|would\s+you\s+like|should\s+i|can\s+you|could\s+you|which|what(?:\s+option)?|is\s+it\s+ok(?:ay)?\s+if)\b/i,
   ];
 
-  const hasBlockingCue = blockingCuePatterns.some(pattern => pattern.test(sample));
-  const hasExplicitProceed = explicitProceedPatterns.some(pattern => pattern.test(sample));
+  const hasBlockingCue = blockingCuePatterns.some((pattern) => pattern.test(sample));
+  const hasExplicitProceed = explicitProceedPatterns.some((pattern) => pattern.test(sample));
   if (hasBlockingCue) return true;
   let tailRequiresResponse = false;
 
   for (const line of tailLines) {
-    const normalized = line.replace(/^[-*]?\s*\d*[).]?\s*/, '').trim();
+    const normalized = line.replace(/^[-*]?\s*\d*[).]?\s*/, "").trim();
     if (!normalized) continue;
-    if (nonBlockingQuestionPatterns.some(pattern => pattern.test(normalized))) {
+    if (nonBlockingQuestionPatterns.some((pattern) => pattern.test(normalized))) {
       continue;
     }
-    if (explicitResponseRequestPatterns.some(pattern => pattern.test(normalized))) {
+    if (explicitResponseRequestPatterns.some((pattern) => pattern.test(normalized))) {
       tailRequiresResponse = true;
     }
     const looksLikeQuestion =
-      normalized.endsWith('?') ||
-      questionWordPatterns.some(pattern => pattern.test(normalized));
-    if (looksLikeQuestion && decisionQuestionPatterns.some(pattern => pattern.test(normalized))) {
+      normalized.endsWith("?") || questionWordPatterns.some((pattern) => pattern.test(normalized));
+    if (looksLikeQuestion && decisionQuestionPatterns.some((pattern) => pattern.test(normalized))) {
       tailRequiresResponse = true;
     }
   }
@@ -316,7 +321,8 @@ export function isAskingQuestion(text: string): boolean {
  * - Rate limiting per tool
  */
 export class ToolCallDeduplicator {
-  private recentCalls: Map<string, { count: number; lastCallTime: number; lastResult?: string }> = new Map();
+  private recentCalls: Map<string, { count: number; lastCallTime: number; lastResult?: string }> =
+    new Map();
   // Track semantic patterns (tool name -> list of recent inputs for pattern detection)
   private semanticPatterns: Map<string, Array<{ input: any; time: number }>> = new Map();
   // Rate limiting: track calls per tool per minute
@@ -351,41 +357,41 @@ export class ToolCallDeduplicator {
     if (!input) return toolName;
 
     // For file operations, normalize the filename to detect variants
-    if (toolName === 'create_document' || toolName === 'write_file') {
-      const filename = input.filename || input.path || '';
+    if (toolName === "create_document" || toolName === "write_file") {
+      const filename = input.filename || input.path || "";
       // Extract base name without version suffixes like _v2.4, _COMPLETE, _Final, etc.
       const baseName = filename
-        .replace(/[_-]v?\d+(\.\d+)?/gi, '') // Remove version numbers
-        .replace(/[_-](complete|final|updated|new|copy|backup|draft)/gi, '') // Remove common suffixes
-        .replace(/\.[^.]+$/, ''); // Remove extension
+        .replace(/[_-]v?\d+(\.\d+)?/gi, "") // Remove version numbers
+        .replace(/[_-](complete|final|updated|new|copy|backup|draft)/gi, "") // Remove common suffixes
+        .replace(/\.[^.]+$/, ""); // Remove extension
       return `${toolName}:file:${baseName}`;
     }
 
-    if (toolName === 'copy_file') {
-      const destPath = input.destPath || input.destination || '';
+    if (toolName === "copy_file") {
+      const destPath = input.destPath || input.destination || "";
       const baseName = destPath
-        .replace(/[_-]v?\d+(\.\d+)?/gi, '')
-        .replace(/[_-](complete|final|updated|new|copy|backup|draft)/gi, '')
-        .replace(/\.[^.]+$/, '');
+        .replace(/[_-]v?\d+(\.\d+)?/gi, "")
+        .replace(/[_-](complete|final|updated|new|copy|backup|draft)/gi, "")
+        .replace(/\.[^.]+$/, "");
       return `${toolName}:copy:${baseName}`;
     }
 
     // For web searches, normalize the query to detect similar searches
-    if (toolName === 'web_search') {
-      const query = (input.query || input.search || '').toLowerCase();
+    if (toolName === "web_search") {
+      const query = (input.query || input.search || "").toLowerCase();
       // Remove platform-specific modifiers to get the core search term
       const normalizedQuery = query
-        .replace(/site:(twitter\.com|x\.com|reddit\.com|github\.com)/gi, '')
-        .replace(/\b(reddit|twitter|x\.com|github)\b/gi, '')
-        .replace(/["']/g, '')
-        .replace(/\s+/g, ' ')
+        .replace(/site:(twitter\.com|x\.com|reddit\.com|github\.com)/gi, "")
+        .replace(/\b(reddit|twitter|x\.com|github)\b/gi, "")
+        .replace(/["']/g, "")
+        .replace(/\s+/g, " ")
         .trim();
       return `${toolName}:search:${normalizedQuery}`;
     }
 
     // For read operations, just use tool name (reading same file repeatedly is OK)
-    if (toolName === 'read_file' || toolName === 'list_directory') {
-      return `${toolName}:${input.path || ''}`;
+    if (toolName === "read_file" || toolName === "list_directory") {
+      return `${toolName}:${input.path || ""}`;
     }
 
     // Default: use tool name only for semantic grouping
@@ -417,7 +423,10 @@ export class ToolCallDeduplicator {
   /**
    * Check for semantic duplicates (similar operations with slight variations)
    */
-  private checkSemanticDuplicate(toolName: string, input: any): { isDuplicate: boolean; reason?: string } {
+  private checkSemanticDuplicate(
+    toolName: string,
+    input: any,
+  ): { isDuplicate: boolean; reason?: string } {
     const now = Date.now();
     const signature = this.getSemanticSignature(toolName, input);
 
@@ -425,14 +434,15 @@ export class ToolCallDeduplicator {
     const patterns = this.semanticPatterns.get(signature) || [];
 
     // Clean up old entries
-    const recentPatterns = patterns.filter(p => now - p.time <= this.windowMs);
+    const recentPatterns = patterns.filter((p) => now - p.time <= this.windowMs);
     this.semanticPatterns.set(signature, recentPatterns);
 
     // Check if we have too many semantically similar calls
     if (recentPatterns.length >= this.maxSemanticSimilar) {
       return {
         isDuplicate: true,
-        reason: `Detected ${recentPatterns.length + 1} semantically similar "${toolName}" calls within ${this.windowMs / 1000}s. ` +
+        reason:
+          `Detected ${recentPatterns.length + 1} semantically similar "${toolName}" calls within ${this.windowMs / 1000}s. ` +
           `This appears to be a retry loop with slight parameter variations. ` +
           `Please try a different approach or check if the previous operation actually succeeded.`,
       };
@@ -445,16 +455,19 @@ export class ToolCallDeduplicator {
    * Check if a tool call is a duplicate and should be blocked
    * @returns Object with isDuplicate flag and optional cached result
    */
-  checkDuplicate(toolName: string, input: any): { isDuplicate: boolean; reason?: string; cachedResult?: string } {
+  checkDuplicate(
+    toolName: string,
+    input: any,
+  ): { isDuplicate: boolean; reason?: string; cachedResult?: string } {
     const now = Date.now();
 
     // 0. Exclude stateful browser tools from duplicate detection
     const statefulTools = [
-      'browser_get_content',
-      'browser_screenshot',
-      'browser_get_text',
-      'browser_evaluate',
-      'canvas_push',
+      "browser_get_content",
+      "browser_screenshot",
+      "browser_get_text",
+      "browser_evaluate",
+      "canvas_push",
     ];
     if (statefulTools.includes(toolName)) {
       return { isDuplicate: false };
@@ -477,7 +490,11 @@ export class ToolCallDeduplicator {
     }
 
     const existing = this.recentCalls.get(callKey);
-    if (existing && now - existing.lastCallTime <= this.windowMs && existing.count >= this.maxDuplicates) {
+    if (
+      existing &&
+      now - existing.lastCallTime <= this.windowMs &&
+      existing.count >= this.maxDuplicates
+    ) {
       return {
         isDuplicate: true,
         reason: `Tool "${toolName}" called ${existing.count + 1} times with identical parameters within ${this.windowMs / 1000}s. This appears to be a duplicate call.`,
@@ -486,7 +503,14 @@ export class ToolCallDeduplicator {
     }
 
     // 3. Check semantic duplicate (for tools prone to retry loops)
-    const semanticTools = ['create_document', 'write_file', 'copy_file', 'create_spreadsheet', 'create_presentation', 'web_search'];
+    const semanticTools = [
+      "create_document",
+      "write_file",
+      "copy_file",
+      "create_spreadsheet",
+      "create_presentation",
+      "web_search",
+    ];
     if (semanticTools.includes(toolName)) {
       const semanticCheck = this.checkSemanticDuplicate(toolName, input);
       if (semanticCheck.isDuplicate) {
@@ -551,23 +575,28 @@ export class ToolCallDeduplicator {
    * after a file was updated.
    */
   clearReadOnlyHistory(): void {
-    const readLikePrefixes = ['read_file:', 'read_multiple_files:', 'list_directory:', 'list_directory_with_sizes:'];
+    const readLikePrefixes = [
+      "read_file:",
+      "read_multiple_files:",
+      "list_directory:",
+      "list_directory_with_sizes:",
+    ];
     for (const key of Array.from(this.recentCalls.keys())) {
-      if (readLikePrefixes.some(prefix => key.startsWith(prefix))) {
+      if (readLikePrefixes.some((prefix) => key.startsWith(prefix))) {
         this.recentCalls.delete(key);
       }
     }
 
     for (const key of Array.from(this.semanticPatterns.keys())) {
-      if (key.startsWith('read_file:') || key.startsWith('list_directory:')) {
+      if (key.startsWith("read_file:") || key.startsWith("list_directory:")) {
         this.semanticPatterns.delete(key);
       }
     }
 
-    this.rateLimitCounters.delete('read_file');
-    this.rateLimitCounters.delete('read_multiple_files');
-    this.rateLimitCounters.delete('list_directory');
-    this.rateLimitCounters.delete('list_directory_with_sizes');
+    this.rateLimitCounters.delete("read_file");
+    this.rateLimitCounters.delete("read_multiple_files");
+    this.rateLimitCounters.delete("list_directory");
+    this.rateLimitCounters.delete("list_directory_with_sizes");
   }
 
   /**
@@ -575,19 +604,19 @@ export class ToolCallDeduplicator {
    */
   static isIdempotentTool(toolName: string): boolean {
     const idempotentTools = [
-      'read_file',
-      'read_multiple_files',
-      'list_directory',
-      'directory_tree',
-      'search_files',
-      'search_code',
-      'get_file_info',
-      'canvas_list',
-      'canvas_checkpoints',
-      'task_history',
-      'channel_list_chats',
-      'channel_history',
-      'web_search',
+      "read_file",
+      "read_multiple_files",
+      "list_directory",
+      "directory_tree",
+      "search_files",
+      "search_code",
+      "get_file_info",
+      "canvas_list",
+      "canvas_checkpoints",
+      "task_history",
+      "channel_list_chats",
+      "channel_history",
+      "web_search",
     ];
     if (idempotentTools.includes(toolName)) {
       return true;
@@ -595,13 +624,13 @@ export class ToolCallDeduplicator {
 
     // Treat "read-only by convention" tool names as idempotent to avoid
     // duplicate-error loops on observational tools.
-    const readOnlyPrefixes = ['read_', 'list_', 'get_', 'search_', 'check_', 'describe_', 'query_'];
-    if (readOnlyPrefixes.some(prefix => toolName.startsWith(prefix))) {
+    const readOnlyPrefixes = ["read_", "list_", "get_", "search_", "check_", "describe_", "query_"];
+    if (readOnlyPrefixes.some((prefix) => toolName.startsWith(prefix))) {
       return true;
     }
 
-    const readOnlySuffixes = ['_list', '_status', '_history'];
-    return readOnlySuffixes.some(suffix => toolName.endsWith(suffix));
+    const readOnlySuffixes = ["_list", "_status", "_history"];
+    return readOnlySuffixes.some((suffix) => toolName.endsWith(suffix));
   }
 }
 
@@ -626,10 +655,10 @@ export class ToolFailureTracker {
 
   private getMaxInputDependentFailures(toolName: string): number {
     // AppleScript often needs a few iterative syntax/quoting fixes before succeeding.
-    if (toolName === 'run_applescript') {
+    if (toolName === "run_applescript") {
       return 8;
     }
-    if (toolName.startsWith('browser_')) {
+    if (toolName.startsWith("browser_")) {
       return 6;
     }
     return this.maxInputDependentFailures;
@@ -643,27 +672,33 @@ export class ToolFailureTracker {
     // If it's a non-retryable error (quota, rate limit), disable immediately
     if (isNonRetryableError(errorMessage)) {
       this.disabledTools.set(toolName, { disabledAt: Date.now(), reason: errorMessage });
-      console.log(`[ToolFailureTracker] Tool ${toolName} disabled due to non-retryable error: ${errorMessage.substring(0, 100)}`);
+      console.log(
+        `[ToolFailureTracker] Tool ${toolName} disabled due to non-retryable error: ${errorMessage.substring(0, 100)}`,
+      );
       return true;
     }
 
     // Input-dependent errors (missing params, file not found, etc.)
     // These are tracked separately with a higher threshold
     if (isInputDependentError(errorMessage)) {
-      const existing = this.inputDependentFailures.get(toolName) || { count: 0, lastError: '' };
+      const existing = this.inputDependentFailures.get(toolName) || { count: 0, lastError: "" };
       existing.count++;
       existing.lastError = errorMessage;
       this.inputDependentFailures.set(toolName, existing);
 
       const maxFailuresForTool = this.getMaxInputDependentFailures(toolName);
 
-      console.log(`[ToolFailureTracker] Input-dependent error for ${toolName} (${existing.count}/${maxFailuresForTool}): ${errorMessage.substring(0, 80)}`);
+      console.log(
+        `[ToolFailureTracker] Input-dependent error for ${toolName} (${existing.count}/${maxFailuresForTool}): ${errorMessage.substring(0, 80)}`,
+      );
 
       // If LLM keeps making the same mistake, disable the tool
       if (existing.count >= maxFailuresForTool) {
         const reason = `LLM failed to provide correct parameters ${existing.count} times: ${errorMessage}`;
         this.disabledTools.set(toolName, { disabledAt: Date.now(), reason });
-        console.log(`[ToolFailureTracker] Tool ${toolName} disabled after ${existing.count} consecutive input-dependent failures`);
+        console.log(
+          `[ToolFailureTracker] Tool ${toolName} disabled after ${existing.count} consecutive input-dependent failures`,
+        );
         return true;
       }
 
@@ -671,7 +706,7 @@ export class ToolFailureTracker {
     }
 
     // Track other failures (systemic issues)
-    const existing = this.failures.get(toolName) || { count: 0, lastError: '' };
+    const existing = this.failures.get(toolName) || { count: 0, lastError: "" };
     existing.count++;
     existing.lastError = errorMessage;
     this.failures.set(toolName, existing);
@@ -679,7 +714,9 @@ export class ToolFailureTracker {
     // If we've hit max failures for systemic issues, disable the tool
     if (existing.count >= MAX_TOOL_FAILURES) {
       this.disabledTools.set(toolName, { disabledAt: Date.now(), reason: errorMessage });
-      console.log(`[ToolFailureTracker] Tool ${toolName} disabled after ${existing.count} consecutive systemic failures`);
+      console.log(
+        `[ToolFailureTracker] Tool ${toolName} disabled after ${existing.count} consecutive systemic failures`,
+      );
       return true;
     }
 
@@ -706,7 +743,9 @@ export class ToolFailureTracker {
     // Check if cooldown has passed - re-enable the tool
     const elapsed = Date.now() - disabled.disabledAt;
     if (elapsed >= this.cooldownMs) {
-      console.log(`[ToolFailureTracker] Tool ${toolName} re-enabled after ${this.cooldownMs / 1000}s cooldown`);
+      console.log(
+        `[ToolFailureTracker] Tool ${toolName} re-enabled after ${this.cooldownMs / 1000}s cooldown`,
+      );
       this.disabledTools.delete(toolName);
       this.failures.delete(toolName); // Also reset failure counter
       return false;
@@ -733,45 +772,52 @@ export class ToolFailureTracker {
    * Provide guidance for alternative approaches when a tool fails
    */
   private getAlternativeApproachGuidance(toolName: string, error: string): string | undefined {
-    if (toolName === 'run_applescript') {
+    if (toolName === "run_applescript") {
       if (/syntax error/i.test(error)) {
         return 'SUGGESTION: Keep AppleScript minimal and valid. Prefer plain multi-line AppleScript, avoid malformed "with timeout ... end timeout" wrappers, and escape shell command quotes carefully.';
       }
       if (/timed out/i.test(error)) {
-        return 'SUGGESTION: Break long shell operations into smaller AppleScript calls, then verify output incrementally instead of running a long installer/build in one script.';
+        return "SUGGESTION: Break long shell operations into smaller AppleScript calls, then verify output incrementally instead of running a long installer/build in one script.";
       }
     }
 
     // Document editing failures - suggest manual steps or different tool
-    if (toolName === 'edit_document' && (error.includes('images') || error.includes('binary') || error.includes('size'))) {
-      return 'SUGGESTION: The edit_document tool cannot preserve images in DOCX files. Consider: (1) Create a separate document with the new content only, (2) Provide instructions for the user to manually merge the content, or (3) Use a different output format';
+    if (
+      toolName === "edit_document" &&
+      (error.includes("images") || error.includes("binary") || error.includes("size"))
+    ) {
+      return "SUGGESTION: The edit_document tool cannot preserve images in DOCX files. Consider: (1) Create a separate document with the new content only, (2) Provide instructions for the user to manually merge the content, or (3) Use a different output format";
     }
 
     // File copy/edit loop detection
-    if ((toolName === 'copy_file' || toolName === 'edit_document') && error.includes('failed')) {
-      return 'SUGGESTION: If copy+edit approach is not working, try creating new content in a separate file instead';
+    if ((toolName === "copy_file" || toolName === "edit_document") && error.includes("failed")) {
+      return "SUGGESTION: If copy+edit approach is not working, try creating new content in a separate file instead";
     }
 
     // Missing parameter errors
-    if (error.includes('parameter') && error.includes('required')) {
-      return 'SUGGESTION: Ensure all required parameters are provided. Check the tool documentation for the exact parameter format';
+    if (error.includes("parameter") && error.includes("required")) {
+      return "SUGGESTION: Ensure all required parameters are provided. Check the tool documentation for the exact parameter format";
     }
 
     // Content validation errors
-    if (error.includes('content') && (error.includes('empty') || error.includes('required'))) {
+    if (error.includes("content") && (error.includes("empty") || error.includes("required"))) {
       return 'SUGGESTION: The content parameter must be a non-empty array of content blocks. Example: [{ type: "paragraph", text: "Your text here" }]';
     }
 
     // Browser navigation errors (often domain-specific blocks or flaky HTTP/2)
-    if (toolName === 'browser_navigate' && (/net::ERR_/i.test(error) || /http2/i.test(error))) {
-      return 'SUGGESTION: This looks like a site/network-specific navigation failure. Try an alternative web tool (web_fetch/web_search) or use MCP puppeteer tools (puppeteer_navigate/puppeteer_screenshot) for JS-heavy pages.';
+    if (toolName === "browser_navigate" && (/net::ERR_/i.test(error) || /http2/i.test(error))) {
+      return "SUGGESTION: This looks like a site/network-specific navigation failure. Try an alternative web tool (web_fetch/web_search) or use MCP puppeteer tools (puppeteer_navigate/puppeteer_screenshot) for JS-heavy pages.";
     }
-    if (toolName.startsWith('browser_') && (/timed out/i.test(error) || /timeout/i.test(error))) {
-      return 'SUGGESTION: Wait for the selector to be stable first (browser_wait), then retry with a more specific selector. Keep timeout longer with timeout_ms only when needed.';
+    if (toolName.startsWith("browser_") && (/timed out/i.test(error) || /timeout/i.test(error))) {
+      return "SUGGESTION: Wait for the selector to be stable first (browser_wait), then retry with a more specific selector. Keep timeout longer with timeout_ms only when needed.";
     }
 
-    if (/cannot be done|not available|not allowed|permission|access denied|disabled|tool .* disabled/i.test(error)) {
-      return 'SUGGESTION: If the normal tool path is blocked, try a different workflow and, if needed, suggest a minimal in-repo implementation patch so the task can still be completed.';
+    if (
+      /cannot be done|not available|not allowed|permission|access denied|disabled|tool .* disabled/i.test(
+        error,
+      )
+    ) {
+      return "SUGGESTION: If the normal tool path is blocked, try a different workflow and, if needed, suggest a minimal in-repo implementation patch so the task can still be completed.";
     }
 
     return undefined;
@@ -806,18 +852,22 @@ export class ToolFailureTracker {
  */
 export class FileOperationTracker {
   // Track files that have been read (path -> { count, lastReadTime, contentSummary })
-  private readFiles: Map<string, {
-    count: number;
-    lastReadTime: number;
-    contentLength: number;
-    cachedResult?: string;
-  }> = new Map();
+  private readFiles: Map<
+    string,
+    {
+      count: number;
+      lastReadTime: number;
+      contentLength: number;
+      cachedResult?: string;
+    }
+  > = new Map();
   // Track files that have been created (normalized name -> full path)
   private createdFiles: Map<string, string> = new Map();
   // Track file operation counts per type
   private operationCounts: Map<string, number> = new Map();
   // Track directory listings (path -> { files, lastListTime, count })
-  private directoryListings: Map<string, { files: string[]; lastListTime: number; count: number }> = new Map();
+  private directoryListings: Map<string, { files: string[]; lastListTime: number; count: number }> =
+    new Map();
 
   private readonly maxReadsPerFile: number = 2;
   private readonly readCooldownMs: number = 30000; // 30 seconds between reads of same file
@@ -829,7 +879,12 @@ export class FileOperationTracker {
    * Check if a file read should be blocked (redundant read)
    * @returns Object with blocked flag and reason if blocked
    */
-  checkFileRead(filePath: string): { blocked: boolean; reason?: string; suggestion?: string; cachedResult?: string } {
+  checkFileRead(filePath: string): {
+    blocked: boolean;
+    reason?: string;
+    suggestion?: string;
+    cachedResult?: string;
+  } {
     const normalized = this.normalizePath(filePath);
     const existing = this.readFiles.get(normalized);
     const now = Date.now();
@@ -850,7 +905,8 @@ export class FileOperationTracker {
         return {
           blocked: true,
           reason: `File "${filePath}" was already read ${existing.count} times in the last ${this.readCooldownMs / 1000}s`,
-          suggestion: 'Use the content from the previous read instead of reading the file again. If you need specific parts, describe what you need.',
+          suggestion:
+            "Use the content from the previous read instead of reading the file again. If you need specific parts, describe what you need.",
           cachedResult: existing.cachedResult,
         };
       }
@@ -866,11 +922,12 @@ export class FileOperationTracker {
     const normalized = this.normalizePath(filePath);
     const existing = this.readFiles.get(normalized);
     const now = Date.now();
-    const safeContent = typeof content === 'string' ? content : String(content ?? '');
+    const safeContent = typeof content === "string" ? content : String(content ?? "");
     const contentLength = safeContent.length;
-    const truncatedContent = contentLength > this.maxCachedReadResultLength
-      ? `${safeContent.slice(0, this.maxCachedReadResultLength)}\n\n[... cached content truncated ...]`
-      : safeContent;
+    const truncatedContent =
+      contentLength > this.maxCachedReadResultLength
+        ? `${safeContent.slice(0, this.maxCachedReadResultLength)}\n\n[... cached content truncated ...]`
+        : safeContent;
 
     if (existing) {
       existing.count++;
@@ -888,14 +945,19 @@ export class FileOperationTracker {
       });
     }
 
-    this.incrementOperation('read_file');
+    this.incrementOperation("read_file");
   }
 
   /**
    * Check if a directory listing should be blocked (redundant listing)
    * @returns Object with blocked flag, reason, and cached files if available
    */
-  checkDirectoryListing(dirPath: string): { blocked: boolean; reason?: string; cachedFiles?: string[]; suggestion?: string } {
+  checkDirectoryListing(dirPath: string): {
+    blocked: boolean;
+    reason?: string;
+    cachedFiles?: string[];
+    suggestion?: string;
+  } {
     const normalized = this.normalizePath(dirPath);
     const existing = this.directoryListings.get(normalized);
     const now = Date.now();
@@ -909,7 +971,8 @@ export class FileOperationTracker {
           blocked: true,
           reason: `Directory "${dirPath}" was already listed ${existing.count} times in the last ${this.listingCooldownMs / 1000}s`,
           cachedFiles: existing.files,
-          suggestion: 'Use the cached directory listing instead of listing again. The directory contents are unlikely to have changed.',
+          suggestion:
+            "Use the cached directory listing instead of listing again. The directory contents are unlikely to have changed.",
         };
       }
     }
@@ -933,7 +996,7 @@ export class FileOperationTracker {
       this.directoryListings.set(normalized, { count: 1, lastListTime: now, files });
     }
 
-    this.incrementOperation('list_directory');
+    this.incrementOperation("list_directory");
   }
 
   /**
@@ -948,7 +1011,11 @@ export class FileOperationTracker {
    * Check if creating a file would be a duplicate
    * @returns Object with isDuplicate flag and existing file path if duplicate
    */
-  checkFileCreation(filename: string): { isDuplicate: boolean; existingPath?: string; suggestion?: string } {
+  checkFileCreation(filename: string): {
+    isDuplicate: boolean;
+    existingPath?: string;
+    suggestion?: string;
+  } {
     const normalized = this.normalizeFilename(filename);
 
     // Check for exact match
@@ -979,20 +1046,27 @@ export class FileOperationTracker {
    * Record a file creation
    */
   recordFileCreation(filePath: string): void {
-    const filename = filePath.split('/').pop() || filePath;
+    const filename = filePath.split("/").pop() || filePath;
     const normalized = this.normalizeFilename(filename);
     this.createdFiles.set(normalized, filePath);
-    this.incrementOperation('create_file');
+    this.incrementOperation("create_file");
   }
 
   /**
    * Get operation statistics
    */
-  getStats(): { totalReads: number; totalCreates: number; totalListings: number; uniqueFilesRead: number; filesCreated: number; dirsListed: number } {
+  getStats(): {
+    totalReads: number;
+    totalCreates: number;
+    totalListings: number;
+    uniqueFilesRead: number;
+    filesCreated: number;
+    dirsListed: number;
+  } {
     return {
-      totalReads: this.operationCounts.get('read_file') || 0,
-      totalCreates: this.operationCounts.get('create_file') || 0,
-      totalListings: this.operationCounts.get('list_directory') || 0,
+      totalReads: this.operationCounts.get("read_file") || 0,
+      totalCreates: this.operationCounts.get("create_file") || 0,
+      totalListings: this.operationCounts.get("list_directory") || 0,
       uniqueFilesRead: this.readFiles.size,
       filesCreated: this.createdFiles.size,
       dirsListed: this.directoryListings.size,
@@ -1006,18 +1080,18 @@ export class FileOperationTracker {
 
   private normalizePath(filePath: string): string {
     // Normalize path for comparison
-    return filePath.toLowerCase().replace(/\\/g, '/');
+    return filePath.toLowerCase().replace(/\\/g, "/");
   }
 
   private normalizeFilename(filename: string): string {
     // Remove path, extension, version numbers, and common suffixes
-    const name = filename.split('/').pop() || filename;
+    const name = filename.split("/").pop() || filename;
     return name
       .toLowerCase()
-      .replace(/\.[^.]+$/, '') // Remove extension
-      .replace(/[_-]v?\d+(\.\d+)?/g, '') // Remove version numbers
-      .replace(/[_-](updated|final|new|copy|backup|draft|section)/g, '') // Remove common suffixes
-      .replace(/[_-]+/g, '_') // Normalize separators
+      .replace(/\.[^.]+$/, "") // Remove extension
+      .replace(/[_-]v?\d+(\.\d+)?/g, "") // Remove version numbers
+      .replace(/[_-](updated|final|new|copy|backup|draft|section)/g, "") // Remove common suffixes
+      .replace(/[_-]+/g, "_") // Normalize separators
       .trim();
   }
 
@@ -1069,7 +1143,7 @@ export class FileOperationTracker {
   getLastCreatedDocument(): string | undefined {
     // Find the most recent .docx file that was created
     for (const [_, path] of this.createdFiles.entries()) {
-      if (path.endsWith('.docx') || path.endsWith('.pdf')) {
+      if (path.endsWith(".docx") || path.endsWith(".pdf")) {
         return path;
       }
     }
@@ -1092,22 +1166,22 @@ export class FileOperationTracker {
     // List files that have been read
     if (this.readFiles.size > 0) {
       const files = Array.from(this.readFiles.keys()).slice(0, 10); // Limit to 10 most recent
-      parts.push(`Files already read: ${files.join(', ')}`);
+      parts.push(`Files already read: ${files.join(", ")}`);
     }
 
     // List files that have been created
     if (this.createdFiles.size > 0) {
       const created = Array.from(this.createdFiles.values()).slice(0, 10);
-      parts.push(`Files created: ${created.join(', ')}`);
+      parts.push(`Files created: ${created.join(", ")}`);
     }
 
     // List directories that have been explored
     if (this.directoryListings.size > 0) {
       const dirs = Array.from(this.directoryListings.keys()).slice(0, 5);
-      parts.push(`Directories explored: ${dirs.join(', ')}`);
+      parts.push(`Directories explored: ${dirs.join(", ")}`);
     }
 
-    return parts.join('\n');
+    return parts.join("\n");
   }
 
   /**
@@ -1143,7 +1217,7 @@ export class FileOperationTracker {
     // Restore created files
     if (state.createdFiles) {
       for (const filePath of state.createdFiles) {
-        const normalized = this.normalizeFilename(filePath.split('/').pop() || filePath);
+        const normalized = this.normalizeFilename(filePath.split("/").pop() || filePath);
         this.createdFiles.set(normalized, filePath);
       }
     }
@@ -1155,7 +1229,9 @@ export class FileOperationTracker {
       }
     }
 
-    console.log(`[FileOperationTracker] Restored state: ${state.readFiles?.length || 0} files, ${state.createdFiles?.length || 0} created, ${state.directories?.length || 0} dirs`);
+    console.log(
+      `[FileOperationTracker] Restored state: ${state.readFiles?.length || 0} files, ${state.createdFiles?.length || 0} created, ${state.directories?.length || 0} dirs`,
+    );
   }
 }
 
@@ -1168,7 +1244,7 @@ export function withTimeout<T>(
   promise: Promise<T>,
   timeoutMs: number,
   operation: string,
-  onTimeout?: () => void
+  onTimeout?: () => void,
 ): Promise<T> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
@@ -1204,7 +1280,7 @@ export function calculateBackoffDelay(
   attempt: number,
   initialDelay = INITIAL_BACKOFF_MS,
   maxDelay = MAX_BACKOFF_MS,
-  multiplier = BACKOFF_MULTIPLIER
+  multiplier = BACKOFF_MULTIPLIER,
 ): number {
   // Calculate base delay: initialDelay * multiplier^attempt
   const baseDelay = initialDelay * Math.pow(multiplier, attempt);
@@ -1222,5 +1298,5 @@ export function calculateBackoffDelay(
  * Sleep for a specified duration
  */
 export function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

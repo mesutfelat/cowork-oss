@@ -2,17 +2,17 @@
  * Tests for SSH Tunnel Manager
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from 'vitest';
-import { EventEmitter } from 'events';
+import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from "vitest";
+import { EventEmitter } from "events";
 
 // Mock child_process
 const mockSpawn = vi.fn();
-vi.mock('child_process', () => ({
+vi.mock("child_process", () => ({
   spawn: (...args: unknown[]) => mockSpawn(...args),
 }));
 
 // Mock fs
-vi.mock('fs', () => ({
+vi.mock("fs", () => ({
   default: {
     existsSync: vi.fn(() => true),
   },
@@ -27,7 +27,7 @@ const mockSocket = {
   destroy: vi.fn(),
 };
 
-vi.mock('net', () => ({
+vi.mock("net", () => ({
   default: {
     Socket: vi.fn(() => mockSocket),
   },
@@ -41,8 +41,8 @@ import {
   initSSHTunnelManager,
   shutdownSSHTunnelManager,
   DEFAULT_SSH_TUNNEL_CONFIG,
-} from '../ssh-tunnel';
-import type { SSHTunnelConfig } from '../../../shared/types';
+} from "../ssh-tunnel";
+import type { SSHTunnelConfig } from "../../../shared/types";
 
 // Helper to create a mock process
 function createMockProcess(options?: { emitCloseOnKill?: boolean }) {
@@ -61,7 +61,7 @@ function createMockProcess(options?: { emitCloseOnKill?: boolean }) {
     proc.killed = true;
     // Only emit close if explicitly requested to avoid unhandled errors
     if (emitCloseOnKill) {
-      proc.emit('close', signal === 'SIGTERM' ? 0 : 1, signal);
+      proc.emit("close", signal === "SIGTERM" ? 0 : 1, signal);
     }
   });
   proc.stdin = null;
@@ -70,12 +70,12 @@ function createMockProcess(options?: { emitCloseOnKill?: boolean }) {
   return proc;
 }
 
-describe('SSHTunnelManager', () => {
+describe("SSHTunnelManager", () => {
   let manager: SSHTunnelManager;
 
   const defaultConfig: Partial<SSHTunnelConfig> = {
-    host: 'test-host.example.com',
-    username: 'testuser',
+    host: "test-host.example.com",
+    username: "testuser",
     sshPort: 22,
     localPort: 18789,
     remotePort: 18789,
@@ -95,55 +95,55 @@ describe('SSHTunnelManager', () => {
     shutdownSSHTunnelManager();
   });
 
-  describe('constructor', () => {
-    it('should initialize with default config', () => {
+  describe("constructor", () => {
+    it("should initialize with default config", () => {
       manager = new SSHTunnelManager({});
       const status = manager.getStatus();
 
-      expect(status.state).toBe('disconnected');
+      expect(status.state).toBe("disconnected");
       expect(status.config?.localPort).toBe(DEFAULT_SSH_TUNNEL_CONFIG.localPort);
       expect(status.config?.remotePort).toBe(DEFAULT_SSH_TUNNEL_CONFIG.remotePort);
     });
 
-    it('should merge provided config with defaults', () => {
+    it("should merge provided config with defaults", () => {
       manager = new SSHTunnelManager({
-        host: 'custom-host.com',
-        username: 'customuser',
+        host: "custom-host.com",
+        username: "customuser",
         localPort: 9999,
       });
 
       const status = manager.getStatus();
-      expect(status.config?.host).toBe('custom-host.com');
-      expect(status.config?.username).toBe('customuser');
+      expect(status.config?.host).toBe("custom-host.com");
+      expect(status.config?.username).toBe("customuser");
       expect(status.config?.localPort).toBe(9999);
       expect(status.config?.remotePort).toBe(DEFAULT_SSH_TUNNEL_CONFIG.remotePort);
     });
   });
 
-  describe('getStatus', () => {
-    it('should return disconnected status initially', () => {
+  describe("getStatus", () => {
+    it("should return disconnected status initially", () => {
       manager = new SSHTunnelManager(defaultConfig);
       const status = manager.getStatus();
 
-      expect(status.state).toBe('disconnected');
+      expect(status.state).toBe("disconnected");
       expect(status.connectedAt).toBeUndefined();
       expect(status.error).toBeUndefined();
       expect(status.pid).toBeUndefined();
       expect(status.localEndpoint).toBeUndefined();
     });
 
-    it('should include config in status', () => {
+    it("should include config in status", () => {
       manager = new SSHTunnelManager(defaultConfig);
       const status = manager.getStatus();
 
-      expect(status.config?.host).toBe('test-host.example.com');
-      expect(status.config?.username).toBe('testuser');
+      expect(status.config?.host).toBe("test-host.example.com");
+      expect(status.config?.username).toBe("testuser");
       expect(status.config?.sshPort).toBe(22);
       expect(status.config?.localPort).toBe(18789);
       expect(status.config?.remotePort).toBe(18789);
     });
 
-    it('should not include reconnect attempts initially', () => {
+    it("should not include reconnect attempts initially", () => {
       manager = new SSHTunnelManager(defaultConfig);
       const status = manager.getStatus();
 
@@ -151,38 +151,38 @@ describe('SSHTunnelManager', () => {
     });
   });
 
-  describe('getLocalUrl', () => {
-    it('should return local WebSocket URL', () => {
+  describe("getLocalUrl", () => {
+    it("should return local WebSocket URL", () => {
       manager = new SSHTunnelManager(defaultConfig);
-      expect(manager.getLocalUrl()).toBe('ws://127.0.0.1:18789');
+      expect(manager.getLocalUrl()).toBe("ws://127.0.0.1:18789");
     });
 
-    it('should use configured local port', () => {
+    it("should use configured local port", () => {
       manager = new SSHTunnelManager({ ...defaultConfig, localPort: 9999 });
-      expect(manager.getLocalUrl()).toBe('ws://127.0.0.1:9999');
+      expect(manager.getLocalUrl()).toBe("ws://127.0.0.1:9999");
     });
   });
 
-  describe('connect', () => {
-    it('should reject when host is missing', async () => {
-      manager = new SSHTunnelManager({ username: 'user' });
+  describe("connect", () => {
+    it("should reject when host is missing", async () => {
+      manager = new SSHTunnelManager({ username: "user" });
 
-      await expect(manager.connect()).rejects.toThrow('Invalid SSH tunnel configuration');
-      expect(manager.getStatus().state).toBe('error');
+      await expect(manager.connect()).rejects.toThrow("Invalid SSH tunnel configuration");
+      expect(manager.getStatus().state).toBe("error");
     });
 
-    it('should reject when username is missing', async () => {
-      manager = new SSHTunnelManager({ host: 'host.com' });
+    it("should reject when username is missing", async () => {
+      manager = new SSHTunnelManager({ host: "host.com" });
 
-      await expect(manager.connect()).rejects.toThrow('Invalid SSH tunnel configuration');
-      expect(manager.getStatus().state).toBe('error');
+      await expect(manager.connect()).rejects.toThrow("Invalid SSH tunnel configuration");
+      expect(manager.getStatus().state).toBe("error");
     });
 
-    it('should transition to connecting state', () => {
+    it("should transition to connecting state", () => {
       manager = new SSHTunnelManager(defaultConfig);
 
       const stateChanges: string[] = [];
-      manager.on('stateChange', (state: string) => {
+      manager.on("stateChange", (state: string) => {
         stateChanges.push(state);
       });
 
@@ -190,13 +190,13 @@ describe('SSHTunnelManager', () => {
       manager.connect().catch(() => {});
 
       // Should have transitioned to connecting immediately
-      expect(stateChanges).toContain('connecting');
+      expect(stateChanges).toContain("connecting");
 
       // Clean up
       manager.disconnect();
     });
 
-    it('should not connect if already connecting', () => {
+    it("should not connect if already connecting", () => {
       manager = new SSHTunnelManager(defaultConfig);
 
       // Start first connection (don't await)
@@ -212,32 +212,35 @@ describe('SSHTunnelManager', () => {
       manager.disconnect();
     });
 
-    it('should spawn ssh with correct arguments', async () => {
+    it("should spawn ssh with correct arguments", async () => {
       manager = new SSHTunnelManager({
         ...defaultConfig,
-        keyPath: '~/.ssh/id_rsa',
+        keyPath: "~/.ssh/id_rsa",
       });
 
       // Start connect
       manager.connect().catch(() => {});
 
       expect(mockSpawn).toHaveBeenCalledWith(
-        'ssh',
+        "ssh",
         expect.arrayContaining([
-          '-o', 'BatchMode=yes',
-          '-v',
-          '-i', expect.stringContaining('.ssh/id_rsa'),
-          '-N',
-          '-L', '18789:127.0.0.1:18789',
-          'testuser@test-host.example.com',
+          "-o",
+          "BatchMode=yes",
+          "-v",
+          "-i",
+          expect.stringContaining(".ssh/id_rsa"),
+          "-N",
+          "-L",
+          "18789:127.0.0.1:18789",
+          "testuser@test-host.example.com",
         ]),
-        expect.any(Object)
+        expect.any(Object),
       );
 
       manager.disconnect();
     });
 
-    it('should include custom SSH port in arguments', async () => {
+    it("should include custom SSH port in arguments", async () => {
       manager = new SSHTunnelManager({
         ...defaultConfig,
         sshPort: 2222,
@@ -246,24 +249,24 @@ describe('SSHTunnelManager', () => {
       manager.connect().catch(() => {});
 
       expect(mockSpawn).toHaveBeenCalledWith(
-        'ssh',
-        expect.arrayContaining(['-p', '2222']),
-        expect.any(Object)
+        "ssh",
+        expect.arrayContaining(["-p", "2222"]),
+        expect.any(Object),
       );
 
       manager.disconnect();
     });
   });
 
-  describe('disconnect', () => {
-    it('should transition to disconnected state', () => {
+  describe("disconnect", () => {
+    it("should transition to disconnected state", () => {
       manager = new SSHTunnelManager(defaultConfig);
       manager.disconnect();
 
-      expect(manager.getStatus().state).toBe('disconnected');
+      expect(manager.getStatus().state).toBe("disconnected");
     });
 
-    it('should kill SSH process if running', async () => {
+    it("should kill SSH process if running", async () => {
       const mockProcess = createMockProcess();
       mockSpawn.mockReturnValue(mockProcess);
 
@@ -272,20 +275,20 @@ describe('SSHTunnelManager', () => {
 
       manager.disconnect();
 
-      expect(mockProcess.kill).toHaveBeenCalledWith('SIGTERM');
+      expect(mockProcess.kill).toHaveBeenCalledWith("SIGTERM");
     });
 
-    it('should emit disconnected event', () => {
+    it("should emit disconnected event", () => {
       manager = new SSHTunnelManager(defaultConfig);
       const onDisconnect = vi.fn();
-      manager.on('disconnected', onDisconnect);
+      manager.on("disconnected", onDisconnect);
 
       manager.disconnect();
 
-      expect(onDisconnect).toHaveBeenCalledWith('User requested disconnect');
+      expect(onDisconnect).toHaveBeenCalledWith("User requested disconnect");
     });
 
-    it('should clear connectedAt and error', () => {
+    it("should clear connectedAt and error", () => {
       manager = new SSHTunnelManager(defaultConfig);
       manager.disconnect();
 
@@ -295,8 +298,8 @@ describe('SSHTunnelManager', () => {
     });
   });
 
-  describe('testConnection', () => {
-    it('should return error on timeout', async () => {
+  describe("testConnection", () => {
+    it("should return error on timeout", async () => {
       const mockProcess = createMockProcess();
       // Don't emit close event to simulate timeout
       mockProcess.kill = vi.fn();
@@ -310,10 +313,10 @@ describe('SSHTunnelManager', () => {
 
       const result = await testPromise;
       expect(result.success).toBe(false);
-      expect(result.error).toBe('Connection timeout');
+      expect(result.error).toBe("Connection timeout");
     });
 
-    it('should return success on code 0', async () => {
+    it("should return success on code 0", async () => {
       const mockProcess = createMockProcess();
       mockSpawn.mockReturnValue(mockProcess);
 
@@ -321,14 +324,14 @@ describe('SSHTunnelManager', () => {
       const testPromise = manager.testConnection();
 
       // Simulate successful exit
-      mockProcess.emit('close', 0, null);
+      mockProcess.emit("close", 0, null);
 
       const result = await testPromise;
       expect(result.success).toBe(true);
       expect(result.latencyMs).toBeDefined();
     });
 
-    it('should return error on non-zero exit code', async () => {
+    it("should return error on non-zero exit code", async () => {
       const mockProcess = createMockProcess();
       mockSpawn.mockReturnValue(mockProcess);
 
@@ -336,14 +339,14 @@ describe('SSHTunnelManager', () => {
       const testPromise = manager.testConnection();
 
       // Simulate failed exit
-      mockProcess.emit('close', 255, null);
+      mockProcess.emit("close", 255, null);
 
       const result = await testPromise;
       expect(result.success).toBe(false);
-      expect(result.error).toBe('SSH exited with code 255');
+      expect(result.error).toBe("SSH exited with code 255");
     });
 
-    it('should parse SSH error from stderr', async () => {
+    it("should parse SSH error from stderr", async () => {
       const mockProcess = createMockProcess();
       mockSpawn.mockReturnValue(mockProcess);
 
@@ -351,15 +354,15 @@ describe('SSHTunnelManager', () => {
       const testPromise = manager.testConnection();
 
       // Emit error to stderr
-      mockProcess.stderr?.emit('data', Buffer.from('Permission denied (publickey)'));
-      mockProcess.emit('close', 255, null);
+      mockProcess.stderr?.emit("data", Buffer.from("Permission denied (publickey)"));
+      mockProcess.emit("close", 255, null);
 
       const result = await testPromise;
       expect(result.success).toBe(false);
-      expect(result.error).toContain('Permission denied');
+      expect(result.error).toContain("Permission denied");
     });
 
-    it('should handle spawn error', async () => {
+    it("should handle spawn error", async () => {
       const mockProcess = createMockProcess();
       mockSpawn.mockReturnValue(mockProcess);
 
@@ -367,36 +370,36 @@ describe('SSHTunnelManager', () => {
       const testPromise = manager.testConnection();
 
       // Emit error
-      mockProcess.emit('error', new Error('Command not found'));
+      mockProcess.emit("error", new Error("Command not found"));
 
       const result = await testPromise;
       expect(result.success).toBe(false);
-      expect(result.error).toBe('Command not found');
+      expect(result.error).toBe("Command not found");
     });
   });
 
-  describe('updateConfig', () => {
-    it('should update configuration', () => {
+  describe("updateConfig", () => {
+    it("should update configuration", () => {
       manager = new SSHTunnelManager(defaultConfig);
-      manager.updateConfig({ host: 'new-host.com' });
+      manager.updateConfig({ host: "new-host.com" });
 
-      expect(manager.getStatus().config?.host).toBe('new-host.com');
+      expect(manager.getStatus().config?.host).toBe("new-host.com");
     });
 
-    it('should preserve other config values', () => {
+    it("should preserve other config values", () => {
       manager = new SSHTunnelManager(defaultConfig);
-      manager.updateConfig({ host: 'new-host.com' });
+      manager.updateConfig({ host: "new-host.com" });
 
-      expect(manager.getStatus().config?.username).toBe('testuser');
+      expect(manager.getStatus().config?.username).toBe("testuser");
       expect(manager.getStatus().config?.localPort).toBe(18789);
     });
   });
 
-  describe('event emission', () => {
-    it('should emit stateChange on state transitions', () => {
+  describe("event emission", () => {
+    it("should emit stateChange on state transitions", () => {
       manager = new SSHTunnelManager(defaultConfig);
       const onStateChange = vi.fn();
-      manager.on('stateChange', onStateChange);
+      manager.on("stateChange", onStateChange);
 
       manager.disconnect();
 
@@ -404,27 +407,27 @@ describe('SSHTunnelManager', () => {
       expect(onStateChange).not.toHaveBeenCalled();
     });
 
-    it('should emit output event on stderr data', async () => {
+    it("should emit output event on stderr data", async () => {
       const mockProcess = createMockProcess();
       mockSpawn.mockReturnValue(mockProcess);
 
       manager = new SSHTunnelManager(defaultConfig);
       const onOutput = vi.fn();
-      manager.on('output', onOutput);
+      manager.on("output", onOutput);
 
       manager.connect().catch(() => {});
 
       // Emit some output
-      mockProcess.stderr?.emit('data', Buffer.from('debug1: Connection established'));
+      mockProcess.stderr?.emit("data", Buffer.from("debug1: Connection established"));
 
-      expect(onOutput).toHaveBeenCalledWith('debug1: Connection established');
+      expect(onOutput).toHaveBeenCalledWith("debug1: Connection established");
 
       manager.disconnect();
     });
   });
 });
 
-describe('Singleton functions', () => {
+describe("Singleton functions", () => {
   beforeEach(() => {
     shutdownSSHTunnelManager();
     vi.clearAllMocks();
@@ -434,43 +437,43 @@ describe('Singleton functions', () => {
     shutdownSSHTunnelManager();
   });
 
-  describe('getSSHTunnelManager', () => {
-    it('should return null when not initialized', () => {
+  describe("getSSHTunnelManager", () => {
+    it("should return null when not initialized", () => {
       expect(getSSHTunnelManager()).toBeNull();
     });
 
-    it('should return manager after initialization', () => {
+    it("should return manager after initialization", () => {
       const manager = initSSHTunnelManager({
-        host: 'localhost',
-        username: 'user',
+        host: "localhost",
+        username: "user",
       });
 
       expect(getSSHTunnelManager()).toBe(manager);
     });
   });
 
-  describe('initSSHTunnelManager', () => {
-    it('should create a new manager', () => {
+  describe("initSSHTunnelManager", () => {
+    it("should create a new manager", () => {
       const manager = initSSHTunnelManager({
-        host: 'localhost',
-        username: 'testuser',
+        host: "localhost",
+        username: "testuser",
       });
 
       expect(manager).toBeInstanceOf(SSHTunnelManager);
       expect(getSSHTunnelManager()).toBe(manager);
     });
 
-    it('should disconnect previous manager when reinitializing', () => {
+    it("should disconnect previous manager when reinitializing", () => {
       const manager1 = initSSHTunnelManager({
-        host: 'host1.com',
-        username: 'user1',
+        host: "host1.com",
+        username: "user1",
       });
 
-      const disconnectSpy = vi.spyOn(manager1, 'disconnect');
+      const disconnectSpy = vi.spyOn(manager1, "disconnect");
 
       const manager2 = initSSHTunnelManager({
-        host: 'host2.com',
-        username: 'user2',
+        host: "host2.com",
+        username: "user2",
       });
 
       expect(disconnectSpy).toHaveBeenCalled();
@@ -478,12 +481,12 @@ describe('Singleton functions', () => {
       expect(manager1).not.toBe(manager2);
     });
 
-    it('should create manager with all options', () => {
+    it("should create manager with all options", () => {
       const manager = initSSHTunnelManager({
-        host: 'localhost',
-        username: 'testuser',
+        host: "localhost",
+        username: "testuser",
         sshPort: 2222,
-        keyPath: '~/.ssh/custom_key',
+        keyPath: "~/.ssh/custom_key",
         localPort: 9999,
         remotePort: 8888,
         autoReconnect: true,
@@ -499,14 +502,14 @@ describe('Singleton functions', () => {
     });
   });
 
-  describe('shutdownSSHTunnelManager', () => {
-    it('should disconnect and clear the manager', () => {
+  describe("shutdownSSHTunnelManager", () => {
+    it("should disconnect and clear the manager", () => {
       const manager = initSSHTunnelManager({
-        host: 'localhost',
-        username: 'testuser',
+        host: "localhost",
+        username: "testuser",
       });
 
-      const disconnectSpy = vi.spyOn(manager, 'disconnect');
+      const disconnectSpy = vi.spyOn(manager, "disconnect");
 
       shutdownSSHTunnelManager();
 
@@ -514,22 +517,22 @@ describe('Singleton functions', () => {
       expect(getSSHTunnelManager()).toBeNull();
     });
 
-    it('should do nothing when no manager exists', () => {
+    it("should do nothing when no manager exists", () => {
       expect(() => shutdownSSHTunnelManager()).not.toThrow();
     });
 
-    it('should allow reinitialization after shutdown', () => {
+    it("should allow reinitialization after shutdown", () => {
       const manager1 = initSSHTunnelManager({
-        host: 'host1.com',
-        username: 'user1',
+        host: "host1.com",
+        username: "user1",
       });
 
       shutdownSSHTunnelManager();
       expect(getSSHTunnelManager()).toBeNull();
 
       const manager2 = initSSHTunnelManager({
-        host: 'host2.com',
-        username: 'user2',
+        host: "host2.com",
+        username: "user2",
       });
 
       expect(getSSHTunnelManager()).toBe(manager2);
@@ -538,13 +541,13 @@ describe('Singleton functions', () => {
   });
 });
 
-describe('DEFAULT_SSH_TUNNEL_CONFIG', () => {
-  it('should have correct default values', () => {
+describe("DEFAULT_SSH_TUNNEL_CONFIG", () => {
+  it("should have correct default values", () => {
     expect(DEFAULT_SSH_TUNNEL_CONFIG.enabled).toBe(false);
     expect(DEFAULT_SSH_TUNNEL_CONFIG.sshPort).toBe(22);
     expect(DEFAULT_SSH_TUNNEL_CONFIG.localPort).toBe(18789);
     expect(DEFAULT_SSH_TUNNEL_CONFIG.remotePort).toBe(18789);
-    expect(DEFAULT_SSH_TUNNEL_CONFIG.remoteBindAddress).toBe('127.0.0.1');
+    expect(DEFAULT_SSH_TUNNEL_CONFIG.remoteBindAddress).toBe("127.0.0.1");
     expect(DEFAULT_SSH_TUNNEL_CONFIG.autoReconnect).toBe(true);
     expect(DEFAULT_SSH_TUNNEL_CONFIG.reconnectDelayMs).toBe(5000);
     expect(DEFAULT_SSH_TUNNEL_CONFIG.maxReconnectAttempts).toBe(10);
@@ -552,7 +555,7 @@ describe('DEFAULT_SSH_TUNNEL_CONFIG', () => {
   });
 });
 
-describe('SSH argument building', () => {
+describe("SSH argument building", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSpawn.mockReturnValue(createMockProcess());
@@ -562,45 +565,51 @@ describe('SSH argument building', () => {
     shutdownSSHTunnelManager();
   });
 
-  it('should include standard SSH options', () => {
+  it("should include standard SSH options", () => {
     const manager = new SSHTunnelManager({
-      host: 'test.com',
-      username: 'user',
+      host: "test.com",
+      username: "user",
     });
 
     manager.connect().catch(() => {});
 
     expect(mockSpawn).toHaveBeenCalledWith(
-      'ssh',
+      "ssh",
       expect.arrayContaining([
-        '-o', 'BatchMode=yes',
-        '-o', 'StrictHostKeyChecking=accept-new',
-        '-o', 'ServerAliveInterval=30',
-        '-o', 'ServerAliveCountMax=3',
-        '-o', 'ExitOnForwardFailure=yes',
-        '-o', 'ConnectTimeout=30',
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "StrictHostKeyChecking=accept-new",
+        "-o",
+        "ServerAliveInterval=30",
+        "-o",
+        "ServerAliveCountMax=3",
+        "-o",
+        "ExitOnForwardFailure=yes",
+        "-o",
+        "ConnectTimeout=30",
       ]),
-      expect.any(Object)
+      expect.any(Object),
     );
 
     manager.disconnect();
   });
 
-  it('should use custom remote bind address', () => {
+  it("should use custom remote bind address", () => {
     const manager = new SSHTunnelManager({
-      host: 'test.com',
-      username: 'user',
+      host: "test.com",
+      username: "user",
       localPort: 8080,
       remotePort: 9090,
-      remoteBindAddress: '0.0.0.0',
+      remoteBindAddress: "0.0.0.0",
     });
 
     manager.connect().catch(() => {});
 
     expect(mockSpawn).toHaveBeenCalledWith(
-      'ssh',
-      expect.arrayContaining(['-L', '8080:0.0.0.0:9090']),
-      expect.any(Object)
+      "ssh",
+      expect.arrayContaining(["-L", "8080:0.0.0.0:9090"]),
+      expect.any(Object),
     );
 
     manager.disconnect();

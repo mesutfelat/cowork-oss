@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from "react";
 
 interface TypewriterTextProps {
   text: string;
@@ -13,14 +13,14 @@ export function TypewriterText({
   speed = 50,
   onComplete,
   showCursor = true,
-  className = '',
+  className = "",
 }: TypewriterTextProps) {
-  const [displayedText, setDisplayedText] = useState('');
+  const [displayedText, setDisplayedText] = useState("");
   const [isComplete, setIsComplete] = useState(false);
 
   useEffect(() => {
     // Reset when text changes
-    setDisplayedText('');
+    setDisplayedText("");
     setIsComplete(false);
 
     if (!text) {
@@ -48,7 +48,7 @@ export function TypewriterText({
     <div className={`onboarding-typewriter ${className}`}>
       <span>{displayedText}</span>
       {showCursor && (
-        <span className={`onboarding-typewriter-cursor ${isComplete ? 'hidden' : ''}`} />
+        <span className={`onboarding-typewriter-cursor ${isComplete ? "hidden" : ""}`} />
       )}
     </div>
   );
@@ -56,12 +56,12 @@ export function TypewriterText({
 
 // Hook version for more control
 export function useTypewriter(text: string, speed = 50) {
-  const [displayedText, setDisplayedText] = useState('');
+  const [displayedText, setDisplayedText] = useState("");
   const [isComplete, setIsComplete] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
 
   const start = useCallback(() => {
-    setDisplayedText('');
+    setDisplayedText("");
     setIsComplete(false);
     setIsTyping(true);
   }, []);

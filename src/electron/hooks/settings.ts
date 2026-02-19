@@ -5,9 +5,9 @@
  * Settings are stored encrypted in the database using SecureSettingsRepository.
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
-import crypto from 'crypto';
+import * as fs from "fs";
+import * as path from "path";
+import crypto from "crypto";
 import {
   HooksConfig,
   GmailHooksConfig,
@@ -24,20 +24,20 @@ import {
   DEFAULT_GMAIL_RENEW_MINUTES,
   DEFAULT_GMAIL_SUBSCRIPTION,
   DEFAULT_GMAIL_TOPIC,
-} from './types';
-import { SecureSettingsRepository } from '../database/SecureSettingsRepository';
-import { getUserDataDir } from '../utils/user-data-dir';
-import { getSafeStorage } from '../utils/safe-storage';
+} from "./types";
+import { SecureSettingsRepository } from "../database/SecureSettingsRepository";
+import { getUserDataDir } from "../utils/user-data-dir";
+import { getSafeStorage } from "../utils/safe-storage";
 
-const LEGACY_SETTINGS_FILE = 'hooks-settings.json';
-const MASKED_VALUE = '***configured***';
-const ENCRYPTED_PREFIX = 'encrypted:';
+const LEGACY_SETTINGS_FILE = "hooks-settings.json";
+const MASKED_VALUE = "***configured***";
+const ENCRYPTED_PREFIX = "encrypted:";
 
 /**
  * Generate a secure random token
  */
 export function generateHookToken(bytes = 24): string {
-  return crypto.randomBytes(bytes).toString('hex');
+  return crypto.randomBytes(bytes).toString("hex");
 }
 
 /**
@@ -52,10 +52,10 @@ function encryptSecret(value?: string): string | undefined {
     const safeStorage = getSafeStorage();
     if (safeStorage?.isEncryptionAvailable()) {
       const encrypted = safeStorage.encryptString(trimmed);
-      return ENCRYPTED_PREFIX + encrypted.toString('base64');
+      return ENCRYPTED_PREFIX + encrypted.toString("base64");
     }
   } catch (error) {
-    console.warn('[Hooks Settings] Failed to encrypt secret, storing masked:', error);
+    console.warn("[Hooks Settings] Failed to encrypt secret, storing masked:", error);
   }
   // Fallback to masked value if encryption fails
   return MASKED_VALUE;
@@ -72,14 +72,16 @@ function decryptSecret(value?: string): string | undefined {
     try {
       const safeStorage = getSafeStorage();
       if (safeStorage?.isEncryptionAvailable()) {
-        const encrypted = Buffer.from(value.slice(ENCRYPTED_PREFIX.length), 'base64');
+        const encrypted = Buffer.from(value.slice(ENCRYPTED_PREFIX.length), "base64");
         const decrypted = safeStorage.decryptString(encrypted);
         return decrypted;
       } else {
-        console.error('[Hooks Settings] safeStorage encryption not available - cannot decrypt secrets');
+        console.error(
+          "[Hooks Settings] safeStorage encryption not available - cannot decrypt secrets",
+        );
       }
     } catch (error: any) {
-      console.error('[Hooks Settings] Failed to decrypt secret:', error.message || error);
+      console.error("[Hooks Settings] Failed to decrypt secret:", error.message || error);
     }
   }
 
@@ -97,11 +99,13 @@ function decryptSecret(value?: string): string | undefined {
 function encryptSettings(settings: HooksConfig): HooksConfig {
   return {
     ...settings,
-    token: encryptSecret(settings.token) || '',
-    gmail: settings.gmail ? {
-      ...settings.gmail,
-      pushToken: encryptSecret(settings.gmail.pushToken),
-    } : undefined,
+    token: encryptSecret(settings.token) || "",
+    gmail: settings.gmail
+      ? {
+          ...settings.gmail,
+          pushToken: encryptSecret(settings.gmail.pushToken),
+        }
+      : undefined,
     resend: settings.resend
       ? {
           ...settings.resend,
@@ -117,11 +121,13 @@ function encryptSettings(settings: HooksConfig): HooksConfig {
 function decryptSettings(settings: HooksConfig): HooksConfig {
   return {
     ...settings,
-    token: decryptSecret(settings.token) || '',
-    gmail: settings.gmail ? {
-      ...settings.gmail,
-      pushToken: decryptSecret(settings.gmail.pushToken),
-    } : undefined,
+    token: decryptSecret(settings.token) || "",
+    gmail: settings.gmail
+      ? {
+          ...settings.gmail,
+          pushToken: decryptSecret(settings.gmail.pushToken),
+        }
+      : undefined,
     resend: settings.resend
       ? {
           ...settings.resend,
@@ -150,7 +156,7 @@ export class HooksSettingsManager {
     this.legacySettingsPath = path.join(userDataPath, LEGACY_SETTINGS_FILE);
     this.initialized = true;
 
-    console.log('[Hooks Settings] Initialized');
+    console.log("[Hooks Settings] Initialized");
 
     // Migrate from legacy JSON file to encrypted database
     this.migrateFromLegacyFile();
@@ -164,31 +170,35 @@ export class HooksSettingsManager {
 
     try {
       if (!SecureSettingsRepository.isInitialized()) {
-        console.log('[Hooks Settings] SecureSettingsRepository not yet initialized, skipping migration');
+        console.log(
+          "[Hooks Settings] SecureSettingsRepository not yet initialized, skipping migration",
+        );
         return;
       }
 
       const repository = SecureSettingsRepository.getInstance();
 
-      if (repository.exists('hooks')) {
+      if (repository.exists("hooks")) {
         this.migrationCompleted = true;
         return;
       }
 
       if (!fs.existsSync(this.legacySettingsPath)) {
-        console.log('[Hooks Settings] No legacy settings file found');
+        console.log("[Hooks Settings] No legacy settings file found");
         this.migrationCompleted = true;
         return;
       }
 
-      console.log('[Hooks Settings] Migrating settings from legacy JSON file to encrypted database...');
+      console.log(
+        "[Hooks Settings] Migrating settings from legacy JSON file to encrypted database...",
+      );
 
       // Create backup before migration
-      const backupPath = this.legacySettingsPath + '.migration-backup';
+      const backupPath = this.legacySettingsPath + ".migration-backup";
       fs.copyFileSync(this.legacySettingsPath, backupPath);
 
       try {
-        const data = fs.readFileSync(this.legacySettingsPath, 'utf-8');
+        const data = fs.readFileSync(this.legacySettingsPath, "utf-8");
         const parsed = JSON.parse(data);
 
         const merged: HooksConfig = {
@@ -201,21 +211,21 @@ export class HooksSettingsManager {
         // Decrypt any existing encrypted values before saving to the new encrypted database
         const decrypted = decryptSettings(merged);
 
-        repository.save('hooks', decrypted);
-        console.log('[Hooks Settings] Settings migrated to encrypted database');
+        repository.save("hooks", decrypted);
+        console.log("[Hooks Settings] Settings migrated to encrypted database");
 
         // Migration successful - delete backup and original
         fs.unlinkSync(backupPath);
         fs.unlinkSync(this.legacySettingsPath);
-        console.log('[Hooks Settings] Migration complete, cleaned up legacy files');
+        console.log("[Hooks Settings] Migration complete, cleaned up legacy files");
 
         this.migrationCompleted = true;
       } catch (migrationError) {
-        console.error('[Hooks Settings] Migration failed, backup preserved at:', backupPath);
+        console.error("[Hooks Settings] Migration failed, backup preserved at:", backupPath);
         throw migrationError;
       }
     } catch (error) {
-      console.error('[Hooks Settings] Migration failed:', error);
+      console.error("[Hooks Settings] Migration failed:", error);
     }
   }
 
@@ -232,7 +242,7 @@ export class HooksSettingsManager {
     try {
       if (SecureSettingsRepository.isInitialized()) {
         const repository = SecureSettingsRepository.getInstance();
-        const stored = repository.load<HooksConfig>('hooks');
+        const stored = repository.load<HooksConfig>("hooks");
         if (stored) {
           const merged: HooksConfig = {
             ...DEFAULT_HOOKS_CONFIG,
@@ -241,15 +251,15 @@ export class HooksSettingsManager {
             presets: stored.presets || [],
           };
           this.cachedSettings = merged;
-          console.log('[Hooks Settings] Loaded settings from encrypted database');
+          console.log("[Hooks Settings] Loaded settings from encrypted database");
           return this.cachedSettings;
         }
       }
     } catch (error) {
-      console.error('[Hooks Settings] Failed to load settings:', error);
+      console.error("[Hooks Settings] Failed to load settings:", error);
     }
 
-    console.log('[Hooks Settings] No settings found, using defaults');
+    console.log("[Hooks Settings] No settings found, using defaults");
     this.cachedSettings = { ...DEFAULT_HOOKS_CONFIG };
     return this.cachedSettings;
   }
@@ -262,15 +272,15 @@ export class HooksSettingsManager {
 
     try {
       if (!SecureSettingsRepository.isInitialized()) {
-        throw new Error('SecureSettingsRepository not initialized');
+        throw new Error("SecureSettingsRepository not initialized");
       }
 
       const repository = SecureSettingsRepository.getInstance();
-      repository.save('hooks', settings);
+      repository.save("hooks", settings);
       this.cachedSettings = settings;
-      console.log('[Hooks Settings] Saved settings to encrypted database');
+      console.log("[Hooks Settings] Saved settings to encrypted database");
     } catch (error) {
-      console.error('[Hooks Settings] Failed to save settings:', error);
+      console.error("[Hooks Settings] Failed to save settings:", error);
       throw error;
     }
   }
@@ -398,8 +408,8 @@ export class HooksSettingsManager {
     };
 
     // Auto-add gmail preset if account is configured
-    if (gmailConfig.account && !settings.presets.includes('gmail')) {
-      settings.presets.push('gmail');
+    if (gmailConfig.account && !settings.presets.includes("gmail")) {
+      settings.presets.push("gmail");
     }
 
     this.saveSettings(settings);
@@ -432,7 +442,7 @@ export class HooksSettingsManager {
         path: gmail.serve?.path || DEFAULT_GMAIL_SERVE_PATH,
       },
       tailscale: {
-        mode: gmail.tailscale?.mode || 'off',
+        mode: gmail.tailscale?.mode || "off",
         path: gmail.tailscale?.path || DEFAULT_GMAIL_SERVE_PATH,
         target: gmail.tailscale?.target,
       },
@@ -447,11 +457,13 @@ export class HooksSettingsManager {
 
     return {
       ...settings,
-      token: settings.token ? MASKED_VALUE : '',
-      gmail: settings.gmail ? {
-        ...settings.gmail,
-        pushToken: settings.gmail.pushToken ? MASKED_VALUE : undefined,
-      } : undefined,
+      token: settings.token ? MASKED_VALUE : "",
+      gmail: settings.gmail
+        ? {
+            ...settings.gmail,
+            pushToken: settings.gmail.pushToken ? MASKED_VALUE : undefined,
+          }
+        : undefined,
       resend: settings.resend
         ? {
             ...settings.resend,
@@ -471,8 +483,8 @@ export class HooksSettingsManager {
       ...resendConfig,
     };
 
-    if (resendConfig.webhookSecret && !settings.presets.includes('resend')) {
-      settings.presets.push('resend');
+    if (resendConfig.webhookSecret && !settings.presets.includes("resend")) {
+      settings.presets.push("resend");
     }
 
     this.saveSettings(settings);

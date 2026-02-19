@@ -2,7 +2,7 @@
  * Tests for MCP Settings Manager - batch mode for startup optimization
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from "vitest";
 
 let writeCount = 0;
 let mockStoredSettings: Record<string, unknown> | undefined = undefined;
@@ -15,7 +15,7 @@ const mockRepositoryLoad = vi.fn().mockImplementation(() => mockStoredSettings);
 const mockRepositoryExists = vi.fn().mockImplementation(() => mockStoredSettings !== undefined);
 
 // Mock SecureSettingsRepository
-vi.mock('../../database/SecureSettingsRepository', () => ({
+vi.mock("../../database/SecureSettingsRepository", () => ({
   SecureSettingsRepository: {
     isInitialized: vi.fn().mockReturnValue(true),
     getInstance: vi.fn().mockImplementation(() => ({
@@ -27,17 +27,17 @@ vi.mock('../../database/SecureSettingsRepository', () => ({
 }));
 
 // Mock fs module (legacy migration path)
-vi.mock('node:fs', () => ({
+vi.mock("node:fs", () => ({
   default: {
     existsSync: vi.fn().mockReturnValue(false),
-    readFileSync: vi.fn().mockReturnValue('{}'),
+    readFileSync: vi.fn().mockReturnValue("{}"),
     writeFileSync: vi.fn(),
     mkdirSync: vi.fn(),
     copyFileSync: vi.fn(),
     unlinkSync: vi.fn(),
   },
   existsSync: vi.fn().mockReturnValue(false),
-  readFileSync: vi.fn().mockReturnValue('{}'),
+  readFileSync: vi.fn().mockReturnValue("{}"),
   writeFileSync: vi.fn(),
   mkdirSync: vi.fn(),
   copyFileSync: vi.fn(),
@@ -45,9 +45,9 @@ vi.mock('node:fs', () => ({
 }));
 
 // Mock electron
-vi.mock('electron', () => ({
+vi.mock("electron", () => ({
   app: {
-    getPath: vi.fn().mockReturnValue('/mock/user/data'),
+    getPath: vi.fn().mockReturnValue("/mock/user/data"),
   },
   safeStorage: {
     isEncryptionAvailable: vi.fn().mockReturnValue(false),
@@ -57,9 +57,9 @@ vi.mock('electron', () => ({
 }));
 
 // Import after mocking
-import { MCPSettingsManager } from '../settings';
+import { MCPSettingsManager } from "../settings";
 
-describe('MCPSettingsManager batch mode', () => {
+describe("MCPSettingsManager batch mode", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     writeCount = 0;
@@ -68,7 +68,7 @@ describe('MCPSettingsManager batch mode', () => {
     (MCPSettingsManager as any).migrationCompleted = false;
   });
 
-  it('should defer saves when in batch mode', () => {
+  it("should defer saves when in batch mode", () => {
     MCPSettingsManager.beginBatch();
 
     const settings = MCPSettingsManager.loadSettings();
@@ -79,7 +79,7 @@ describe('MCPSettingsManager batch mode', () => {
     expect(writeCount).toBe(0);
   });
 
-  it('should save once when ending batch mode with pending changes', () => {
+  it("should save once when ending batch mode with pending changes", () => {
     MCPSettingsManager.beginBatch();
 
     const settings = MCPSettingsManager.loadSettings();
@@ -96,14 +96,14 @@ describe('MCPSettingsManager batch mode', () => {
     expect(writeCount).toBe(1);
   });
 
-  it('should not save when ending batch mode without changes', () => {
+  it("should not save when ending batch mode without changes", () => {
     MCPSettingsManager.beginBatch();
     MCPSettingsManager.endBatch();
 
     expect(writeCount).toBe(0);
   });
 
-  it('should update cache immediately even in batch mode', () => {
+  it("should update cache immediately even in batch mode", () => {
     MCPSettingsManager.beginBatch();
 
     const settings = MCPSettingsManager.loadSettings();
@@ -117,7 +117,7 @@ describe('MCPSettingsManager batch mode', () => {
     MCPSettingsManager.endBatch();
   });
 
-  it('should save normally after batch mode ends', () => {
+  it("should save normally after batch mode ends", () => {
     MCPSettingsManager.beginBatch();
     MCPSettingsManager.endBatch();
 
@@ -129,27 +129,25 @@ describe('MCPSettingsManager batch mode', () => {
     expect(writeCount).toBe(1);
   });
 
-  it('should normalize local connector command paths to current runtime', () => {
+  it("should normalize local connector command paths to current runtime", () => {
     mockStoredSettings = {
       servers: [
         {
-          id: 'salesforce-1',
-          name: 'Salesforce',
+          id: "salesforce-1",
+          name: "Salesforce",
           enabled: true,
-          transport: 'stdio',
-          command: '/Users/example/project/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron',
-          args: [
-            '--runAsNode',
-            '/Users/example/project/connectors/salesforce-mcp/dist/index.js',
-          ],
+          transport: "stdio",
+          command:
+            "/Users/example/project/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron",
+          args: ["--runAsNode", "/Users/example/project/connectors/salesforce-mcp/dist/index.js"],
         },
       ],
       autoConnect: true,
-      toolNamePrefix: 'mcp_',
+      toolNamePrefix: "mcp_",
       maxReconnectAttempts: 5,
       reconnectDelayMs: 1000,
       registryEnabled: true,
-      registryUrl: 'https://registry.modelcontextprotocol.io/servers.json',
+      registryUrl: "https://registry.modelcontextprotocol.io/servers.json",
       hostEnabled: false,
     };
 
@@ -157,8 +155,8 @@ describe('MCPSettingsManager batch mode', () => {
     const server = settings.servers[0];
 
     expect(server.command).toBe(process.execPath);
-    expect(server.args?.[0]).toBe('--runAsNode');
-    expect(server.args?.[1]).toContain('/connectors/salesforce-mcp/dist/index.js');
+    expect(server.args?.[0]).toBe("--runAsNode");
+    expect(server.args?.[1]).toContain("/connectors/salesforce-mcp/dist/index.js");
     expect(writeCount).toBe(1);
   });
 });

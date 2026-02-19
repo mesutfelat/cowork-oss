@@ -3,7 +3,7 @@
  * Handles job lifecycle, timer management, and task creation
  */
 
-import { v4 as uuidv4 } from 'uuid';
+import { v4 as uuidv4 } from "uuid";
 import type {
   CronJob,
   CronJobCreate,
@@ -20,10 +20,10 @@ import type {
   CronRunHistoryEntry,
   CronRunHistoryResult,
   CronWebhookConfig,
-} from './types';
-import { loadCronStore, saveCronStore, resolveCronStorePath } from './store';
-import { computeNextRunAtMs } from './schedule';
-import { CronWebhookServer } from './webhook';
+} from "./types";
+import { loadCronStore, saveCronStore, resolveCronStorePath } from "./store";
+import { computeNextRunAtMs } from "./schedule";
+import { CronWebhookServer } from "./webhook";
 
 // Maximum timeout value to prevent overflow warnings (2^31 - 1 ms, ~24.8 days)
 const MAX_TIMEOUT_MS = 2147483647;
@@ -35,14 +35,29 @@ const DEFAULT_MAX_HISTORY_ENTRIES = 10;
 
 // Default logger
 const defaultLog = {
-  debug: (msg: string, data?: unknown) => console.log(`[Cron] ${msg}`, data ?? ''),
-  info: (msg: string, data?: unknown) => console.log(`[Cron] ${msg}`, data ?? ''),
-  warn: (msg: string, data?: unknown) => console.warn(`[Cron] ${msg}`, data ?? ''),
-  error: (msg: string, data?: unknown) => console.error(`[Cron] ${msg}`, data ?? ''),
+  debug: (msg: string, data?: unknown) => console.log(`[Cron] ${msg}`, data ?? ""),
+  info: (msg: string, data?: unknown) => console.log(`[Cron] ${msg}`, data ?? ""),
+  warn: (msg: string, data?: unknown) => console.warn(`[Cron] ${msg}`, data ?? ""),
+  error: (msg: string, data?: unknown) => console.error(`[Cron] ${msg}`, data ?? ""),
 };
 
 interface CronServiceState {
-  deps: Required<Omit<CronServiceDeps, 'nowMs' | 'onEvent' | 'log' | 'maxConcurrentRuns' | 'defaultTimeoutMs' | 'maxHistoryEntries' | 'webhook' | 'deliverToChannel' | 'getTaskStatus' | 'getTaskResultText' | 'resolveTemplateVariables'>> & {
+  deps: Required<
+    Omit<
+      CronServiceDeps,
+      | "nowMs"
+      | "onEvent"
+      | "log"
+      | "maxConcurrentRuns"
+      | "defaultTimeoutMs"
+      | "maxHistoryEntries"
+      | "webhook"
+      | "deliverToChannel"
+      | "getTaskStatus"
+      | "getTaskResultText"
+      | "resolveTemplateVariables"
+    >
+  > & {
     nowMs: () => number;
     onEvent?: (evt: CronEvent) => void;
     log: typeof defaultLog;
@@ -50,10 +65,10 @@ interface CronServiceState {
     defaultTimeoutMs: number;
     maxHistoryEntries: number;
     webhook?: CronWebhookConfig;
-    getTaskStatus?: CronServiceDeps['getTaskStatus'];
-    getTaskResultText?: CronServiceDeps['getTaskResultText'];
-    deliverToChannel?: CronServiceDeps['deliverToChannel'];
-    resolveTemplateVariables?: CronServiceDeps['resolveTemplateVariables'];
+    getTaskStatus?: CronServiceDeps["getTaskStatus"];
+    getTaskResultText?: CronServiceDeps["getTaskResultText"];
+    deliverToChannel?: CronServiceDeps["deliverToChannel"];
+    resolveTemplateVariables?: CronServiceDeps["resolveTemplateVariables"];
   };
   store: CronStoreFile | null;
   timer: ReturnType<typeof setTimeout> | null;
@@ -99,7 +114,7 @@ export class CronService {
       const { deps, log } = this.getContext();
 
       if (!deps.cronEnabled) {
-        log.info('Cron service disabled');
+        log.info("Cron service disabled");
         return;
       }
 
@@ -144,7 +159,7 @@ export class CronService {
 
       // Set up the trigger handler
       this.state.webhookServer.setTriggerHandler(async (jobId, force) => {
-        return this.run(jobId, force ? 'force' : 'due');
+        return this.run(jobId, force ? "force" : "due");
       });
 
       // Set up job lookup
@@ -156,7 +171,7 @@ export class CronService {
       await this.state.webhookServer.start();
       log.info(`Webhook server started on port ${deps.webhook.port}`);
     } catch (error) {
-      log.error('Failed to start webhook server:', error);
+      log.error("Failed to start webhook server:", error);
     }
   }
 
@@ -173,7 +188,7 @@ export class CronService {
     }
 
     this.state.store = null;
-    this.getContext().log.info('Cron service stopped');
+    this.getContext().log.info("Cron service stopped");
   }
 
   /**
@@ -301,7 +316,7 @@ export class CronService {
       this.armTimer();
 
       log.info(`Added job: ${job.name} (${job.id})`);
-      this.emit({ jobId: job.id, action: 'added', nextRunAtMs: job.state.nextRunAtMs });
+      this.emit({ jobId: job.id, action: "added", nextRunAtMs: job.state.nextRunAtMs });
 
       return { ok: true, job };
     });
@@ -318,7 +333,7 @@ export class CronService {
 
       const index = store.jobs.findIndex((j) => j.id === id);
       if (index === -1) {
-        return { ok: false, error: 'Job not found' };
+        return { ok: false, error: "Job not found" };
       }
 
       const job = store.jobs[index];
@@ -358,7 +373,7 @@ export class CronService {
       this.armTimer();
 
       log.info(`Updated job: ${job.name} (${job.id})`);
-      this.emit({ jobId: job.id, action: 'updated', nextRunAtMs: job.state.nextRunAtMs });
+      this.emit({ jobId: job.id, action: "updated", nextRunAtMs: job.state.nextRunAtMs });
 
       return { ok: true, job };
     });
@@ -384,7 +399,7 @@ export class CronService {
       this.armTimer();
 
       log.info(`Removed job: ${job.name} (${job.id})`);
-      this.emit({ jobId: id, action: 'removed' });
+      this.emit({ jobId: id, action: "removed" });
 
       return { ok: true, removed: true };
     });
@@ -393,7 +408,7 @@ export class CronService {
   /**
    * Run a job immediately or when due
    */
-  async run(id: string, mode: 'due' | 'force' = 'due'): Promise<CronRunResult> {
+  async run(id: string, mode: "due" | "force" = "due"): Promise<CronRunResult> {
     return this.withLock(async () => {
       const { deps, log } = this.getContext();
       const store = this.ensureStore();
@@ -401,18 +416,18 @@ export class CronService {
 
       const job = store.jobs.find((j) => j.id === id);
       if (!job) {
-        return { ok: true, ran: false, reason: 'not-found' };
+        return { ok: true, ran: false, reason: "not-found" };
       }
 
-      if (!job.enabled && mode !== 'force') {
-        return { ok: true, ran: false, reason: 'disabled' };
+      if (!job.enabled && mode !== "force") {
+        return { ok: true, ran: false, reason: "disabled" };
       }
 
       // Check if due (unless forcing)
-      if (mode === 'due') {
+      if (mode === "due") {
         const nextRun = job.state.nextRunAtMs;
         if (!nextRun || nextRun > nowMs) {
-          return { ok: true, ran: false, reason: 'not-due' };
+          return { ok: true, ran: false, reason: "not-due" };
         }
       }
 
@@ -475,7 +490,7 @@ export class CronService {
     this.state.runningJobIds.add(job.id);
 
     log.info(`Executing job: ${job.name} (${job.id})`);
-    this.emit({ jobId: job.id, action: 'started', runAtMs: nowMs });
+    this.emit({ jobId: job.id, action: "started", runAtMs: nowMs });
 
     const prevRunAtMs = job.state.lastRunAtMs;
     job.state.runningAtMs = nowMs;
@@ -483,7 +498,7 @@ export class CronService {
 
     const startTime = Date.now();
     let taskId: string | undefined;
-    let status: 'ok' | 'error' | 'timeout' = 'ok';
+    let status: "ok" | "error" | "timeout" = "ok";
     let errorMsg: string | undefined;
     let resultText: string | undefined;
 
@@ -513,23 +528,23 @@ export class CronService {
         while (deps.nowMs() < deadlineMs) {
           const task = await deps.getTaskStatus(taskId);
           if (!task) {
-            status = 'error';
-            errorMsg = 'Task not found';
+            status = "error";
+            errorMsg = "Task not found";
             break;
           }
 
-          const taskStatus = typeof task.status === 'string' ? task.status : '';
-          if (taskStatus === 'completed') {
-            status = 'ok';
+          const taskStatus = typeof task.status === "string" ? task.status : "";
+          if (taskStatus === "completed") {
+            status = "ok";
             break;
           }
-          if (taskStatus === 'failed' || taskStatus === 'cancelled') {
-            status = 'error';
+          if (taskStatus === "failed" || taskStatus === "cancelled") {
+            status = "error";
             errorMsg = task.error || `Task ${taskStatus}`;
             break;
           }
-          if (taskStatus === 'paused' || taskStatus === 'blocked') {
-            status = 'error';
+          if (taskStatus === "paused" || taskStatus === "blocked") {
+            status = "error";
             errorMsg = `Task ${taskStatus}`;
             break;
           }
@@ -541,32 +556,32 @@ export class CronService {
           await new Promise((r) => setTimeout(r, sleepMs));
         }
 
-        if (status === 'ok' && deps.nowMs() >= deadlineMs) {
+        if (status === "ok" && deps.nowMs() >= deadlineMs) {
           // One last check to avoid misclassifying a completed task as a timeout.
           const finalTask = await deps.getTaskStatus(taskId);
-          const finalStatus = typeof finalTask?.status === 'string' ? finalTask.status : '';
-          if (finalStatus === 'completed') {
-            status = 'ok';
-          } else if (finalStatus === 'failed' || finalStatus === 'cancelled') {
-            status = 'error';
-            errorMsg = finalTask?.error || `Task ${finalStatus || 'failed'}`;
+          const finalStatus = typeof finalTask?.status === "string" ? finalTask.status : "";
+          if (finalStatus === "completed") {
+            status = "ok";
+          } else if (finalStatus === "failed" || finalStatus === "cancelled") {
+            status = "error";
+            errorMsg = finalTask?.error || `Task ${finalStatus || "failed"}`;
           } else {
-            status = 'timeout';
+            status = "timeout";
             errorMsg = `Timed out after ${Math.round(timeoutMs / 1000)}s`;
           }
         }
 
-        if (status === 'ok' && deps.getTaskResultText) {
+        if (status === "ok" && deps.getTaskResultText) {
           try {
             resultText = await deps.getTaskResultText(taskId);
           } catch (e) {
-            log.warn('Failed to load task result text', e);
+            log.warn("Failed to load task result text", e);
           }
         }
       }
     } catch (error) {
       errorMsg = error instanceof Error ? error.message : String(error);
-      status = 'error';
+      status = "error";
       log.error(`Job ${job.name} failed: ${errorMsg}`);
     }
 
@@ -580,7 +595,7 @@ export class CronService {
 
     // Update run statistics
     job.state.totalRuns = (job.state.totalRuns ?? 0) + 1;
-    if (status === 'ok') {
+    if (status === "ok") {
       job.state.successfulRuns = (job.state.successfulRuns ?? 0) + 1;
     } else {
       job.state.failedRuns = (job.state.failedRuns ?? 0) + 1;
@@ -626,7 +641,7 @@ export class CronService {
 
     this.emit({
       jobId: job.id,
-      action: 'finished',
+      action: "finished",
       runAtMs: nowMs,
       durationMs,
       status,
@@ -638,7 +653,7 @@ export class CronService {
     if (taskId) {
       return { ok: true, ran: true, taskId };
     } else {
-      return { ok: false, error: errorMsg || 'Unknown error' };
+      return { ok: false, error: errorMsg || "Unknown error" };
     }
   }
 
@@ -647,10 +662,10 @@ export class CronService {
    */
   private async deliverToChannel(
     job: CronJob,
-    status: 'ok' | 'error' | 'timeout',
+    status: "ok" | "error" | "timeout",
     taskId?: string,
     error?: string,
-    resultText?: string
+    resultText?: string,
   ): Promise<void> {
     const { deps, log } = this.getContext();
 
@@ -659,18 +674,26 @@ export class CronService {
       return;
     }
 
-    const { channelType, channelId, deliverOnSuccess, deliverOnError, summaryOnly, deliverOnlyIfResult } = job.delivery;
+    const {
+      channelType,
+      channelId,
+      deliverOnSuccess,
+      deliverOnError,
+      summaryOnly,
+      deliverOnlyIfResult,
+    } = job.delivery;
 
     // Check if we should deliver based on status
-    const isSuccess = status === 'ok';
-    const shouldDeliver = (isSuccess && deliverOnSuccess !== false) || (!isSuccess && deliverOnError !== false);
+    const isSuccess = status === "ok";
+    const shouldDeliver =
+      (isSuccess && deliverOnSuccess !== false) || (!isSuccess && deliverOnError !== false);
 
     if (!shouldDeliver || !channelType || !channelId) {
       return;
     }
 
-    if (status === 'ok' && deliverOnlyIfResult) {
-      const hasNonEmpty = typeof resultText === 'string' && resultText.trim().length > 0;
+    if (status === "ok" && deliverOnlyIfResult) {
+      const hasNonEmpty = typeof resultText === "string" && resultText.trim().length > 0;
       if (!hasNonEmpty) return;
     }
 
@@ -691,13 +714,17 @@ export class CronService {
     }
   }
 
-  private async renderTaskPrompt(job: CronJob, runAtMs: number, prevRunAtMs?: number): Promise<string> {
+  private async renderTaskPrompt(
+    job: CronJob,
+    runAtMs: number,
+    prevRunAtMs?: number,
+  ): Promise<string> {
     const { deps, log } = this.getContext();
     const template = job.taskPrompt;
-    if (typeof template !== 'string' || template.length === 0) return template;
+    if (typeof template !== "string" || template.length === 0) return template;
 
     const formatLocalYmd = (d: Date): string =>
-      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
     const base = new Date(runAtMs);
     const today = formatLocalYmd(base);
@@ -710,27 +737,32 @@ export class CronService {
 
     let rendered = template
       // Keep compatibility with ES2020 builds (String.prototype.replaceAll is ES2021).
-      .split('{{now}}').join(base.toISOString())
-      .split('{{date}}').join(today)
-      .split('{{today}}').join(today)
-      .split('{{tomorrow}}').join(tomorrow)
-      .split('{{week_end}}').join(weekEnd);
+      .split("{{now}}")
+      .join(base.toISOString())
+      .split("{{date}}")
+      .join(today)
+      .split("{{today}}")
+      .join(today)
+      .split("{{tomorrow}}")
+      .join(tomorrow)
+      .split("{{week_end}}")
+      .join(weekEnd);
 
     const vars: Record<string, string> = {
-      prev_run: prevRunAtMs ? new Date(prevRunAtMs).toISOString() : '',
+      prev_run: prevRunAtMs ? new Date(prevRunAtMs).toISOString() : "",
     };
 
     if (deps.resolveTemplateVariables) {
       try {
         const extra = await deps.resolveTemplateVariables({ job, runAtMs, prevRunAtMs });
-        if (extra && typeof extra === 'object') {
+        if (extra && typeof extra === "object") {
           for (const [k, v] of Object.entries(extra)) {
             if (!k) continue;
-            vars[k] = typeof v === 'string' ? v : String(v);
+            vars[k] = typeof v === "string" ? v : String(v);
           }
         }
       } catch (e) {
-        log.warn('Template variable resolution failed', e);
+        log.warn("Template variable resolution failed", e);
       }
     }
 
@@ -759,7 +791,7 @@ export class CronService {
       .sort((a, b) => (a.state.nextRunAtMs ?? Infinity) - (b.state.nextRunAtMs ?? Infinity))[0];
 
     if (!nextJob || !nextJob.state.nextRunAtMs) {
-      log.debug('No jobs scheduled');
+      log.debug("No jobs scheduled");
       return;
     }
 
@@ -780,7 +812,7 @@ export class CronService {
 
     this.state.timer = setTimeout(() => {
       this.onTimer().catch((err) => {
-        log.error('Timer callback error:', err);
+        log.error("Timer callback error:", err);
       });
     }, delayMs);
   }
@@ -811,7 +843,7 @@ export class CronService {
           j.enabled &&
           j.state.nextRunAtMs &&
           j.state.nextRunAtMs <= nowMs &&
-          !this.state.runningJobIds.has(j.id)
+          !this.state.runningJobIds.has(j.id),
       );
 
       // Sort by next run time (oldest first)
@@ -823,7 +855,7 @@ export class CronService {
 
       if (dueJobs.length > jobsToRun.length) {
         log.debug(
-          `${dueJobs.length} jobs due, running ${jobsToRun.length} (max concurrent: ${deps.maxConcurrentRuns})`
+          `${dueJobs.length} jobs due, running ${jobsToRun.length} (max concurrent: ${deps.maxConcurrentRuns})`,
         );
       }
 

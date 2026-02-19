@@ -1,6 +1,6 @@
-import { Workspace } from '../../../shared/types';
-import { AgentDaemon } from '../daemon';
-import { LLMTool } from '../llm/types';
+import { Workspace } from "../../../shared/types";
+import { AgentDaemon } from "../daemon";
+import { LLMTool } from "../llm/types";
 
 /**
  * WebFetchTools provides lightweight URL fetching without browser automation.
@@ -12,7 +12,7 @@ export class WebFetchTools {
   constructor(
     private workspace: Workspace,
     private daemon: AgentDaemon,
-    private taskId: string
+    private taskId: string,
   ) {}
 
   /**
@@ -28,78 +28,80 @@ export class WebFetchTools {
   static getToolDefinitions(): LLMTool[] {
     return [
       {
-        name: 'web_fetch',
+        name: "web_fetch",
         description:
-          'Fetch and read content from a SPECIFIC URL. PREFERRED for reading a known page. Returns the page content as readable text/markdown. ' +
-          'Use this when you have an exact URL to read (from search results, user-provided, or known documentation). ' +
-          'For RESEARCH/DISCOVERY tasks (finding information on a topic), use web_search FIRST instead. ' +
-          'Much faster than browser tools. Use browser_navigate only for interactive pages or JavaScript-heavy content.',
+          "Fetch and read content from a SPECIFIC URL. PREFERRED for reading a known page. Returns the page content as readable text/markdown. " +
+          "Use this when you have an exact URL to read (from search results, user-provided, or known documentation). " +
+          "For RESEARCH/DISCOVERY tasks (finding information on a topic), use web_search FIRST instead. " +
+          "Much faster than browser tools. Use browser_navigate only for interactive pages or JavaScript-heavy content.",
         input_schema: {
-          type: 'object',
+          type: "object",
           properties: {
             url: {
-              type: 'string',
-              description: 'The URL to fetch content from',
+              type: "string",
+              description: "The URL to fetch content from",
             },
             selector: {
-              type: 'string',
+              type: "string",
               description:
                 'Optional CSS selector to extract specific content (e.g., "article", "main", ".content")',
             },
             includeLinks: {
-              type: 'boolean',
-              description: 'Whether to include links in the output (default: true)',
+              type: "boolean",
+              description: "Whether to include links in the output (default: true)",
             },
             maxLength: {
-              type: 'number',
-              description: 'Maximum content length to return (default: 50000 characters)',
+              type: "number",
+              description: "Maximum content length to return (default: 50000 characters)",
             },
           },
-          required: ['url'],
+          required: ["url"],
         },
       },
       {
-        name: 'http_request',
+        name: "http_request",
         description:
-          'Make HTTP requests like curl. Supports all HTTP methods, custom headers, and request bodies. ' +
-          'Returns raw response without HTML-to-markdown conversion. ' +
-          'Use this for APIs, raw file downloads, or when you need full control over the HTTP request. ' +
-          'For reading web pages as markdown, prefer web_fetch instead.',
+          "Make HTTP requests like curl. Supports all HTTP methods, custom headers, and request bodies. " +
+          "Returns raw response without HTML-to-markdown conversion. " +
+          "Use this for APIs, raw file downloads, or when you need full control over the HTTP request. " +
+          "For reading web pages as markdown, prefer web_fetch instead.",
         input_schema: {
-          type: 'object',
+          type: "object",
           properties: {
             url: {
-              type: 'string',
-              description: 'The URL to make the request to',
+              type: "string",
+              description: "The URL to make the request to",
             },
             method: {
-              type: 'string',
-              enum: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'],
-              description: 'HTTP method (default: GET)',
+              type: "string",
+              enum: ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"],
+              description: "HTTP method (default: GET)",
             },
             headers: {
-              type: 'object',
-              description: 'Custom headers as key-value pairs (e.g., {"Authorization": "Bearer token", "Content-Type": "application/json"})',
-              additionalProperties: { type: 'string' },
+              type: "object",
+              description:
+                'Custom headers as key-value pairs (e.g., {"Authorization": "Bearer token", "Content-Type": "application/json"})',
+              additionalProperties: { type: "string" },
             },
             body: {
-              type: 'string',
-              description: 'Request body for POST/PUT/PATCH requests. For JSON, stringify the object first.',
+              type: "string",
+              description:
+                "Request body for POST/PUT/PATCH requests. For JSON, stringify the object first.",
             },
             timeout: {
-              type: 'number',
-              description: 'Request timeout in milliseconds (default: 30000)',
+              type: "number",
+              description: "Request timeout in milliseconds (default: 30000)",
             },
             followRedirects: {
-              type: 'boolean',
-              description: 'Whether to follow redirects (default: true)',
+              type: "boolean",
+              description: "Whether to follow redirects (default: true)",
             },
             maxLength: {
-              type: 'number',
-              description: 'Maximum response length to return (default: 100000 characters)',
+              type: "number",
+              description: "Maximum response length to return (default: 100000 characters)",
             },
           },
-          required: ['url'],
+          required: ["url"],
         },
       },
     ];
@@ -123,15 +125,15 @@ export class WebFetchTools {
   }> {
     const { url, selector, includeLinks = true, maxLength = 50000 } = input;
 
-    this.daemon.logEvent(this.taskId, 'log', {
+    this.daemon.logEvent(this.taskId, "log", {
       message: `Fetching: ${url}`,
     });
 
     try {
       // Validate URL
       const parsedUrl = new URL(url);
-      if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
-        throw new Error('Only HTTP and HTTPS URLs are supported');
+      if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+        throw new Error("Only HTTP and HTTPS URLs are supported");
       }
 
       // Fetch with timeout
@@ -141,12 +143,12 @@ export class WebFetchTools {
       const response = await fetch(url, {
         signal: controller.signal,
         headers: {
-          'User-Agent':
-            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-          'Accept-Language': 'en-US,en;q=0.9',
+          "User-Agent":
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "Accept-Language": "en-US,en;q=0.9",
         },
-        redirect: 'follow',
+        redirect: "follow",
       });
 
       clearTimeout(timeout);
@@ -155,11 +157,11 @@ export class WebFetchTools {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      const contentType = response.headers.get('content-type') || '';
+      const contentType = response.headers.get("content-type") || "";
       let content: string;
       let title: string | undefined;
 
-      if (contentType.includes('application/json')) {
+      if (contentType.includes("application/json")) {
         // JSON response - format nicely, with fallback to raw text
         const rawText = await response.text();
         try {
@@ -169,11 +171,11 @@ export class WebFetchTools {
           // Invalid JSON - return raw text
           content = rawText;
         }
-        title = 'JSON Response';
-      } else if (contentType.includes('text/plain')) {
+        title = "JSON Response";
+      } else if (contentType.includes("text/plain")) {
         // Plain text
         content = await response.text();
-        title = 'Plain Text';
+        title = "Plain Text";
       } else {
         // HTML - convert to markdown
         const html = await response.text();
@@ -184,11 +186,11 @@ export class WebFetchTools {
 
       // Truncate if needed
       if (content.length > maxLength) {
-        content = content.substring(0, maxLength) + '\n\n... [Content truncated]';
+        content = content.substring(0, maxLength) + "\n\n... [Content truncated]";
       }
 
-      this.daemon.logEvent(this.taskId, 'tool_result', {
-        tool: 'web_fetch',
+      this.daemon.logEvent(this.taskId, "tool_result", {
+        tool: "web_fetch",
         result: {
           url,
           title,
@@ -205,17 +207,17 @@ export class WebFetchTools {
         contentLength: content.length,
       };
     } catch (error: any) {
-      const errorMessage = error.name === 'AbortError' ? 'Request timed out' : error.message;
+      const errorMessage = error.name === "AbortError" ? "Request timed out" : error.message;
 
-      this.daemon.logEvent(this.taskId, 'tool_result', {
-        tool: 'web_fetch',
+      this.daemon.logEvent(this.taskId, "tool_result", {
+        tool: "web_fetch",
         error: errorMessage,
       });
 
       return {
         success: false,
         url,
-        content: '',
+        content: "",
         contentLength: 0,
         error: errorMessage,
       };
@@ -227,7 +229,7 @@ export class WebFetchTools {
    */
   async httpRequest(input: {
     url: string;
-    method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD' | 'OPTIONS';
+    method?: "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "HEAD" | "OPTIONS";
     headers?: Record<string, string>;
     body?: string;
     timeout?: number;
@@ -245,7 +247,7 @@ export class WebFetchTools {
   }> {
     const {
       url,
-      method = 'GET',
+      method = "GET",
       headers = {},
       body,
       timeout = 30000,
@@ -253,15 +255,15 @@ export class WebFetchTools {
       maxLength = 100000,
     } = input;
 
-    this.daemon.logEvent(this.taskId, 'log', {
+    this.daemon.logEvent(this.taskId, "log", {
       message: `HTTP ${method}: ${url}`,
     });
 
     try {
       // Validate URL
       const parsedUrl = new URL(url);
-      if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
-        throw new Error('Only HTTP and HTTPS URLs are supported');
+      if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+        throw new Error("Only HTTP and HTTPS URLs are supported");
       }
 
       // Setup abort controller for timeout
@@ -270,8 +272,8 @@ export class WebFetchTools {
 
       // Default headers
       const requestHeaders: Record<string, string> = {
-        'User-Agent': 'CoWork-OS/1.0 (curl-like http_request tool)',
-        Accept: '*/*',
+        "User-Agent": "CoWork-OS/1.0 (curl-like http_request tool)",
+        Accept: "*/*",
         ...headers,
       };
 
@@ -279,9 +281,9 @@ export class WebFetchTools {
       const response = await fetch(url, {
         method,
         headers: requestHeaders,
-        body: ['POST', 'PUT', 'PATCH'].includes(method) ? body : undefined,
+        body: ["POST", "PUT", "PATCH"].includes(method) ? body : undefined,
         signal: controller.signal,
-        redirect: followRedirects ? 'follow' : 'manual',
+        redirect: followRedirects ? "follow" : "manual",
       });
 
       clearTimeout(timeoutId);
@@ -294,11 +296,11 @@ export class WebFetchTools {
 
       // Get response body
       let responseBody: string;
-      const contentType = response.headers.get('content-type') || '';
+      const contentType = response.headers.get("content-type") || "";
 
-      if (method === 'HEAD') {
-        responseBody = ''; // HEAD requests don't have a body
-      } else if (contentType.includes('application/json')) {
+      if (method === "HEAD") {
+        responseBody = ""; // HEAD requests don't have a body
+      } else if (contentType.includes("application/json")) {
         // Try to parse as JSON, fallback to raw text if parsing fails
         const rawText = await response.text();
         try {
@@ -315,11 +317,11 @@ export class WebFetchTools {
       // Truncate if needed
       const truncated = responseBody.length > maxLength;
       if (truncated) {
-        responseBody = responseBody.substring(0, maxLength) + '\n\n... [Response truncated]';
+        responseBody = responseBody.substring(0, maxLength) + "\n\n... [Response truncated]";
       }
 
-      this.daemon.logEvent(this.taskId, 'tool_result', {
-        tool: 'http_request',
+      this.daemon.logEvent(this.taskId, "tool_result", {
+        tool: "http_request",
         result: {
           url,
           method,
@@ -339,10 +341,10 @@ export class WebFetchTools {
         contentLength: responseBody.length,
       };
     } catch (error: any) {
-      const errorMessage = error.name === 'AbortError' ? 'Request timed out' : error.message;
+      const errorMessage = error.name === "AbortError" ? "Request timed out" : error.message;
 
-      this.daemon.logEvent(this.taskId, 'tool_result', {
-        tool: 'http_request',
+      this.daemon.logEvent(this.taskId, "tool_result", {
+        tool: "http_request",
         error: errorMessage,
       });
 
@@ -350,9 +352,9 @@ export class WebFetchTools {
         success: false,
         url,
         status: 0,
-        statusText: 'Error',
+        statusText: "Error",
         headers: {},
-        body: '',
+        body: "",
         contentLength: 0,
         error: errorMessage,
       };
@@ -365,7 +367,7 @@ export class WebFetchTools {
   private htmlToMarkdown(
     html: string,
     selector?: string,
-    includeLinks: boolean = true
+    includeLinks: boolean = true,
   ): { content: string; title?: string } {
     // Extract title
     const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
@@ -378,11 +380,11 @@ export class WebFetchTools {
       const selectorPatterns: Record<string, RegExp> = {
         article: /<article[^>]*>([\s\S]*?)<\/article>/gi,
         main: /<main[^>]*>([\s\S]*?)<\/main>/gi,
-        '.content': /<[^>]+class="[^"]*content[^"]*"[^>]*>([\s\S]*?)<\/\w+>/gi,
-        '.post': /<[^>]+class="[^"]*post[^"]*"[^>]*>([\s\S]*?)<\/\w+>/gi,
-        '.article': /<[^>]+class="[^"]*article[^"]*"[^>]*>([\s\S]*?)<\/\w+>/gi,
-        '#content': /<[^>]+id="content"[^>]*>([\s\S]*?)<\/\w+>/gi,
-        '#main': /<[^>]+id="main"[^>]*>([\s\S]*?)<\/\w+>/gi,
+        ".content": /<[^>]+class="[^"]*content[^"]*"[^>]*>([\s\S]*?)<\/\w+>/gi,
+        ".post": /<[^>]+class="[^"]*post[^"]*"[^>]*>([\s\S]*?)<\/\w+>/gi,
+        ".article": /<[^>]+class="[^"]*article[^"]*"[^>]*>([\s\S]*?)<\/\w+>/gi,
+        "#content": /<[^>]+id="content"[^>]*>([\s\S]*?)<\/\w+>/gi,
+        "#main": /<[^>]+id="main"[^>]*>([\s\S]*?)<\/\w+>/gi,
       };
 
       const pattern = selectorPatterns[selector.toLowerCase()];
@@ -397,76 +399,76 @@ export class WebFetchTools {
     // Remove unwanted elements
     targetHtml = targetHtml
       // Remove script tags
-      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
       // Remove style tags
-      .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+      .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "")
       // Remove noscript tags
-      .replace(/<noscript\b[^<]*(?:(?!<\/noscript>)<[^<]*)*<\/noscript>/gi, '')
+      .replace(/<noscript\b[^<]*(?:(?!<\/noscript>)<[^<]*)*<\/noscript>/gi, "")
       // Remove nav elements
-      .replace(/<nav\b[^<]*(?:(?!<\/nav>)<[^<]*)*<\/nav>/gi, '')
+      .replace(/<nav\b[^<]*(?:(?!<\/nav>)<[^<]*)*<\/nav>/gi, "")
       // Remove footer elements
-      .replace(/<footer\b[^<]*(?:(?!<\/footer>)<[^<]*)*<\/footer>/gi, '')
+      .replace(/<footer\b[^<]*(?:(?!<\/footer>)<[^<]*)*<\/footer>/gi, "")
       // Remove header elements (but keep h1-h6)
-      .replace(/<header\b[^<]*(?:(?!<\/header>)<[^<]*)*<\/header>/gi, '')
+      .replace(/<header\b[^<]*(?:(?!<\/header>)<[^<]*)*<\/header>/gi, "")
       // Remove aside elements
-      .replace(/<aside\b[^<]*(?:(?!<\/aside>)<[^<]*)*<\/aside>/gi, '')
+      .replace(/<aside\b[^<]*(?:(?!<\/aside>)<[^<]*)*<\/aside>/gi, "")
       // Remove HTML comments
-      .replace(/<!--[\s\S]*?-->/g, '')
+      .replace(/<!--[\s\S]*?-->/g, "")
       // Remove SVG elements
-      .replace(/<svg\b[^<]*(?:(?!<\/svg>)<[^<]*)*<\/svg>/gi, '');
+      .replace(/<svg\b[^<]*(?:(?!<\/svg>)<[^<]*)*<\/svg>/gi, "");
 
     // Convert HTML to markdown-like text
     let content = targetHtml
       // Headers
-      .replace(/<h1[^>]*>([\s\S]*?)<\/h1>/gi, '\n# $1\n')
-      .replace(/<h2[^>]*>([\s\S]*?)<\/h2>/gi, '\n## $1\n')
-      .replace(/<h3[^>]*>([\s\S]*?)<\/h3>/gi, '\n### $1\n')
-      .replace(/<h4[^>]*>([\s\S]*?)<\/h4>/gi, '\n#### $1\n')
-      .replace(/<h5[^>]*>([\s\S]*?)<\/h5>/gi, '\n##### $1\n')
-      .replace(/<h6[^>]*>([\s\S]*?)<\/h6>/gi, '\n###### $1\n')
+      .replace(/<h1[^>]*>([\s\S]*?)<\/h1>/gi, "\n# $1\n")
+      .replace(/<h2[^>]*>([\s\S]*?)<\/h2>/gi, "\n## $1\n")
+      .replace(/<h3[^>]*>([\s\S]*?)<\/h3>/gi, "\n### $1\n")
+      .replace(/<h4[^>]*>([\s\S]*?)<\/h4>/gi, "\n#### $1\n")
+      .replace(/<h5[^>]*>([\s\S]*?)<\/h5>/gi, "\n##### $1\n")
+      .replace(/<h6[^>]*>([\s\S]*?)<\/h6>/gi, "\n###### $1\n")
       // Paragraphs
-      .replace(/<p[^>]*>([\s\S]*?)<\/p>/gi, '\n$1\n')
+      .replace(/<p[^>]*>([\s\S]*?)<\/p>/gi, "\n$1\n")
       // Line breaks
-      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<br\s*\/?>/gi, "\n")
       // Bold
-      .replace(/<(strong|b)[^>]*>([\s\S]*?)<\/\1>/gi, '**$2**')
+      .replace(/<(strong|b)[^>]*>([\s\S]*?)<\/\1>/gi, "**$2**")
       // Italic
-      .replace(/<(em|i)[^>]*>([\s\S]*?)<\/\1>/gi, '*$2*')
+      .replace(/<(em|i)[^>]*>([\s\S]*?)<\/\1>/gi, "*$2*")
       // Code blocks
-      .replace(/<pre[^>]*><code[^>]*>([\s\S]*?)<\/code><\/pre>/gi, '\n```\n$1\n```\n')
-      .replace(/<pre[^>]*>([\s\S]*?)<\/pre>/gi, '\n```\n$1\n```\n')
+      .replace(/<pre[^>]*><code[^>]*>([\s\S]*?)<\/code><\/pre>/gi, "\n```\n$1\n```\n")
+      .replace(/<pre[^>]*>([\s\S]*?)<\/pre>/gi, "\n```\n$1\n```\n")
       // Inline code
-      .replace(/<code[^>]*>([\s\S]*?)<\/code>/gi, '`$1`')
+      .replace(/<code[^>]*>([\s\S]*?)<\/code>/gi, "`$1`")
       // Blockquotes
-      .replace(/<blockquote[^>]*>([\s\S]*?)<\/blockquote>/gi, '\n> $1\n')
+      .replace(/<blockquote[^>]*>([\s\S]*?)<\/blockquote>/gi, "\n> $1\n")
       // Lists
-      .replace(/<ul[^>]*>([\s\S]*?)<\/ul>/gi, '\n$1\n')
-      .replace(/<ol[^>]*>([\s\S]*?)<\/ol>/gi, '\n$1\n')
-      .replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, '- $1\n')
+      .replace(/<ul[^>]*>([\s\S]*?)<\/ul>/gi, "\n$1\n")
+      .replace(/<ol[^>]*>([\s\S]*?)<\/ol>/gi, "\n$1\n")
+      .replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, "- $1\n")
       // Tables (simplified)
-      .replace(/<table[^>]*>([\s\S]*?)<\/table>/gi, '\n$1\n')
-      .replace(/<tr[^>]*>([\s\S]*?)<\/tr>/gi, '$1\n')
-      .replace(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi, '| $1 ')
+      .replace(/<table[^>]*>([\s\S]*?)<\/table>/gi, "\n$1\n")
+      .replace(/<tr[^>]*>([\s\S]*?)<\/tr>/gi, "$1\n")
+      .replace(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi, "| $1 ")
       // Horizontal rules
-      .replace(/<hr\s*\/?>/gi, '\n---\n')
+      .replace(/<hr\s*\/?>/gi, "\n---\n")
       // Divs and spans (just extract content)
-      .replace(/<div[^>]*>([\s\S]*?)<\/div>/gi, '\n$1\n')
-      .replace(/<span[^>]*>([\s\S]*?)<\/span>/gi, '$1');
+      .replace(/<div[^>]*>([\s\S]*?)<\/div>/gi, "\n$1\n")
+      .replace(/<span[^>]*>([\s\S]*?)<\/span>/gi, "$1");
 
     // Handle links
     if (includeLinks) {
-      content = content.replace(/<a[^>]+href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi, '[$2]($1)');
+      content = content.replace(/<a[^>]+href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi, "[$2]($1)");
     } else {
-      content = content.replace(/<a[^>]*>([\s\S]*?)<\/a>/gi, '$1');
+      content = content.replace(/<a[^>]*>([\s\S]*?)<\/a>/gi, "$1");
     }
 
     // Handle images (as markdown)
-    content = content.replace(/<img[^>]+alt="([^"]*)"[^>]+src="([^"]*)"[^>]*>/gi, '![$1]($2)');
-    content = content.replace(/<img[^>]+src="([^"]*)"[^>]+alt="([^"]*)"[^>]*>/gi, '![$2]($1)');
-    content = content.replace(/<img[^>]+src="([^"]*)"[^>]*>/gi, '![image]($1)');
+    content = content.replace(/<img[^>]+alt="([^"]*)"[^>]+src="([^"]*)"[^>]*>/gi, "![$1]($2)");
+    content = content.replace(/<img[^>]+src="([^"]*)"[^>]+alt="([^"]*)"[^>]*>/gi, "![$2]($1)");
+    content = content.replace(/<img[^>]+src="([^"]*)"[^>]*>/gi, "![image]($1)");
 
     // Remove remaining HTML tags
-    content = content.replace(/<[^>]+>/g, '');
+    content = content.replace(/<[^>]+>/g, "");
 
     // Decode HTML entities
     content = this.decodeHtmlEntities(content);
@@ -474,13 +476,13 @@ export class WebFetchTools {
     // Clean up whitespace
     content = content
       // Multiple newlines to double newline
-      .replace(/\n{3,}/g, '\n\n')
+      .replace(/\n{3,}/g, "\n\n")
       // Multiple spaces to single space
-      .replace(/ {2,}/g, ' ')
+      .replace(/ {2,}/g, " ")
       // Trim lines
-      .split('\n')
+      .split("\n")
       .map((line) => line.trim())
-      .join('\n')
+      .join("\n")
       // Remove empty lines at start/end
       .trim();
 
@@ -492,35 +494,35 @@ export class WebFetchTools {
    */
   private decodeHtmlEntities(text: string): string {
     const entities: Record<string, string> = {
-      '&amp;': '&',
-      '&lt;': '<',
-      '&gt;': '>',
-      '&quot;': '"',
-      '&#39;': "'",
-      '&apos;': "'",
-      '&nbsp;': ' ',
-      '&mdash;': '—',
-      '&ndash;': '–',
-      '&hellip;': '...',
-      '&copy;': '(c)',
-      '&reg;': '(R)',
-      '&trade;': '(TM)',
-      '&bull;': '*',
-      '&rarr;': '->',
-      '&larr;': '<-',
-      '&laquo;': '<<',
-      '&raquo;': '>>',
+      "&amp;": "&",
+      "&lt;": "<",
+      "&gt;": ">",
+      "&quot;": '"',
+      "&#39;": "'",
+      "&apos;": "'",
+      "&nbsp;": " ",
+      "&mdash;": "—",
+      "&ndash;": "–",
+      "&hellip;": "...",
+      "&copy;": "(c)",
+      "&reg;": "(R)",
+      "&trade;": "(TM)",
+      "&bull;": "*",
+      "&rarr;": "->",
+      "&larr;": "<-",
+      "&laquo;": "<<",
+      "&raquo;": ">>",
     };
 
     let result = text;
     for (const [entity, char] of Object.entries(entities)) {
-      result = result.replace(new RegExp(entity, 'g'), char);
+      result = result.replace(new RegExp(entity, "g"), char);
     }
 
     // Handle numeric entities
     result = result.replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code, 10)));
     result = result.replace(/&#x([a-fA-F0-9]+);/g, (_, code) =>
-      String.fromCharCode(parseInt(code, 16))
+      String.fromCharCode(parseInt(code, 16)),
     );
 
     return result;

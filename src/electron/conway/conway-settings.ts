@@ -6,10 +6,10 @@
  * this manages the Conway-specific overlay (wallet display, tool categories, etc.).
  */
 
-import { ConwaySettings, DEFAULT_CONWAY_SETTINGS } from '../../shared/types';
-import { SecureSettingsRepository } from '../database/SecureSettingsRepository';
+import { ConwaySettings, DEFAULT_CONWAY_SETTINGS } from "../../shared/types";
+import { SecureSettingsRepository } from "../database/SecureSettingsRepository";
 
-const STORAGE_KEY = 'conway';
+const STORAGE_KEY = "conway";
 
 export class ConwaySettingsManager {
   private static cachedSettings: ConwaySettings | null = null;
@@ -18,7 +18,7 @@ export class ConwaySettingsManager {
   static initialize(): void {
     if (this.initialized) return;
     this.initialized = true;
-    console.log('[Conway Settings] Initialized');
+    console.log("[Conway Settings] Initialized");
   }
 
   static loadSettings(): ConwaySettings {
@@ -45,7 +45,7 @@ export class ConwaySettingsManager {
         }
       }
     } catch (error) {
-      console.error('[Conway Settings] Failed to load settings:', error);
+      console.error("[Conway Settings] Failed to load settings:", error);
     }
 
     this.cachedSettings = { ...DEFAULT_CONWAY_SETTINGS };
@@ -59,14 +59,14 @@ export class ConwaySettingsManager {
 
     try {
       if (!SecureSettingsRepository.isInitialized()) {
-        throw new Error('SecureSettingsRepository not initialized');
+        throw new Error("SecureSettingsRepository not initialized");
       }
 
       const repository = SecureSettingsRepository.getInstance();
       repository.save(STORAGE_KEY, settings);
-      console.log('[Conway Settings] Saved settings to encrypted database');
+      console.log("[Conway Settings] Saved settings to encrypted database");
     } catch (error) {
-      console.error('[Conway Settings] Failed to save settings:', error);
+      console.error("[Conway Settings] Failed to save settings:", error);
       throw error;
     }
   }

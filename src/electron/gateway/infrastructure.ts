@@ -10,7 +10,7 @@
  * - Broadcast messaging
  */
 
-import Database from 'better-sqlite3';
+import Database from "better-sqlite3";
 import {
   MessageQueueRepository,
   ScheduledMessageRepository,
@@ -21,8 +21,14 @@ import {
   ScheduledMessage as ScheduledMessageRecord,
   DeliveryRecord,
   AuditLogEntry,
-} from '../database/repositories';
-import { ChannelAdapter, OutgoingMessage, ChannelType, BroadcastConfig, BroadcastResult } from './channels/types';
+} from "../database/repositories";
+import {
+  ChannelAdapter,
+  OutgoingMessage,
+  ChannelType,
+  BroadcastConfig,
+  BroadcastResult,
+} from "./channels/types";
 
 /**
  * Infrastructure service configuration
@@ -93,20 +99,23 @@ export class GatewayInfrastructure {
   start(): void {
     // Process message queue
     this.queueInterval = setInterval(() => {
-      this.processQueue().catch(err => console.error('Queue processing error:', err));
+      this.processQueue().catch((err) => console.error("Queue processing error:", err));
     }, this.config.queueProcessInterval);
 
     // Process scheduled messages
     this.scheduledInterval = setInterval(() => {
-      this.processScheduled().catch(err => console.error('Scheduled processing error:', err));
+      this.processScheduled().catch((err) => console.error("Scheduled processing error:", err));
     }, this.config.scheduledCheckInterval);
 
     // Cleanup old records (every hour)
-    this.cleanupInterval = setInterval(() => {
-      this.cleanup().catch(err => console.error('Cleanup error:', err));
-    }, 60 * 60 * 1000);
+    this.cleanupInterval = setInterval(
+      () => {
+        this.cleanup().catch((err) => console.error("Cleanup error:", err));
+      },
+      60 * 60 * 1000,
+    );
 
-    this.audit('infrastructure:started', { severity: 'info' });
+    this.audit("infrastructure:started", { severity: "info" });
   }
 
   /**
@@ -126,7 +135,7 @@ export class GatewayInfrastructure {
       this.cleanupInterval = null;
     }
 
-    this.audit('infrastructure:stopped', { severity: 'info' });
+    this.audit("infrastructure:stopped", { severity: "info" });
   }
 
   // ============================================================================
@@ -140,7 +149,7 @@ export class GatewayInfrastructure {
     channelType: ChannelType,
     chatId: string,
     message: OutgoingMessage,
-    options: { priority?: number; maxAttempts?: number; scheduledAt?: number } = {}
+    options: { priority?: number; maxAttempts?: number; scheduledAt?: number } = {},
   ): QueuedMessage {
     const item = this.queueRepo.enqueue({
       channelType,
@@ -151,11 +160,11 @@ export class GatewayInfrastructure {
       scheduledAt: options.scheduledAt,
     });
 
-    this.audit('message:queued', {
+    this.audit("message:queued", {
       channelType,
       chatId,
       details: { queueId: item.id, priority: item.priority },
-      severity: 'debug',
+      severity: "debug",
     });
 
     return item;
@@ -173,13 +182,13 @@ export class GatewayInfrastructure {
 
       for (const item of pending) {
         const adapter = this.adapters.get(item.channelType as ChannelType);
-        if (!adapter || adapter.status !== 'connected') {
+        if (!adapter || adapter.status !== "connected") {
           continue;
         }
 
         // Mark as processing
         this.queueRepo.update(item.id, {
-          status: 'processing',
+          status: "processing",
           attempts: item.attempts + 1,
           lastAttemptAt: Date.now(),
         });
@@ -189,16 +198,16 @@ export class GatewayInfrastructure {
           const messageId = await adapter.sendMessage(message);
 
           // Mark as sent
-          this.queueRepo.update(item.id, { status: 'sent' });
+          this.queueRepo.update(item.id, { status: "sent" });
 
           // Track delivery
           this.trackDelivery(item.channelType as ChannelType, item.chatId, messageId);
 
-          this.audit('message:sent', {
+          this.audit("message:sent", {
             channelType: item.channelType,
             chatId: item.chatId,
             details: { queueId: item.id, messageId },
-            severity: 'debug',
+            severity: "debug",
           });
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error);
@@ -206,20 +215,20 @@ export class GatewayInfrastructure {
           if (item.attempts + 1 >= item.maxAttempts) {
             // Mark as failed
             this.queueRepo.update(item.id, {
-              status: 'failed',
+              status: "failed",
               error: errorMessage,
             });
 
-            this.audit('message:failed', {
+            this.audit("message:failed", {
               channelType: item.channelType,
               chatId: item.chatId,
               details: { queueId: item.id, error: errorMessage, attempts: item.attempts + 1 },
-              severity: 'error',
+              severity: "error",
             });
           } else {
             // Reset to pending for retry
             this.queueRepo.update(item.id, {
-              status: 'pending',
+              status: "pending",
               error: errorMessage,
             });
           }
@@ -255,7 +264,7 @@ export class GatewayInfrastructure {
     channelType: ChannelType,
     chatId: string,
     message: OutgoingMessage,
-    scheduledAt: Date | number
+    scheduledAt: Date | number,
   ): ScheduledMessageRecord {
     const timestamp = scheduledAt instanceof Date ? scheduledAt.getTime() : scheduledAt;
 
@@ -266,11 +275,11 @@ export class GatewayInfrastructure {
       scheduledAt: timestamp,
     });
 
-    this.audit('message:scheduled', {
+    this.audit("message:scheduled", {
       channelType,
       chatId,
       details: { scheduleId: item.id, scheduledAt: new Date(timestamp).toISOString() },
-      severity: 'info',
+      severity: "info",
     });
 
     return item;
@@ -281,17 +290,17 @@ export class GatewayInfrastructure {
    */
   cancelScheduled(id: string): boolean {
     const item = this.scheduledRepo.findById(id);
-    if (!item || item.status !== 'pending') {
+    if (!item || item.status !== "pending") {
       return false;
     }
 
     this.scheduledRepo.cancel(id);
 
-    this.audit('message:schedule_cancelled', {
+    this.audit("message:schedule_cancelled", {
       channelType: item.channelType,
       chatId: item.chatId,
       details: { scheduleId: id },
-      severity: 'info',
+      severity: "info",
     });
 
     return true;
@@ -312,7 +321,7 @@ export class GatewayInfrastructure {
 
     for (const item of due) {
       const adapter = this.adapters.get(item.channelType as ChannelType);
-      if (!adapter || adapter.status !== 'connected') {
+      if (!adapter || adapter.status !== "connected") {
         continue;
       }
 
@@ -321,29 +330,29 @@ export class GatewayInfrastructure {
         const messageId = await adapter.sendMessage(message);
 
         this.scheduledRepo.update(item.id, {
-          status: 'sent',
+          status: "sent",
           sentMessageId: messageId,
         });
 
-        this.audit('message:scheduled_sent', {
+        this.audit("message:scheduled_sent", {
           channelType: item.channelType,
           chatId: item.chatId,
           details: { scheduleId: item.id, messageId },
-          severity: 'info',
+          severity: "info",
         });
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
 
         this.scheduledRepo.update(item.id, {
-          status: 'failed',
+          status: "failed",
           error: errorMessage,
         });
 
-        this.audit('message:scheduled_failed', {
+        this.audit("message:scheduled_failed", {
           channelType: item.channelType,
           chatId: item.chatId,
           details: { scheduleId: item.id, error: errorMessage },
-          severity: 'error',
+          severity: "error",
         });
       }
     }
@@ -361,7 +370,7 @@ export class GatewayInfrastructure {
       channelType,
       chatId,
       messageId,
-      status: 'sent',
+      status: "sent",
       sentAt: Date.now(),
     });
   }
@@ -371,19 +380,19 @@ export class GatewayInfrastructure {
    */
   updateDeliveryStatus(
     messageId: string,
-    status: 'delivered' | 'read' | 'failed',
-    error?: string
+    status: "delivered" | "read" | "failed",
+    error?: string,
   ): void {
     const record = this.deliveryRepo.findByMessageId(messageId);
     if (!record) return;
 
     const updates: Partial<DeliveryRecord> = { status };
 
-    if (status === 'delivered') {
+    if (status === "delivered") {
       updates.deliveredAt = Date.now();
-    } else if (status === 'read') {
+    } else if (status === "read") {
       updates.readAt = Date.now();
-    } else if (status === 'failed') {
+    } else if (status === "failed") {
       updates.error = error;
     }
 
@@ -463,11 +472,11 @@ export class GatewayInfrastructure {
 
     // If already limited, deny
     if (record.isLimited) {
-      this.audit('rate_limit:blocked', {
+      this.audit("rate_limit:blocked", {
         channelType,
         userId,
         details: { messageCount: record.messageCount },
-        severity: 'warn',
+        severity: "warn",
       });
       return false;
     }
@@ -484,11 +493,11 @@ export class GatewayInfrastructure {
         limitExpiresAt,
       });
 
-      this.audit('rate_limit:applied', {
+      this.audit("rate_limit:applied", {
         channelType,
         userId,
         details: { messageCount: newCount, expiresAt: new Date(limitExpiresAt).toISOString() },
-        severity: 'warn',
+        severity: "warn",
       });
 
       return false;
@@ -502,7 +511,7 @@ export class GatewayInfrastructure {
    */
   getRateLimitStatus(
     channelType: ChannelType,
-    userId: string
+    userId: string,
   ): { isLimited: boolean; remaining: number; resetsAt?: Date } {
     const record = this.rateLimitRepo.getOrCreate(channelType, userId);
     const now = Date.now();
@@ -532,17 +541,17 @@ export class GatewayInfrastructure {
    */
   async broadcast(config: BroadcastConfig): Promise<BroadcastResult> {
     const adapter = this.adapters.get(config.channel);
-    if (!adapter || adapter.status !== 'connected') {
+    if (!adapter || adapter.status !== "connected") {
       throw new Error(`Channel ${config.channel} is not connected`);
     }
 
-    const results: BroadcastResult['results'] = [];
+    const results: BroadcastResult["results"] = [];
     const delay = config.delayBetweenSends ?? 100;
 
-    this.audit('broadcast:started', {
+    this.audit("broadcast:started", {
       channelType: config.channel,
       details: { chatCount: config.chatIds.length },
-      severity: 'info',
+      severity: "info",
     });
 
     for (const chatId of config.chatIds) {
@@ -559,17 +568,17 @@ export class GatewayInfrastructure {
 
       // Delay between sends to avoid rate limiting
       if (delay > 0) {
-        await new Promise(resolve => setTimeout(resolve, delay));
+        await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
 
-    const sent = results.filter(r => r.success).length;
-    const failed = results.filter(r => !r.success).length;
+    const sent = results.filter((r) => r.success).length;
+    const failed = results.filter((r) => !r.success).length;
 
-    this.audit('broadcast:completed', {
+    this.audit("broadcast:completed", {
       channelType: config.channel,
       details: { total: config.chatIds.length, sent, failed },
-      severity: failed > 0 ? 'warn' : 'info',
+      severity: failed > 0 ? "warn" : "info",
     });
 
     return {
@@ -594,8 +603,8 @@ export class GatewayInfrastructure {
       userId?: string;
       chatId?: string;
       details?: Record<string, unknown>;
-      severity?: AuditLogEntry['severity'];
-    } = {}
+      severity?: AuditLogEntry["severity"];
+    } = {},
   ): AuditLogEntry {
     return this.auditRepo.log({
       action,
@@ -603,7 +612,7 @@ export class GatewayInfrastructure {
       userId: options.userId,
       chatId: options.chatId,
       details: options.details,
-      severity: options.severity ?? 'info',
+      severity: options.severity ?? "info",
     });
   }
 
@@ -617,7 +626,7 @@ export class GatewayInfrastructure {
     chatId?: string;
     fromTimestamp?: number;
     toTimestamp?: number;
-    severity?: AuditLogEntry['severity'];
+    severity?: AuditLogEntry["severity"];
     limit?: number;
     offset?: number;
   }): AuditLogEntry[] {
@@ -638,7 +647,7 @@ export class GatewayInfrastructure {
 
     if (queueDeleted > 0 || deliveryDeleted > 0 || auditDeleted > 0) {
       console.log(
-        `Cleanup: queue=${queueDeleted}, delivery=${deliveryDeleted}, audit=${auditDeleted}`
+        `Cleanup: queue=${queueDeleted}, delivery=${deliveryDeleted}, audit=${auditDeleted}`,
       );
     }
   }

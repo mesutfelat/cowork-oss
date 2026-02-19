@@ -1,16 +1,16 @@
-import path from 'node:path';
-import * as fs from 'node:fs/promises';
-import os from 'node:os';
-import { DatabaseManager } from '../electron/database/schema';
-import { SecureSettingsRepository } from '../electron/database/SecureSettingsRepository';
-import { AgentDaemon } from '../electron/agent/daemon';
-import { LLMProviderFactory } from '../electron/agent/llm';
-import { SearchProviderFactory } from '../electron/agent/search';
-import { GuardrailManager } from '../electron/guardrails/guardrail-manager';
-import { AppearanceManager } from '../electron/settings/appearance-manager';
-import { PersonalityManager } from '../electron/settings/personality-manager';
-import { MemoryFeaturesManager } from '../electron/settings/memory-features-manager';
-import { importProcessEnvToSettings, migrateEnvToSettings } from '../electron/utils/env-migration';
+import path from "node:path";
+import * as fs from "node:fs/promises";
+import os from "node:os";
+import { DatabaseManager } from "../electron/database/schema";
+import { SecureSettingsRepository } from "../electron/database/SecureSettingsRepository";
+import { AgentDaemon } from "../electron/agent/daemon";
+import { LLMProviderFactory } from "../electron/agent/llm";
+import { SearchProviderFactory } from "../electron/agent/search";
+import { GuardrailManager } from "../electron/guardrails/guardrail-manager";
+import { AppearanceManager } from "../electron/settings/appearance-manager";
+import { PersonalityManager } from "../electron/settings/personality-manager";
+import { MemoryFeaturesManager } from "../electron/settings/memory-features-manager";
+import { importProcessEnvToSettings, migrateEnvToSettings } from "../electron/utils/env-migration";
 import {
   getArgValue,
   getEnvSettingsImportModeFromArgsOrEnv,
@@ -18,25 +18,32 @@ import {
   shouldEnableControlPlaneFromArgsOrEnv,
   shouldImportEnvSettingsFromArgsOrEnv,
   shouldPrintControlPlaneTokenFromArgsOrEnv,
-} from '../electron/utils/runtime-mode';
-import { getUserDataDir } from '../electron/utils/user-data-dir';
-import { ChannelGateway } from '../electron/gateway';
-import { ControlPlaneServer } from '../electron/control-plane/server';
-import { ControlPlaneSettingsManager } from '../electron/control-plane/settings';
-import { TailscaleSettingsManager } from '../electron/tailscale/settings';
+} from "../electron/utils/runtime-mode";
+import { getUserDataDir } from "../electron/utils/user-data-dir";
+import { ChannelGateway } from "../electron/gateway";
+import { ControlPlaneServer } from "../electron/control-plane/server";
+import { ControlPlaneSettingsManager } from "../electron/control-plane/settings";
+import { TailscaleSettingsManager } from "../electron/tailscale/settings";
 import {
   initRemoteGatewayClient,
   shutdownRemoteGatewayClient,
-} from '../electron/control-plane/remote-client';
-import { getExposureStatus } from '../electron/tailscale';
-import { MCPClientManager } from '../electron/mcp/client/MCPClientManager';
-import { CronService, setCronService, getCronStorePath } from '../electron/cron';
-import { TaskEventRepository, TaskRepository, WorkspaceRepository, ChannelRepository, ChannelUserRepository, ChannelMessageRepository } from '../electron/database/repositories';
-import { formatChatTranscriptForPrompt } from '../electron/gateway/chat-transcript';
-import { MemoryService } from '../electron/memory/MemoryService';
-import { CrossSignalService } from '../electron/agents/CrossSignalService';
-import { FeedbackService } from '../electron/agents/FeedbackService';
-import { attachAgentDaemonTaskBridge, registerControlPlaneMethods } from './control-plane-methods';
+} from "../electron/control-plane/remote-client";
+import { getExposureStatus } from "../electron/tailscale";
+import { MCPClientManager } from "../electron/mcp/client/MCPClientManager";
+import { CronService, setCronService, getCronStorePath } from "../electron/cron";
+import {
+  TaskEventRepository,
+  TaskRepository,
+  WorkspaceRepository,
+  ChannelRepository,
+  ChannelUserRepository,
+  ChannelMessageRepository,
+} from "../electron/database/repositories";
+import { formatChatTranscriptForPrompt } from "../electron/gateway/chat-transcript";
+import { MemoryService } from "../electron/memory/MemoryService";
+import { CrossSignalService } from "../electron/agents/CrossSignalService";
+import { FeedbackService } from "../electron/agents/FeedbackService";
+import { attachAgentDaemonTaskBridge, registerControlPlaneMethods } from "./control-plane-methods";
 
 interface StartedControlPlane {
   server: ControlPlaneServer;
@@ -45,34 +52,41 @@ interface StartedControlPlane {
 
 async function maybeBootstrapWorkspace(agentDaemon: AgentDaemon): Promise<void> {
   try {
-    const bootstrapPathRaw = process.env.COWORK_BOOTSTRAP_WORKSPACE_PATH || getArgValue('--bootstrap-workspace');
-    if (!bootstrapPathRaw || typeof bootstrapPathRaw !== 'string' || bootstrapPathRaw.trim().length === 0) return;
+    const bootstrapPathRaw =
+      process.env.COWORK_BOOTSTRAP_WORKSPACE_PATH || getArgValue("--bootstrap-workspace");
+    if (
+      !bootstrapPathRaw ||
+      typeof bootstrapPathRaw !== "string" ||
+      bootstrapPathRaw.trim().length === 0
+    )
+      return;
 
     const raw = bootstrapPathRaw.trim();
     const home = os.homedir();
-    const expanded = raw === '~'
-      ? home
-      : raw.startsWith('~/')
-        ? path.join(home, raw.slice(2))
-        : raw;
+    const expanded =
+      raw === "~" ? home : raw.startsWith("~/") ? path.join(home, raw.slice(2)) : raw;
     const workspacePath = path.resolve(expanded);
     await fs.mkdir(workspacePath, { recursive: true });
 
     const existing = agentDaemon.getWorkspaceByPath(workspacePath);
     if (existing) {
-      console.log(`[Daemon] Bootstrap workspace exists: ${existing.id} (${existing.name}) at ${existing.path}`);
+      console.log(
+        `[Daemon] Bootstrap workspace exists: ${existing.id} (${existing.name}) at ${existing.path}`,
+      );
       return;
     }
 
-    const nameFromEnv = process.env.COWORK_BOOTSTRAP_WORKSPACE_NAME || getArgValue('--bootstrap-workspace-name');
-    const workspaceName = (typeof nameFromEnv === 'string' && nameFromEnv.trim().length > 0)
-      ? nameFromEnv.trim()
-      : path.basename(workspacePath) || 'Workspace';
+    const nameFromEnv =
+      process.env.COWORK_BOOTSTRAP_WORKSPACE_NAME || getArgValue("--bootstrap-workspace-name");
+    const workspaceName =
+      typeof nameFromEnv === "string" && nameFromEnv.trim().length > 0
+        ? nameFromEnv.trim()
+        : path.basename(workspacePath) || "Workspace";
 
     const ws = agentDaemon.createWorkspace(workspaceName, workspacePath);
     console.log(`[Daemon] Bootstrapped workspace: ${ws.id} (${ws.name}) at ${ws.path}`);
   } catch (error) {
-    console.warn('[Daemon] Failed to bootstrap workspace:', error);
+    console.warn("[Daemon] Failed to bootstrap workspace:", error);
   }
 }
 
@@ -80,7 +94,13 @@ async function startControlPlane(options: {
   deps: { agentDaemon: AgentDaemon; dbManager: DatabaseManager; channelGateway: ChannelGateway };
   forceEnable: boolean;
   onEvent?: (evt: any) => void;
-}): Promise<{ ok: boolean; skipped?: boolean; address?: { host: string; port: number; wsUrl: string }; error?: string; started?: StartedControlPlane }> {
+}): Promise<{
+  ok: boolean;
+  skipped?: boolean;
+  address?: { host: string; port: number; wsUrl: string };
+  error?: string;
+  started?: StartedControlPlane;
+}> {
   try {
     ControlPlaneSettingsManager.initialize();
     TailscaleSettingsManager.initialize();
@@ -93,10 +113,13 @@ async function startControlPlane(options: {
       return { ok: true, skipped: true };
     }
 
-    if (settings.connectionMode === 'remote') {
+    if (settings.connectionMode === "remote") {
       const remoteConfig = settings.remote;
       if (!remoteConfig?.url || !remoteConfig?.token) {
-        return { ok: false, error: 'Remote gateway URL and token are required (connectionMode=remote)' };
+        return {
+          ok: false,
+          error: "Remote gateway URL and token are required (connectionMode=remote)",
+        };
       }
 
       // Ensure local mode isn't running.
@@ -115,7 +138,7 @@ async function startControlPlane(options: {
     }
 
     if (!settings.token) {
-      return { ok: false, error: 'No authentication token configured' };
+      return { ok: false, error: "No authentication token configured" };
     }
 
     const server = new ControlPlaneServer({
@@ -140,12 +163,16 @@ async function startControlPlane(options: {
         started: { server, detachAgentBridge: detach },
       };
     } catch (error) {
-      try { detach(); } catch {}
-      try { await server.stop(); } catch {}
+      try {
+        detach();
+      } catch {}
+      try {
+        await server.stop();
+      } catch {}
       throw error;
     }
   } catch (error: any) {
-    console.error('[Daemon] Control Plane start error:', error);
+    console.error("[Daemon] Control Plane start error:", error);
     return { ok: false, error: error?.message || String(error) };
   }
 }
@@ -154,7 +181,7 @@ async function main(): Promise<void> {
   // Daemon is always headless; set an env flag to keep core logic consistent even if the caller
   // forgot to pass `--headless`.
   if (!process.env.COWORK_HEADLESS) {
-    process.env.COWORK_HEADLESS = '1';
+    process.env.COWORK_HEADLESS = "1";
   }
   const HEADLESS = isHeadlessMode();
   const FORCE_ENABLE_CONTROL_PLANE = shouldEnableControlPlaneFromArgsOrEnv();
@@ -165,14 +192,14 @@ async function main(): Promise<void> {
   const userDataDir = getUserDataDir();
   await fs.mkdir(userDataDir, { recursive: true });
 
-  console.log('[Daemon] Starting CoWork OS (Node-only)');
+  console.log("[Daemon] Starting CoWork OS (Node-only)");
   console.log(`[Daemon] userData: ${userDataDir}`);
   console.log(`[Daemon] headless: ${HEADLESS}`);
 
   // Initialize database first - required for SecureSettingsRepository.
   const dbManager = new DatabaseManager();
   new SecureSettingsRepository(dbManager.getDatabase());
-  console.log('[Daemon] SecureSettingsRepository initialized');
+  console.log("[Daemon] SecureSettingsRepository initialized");
 
   // Initialize provider factories (loads settings from disk, migrates legacy files).
   LLMProviderFactory.initialize();
@@ -190,11 +217,11 @@ async function main(): Promise<void> {
     const importResult = await importProcessEnvToSettings({ mode: IMPORT_ENV_SETTINGS_MODE });
     if (importResult.migrated && importResult.migratedKeys.length > 0) {
       console.log(
-        `[Daemon] Imported credentials from process.env (${IMPORT_ENV_SETTINGS_MODE}): ${importResult.migratedKeys.join(', ')}`
+        `[Daemon] Imported credentials from process.env (${IMPORT_ENV_SETTINGS_MODE}): ${importResult.migratedKeys.join(", ")}`,
       );
     }
     if (importResult.error) {
-      console.warn('[Daemon] Failed to import credentials from process.env:', importResult.error);
+      console.warn("[Daemon] Failed to import credentials from process.env:", importResult.error);
     }
   }
 
@@ -217,11 +244,11 @@ async function main(): Promise<void> {
       );
       if (!hasAnyLlmCreds) {
         console.warn(
-          '[Daemon] No LLM credentials configured. In headless mode, set COWORK_IMPORT_ENV_SETTINGS=1 and an LLM key (e.g. OPENAI_API_KEY or ANTHROPIC_API_KEY), then restart.'
+          "[Daemon] No LLM credentials configured. In headless mode, set COWORK_IMPORT_ENV_SETTINGS=1 and an LLM key (e.g. OPENAI_API_KEY or ANTHROPIC_API_KEY), then restart.",
         );
       }
     } catch (error) {
-      console.warn('[Daemon] Failed to check LLM credential configuration:', error);
+      console.warn("[Daemon] Failed to check LLM credential configuration:", error);
     }
   }
 
@@ -235,24 +262,24 @@ async function main(): Promise<void> {
   try {
     const crossSignalService = new CrossSignalService(dbManager.getDatabase());
     await crossSignalService.start(agentDaemon);
-    console.log('[Daemon] CrossSignalService initialized');
+    console.log("[Daemon] CrossSignalService initialized");
   } catch (error) {
-    console.error('[Daemon] Failed to initialize CrossSignalService:', error);
+    console.error("[Daemon] Failed to initialize CrossSignalService:", error);
   }
 
   try {
     const feedbackService = new FeedbackService(dbManager.getDatabase());
     await feedbackService.start(agentDaemon);
-    console.log('[Daemon] FeedbackService initialized');
+    console.log("[Daemon] FeedbackService initialized");
   } catch (error) {
-    console.error('[Daemon] Failed to initialize FeedbackService:', error);
+    console.error("[Daemon] Failed to initialize FeedbackService:", error);
   }
 
   try {
     MemoryService.initialize(dbManager);
-    console.log('[Daemon] Memory Service initialized');
+    console.log("[Daemon] Memory Service initialized");
   } catch (error) {
-    console.error('[Daemon] Failed to initialize Memory Service:', error);
+    console.error("[Daemon] Failed to initialize Memory Service:", error);
   }
 
   // Initialize MCP client manager (best-effort).
@@ -260,18 +287,21 @@ async function main(): Promise<void> {
   try {
     mcpClientManager = MCPClientManager.getInstance();
     await mcpClientManager.initialize();
-    console.log('[Daemon] MCP Client Manager initialized');
+    console.log("[Daemon] MCP Client Manager initialized");
   } catch (error) {
-    console.error('[Daemon] Failed to initialize MCP Client Manager:', error);
+    console.error("[Daemon] Failed to initialize MCP Client Manager:", error);
   }
 
   // Initialize channel gateway (no UI).
-  const channelGateway = new ChannelGateway(dbManager.getDatabase(), { autoConnect: true, agentDaemon });
+  const channelGateway = new ChannelGateway(dbManager.getDatabase(), {
+    autoConnect: true,
+    agentDaemon,
+  });
   try {
     await channelGateway.initialize();
-    console.log('[Daemon] Channel Gateway initialized');
+    console.log("[Daemon] Channel Gateway initialized");
   } catch (error) {
-    console.error('[Daemon] Failed to initialize Channel Gateway:', error);
+    console.error("[Daemon] Failed to initialize Channel Gateway:", error);
   }
 
   // Initialize Cron Service for scheduled tasks (best-effort).
@@ -291,7 +321,7 @@ async function main(): Promise<void> {
       webhook: {
         enabled: false,
         port: 9876,
-        host: '127.0.0.1',
+        host: "127.0.0.1",
       },
       createTask: async (params) => {
         const allowUserInput = params.allowUserInput ?? false;
@@ -308,19 +338,25 @@ async function main(): Promise<void> {
         });
         return { id: task.id };
       },
-      resolveTemplateVariables: async ({ job, runAtMs, prevRunAtMs }): Promise<Record<string, string>> => {
-        const template = typeof job?.taskPrompt === 'string' ? job.taskPrompt : '';
+      resolveTemplateVariables: async ({
+        job,
+        runAtMs,
+        prevRunAtMs,
+      }): Promise<Record<string, string>> => {
+        const template = typeof job?.taskPrompt === "string" ? job.taskPrompt : "";
         const wantsChatVars =
-          template.includes('{{chat_messages}}') ||
-          template.includes('{{chat_since}}') ||
-          template.includes('{{chat_until}}') ||
-          template.includes('{{chat_message_count}}') ||
-          template.includes('{{chat_truncated}}');
+          template.includes("{{chat_messages}}") ||
+          template.includes("{{chat_since}}") ||
+          template.includes("{{chat_until}}") ||
+          template.includes("{{chat_message_count}}") ||
+          template.includes("{{chat_truncated}}");
         if (!wantsChatVars) return {};
 
-        const chatContext = job.chatContext || (job.delivery?.channelType && job.delivery?.channelId
-          ? { channelType: job.delivery.channelType, channelId: job.delivery.channelId }
-          : null);
+        const chatContext =
+          job.chatContext ||
+          (job.delivery?.channelType && job.delivery?.channelId
+            ? { channelType: job.delivery.channelType, channelId: job.delivery.channelId }
+            : null);
         const channelType = chatContext?.channelType;
         const chatId = chatContext?.channelId;
         if (!channelType || !chatId) return {};
@@ -329,7 +365,10 @@ async function main(): Promise<void> {
         if (!channel) return {};
 
         const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
-        const sinceMs = Math.max(0, Number.isFinite(prevRunAtMs) ? prevRunAtMs! : runAtMs - sevenDaysMs);
+        const sinceMs = Math.max(
+          0,
+          Number.isFinite(prevRunAtMs) ? prevRunAtMs! : runAtMs - sevenDaysMs,
+        );
 
         const raw = channelMessageRepo.findByChatId(channel.id, chatId, 500);
         const userCache = new Map<string, any>();
@@ -353,11 +392,11 @@ async function main(): Promise<void> {
         });
 
         return {
-          chat_messages: rendered.usedCount > 0 ? rendered.transcript : '[no messages found]',
+          chat_messages: rendered.usedCount > 0 ? rendered.transcript : "[no messages found]",
           chat_since: new Date(sinceMs).toISOString(),
           chat_until: new Date(runAtMs).toISOString(),
           chat_message_count: String(rendered.usedCount),
-          chat_truncated: rendered.truncated ? 'true' : 'false',
+          chat_truncated: rendered.truncated ? "true" : "false",
         };
       },
       getTaskStatus: async (taskId) => {
@@ -371,33 +410,37 @@ async function main(): Promise<void> {
       },
       getTaskResultText: async (taskId) => {
         const task = taskRepo.findById(taskId);
-        const summary = typeof task?.resultSummary === 'string' ? task.resultSummary.trim() : '';
+        const summary = typeof task?.resultSummary === "string" ? task.resultSummary.trim() : "";
         if (summary) return summary;
 
         const events = taskEventRepo.findByTaskId(taskId);
         for (let i = events.length - 1; i >= 0; i--) {
           const evt = events[i];
-          if (evt.type !== 'assistant_message') continue;
+          if (evt.type !== "assistant_message") continue;
           const payload = evt.payload || {};
           const text =
-            (typeof (payload as any).message === 'string' ? (payload as any).message : '') ||
-            (typeof (payload as any).content === 'string' ? (payload as any).content : '');
+            (typeof (payload as any).message === "string" ? (payload as any).message : "") ||
+            (typeof (payload as any).content === "string" ? (payload as any).content : "");
           const trimmed = String(text).trim();
           if (trimmed) return trimmed;
         }
         return undefined;
       },
       deliverToChannel: async (params) => {
-        const hasResult = params.status === 'ok' && !params.summaryOnly && typeof params.resultText === 'string' && params.resultText.trim().length > 0;
-        const statusEmoji = params.status === 'ok' ? '✅' : params.status === 'error' ? '❌' : '⏱️';
+        const hasResult =
+          params.status === "ok" &&
+          !params.summaryOnly &&
+          typeof params.resultText === "string" &&
+          params.resultText.trim().length > 0;
+        const statusEmoji = params.status === "ok" ? "✅" : params.status === "error" ? "❌" : "⏱️";
         const message = hasResult
           ? `**${params.jobName}**\n\n${params.resultText!.trim()}`
           : (() => {
               let msg = `${statusEmoji} **Scheduled Task: ${params.jobName}**\n\n`;
 
-              if (params.status === 'ok') {
+              if (params.status === "ok") {
                 msg += `Task completed successfully.\n`;
-              } else if (params.status === 'error') {
+              } else if (params.status === "error") {
                 msg += `Task failed.\n`;
               } else {
                 msg += `Task timed out.\n`;
@@ -415,27 +458,27 @@ async function main(): Promise<void> {
             })();
 
         try {
-          await channelGateway.sendMessage(
-            params.channelType as any,
-            params.channelId,
-            message,
-            { parseMode: 'markdown' }
-          );
+          await channelGateway.sendMessage(params.channelType as any, params.channelId, message, {
+            parseMode: "markdown",
+          });
           console.log(`[Cron] Delivered to ${params.channelType}:${params.channelId}`);
         } catch (err) {
-          console.error(`[Cron] Failed to deliver to ${params.channelType}:${params.channelId}:`, err);
+          console.error(
+            `[Cron] Failed to deliver to ${params.channelType}:${params.channelId}:`,
+            err,
+          );
         }
       },
       onEvent: async (evt) => {
-        console.log('[Cron] Event:', evt.action, evt.jobId);
+        console.log("[Cron] Event:", evt.action, evt.jobId);
       },
     });
 
     setCronService(cronService);
     await cronService.start();
-    console.log('[Daemon] Cron Service initialized');
+    console.log("[Daemon] Cron Service initialized");
   } catch (error) {
-    console.error('[Daemon] Failed to initialize Cron Service:', error);
+    console.error("[Daemon] Failed to initialize Cron Service:", error);
   }
 
   // Control Plane token printing gating.
@@ -451,17 +494,20 @@ async function main(): Promise<void> {
   }
 
   // Apply Control Plane host/port overrides.
-  const cpHost = process.env.COWORK_CONTROL_PLANE_HOST || getArgValue('--control-plane-host');
-  const cpPortRaw = process.env.COWORK_CONTROL_PLANE_PORT || getArgValue('--control-plane-port');
+  const cpHost = process.env.COWORK_CONTROL_PLANE_HOST || getArgValue("--control-plane-host");
+  const cpPortRaw = process.env.COWORK_CONTROL_PLANE_PORT || getArgValue("--control-plane-port");
   const cpPort = cpPortRaw ? Number.parseInt(cpPortRaw, 10) : undefined;
-  if ((typeof cpHost === 'string' && cpHost.trim()) || (typeof cpPort === 'number' && Number.isFinite(cpPort))) {
+  if (
+    (typeof cpHost === "string" && cpHost.trim()) ||
+    (typeof cpPort === "number" && Number.isFinite(cpPort))
+  ) {
     try {
       ControlPlaneSettingsManager.updateSettings({
-        ...(typeof cpHost === 'string' && cpHost.trim() ? { host: cpHost.trim() } : {}),
-        ...(typeof cpPort === 'number' && Number.isFinite(cpPort) ? { port: cpPort } : {}),
+        ...(typeof cpHost === "string" && cpHost.trim() ? { host: cpHost.trim() } : {}),
+        ...(typeof cpPort === "number" && Number.isFinite(cpPort) ? { port: cpPort } : {}),
       });
     } catch (error) {
-      console.warn('[Daemon] Failed to apply Control Plane overrides:', error);
+      console.warn("[Daemon] Failed to apply Control Plane overrides:", error);
     }
   }
 
@@ -472,7 +518,7 @@ async function main(): Promise<void> {
     forceEnable: FORCE_ENABLE_CONTROL_PLANE,
     onEvent: (evt) => {
       try {
-        const action = typeof evt?.action === 'string' ? evt.action : 'event';
+        const action = typeof evt?.action === "string" ? evt.action : "event";
         console.log(`[ControlPlane] ${action}`);
       } catch {
         // ignore
@@ -481,7 +527,7 @@ async function main(): Promise<void> {
   });
 
   if (!cp.ok) {
-    console.error('[Daemon] Control Plane failed to start:', cp.error);
+    console.error("[Daemon] Control Plane failed to start:", cp.error);
   } else if (!cp.skipped && cp.address) {
     startedControlPlane = cp.started ?? null;
     console.log(`[Daemon] Control Plane listening: ${cp.address.wsUrl}`);
@@ -489,7 +535,10 @@ async function main(): Promise<void> {
     if (tailscale.active && tailscale.httpsUrl) {
       console.log(`[Daemon] Tailscale URL: ${tailscale.httpsUrl}`);
     }
-    if ((FORCE_ENABLE_CONTROL_PLANE || PRINT_CONTROL_PLANE_TOKEN) && (PRINT_CONTROL_PLANE_TOKEN || !hadControlPlaneToken)) {
+    if (
+      (FORCE_ENABLE_CONTROL_PLANE || PRINT_CONTROL_PLANE_TOKEN) &&
+      (PRINT_CONTROL_PLANE_TOKEN || !hadControlPlaneToken)
+    ) {
       try {
         const settings = ControlPlaneSettingsManager.loadSettings();
         if (settings?.token) {
@@ -500,7 +549,7 @@ async function main(): Promise<void> {
       }
     }
   } else if (cp.skipped) {
-    console.log('[Daemon] Control Plane disabled (skipping auto-start)');
+    console.log("[Daemon] Control Plane disabled (skipping auto-start)");
   }
 
   const shutdown = async (reason: string) => {
@@ -518,40 +567,44 @@ async function main(): Promise<void> {
     try {
       if (startedControlPlane?.server?.isRunning) await startedControlPlane.server.stop();
     } catch (error) {
-      console.warn('[Daemon] Failed to stop Control Plane:', error);
+      console.warn("[Daemon] Failed to stop Control Plane:", error);
     }
     try {
       await channelGateway.shutdown();
     } catch (error) {
-      console.warn('[Daemon] Failed to shutdown Channel Gateway:', error);
+      console.warn("[Daemon] Failed to shutdown Channel Gateway:", error);
     }
     try {
       if (cronService) await cronService.stop();
     } catch (error) {
-      console.warn('[Daemon] Failed to stop Cron Service:', error);
+      console.warn("[Daemon] Failed to stop Cron Service:", error);
     }
     try {
       if (mcpClientManager) await mcpClientManager.shutdown();
     } catch (error) {
-      console.warn('[Daemon] Failed to shutdown MCP Client Manager:', error);
+      console.warn("[Daemon] Failed to shutdown MCP Client Manager:", error);
     }
     try {
       await agentDaemon.shutdown();
     } catch (error) {
-      console.warn('[Daemon] Failed to shutdown AgentDaemon:', error);
+      console.warn("[Daemon] Failed to shutdown AgentDaemon:", error);
     }
     // eslint-disable-next-line no-process-exit
     process.exit(0);
   };
 
-  process.on('SIGINT', () => { void shutdown('SIGINT'); });
-  process.on('SIGTERM', () => { void shutdown('SIGTERM'); });
-  process.on('uncaughtException', (err) => {
-    console.error('[Daemon] uncaughtException:', err);
-    void shutdown('uncaughtException');
+  process.on("SIGINT", () => {
+    void shutdown("SIGINT");
   });
-  process.on('unhandledRejection', (reason) => {
-    console.error('[Daemon] unhandledRejection:', reason);
+  process.on("SIGTERM", () => {
+    void shutdown("SIGTERM");
+  });
+  process.on("uncaughtException", (err) => {
+    console.error("[Daemon] uncaughtException:", err);
+    void shutdown("uncaughtException");
+  });
+  process.on("unhandledRejection", (reason) => {
+    console.error("[Daemon] unhandledRejection:", reason);
   });
 }
 

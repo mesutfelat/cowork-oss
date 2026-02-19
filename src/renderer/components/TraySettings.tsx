@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { TraySettings as TraySettingsType } from '../../shared/types';
+import { useState, useEffect } from "react";
+import { TraySettings as TraySettingsType } from "../../shared/types";
 
 interface TraySettingsProps {
   onStatusChange?: (enabled: boolean) => void;
@@ -16,7 +16,7 @@ export function TraySettings({ onStatusChange }: TraySettingsProps) {
   useEffect(() => {
     // Check platform
     const platform = navigator.platform.toLowerCase();
-    setIsMacOS(platform.includes('mac'));
+    setIsMacOS(platform.includes("mac"));
 
     loadSettings();
   }, []);
@@ -28,7 +28,7 @@ export function TraySettings({ onStatusChange }: TraySettingsProps) {
       setSettings(traySettings);
       onStatusChange?.(traySettings.enabled);
     } catch (error) {
-      console.error('Failed to load tray settings:', error);
+      console.error("Failed to load tray settings:", error);
     } finally {
       setLoading(false);
     }
@@ -38,12 +38,12 @@ export function TraySettings({ onStatusChange }: TraySettingsProps) {
     try {
       setSaving(true);
       await window.electronAPI.saveTraySettings(newSettings);
-      setSettings((prev) => prev ? { ...prev, ...newSettings } : null);
+      setSettings((prev) => (prev ? { ...prev, ...newSettings } : null));
       if (newSettings.enabled !== undefined) {
         onStatusChange?.(newSettings.enabled);
       }
     } catch (error) {
-      console.error('Failed to save tray settings:', error);
+      console.error("Failed to save tray settings:", error);
     } finally {
       setSaving(false);
     }
@@ -54,9 +54,7 @@ export function TraySettings({ onStatusChange }: TraySettingsProps) {
       <div className="tray-settings">
         <div className="settings-section">
           <h3>Menu Bar</h3>
-          <div className="settings-warning">
-            Menu bar integration is only available on macOS.
-          </div>
+          <div className="settings-warning">Menu bar integration is only available on macOS.</div>
         </div>
       </div>
     );
@@ -71,16 +69,15 @@ export function TraySettings({ onStatusChange }: TraySettingsProps) {
       <div className="settings-section">
         <h3>Menu Bar</h3>
         <p className="settings-description">
-          Configure the menu bar icon and behavior. The menu bar provides quick access to workspaces and tasks.
+          Configure the menu bar icon and behavior. The menu bar provides quick access to workspaces
+          and tasks.
         </p>
 
         <div className="settings-toggle-group">
           <div className="settings-toggle-item">
             <div className="toggle-info">
               <span className="toggle-label">Enable Menu Bar Icon</span>
-              <span className="toggle-description">
-                Show CoWork OS icon in the macOS menu bar
-              </span>
+              <span className="toggle-description">Show CoWork OS icon in the macOS menu bar</span>
             </div>
             <label className="toggle-switch">
               <input
@@ -171,10 +168,11 @@ export function TraySettings({ onStatusChange }: TraySettingsProps) {
         <h4>Menu Bar Features</h4>
         <div className="settings-callout info">
           <strong>Quick Access:</strong>
-          <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px' }}>
+          <ul style={{ margin: "8px 0 0 0", paddingLeft: "20px" }}>
             <li>Click the menu bar icon to show/hide the main window</li>
-            <li>Right-click (or click) to see the quick menu with:
-              <ul style={{ paddingLeft: '20px', marginTop: '4px' }}>
+            <li>
+              Right-click (or click) to see the quick menu with:
+              <ul style={{ paddingLeft: "20px", marginTop: "4px" }}>
                 <li>Channel connection status</li>
                 <li>Workspace selection</li>
                 <li>New task shortcut</li>

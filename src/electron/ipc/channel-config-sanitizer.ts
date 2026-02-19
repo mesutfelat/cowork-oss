@@ -1,17 +1,21 @@
-import type { Channel } from '../database/repositories';
-import { getChannelRegistry } from '../gateway/channel-registry';
+import type { Channel } from "../database/repositories";
+import { getChannelRegistry } from "../gateway/channel-registry";
 
-export type PublicChannelPayload = Omit<Channel, 'config' | 'securityConfig'> & {
-  securityMode: Channel['securityConfig']['mode'];
+export type PublicChannelPayload = Omit<Channel, "config" | "securityConfig"> & {
+  securityMode: Channel["securityConfig"]["mode"];
   config?: Record<string, unknown>;
 };
 
-const HIDDEN_CONFIG_KEYS = /token|secret|password|api[_-]?key|access[_-]?token|refresh[_-]?token|signing[_-]?secret|authorization/i;
+const HIDDEN_CONFIG_KEYS =
+  /token|secret|password|api[_-]?key|access[_-]?token|refresh[_-]?token|signing[_-]?secret|authorization/i;
 
 const getHiddenKeysRegex = (): RegExp => HIDDEN_CONFIG_KEYS;
 
-export const sanitizeChannelConfig = (type: string, config: unknown): Record<string, unknown> | undefined => {
-  if (!config || typeof config !== 'object' || Array.isArray(config)) {
+export const sanitizeChannelConfig = (
+  type: string,
+  config: unknown,
+): Record<string, unknown> | undefined => {
+  if (!config || typeof config !== "object" || Array.isArray(config)) {
     return undefined;
   }
 
@@ -44,7 +48,7 @@ export const sanitizeChannelConfig = (type: string, config: unknown): Record<str
 
 export const toPublicChannel = (
   channel: Channel,
-  statusOverride?: Channel['status'],
+  statusOverride?: Channel["status"],
 ): PublicChannelPayload => ({
   id: channel.id,
   type: channel.type,

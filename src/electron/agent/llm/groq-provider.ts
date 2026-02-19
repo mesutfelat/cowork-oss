@@ -1,24 +1,24 @@
-import { LLMProvider, LLMProviderConfig, LLMRequest, LLMResponse } from './types';
-import { OpenAICompatibleProvider } from './openai-compatible-provider';
+import { LLMProvider, LLMProviderConfig, LLMRequest, LLMResponse } from "./types";
+import { OpenAICompatibleProvider } from "./openai-compatible-provider";
 
-const GROQ_BASE_URL = 'https://api.groq.com/openai/v1';
-const DEFAULT_GROQ_MODEL = 'llama-3.1-8b-instant';
+const GROQ_BASE_URL = "https://api.groq.com/openai/v1";
+const DEFAULT_GROQ_MODEL = "llama-3.1-8b-instant";
 
 export class GroqProvider implements LLMProvider {
-  readonly type = 'groq' as const;
+  readonly type = "groq" as const;
   private client: OpenAICompatibleProvider;
 
   constructor(config: LLMProviderConfig) {
     const apiKey = config.groqApiKey;
     if (!apiKey) {
-      throw new Error('Groq API key is required. Configure it in Settings.');
+      throw new Error("Groq API key is required. Configure it in Settings.");
     }
 
     const baseUrl = config.groqBaseUrl || GROQ_BASE_URL;
 
     this.client = new OpenAICompatibleProvider({
-      type: 'groq',
-      providerName: 'Groq',
+      type: "groq",
+      providerName: "Groq",
       apiKey,
       baseUrl,
       defaultModel: config.model || DEFAULT_GROQ_MODEL,

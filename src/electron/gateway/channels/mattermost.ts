@@ -28,17 +28,17 @@ import {
   ChannelInfo,
   MattermostConfig,
   MessageAttachment,
-} from './types';
-import { MattermostClient, MattermostPost, MattermostUser } from './mattermost-client';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
+} from "./types";
+import { MattermostClient, MattermostPost, MattermostUser } from "./mattermost-client";
+import * as fs from "fs";
+import * as path from "path";
+import * as os from "os";
 
 export class MattermostAdapter implements ChannelAdapter {
-  readonly type = 'mattermost' as const;
+  readonly type = "mattermost" as const;
 
   private client: MattermostClient | null = null;
-  private _status: ChannelStatus = 'disconnected';
+  private _status: ChannelStatus = "disconnected";
   private _botUsername?: string;
   private messageHandlers: MessageHandler[] = [];
   private errorHandlers: ErrorHandler[] = [];
@@ -64,7 +64,7 @@ export class MattermostAdapter implements ChannelAdapter {
     };
 
     // Set up attachments directory
-    this.attachmentsDir = path.join(os.tmpdir(), 'cowork-mattermost-attachments');
+    this.attachmentsDir = path.join(os.tmpdir(), "cowork-mattermost-attachments");
     if (!fs.existsSync(this.attachmentsDir)) {
       fs.mkdirSync(this.attachmentsDir, { recursive: true });
     }
@@ -82,11 +82,11 @@ export class MattermostAdapter implements ChannelAdapter {
    * Connect to Mattermost
    */
   async connect(): Promise<void> {
-    if (this._status === 'connected' || this._status === 'connecting') {
+    if (this._status === "connected" || this._status === "connecting") {
       return;
     }
 
-    this.setStatus('connecting');
+    this.setStatus("connecting");
 
     try {
       // Create Mattermost client
@@ -94,13 +94,13 @@ export class MattermostAdapter implements ChannelAdapter {
         serverUrl: this.config.serverUrl,
         token: this.config.token,
         teamId: this.config.teamId,
-        verbose: process.env.NODE_ENV === 'development',
+        verbose: process.env.NODE_ENV === "development",
       });
 
       // Check connection
       const check = await this.client.checkConnection();
       if (!check.success) {
-        throw new Error(check.error || 'Failed to connect to Mattermost');
+        throw new Error(check.error || "Failed to connect to Mattermost");
       }
 
       // Get bot user info
@@ -108,22 +108,22 @@ export class MattermostAdapter implements ChannelAdapter {
       this._botUsername = user.username;
 
       // Set up event handlers
-      this.client.on('post', (post: MattermostPost, channelType: string) => {
+      this.client.on("post", (post: MattermostPost, channelType: string) => {
         this.handleIncomingPost(post, channelType);
       });
 
-      this.client.on('error', (error: Error) => {
-        this.handleError(error, 'client');
+      this.client.on("error", (error: Error) => {
+        this.handleError(error, "client");
       });
 
-      this.client.on('connected', () => {
-        console.log('Mattermost client connected');
+      this.client.on("connected", () => {
+        console.log("Mattermost client connected");
       });
 
-      this.client.on('disconnected', () => {
-        console.log('Mattermost client disconnected');
-        if (this._status === 'connected') {
-          this.setStatus('disconnected');
+      this.client.on("disconnected", () => {
+        console.log("Mattermost client disconnected");
+        if (this._status === "connected") {
+          this.setStatus("disconnected");
         }
       });
 
@@ -135,11 +135,11 @@ export class MattermostAdapter implements ChannelAdapter {
         this.startDedupCleanup();
       }
 
-      this.setStatus('connected');
+      this.setStatus("connected");
       console.log(`Mattermost adapter connected as ${this._botUsername}`);
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
-      this.setStatus('error', err);
+      this.setStatus("error", err);
       throw err;
     }
   }
@@ -165,15 +165,15 @@ export class MattermostAdapter implements ChannelAdapter {
     }
 
     this._botUsername = undefined;
-    this.setStatus('disconnected');
+    this.setStatus("disconnected");
   }
 
   /**
    * Send a message
    */
   async sendMessage(message: OutgoingMessage): Promise<string> {
-    if (!this.client || this._status !== 'connected') {
-      throw new Error('Mattermost client is not connected');
+    if (!this.client || this._status !== "connected") {
+      throw new Error("Mattermost client is not connected");
     }
 
     // Prepare file attachments
@@ -207,7 +207,7 @@ export class MattermostAdapter implements ChannelAdapter {
    */
   private async uploadAttachment(
     channelId: string,
-    attachment: MessageAttachment
+    attachment: MessageAttachment,
   ): Promise<string | null> {
     if (!this.client) return null;
 
@@ -231,7 +231,7 @@ export class MattermostAdapter implements ChannelAdapter {
         return result.file_infos[0].id;
       }
     } catch (error) {
-      console.error('Failed to upload attachment:', error);
+      console.error("Failed to upload attachment:", error);
     }
 
     return null;
@@ -241,8 +241,8 @@ export class MattermostAdapter implements ChannelAdapter {
    * Edit a message
    */
   async editMessage(chatId: string, messageId: string, text: string): Promise<void> {
-    if (!this.client || this._status !== 'connected') {
-      throw new Error('Mattermost client is not connected');
+    if (!this.client || this._status !== "connected") {
+      throw new Error("Mattermost client is not connected");
     }
 
     await this.client.updateMessage(messageId, text);
@@ -252,8 +252,8 @@ export class MattermostAdapter implements ChannelAdapter {
    * Delete a message
    */
   async deleteMessage(chatId: string, messageId: string): Promise<void> {
-    if (!this.client || this._status !== 'connected') {
-      throw new Error('Mattermost client is not connected');
+    if (!this.client || this._status !== "connected") {
+      throw new Error("Mattermost client is not connected");
     }
 
     await this.client.deleteMessage(messageId);
@@ -263,8 +263,8 @@ export class MattermostAdapter implements ChannelAdapter {
    * Send a document/file
    */
   async sendDocument(chatId: string, filePath: string, caption?: string): Promise<string> {
-    if (!this.client || this._status !== 'connected') {
-      throw new Error('Mattermost client is not connected');
+    if (!this.client || this._status !== "connected") {
+      throw new Error("Mattermost client is not connected");
     }
 
     const fileName = path.basename(filePath);
@@ -278,7 +278,7 @@ export class MattermostAdapter implements ChannelAdapter {
       return post.id;
     }
 
-    throw new Error('Failed to upload file');
+    throw new Error("Failed to upload file");
   }
 
   /**
@@ -314,7 +314,7 @@ export class MattermostAdapter implements ChannelAdapter {
    */
   async getInfo(): Promise<ChannelInfo> {
     return {
-      type: 'mattermost',
+      type: "mattermost",
       status: this._status,
       botId: this.client?.getCurrentUserId(),
       botUsername: this._botUsername,
@@ -333,12 +333,12 @@ export class MattermostAdapter implements ChannelAdapter {
    * Add reaction to a message
    */
   async addReaction(chatId: string, messageId: string, emoji: string): Promise<void> {
-    if (!this.client || this._status !== 'connected') {
-      throw new Error('Mattermost client is not connected');
+    if (!this.client || this._status !== "connected") {
+      throw new Error("Mattermost client is not connected");
     }
 
     // Mattermost uses emoji names without colons (e.g., "thumbsup" not ":thumbsup:")
-    const emojiName = emoji.replace(/:/g, '');
+    const emojiName = emoji.replace(/:/g, "");
     await this.client.addReaction(messageId, emojiName);
   }
 
@@ -346,11 +346,11 @@ export class MattermostAdapter implements ChannelAdapter {
    * Remove reaction from a message
    */
   async removeReaction(chatId: string, messageId: string, emoji: string): Promise<void> {
-    if (!this.client || this._status !== 'connected') {
-      throw new Error('Mattermost client is not connected');
+    if (!this.client || this._status !== "connected") {
+      throw new Error("Mattermost client is not connected");
     }
 
-    const emojiName = emoji.replace(/:/g, '');
+    const emojiName = emoji.replace(/:/g, "");
     await this.client.removeReaction(messageId, emojiName);
   }
 
@@ -361,10 +361,7 @@ export class MattermostAdapter implements ChannelAdapter {
   /**
    * Handle incoming Mattermost post
    */
-  private async handleIncomingPost(
-    post: MattermostPost,
-    channelType: string
-  ): Promise<void> {
+  private async handleIncomingPost(post: MattermostPost, channelType: string): Promise<void> {
     // Skip empty messages
     if (!post.message) {
       return;
@@ -382,23 +379,23 @@ export class MattermostAdapter implements ChannelAdapter {
     }
 
     // Get user info
-    let userName = 'Unknown';
+    let userName = "Unknown";
     try {
       const user = await this.getCachedUser(post.user_id);
-      userName = user.username || user.first_name || 'Unknown';
+      userName = user.username || user.first_name || "Unknown";
     } catch (error) {
-      console.error('Failed to get user info:', error);
+      console.error("Failed to get user info:", error);
     }
 
     // Convert attachments
     const attachments = this.convertAttachments(post);
 
-    const isGroup = channelType !== 'D';
+    const isGroup = channelType !== "D";
 
     // Convert to IncomingMessage
     const message: IncomingMessage = {
       messageId: post.id,
-      channel: 'mattermost',
+      channel: "mattermost",
       userId: post.user_id,
       userName,
       chatId: post.channel_id,
@@ -415,10 +412,10 @@ export class MattermostAdapter implements ChannelAdapter {
       try {
         await handler(message);
       } catch (error) {
-        console.error('Error in Mattermost message handler:', error);
+        console.error("Error in Mattermost message handler:", error);
         this.handleError(
           error instanceof Error ? error : new Error(String(error)),
-          'messageHandler'
+          "messageHandler",
         );
       }
     }
@@ -433,14 +430,14 @@ export class MattermostAdapter implements ChannelAdapter {
     }
 
     return post.metadata.files.map((file) => {
-      let type: MessageAttachment['type'] = 'file';
+      let type: MessageAttachment["type"] = "file";
 
-      if (file.mime_type.startsWith('image/')) {
-        type = 'image';
-      } else if (file.mime_type.startsWith('audio/')) {
-        type = 'audio';
-      } else if (file.mime_type.startsWith('video/')) {
-        type = 'video';
+      if (file.mime_type.startsWith("image/")) {
+        type = "image";
+      } else if (file.mime_type.startsWith("audio/")) {
+        type = "audio";
+      } else if (file.mime_type.startsWith("video/")) {
+        type = "video";
       }
 
       return {
@@ -463,7 +460,7 @@ export class MattermostAdapter implements ChannelAdapter {
     }
 
     if (!this.client) {
-      throw new Error('Client not connected');
+      throw new Error("Client not connected");
     }
 
     const user = await this.client.getUser(userId);
@@ -519,7 +516,7 @@ export class MattermostAdapter implements ChannelAdapter {
       try {
         handler(error, context);
       } catch (e) {
-        console.error('Error in error handler:', e);
+        console.error("Error in error handler:", e);
       }
     }
   }
@@ -533,7 +530,7 @@ export class MattermostAdapter implements ChannelAdapter {
       try {
         handler(status, error);
       } catch (e) {
-        console.error('Error in status handler:', e);
+        console.error("Error in status handler:", e);
       }
     }
   }
@@ -544,10 +541,10 @@ export class MattermostAdapter implements ChannelAdapter {
  */
 export function createMattermostAdapter(config: MattermostConfig): MattermostAdapter {
   if (!config.serverUrl) {
-    throw new Error('Mattermost server URL is required');
+    throw new Error("Mattermost server URL is required");
   }
   if (!config.token) {
-    throw new Error('Mattermost access token is required');
+    throw new Error("Mattermost access token is required");
   }
   return new MattermostAdapter(config);
 }

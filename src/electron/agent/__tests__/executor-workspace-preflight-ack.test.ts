@@ -1,8 +1,8 @@
-import { describe, it, expect, vi } from 'vitest';
-import { TaskExecutor } from '../executor';
-import { TEMP_WORKSPACE_ID } from '../../../shared/types';
+import { describe, it, expect, vi } from "vitest";
+import { TaskExecutor } from "../executor";
+import { TEMP_WORKSPACE_ID } from "../../../shared/types";
 
-describe('TaskExecutor workspace preflight acknowledgement', () => {
+describe("TaskExecutor workspace preflight acknowledgement", () => {
   const buildBase = () => ({
     shouldPauseForQuestions: true,
     workspacePreflightAcknowledged: false,
@@ -12,31 +12,35 @@ describe('TaskExecutor workspace preflight acknowledgement', () => {
     isInternalAppOrToolChangeIntent: vi.fn(() => false),
     preflightShellExecutionCheck: vi.fn(() => false),
     tryAutoSwitchToPreferredWorkspaceForAmbiguousTask: vi.fn(() => false),
-    task: { prompt: 'Fix a bug in src/app.ts', id: 't1' },
-    classifyWorkspaceNeed: vi.fn(() => 'needs_existing'),
-    getWorkspaceSignals: vi.fn(() => ({ hasProjectMarkers: false, hasCodeFiles: false, hasAppDirs: false })),
+    task: { prompt: "Fix a bug in src/app.ts", id: "t1" },
+    classifyWorkspaceNeed: vi.fn(() => "needs_existing"),
+    getWorkspaceSignals: vi.fn(() => ({
+      hasProjectMarkers: false,
+      hasCodeFiles: false,
+      hasAppDirs: false,
+    })),
   });
 
-  it('pauses on workspace mismatch when acknowledgement is not set', () => {
+  it("pauses on workspace mismatch when acknowledgement is not set", () => {
     const pauseForUserInput = vi.fn();
     const fakeThis: any = {
       ...buildBase(),
-      workspace: { isTemp: false, id: 'ws1' },
+      workspace: { isTemp: false, id: "ws1" },
       pauseForUserInput,
     };
 
     const shouldPause = (TaskExecutor as any).prototype.preflightWorkspaceCheck.call(fakeThis);
     expect(shouldPause).toBe(true);
     expect(pauseForUserInput).toHaveBeenCalledTimes(1);
-    expect(pauseForUserInput.mock.calls[0][1]).toBe('workspace_mismatch');
+    expect(pauseForUserInput.mock.calls[0][1]).toBe("workspace_mismatch");
   });
 
-  it('does not re-pause once the user acknowledged the preflight warning', () => {
+  it("does not re-pause once the user acknowledged the preflight warning", () => {
     const pauseForUserInput = vi.fn();
     const fakeThis: any = {
       ...buildBase(),
       workspacePreflightAcknowledged: true,
-      workspace: { isTemp: false, id: 'ws1' },
+      workspace: { isTemp: false, id: "ws1" },
       pauseForUserInput,
     };
 
@@ -45,7 +49,7 @@ describe('TaskExecutor workspace preflight acknowledgement', () => {
     expect(pauseForUserInput).not.toHaveBeenCalled();
   });
 
-  it('applies to temp workspace gates as well', () => {
+  it("applies to temp workspace gates as well", () => {
     const pauseForUserInput = vi.fn();
     const fakeThis: any = {
       ...buildBase(),
@@ -56,16 +60,16 @@ describe('TaskExecutor workspace preflight acknowledgement', () => {
     const shouldPause = (TaskExecutor as any).prototype.preflightWorkspaceCheck.call(fakeThis);
     expect(shouldPause).toBe(true);
     expect(pauseForUserInput).toHaveBeenCalledTimes(1);
-    expect(pauseForUserInput.mock.calls[0][1]).toBe('workspace_required');
+    expect(pauseForUserInput.mock.calls[0][1]).toBe("workspace_required");
   });
 
-  it('does not pause for ambiguous coding requests in temporary workspace', () => {
+  it("does not pause for ambiguous coding requests in temporary workspace", () => {
     const pauseForUserInput = vi.fn();
     const tryAutoSwitch = vi.fn(() => false);
     const fakeThis: any = {
       ...buildBase(),
       workspace: { isTemp: true, id: TEMP_WORKSPACE_ID },
-      classifyWorkspaceNeed: vi.fn(() => 'ambiguous'),
+      classifyWorkspaceNeed: vi.fn(() => "ambiguous"),
       tryAutoSwitchToPreferredWorkspaceForAmbiguousTask: tryAutoSwitch,
       pauseForUserInput,
     };
@@ -76,7 +80,7 @@ describe('TaskExecutor workspace preflight acknowledgement', () => {
     expect(tryAutoSwitch).toHaveBeenCalledTimes(1);
   });
 
-  it('does not pause when capability upgrade intent is active', () => {
+  it("does not pause when capability upgrade intent is active", () => {
     const pauseForUserInput = vi.fn();
     const fakeThis: any = {
       ...buildBase(),
@@ -90,11 +94,11 @@ describe('TaskExecutor workspace preflight acknowledgement', () => {
     expect(pauseForUserInput).not.toHaveBeenCalled();
   });
 
-  it('pauses for shell enablement when task requires command execution and shell is disabled', () => {
+  it("pauses for shell enablement when task requires command execution and shell is disabled", () => {
     const pauseForUserInput = vi.fn();
     const fakeThis: any = {
       ...buildBase(),
-      workspace: { isTemp: false, id: 'ws1', permissions: { shell: false } },
+      workspace: { isTemp: false, id: "ws1", permissions: { shell: false } },
       requiresExecutionToolRun: true,
       allowExecutionWithoutShell: false,
       lastPauseReason: null,
@@ -104,14 +108,14 @@ describe('TaskExecutor workspace preflight acknowledgement', () => {
     const shouldPause = (TaskExecutor as any).prototype.preflightShellExecutionCheck.call(fakeThis);
     expect(shouldPause).toBe(true);
     expect(pauseForUserInput).toHaveBeenCalledTimes(1);
-    expect(pauseForUserInput.mock.calls[0][1]).toBe('shell_permission_required');
+    expect(pauseForUserInput.mock.calls[0][1]).toBe("shell_permission_required");
   });
 
-  it('does not pause for shell when user explicitly chose to continue without shell', () => {
+  it("does not pause for shell when user explicitly chose to continue without shell", () => {
     const pauseForUserInput = vi.fn();
     const fakeThis: any = {
       ...buildBase(),
-      workspace: { isTemp: false, id: 'ws1', permissions: { shell: false } },
+      workspace: { isTemp: false, id: "ws1", permissions: { shell: false } },
       requiresExecutionToolRun: true,
       allowExecutionWithoutShell: true,
       lastPauseReason: null,
@@ -123,7 +127,7 @@ describe('TaskExecutor workspace preflight acknowledgement', () => {
     expect(pauseForUserInput).not.toHaveBeenCalled();
   });
 
-  it('does not pause for internal app/tool change intent in temporary workspace', () => {
+  it("does not pause for internal app/tool change intent in temporary workspace", () => {
     const pauseForUserInput = vi.fn();
     const fakeThis: any = {
       ...buildBase(),
@@ -137,16 +141,16 @@ describe('TaskExecutor workspace preflight acknowledgement', () => {
     expect(pauseForUserInput).not.toHaveBeenCalled();
   });
 
-  it('auto-switches to the preferred non-temp workspace for ambiguous temp tasks', () => {
+  it("auto-switches to the preferred non-temp workspace for ambiguous temp tasks", () => {
     const preferredWorkspace = {
-      id: 'ws-preferred',
-      name: 'Preferred',
+      id: "ws-preferred",
+      name: "Preferred",
       path: process.cwd(),
       permissions: { read: true, write: true, delete: false, network: true, shell: false },
     };
     const fakeThis: any = {
       workspace: { isTemp: true, id: TEMP_WORKSPACE_ID, path: process.cwd() },
-      task: { id: 't1', workspaceId: TEMP_WORKSPACE_ID },
+      task: { id: "t1", workspaceId: TEMP_WORKSPACE_ID },
       sandboxRunner: null,
       toolRegistry: { setWorkspace: vi.fn() },
       daemon: {
@@ -161,15 +165,17 @@ describe('TaskExecutor workspace preflight acknowledgement', () => {
       })),
     };
 
-    const switched = (TaskExecutor as any).prototype.tryAutoSwitchToPreferredWorkspaceForAmbiguousTask.call(
+    const switched = (
+      TaskExecutor as any
+    ).prototype.tryAutoSwitchToPreferredWorkspaceForAmbiguousTask.call(
       fakeThis,
-      'ambiguous_temp_workspace'
+      "ambiguous_temp_workspace",
     );
 
     expect(switched).toBe(true);
-    expect(fakeThis.workspace.id).toBe('ws-preferred');
-    expect(fakeThis.task.workspaceId).toBe('ws-preferred');
+    expect(fakeThis.workspace.id).toBe("ws-preferred");
+    expect(fakeThis.task.workspaceId).toBe("ws-preferred");
     expect(fakeThis.toolRegistry.setWorkspace).toHaveBeenCalledWith(preferredWorkspace);
-    expect(fakeThis.daemon.updateTaskWorkspace).toHaveBeenCalledWith('t1', 'ws-preferred');
+    expect(fakeThis.daemon.updateTaskWorkspace).toHaveBeenCalledWith("t1", "ws-preferred");
   });
 });

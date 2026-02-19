@@ -1,4 +1,4 @@
-import OpenAI from 'openai';
+import OpenAI from "openai";
 import {
   getModel,
   getModels,
@@ -7,7 +7,7 @@ import {
   type Message as PiAiMessage,
   type Context as PiAiContext,
   type Tool as PiAiTool,
-} from '@mariozechner/pi-ai';
+} from "@mariozechner/pi-ai";
 import {
   LLMProvider,
   LLMProviderConfig,
@@ -17,12 +17,12 @@ import {
   LLMMessage,
   LLMTool,
   LLMToolResult,
-} from './types';
-import { OpenAIOAuth, OpenAIOAuthTokens } from './openai-oauth';
-import { imageToTextFallback } from './image-utils';
+} from "./types";
+import { OpenAIOAuth, OpenAIOAuthTokens } from "./openai-oauth";
+import { imageToTextFallback } from "./image-utils";
 
 // Default model for openai-codex (ChatGPT backend)
-const DEFAULT_CODEX_MODEL = 'gpt-5.1-codex-mini';
+const DEFAULT_CODEX_MODEL = "gpt-5.1-codex-mini";
 
 /**
  * OpenAI API provider implementation
@@ -31,9 +31,9 @@ const DEFAULT_CODEX_MODEL = 'gpt-5.1-codex-mini';
  * - OAuth: Uses pi-ai SDK with ChatGPT backend (chatgpt.com/backend-api/)
  */
 export class OpenAIProvider implements LLMProvider {
-  readonly type = 'openai' as const;
+  readonly type = "openai" as const;
   private client: OpenAI | null = null;
-  private authMethod: 'api_key' | 'oauth';
+  private authMethod: "api_key" | "oauth";
   private oauthTokens?: OpenAIOAuthTokens;
   private model: string;
 
@@ -51,20 +51,22 @@ export class OpenAIProvider implements LLMProvider {
         refresh_token: refreshToken,
         expires_at: tokenExpiresAt || 0, // Use stored expiry or 0 if not available
       };
-      this.authMethod = 'oauth';
-      console.log(`[OpenAI] Using OAuth authentication with pi-ai SDK (token expires: ${tokenExpiresAt ? new Date(tokenExpiresAt).toISOString() : 'unknown'})`);
+      this.authMethod = "oauth";
+      console.log(
+        `[OpenAI] Using OAuth authentication with pi-ai SDK (token expires: ${tokenExpiresAt ? new Date(tokenExpiresAt).toISOString() : "unknown"})`,
+      );
     } else if (apiKey) {
       // Use API key - standard OpenAI SDK
       this.client = new OpenAI({ apiKey });
-      this.authMethod = 'api_key';
-      console.log('[OpenAI] Using API key authentication');
+      this.authMethod = "api_key";
+      console.log("[OpenAI] Using API key authentication");
     } else {
-      throw new Error('OpenAI authentication required. Use API key or sign in with ChatGPT.');
+      throw new Error("OpenAI authentication required. Use API key or sign in with ChatGPT.");
     }
   }
 
   async createMessage(request: LLMRequest): Promise<LLMResponse> {
-    if (this.authMethod === 'oauth') {
+    if (this.authMethod === "oauth") {
       return this.createMessageWithOAuth(request);
     } else {
       return this.createMessageWithApiKey(request);
@@ -76,7 +78,7 @@ export class OpenAIProvider implements LLMProvider {
    */
   private async createMessageWithApiKey(request: LLMRequest): Promise<LLMResponse> {
     if (!this.client) {
-      throw new Error('OpenAI client not initialized');
+      throw new Error("OpenAI client not initialized");
     }
 
     const messages = this.convertMessages(request.messages, request.system);
@@ -92,15 +94,15 @@ export class OpenAIProvider implements LLMProvider {
           messages,
           ...(tools && tools.length > 0 && { tools }),
         },
-        request.signal ? { signal: request.signal } : undefined
+        request.signal ? { signal: request.signal } : undefined,
       );
 
       return this.convertResponse(response);
     } catch (error: any) {
       // Handle abort errors gracefully
-      if (error.name === 'AbortError' || error.message?.includes('aborted')) {
+      if (error.name === "AbortError" || error.message?.includes("aborted")) {
         console.log(`[OpenAI] Request aborted`);
-        throw new Error('Request cancelled');
+        throw new Error("Request cancelled");
       }
 
       console.error(`[OpenAI] API error:`, {
@@ -119,16 +121,16 @@ export class OpenAIProvider implements LLMProvider {
     // Map common public model names to ChatGPT internal models
     const modelMap: Record<string, string> = {
       // Map gpt-4o models to gpt-5.1
-      'gpt-4o': 'gpt-5.1',
-      'gpt-4o-mini': 'gpt-5.1-codex-mini',
+      "gpt-4o": "gpt-5.1",
+      "gpt-4o-mini": "gpt-5.1-codex-mini",
       // Map o1/reasoning models to gpt-5.2
-      'o1': 'gpt-5.2',
-      'o1-mini': 'gpt-5.2-codex',
-      'o1-preview': 'gpt-5.2',
+      o1: "gpt-5.2",
+      "o1-mini": "gpt-5.2-codex",
+      "o1-preview": "gpt-5.2",
       // Default mappings
-      'gpt-4-turbo': 'gpt-5.1',
-      'gpt-4': 'gpt-5.1',
-      'gpt-3.5-turbo': 'gpt-5.1-codex-mini',
+      "gpt-4-turbo": "gpt-5.1",
+      "gpt-4": "gpt-5.1",
+      "gpt-3.5-turbo": "gpt-5.1-codex-mini",
     };
 
     return modelMap[modelId] || modelId;
@@ -139,29 +141,33 @@ export class OpenAIProvider implements LLMProvider {
    */
   private async createMessageWithOAuth(request: LLMRequest): Promise<LLMResponse> {
     if (!this.oauthTokens) {
-      throw new Error('OAuth tokens not available');
+      throw new Error("OAuth tokens not available");
     }
 
     try {
       // Map model ID to ChatGPT internal model
       const codexModelId = this.mapToCodexModel(request.model);
-      console.log(`[OpenAI] Calling ChatGPT backend with model: ${codexModelId} (requested: ${request.model})`);
+      console.log(
+        `[OpenAI] Calling ChatGPT backend with model: ${codexModelId} (requested: ${request.model})`,
+      );
 
       // Get the model object from pi-ai SDK
       let model: Model<any>;
       try {
         // Get available models and find one that matches
-        const availableModels = getModels('openai-codex');
-        const found = availableModels.find(m => m.id === codexModelId);
+        const availableModels = getModels("openai-codex");
+        const found = availableModels.find((m) => m.id === codexModelId);
         if (found) {
           model = found;
         } else {
           // Use default if not found
-          console.log(`[OpenAI] Model ${codexModelId} not found, using default: ${DEFAULT_CODEX_MODEL}`);
-          model = availableModels.find(m => m.id === DEFAULT_CODEX_MODEL) || availableModels[0];
+          console.log(
+            `[OpenAI] Model ${codexModelId} not found, using default: ${DEFAULT_CODEX_MODEL}`,
+          );
+          model = availableModels.find((m) => m.id === DEFAULT_CODEX_MODEL) || availableModels[0];
         }
       } catch (e) {
-        console.error('[OpenAI] Failed to get model from pi-ai SDK:', e);
+        console.error("[OpenAI] Failed to get model from pi-ai SDK:", e);
         throw new Error(`Model not available: ${codexModelId}`);
       }
 
@@ -195,20 +201,20 @@ export class OpenAIProvider implements LLMProvider {
 
       // pi-ai returns an AssistantMessage even on errors (stopReason: "error"/"aborted").
       // Our executor expects provider errors to be thrown so it can retry/fail loudly.
-      if (response?.stopReason === 'aborted') {
-        throw new Error('Request cancelled');
+      if (response?.stopReason === "aborted") {
+        throw new Error("Request cancelled");
       }
-      if (response?.stopReason === 'error') {
-        throw new Error(response?.errorMessage || 'OpenAI request failed');
+      if (response?.stopReason === "error") {
+        throw new Error(response?.errorMessage || "OpenAI request failed");
       }
 
       // Convert pi-ai response to our format
       return this.convertPiAiResponse(response);
     } catch (error: any) {
       // Handle abort errors gracefully
-      if (error.name === 'AbortError' || error.message?.includes('aborted')) {
+      if (error.name === "AbortError" || error.message?.includes("aborted")) {
         console.log(`[OpenAI] Request aborted`);
-        throw new Error('Request cancelled');
+        throw new Error("Request cancelled");
       }
 
       console.error(`[OpenAI] ChatGPT API error:`, {
@@ -221,48 +227,51 @@ export class OpenAIProvider implements LLMProvider {
 
   async testConnection(): Promise<{ success: boolean; error?: string }> {
     try {
-      if (this.authMethod === 'oauth') {
+      if (this.authMethod === "oauth") {
         // For OAuth, try to get the API key and make a simple request
         if (!this.oauthTokens) {
-          return { success: false, error: 'OAuth tokens not available' };
+          return { success: false, error: "OAuth tokens not available" };
         }
 
         const { apiKey } = await OpenAIOAuth.getApiKeyFromTokens(this.oauthTokens);
 
         // Get a model from the available models
-        const availableModels = getModels('openai-codex');
-        const model = availableModels.find(m => m.id === DEFAULT_CODEX_MODEL) || availableModels[0];
+        const availableModels = getModels("openai-codex");
+        const model =
+          availableModels.find((m) => m.id === DEFAULT_CODEX_MODEL) || availableModels[0];
 
         await piAiComplete(
           model,
           {
-            messages: [{
-              role: 'user',
-              content: [{ type: 'text', text: 'Hi' }],
-              timestamp: Date.now(),
-            }],
+            messages: [
+              {
+                role: "user",
+                content: [{ type: "text", text: "Hi" }],
+                timestamp: Date.now(),
+              },
+            ],
           },
-          { apiKey, maxTokens: 10 }
+          { apiKey, maxTokens: 10 },
         );
 
         return { success: true };
       } else {
         // For API key, use standard OpenAI SDK
         if (!this.client) {
-          return { success: false, error: 'OpenAI client not initialized' };
+          return { success: false, error: "OpenAI client not initialized" };
         }
 
         await this.client.chat.completions.create({
-          model: 'gpt-4o-mini',
+          model: "gpt-4o-mini",
           max_tokens: 10,
-          messages: [{ role: 'user', content: 'Hi' }],
+          messages: [{ role: "user", content: "Hi" }],
         });
         return { success: true };
       }
     } catch (error: any) {
       return {
         success: false,
-        error: error.message || 'Failed to connect to OpenAI API',
+        error: error.message || "Failed to connect to OpenAI API",
       };
     }
   }
@@ -274,12 +283,12 @@ export class OpenAIProvider implements LLMProvider {
    */
   async getAvailableModels(): Promise<Array<{ id: string; name: string; description: string }>> {
     // For OAuth authentication, use pi-ai SDK's model list
-    if (this.authMethod === 'oauth') {
-      console.log('[OpenAI] Using OAuth - fetching models from pi-ai SDK...');
+    if (this.authMethod === "oauth") {
+      console.log("[OpenAI] Using OAuth - fetching models from pi-ai SDK...");
 
       try {
         // Get models from pi-ai SDK for openai-codex provider
-        const piAiModels = getModels('openai-codex');
+        const piAiModels = getModels("openai-codex");
 
         const models = piAiModels.map((m) => ({
           id: m.id,
@@ -290,12 +299,12 @@ export class OpenAIProvider implements LLMProvider {
         // Sort by priority
         models.sort((a, b) => {
           const priority = (id: string) => {
-            if (id.includes('5.1-codex-mini')) return 0;
-            if (id.includes('5.1-codex-max')) return 1;
-            if (id === 'gpt-5.1') return 2;
-            if (id.includes('5.3-codex')) return 3;
-            if (id.includes('5.2-codex')) return 3;
-            if (id === 'gpt-5.2') return 4;
+            if (id.includes("5.1-codex-mini")) return 0;
+            if (id.includes("5.1-codex-max")) return 1;
+            if (id === "gpt-5.1") return 2;
+            if (id.includes("5.3-codex")) return 3;
+            if (id.includes("5.2-codex")) return 3;
+            if (id === "gpt-5.2") return 4;
             return 5;
           };
           return priority(a.id) - priority(b.id);
@@ -304,7 +313,7 @@ export class OpenAIProvider implements LLMProvider {
         console.log(`[OpenAI] Found ${models.length} models via pi-ai SDK`);
         return models;
       } catch (error) {
-        console.error('[OpenAI] Failed to get models from pi-ai SDK:', error);
+        console.error("[OpenAI] Failed to get models from pi-ai SDK:", error);
         // Return defaults on error
         return this.getDefaultCodexModels();
       }
@@ -315,7 +324,7 @@ export class OpenAIProvider implements LLMProvider {
       try {
         const response = await this.client.models.list();
         const models = response.data
-          .filter((m) => m.id.startsWith('gpt-') || m.id.startsWith('o1') || m.id.startsWith('o3'))
+          .filter((m) => m.id.startsWith("gpt-") || m.id.startsWith("o1") || m.id.startsWith("o3"))
           .map((m) => ({
             id: m.id,
             name: this.formatModelName(m.id),
@@ -323,18 +332,18 @@ export class OpenAIProvider implements LLMProvider {
           }))
           .sort((a, b) => {
             const priority = (id: string) => {
-              if (id.includes('gpt-4o')) return 0;
-              if (id.includes('gpt-4')) return 1;
-              if (id.includes('gpt-3.5')) return 2;
-              if (id.includes('o1')) return 3;
-              if (id.includes('o3')) return 4;
+              if (id.includes("gpt-4o")) return 0;
+              if (id.includes("gpt-4")) return 1;
+              if (id.includes("gpt-3.5")) return 2;
+              if (id.includes("o1")) return 3;
+              if (id.includes("o3")) return 4;
               return 5;
             };
             return priority(a.id) - priority(b.id);
           });
         return models;
       } catch (error: any) {
-        console.error('Failed to fetch OpenAI models:', error);
+        console.error("Failed to fetch OpenAI models:", error);
       }
     }
 
@@ -344,68 +353,79 @@ export class OpenAIProvider implements LLMProvider {
 
   private getDefaultModels(): Array<{ id: string; name: string; description: string }> {
     return [
-      { id: 'gpt-4o', name: 'GPT-4o', description: 'Most capable model for complex tasks' },
-      { id: 'gpt-4o-mini', name: 'GPT-4o Mini', description: 'Fast and affordable for most tasks' },
-      { id: 'o1', name: 'o1', description: 'Advanced reasoning model' },
-      { id: 'o1-mini', name: 'o1 Mini', description: 'Fast reasoning model' },
-      { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', description: 'Previous generation flagship' },
-      { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', description: 'Fast and cost-effective' },
+      { id: "gpt-4o", name: "GPT-4o", description: "Most capable model for complex tasks" },
+      { id: "gpt-4o-mini", name: "GPT-4o Mini", description: "Fast and affordable for most tasks" },
+      { id: "o1", name: "o1", description: "Advanced reasoning model" },
+      { id: "o1-mini", name: "o1 Mini", description: "Fast reasoning model" },
+      { id: "gpt-4-turbo", name: "GPT-4 Turbo", description: "Previous generation flagship" },
+      { id: "gpt-3.5-turbo", name: "GPT-3.5 Turbo", description: "Fast and cost-effective" },
     ];
   }
 
   private getDefaultCodexModels(): Array<{ id: string; name: string; description: string }> {
     return [
-      { id: 'gpt-5.1-codex-mini', name: 'GPT-5.1 Codex Mini', description: 'Fast and efficient for most tasks' },
-      { id: 'gpt-5.1-codex-max', name: 'GPT-5.1 Codex Max', description: 'Maximum capability for complex tasks' },
-      { id: 'gpt-5.1', name: 'GPT-5.1', description: 'Balanced performance and capability' },
-      { id: 'gpt-5.2-codex', name: 'GPT-5.2 Codex', description: 'Advanced reasoning model' },
-      { id: 'gpt-5.3-codex', name: 'GPT-5.3 Codex', description: 'Advanced reasoning model' },
-      { id: 'gpt-5.2', name: 'GPT-5.2', description: 'Most advanced reasoning' },
+      {
+        id: "gpt-5.1-codex-mini",
+        name: "GPT-5.1 Codex Mini",
+        description: "Fast and efficient for most tasks",
+      },
+      {
+        id: "gpt-5.1-codex-max",
+        name: "GPT-5.1 Codex Max",
+        description: "Maximum capability for complex tasks",
+      },
+      { id: "gpt-5.1", name: "GPT-5.1", description: "Balanced performance and capability" },
+      { id: "gpt-5.2-codex", name: "GPT-5.2 Codex", description: "Advanced reasoning model" },
+      { id: "gpt-5.3-codex", name: "GPT-5.3 Codex", description: "Advanced reasoning model" },
+      { id: "gpt-5.2", name: "GPT-5.2", description: "Most advanced reasoning" },
     ];
   }
 
   private formatModelName(modelId: string): string {
     // Format model ID to display name
-    if (modelId === 'gpt-4o') return 'GPT-4o';
-    if (modelId === 'gpt-4o-mini') return 'GPT-4o Mini';
-    if (modelId.includes('gpt-4o-')) return `GPT-4o (${modelId.replace('gpt-4o-', '')})`;
-    if (modelId === 'gpt-4-turbo') return 'GPT-4 Turbo';
-    if (modelId.includes('gpt-4-turbo-')) return `GPT-4 Turbo (${modelId.replace('gpt-4-turbo-', '')})`;
-    if (modelId === 'gpt-4') return 'GPT-4';
-    if (modelId.includes('gpt-4-')) return `GPT-4 (${modelId.replace('gpt-4-', '')})`;
-    if (modelId === 'gpt-3.5-turbo') return 'GPT-3.5 Turbo';
-    if (modelId.includes('gpt-3.5-turbo-')) return `GPT-3.5 Turbo (${modelId.replace('gpt-3.5-turbo-', '')})`;
-    if (modelId === 'o1') return 'o1';
-    if (modelId === 'o1-mini') return 'o1 Mini';
-    if (modelId === 'o1-preview') return 'o1 Preview';
-    if (modelId === 'o3-mini') return 'o3 Mini';
+    if (modelId === "gpt-4o") return "GPT-4o";
+    if (modelId === "gpt-4o-mini") return "GPT-4o Mini";
+    if (modelId.includes("gpt-4o-")) return `GPT-4o (${modelId.replace("gpt-4o-", "")})`;
+    if (modelId === "gpt-4-turbo") return "GPT-4 Turbo";
+    if (modelId.includes("gpt-4-turbo-"))
+      return `GPT-4 Turbo (${modelId.replace("gpt-4-turbo-", "")})`;
+    if (modelId === "gpt-4") return "GPT-4";
+    if (modelId.includes("gpt-4-")) return `GPT-4 (${modelId.replace("gpt-4-", "")})`;
+    if (modelId === "gpt-3.5-turbo") return "GPT-3.5 Turbo";
+    if (modelId.includes("gpt-3.5-turbo-"))
+      return `GPT-3.5 Turbo (${modelId.replace("gpt-3.5-turbo-", "")})`;
+    if (modelId === "o1") return "o1";
+    if (modelId === "o1-mini") return "o1 Mini";
+    if (modelId === "o1-preview") return "o1 Preview";
+    if (modelId === "o3-mini") return "o3 Mini";
     // ChatGPT internal models
-    if (modelId === 'gpt-5.1') return 'GPT-5.1';
-    if (modelId === 'gpt-5.1-codex-mini') return 'GPT-5.1 Codex Mini';
-    if (modelId === 'gpt-5.1-codex-max') return 'GPT-5.1 Codex Max';
-    if (modelId === 'gpt-5.2') return 'GPT-5.2';
-    if (modelId === 'gpt-5.2-codex') return 'GPT-5.2 Codex';
-    if (modelId === 'gpt-5.3-codex') return 'GPT-5.3 Codex';
+    if (modelId === "gpt-5.1") return "GPT-5.1";
+    if (modelId === "gpt-5.1-codex-mini") return "GPT-5.1 Codex Mini";
+    if (modelId === "gpt-5.1-codex-max") return "GPT-5.1 Codex Max";
+    if (modelId === "gpt-5.2") return "GPT-5.2";
+    if (modelId === "gpt-5.2-codex") return "GPT-5.2 Codex";
+    if (modelId === "gpt-5.3-codex") return "GPT-5.3 Codex";
     return modelId;
   }
 
   private getModelDescription(modelId: string): string {
-    if (modelId.includes('gpt-4o') && !modelId.includes('mini')) return 'Most capable model for complex tasks';
-    if (modelId.includes('gpt-4o-mini')) return 'Fast and affordable for most tasks';
-    if (modelId.includes('gpt-4-turbo')) return 'Previous generation flagship';
-    if (modelId.includes('gpt-4')) return 'High capability model';
-    if (modelId.includes('gpt-3.5')) return 'Fast and cost-effective';
-    if (modelId === 'o1' || modelId === 'o1-preview') return 'Advanced reasoning model';
-    if (modelId === 'o1-mini') return 'Fast reasoning model';
-    if (modelId.includes('o3')) return 'Next generation reasoning';
+    if (modelId.includes("gpt-4o") && !modelId.includes("mini"))
+      return "Most capable model for complex tasks";
+    if (modelId.includes("gpt-4o-mini")) return "Fast and affordable for most tasks";
+    if (modelId.includes("gpt-4-turbo")) return "Previous generation flagship";
+    if (modelId.includes("gpt-4")) return "High capability model";
+    if (modelId.includes("gpt-3.5")) return "Fast and cost-effective";
+    if (modelId === "o1" || modelId === "o1-preview") return "Advanced reasoning model";
+    if (modelId === "o1-mini") return "Fast reasoning model";
+    if (modelId.includes("o3")) return "Next generation reasoning";
     // ChatGPT internal models
-    if (modelId === 'gpt-5.1') return 'Balanced performance and capability';
-    if (modelId === 'gpt-5.1-codex-mini') return 'Fast and efficient for most tasks';
-    if (modelId === 'gpt-5.1-codex-max') return 'Maximum capability for complex tasks';
-    if (modelId === 'gpt-5.2') return 'Most advanced reasoning';
-    if (modelId === 'gpt-5.2-codex') return 'Advanced reasoning model';
-    if (modelId === 'gpt-5.3-codex') return 'Advanced reasoning model';
-    return 'OpenAI model';
+    if (modelId === "gpt-5.1") return "Balanced performance and capability";
+    if (modelId === "gpt-5.1-codex-mini") return "Fast and efficient for most tasks";
+    if (modelId === "gpt-5.1-codex-max") return "Maximum capability for complex tasks";
+    if (modelId === "gpt-5.2") return "Most advanced reasoning";
+    if (modelId === "gpt-5.2-codex") return "Advanced reasoning model";
+    if (modelId === "gpt-5.3-codex") return "Advanced reasoning model";
+    return "OpenAI model";
   }
 
   /**
@@ -416,58 +436,67 @@ export class OpenAIProvider implements LLMProvider {
     const now = Date.now();
 
     for (const msg of messages) {
-      if (typeof msg.content === 'string') {
-        if (msg.role === 'user') {
+      if (typeof msg.content === "string") {
+        if (msg.role === "user") {
           result.push({
-            role: 'user',
-            content: [{ type: 'text', text: msg.content }],
+            role: "user",
+            content: [{ type: "text", text: msg.content }],
             timestamp: now,
           });
         } else {
           // Assistant message
           result.push({
-            role: 'assistant',
-            content: [{ type: 'text', text: msg.content }],
-            api: 'openai-codex-responses',
-            provider: 'openai-codex',
+            role: "assistant",
+            content: [{ type: "text", text: msg.content }],
+            api: "openai-codex-responses",
+            provider: "openai-codex",
             model: this.model,
-            usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } },
-            stopReason: 'stop',
+            usage: {
+              input: 0,
+              output: 0,
+              cacheRead: 0,
+              cacheWrite: 0,
+              totalTokens: 0,
+              cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+            },
+            stopReason: "stop",
             timestamp: now,
           });
         }
       } else if (Array.isArray(msg.content)) {
         // Check if this is a tool result array
-        const toolResults = msg.content.filter((item): item is LLMToolResult => item.type === 'tool_result');
+        const toolResults = msg.content.filter(
+          (item): item is LLMToolResult => item.type === "tool_result",
+        );
 
         if (toolResults.length > 0) {
           // Convert tool results to pi-ai format
           for (const toolResult of toolResults) {
             result.push({
-              role: 'toolResult',
+              role: "toolResult",
               toolCallId: toolResult.tool_use_id,
-              toolName: '', // Will be filled by the SDK
-              content: [{ type: 'text', text: toolResult.content }],
+              toolName: "", // Will be filled by the SDK
+              content: [{ type: "text", text: toolResult.content }],
               isError: toolResult.is_error || false,
               timestamp: now,
             });
           }
         } else {
           // Handle mixed content (text, tool_use, image)
-          if (msg.role === 'user') {
-            const textContent: Array<{ type: 'text'; text: string }> = [];
+          if (msg.role === "user") {
+            const textContent: Array<{ type: "text"; text: string }> = [];
             for (const item of msg.content) {
-              if (item.type === 'text') {
-                textContent.push({ type: 'text' as const, text: (item as any).text });
-              } else if (item.type === 'image') {
+              if (item.type === "text") {
+                textContent.push({ type: "text" as const, text: (item as any).text });
+              } else if (item.type === "image") {
                 // pi-ai SDK doesn't support inline images; use text fallback
-                textContent.push({ type: 'text' as const, text: imageToTextFallback(item) });
+                textContent.push({ type: "text" as const, text: imageToTextFallback(item) });
               }
             }
 
             if (textContent.length > 0) {
               result.push({
-                role: 'user',
+                role: "user",
                 content: textContent,
                 timestamp: now,
               });
@@ -477,11 +506,11 @@ export class OpenAIProvider implements LLMProvider {
             const content: any[] = [];
 
             for (const item of msg.content) {
-              if (item.type === 'text') {
-                content.push({ type: 'text', text: (item as any).text });
-              } else if (item.type === 'tool_use') {
+              if (item.type === "text") {
+                content.push({ type: "text", text: (item as any).text });
+              } else if (item.type === "tool_use") {
                 content.push({
-                  type: 'toolCall',
+                  type: "toolCall",
                   id: (item as any).id,
                   name: (item as any).name,
                   arguments: (item as any).input,
@@ -491,13 +520,20 @@ export class OpenAIProvider implements LLMProvider {
 
             if (content.length > 0) {
               result.push({
-                role: 'assistant',
+                role: "assistant",
                 content,
-                api: 'openai-codex-responses',
-                provider: 'openai-codex',
+                api: "openai-codex-responses",
+                provider: "openai-codex",
                 model: this.model,
-                usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } },
-                stopReason: 'stop',
+                usage: {
+                  input: 0,
+                  output: 0,
+                  cacheRead: 0,
+                  cacheWrite: 0,
+                  totalTokens: 0,
+                  cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+                },
+                stopReason: "stop",
                 timestamp: now,
               });
             }
@@ -528,14 +564,14 @@ export class OpenAIProvider implements LLMProvider {
 
     if (response.content) {
       for (const block of response.content) {
-        if (block.type === 'text') {
+        if (block.type === "text") {
           content.push({
-            type: 'text',
+            type: "text",
             text: block.text,
           });
-        } else if (block.type === 'toolCall') {
+        } else if (block.type === "toolCall") {
           content.push({
-            type: 'tool_use',
+            type: "tool_use",
             id: block.id,
             name: block.name,
             input: block.arguments || {},
@@ -545,11 +581,11 @@ export class OpenAIProvider implements LLMProvider {
     }
 
     // Map stop reason
-    let stopReason: LLMResponse['stopReason'] = 'end_turn';
-    if (response.stopReason === 'toolUse') {
-      stopReason = 'tool_use';
-    } else if (response.stopReason === 'length') {
-      stopReason = 'max_tokens';
+    let stopReason: LLMResponse["stopReason"] = "end_turn";
+    if (response.stopReason === "toolUse") {
+      stopReason = "tool_use";
+    } else if (response.stopReason === "length") {
+      stopReason = "max_tokens";
     }
 
     return {
@@ -567,75 +603,82 @@ export class OpenAIProvider implements LLMProvider {
   /**
    * Convert messages to OpenAI format (for API key auth)
    */
-  private convertMessages(messages: LLMMessage[], system?: string): OpenAI.ChatCompletionMessageParam[] {
+  private convertMessages(
+    messages: LLMMessage[],
+    system?: string,
+  ): OpenAI.ChatCompletionMessageParam[] {
     const result: OpenAI.ChatCompletionMessageParam[] = [];
 
     // Add system message first if provided
     if (system) {
       result.push({
-        role: 'system',
+        role: "system",
         content: system,
       });
     }
 
     for (const msg of messages) {
-      if (typeof msg.content === 'string') {
+      if (typeof msg.content === "string") {
         result.push({
           role: msg.role,
           content: msg.content,
         });
       } else if (Array.isArray(msg.content)) {
         // Check if this is a tool result array
-        const toolResults = msg.content.filter((item): item is LLMToolResult => item.type === 'tool_result');
+        const toolResults = msg.content.filter(
+          (item): item is LLMToolResult => item.type === "tool_result",
+        );
 
         if (toolResults.length > 0) {
           // Convert tool results to OpenAI format
           for (const toolResult of toolResults) {
             result.push({
-              role: 'tool',
+              role: "tool",
               tool_call_id: toolResult.tool_use_id,
               content: toolResult.content,
             });
           }
           // If there are also image/text blocks alongside tool_results, emit them separately
-          const nonToolItems = msg.content.filter((item) => item.type !== 'tool_result');
-          const hasImages = nonToolItems.some((item) => item.type === 'image');
+          const nonToolItems = msg.content.filter((item) => item.type !== "tool_result");
+          const hasImages = nonToolItems.some((item) => item.type === "image");
           if (hasImages) {
-            const contentParts: Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }> = [];
+            const contentParts: Array<
+              { type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }
+            > = [];
             for (const item of nonToolItems) {
-              if (item.type === 'text') {
-                contentParts.push({ type: 'text', text: item.text });
-              } else if (item.type === 'image') {
+              if (item.type === "text") {
+                contentParts.push({ type: "text", text: item.text });
+              } else if (item.type === "image") {
                 contentParts.push({
-                  type: 'image_url',
+                  type: "image_url",
                   image_url: { url: `data:${item.mimeType};base64,${item.data}` },
                 });
               }
             }
             if (contentParts.length > 0) {
-              result.push({ role: 'user', content: contentParts } as any);
+              result.push({ role: "user", content: contentParts } as any);
             }
           }
         } else {
           // Handle mixed content (text, tool_use, image)
-          const hasImages = msg.content.some((item) => item.type === 'image');
+          const hasImages = msg.content.some((item) => item.type === "image");
           const textContent = msg.content
-            .filter((item) => item.type === 'text')
-            .map((item) => (item as { type: 'text'; text: string }).text)
-            .join('\n');
+            .filter((item) => item.type === "text")
+            .map((item) => (item as { type: "text"; text: string }).text)
+            .join("\n");
 
-          const toolUses = msg.content.filter((item) => item.type === 'tool_use');
+          const toolUses = msg.content.filter((item) => item.type === "tool_use");
 
-          if (msg.role === 'assistant') {
+          if (msg.role === "assistant") {
             const assistantMsg: OpenAI.ChatCompletionAssistantMessageParam = {
-              role: 'assistant',
+              role: "assistant",
               content: textContent || null,
             };
 
             if (toolUses.length > 0) {
               assistantMsg.tool_calls = toolUses.map((tool) => ({
                 id: (tool as any).id,
-                type: 'function' as const,
+                type: "function" as const,
                 function: {
                   name: (tool as any).name,
                   arguments: JSON.stringify((tool as any).input),
@@ -646,18 +689,20 @@ export class OpenAIProvider implements LLMProvider {
             result.push(assistantMsg);
           } else if (hasImages) {
             // Build multi-part content array with text and image_url blocks
-            const contentParts: Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }> = [];
+            const contentParts: Array<
+              { type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }
+            > = [];
             for (const item of msg.content) {
-              if (item.type === 'text') {
-                contentParts.push({ type: 'text', text: item.text });
-              } else if (item.type === 'image') {
+              if (item.type === "text") {
+                contentParts.push({ type: "text", text: item.text });
+              } else if (item.type === "image") {
                 contentParts.push({
-                  type: 'image_url',
+                  type: "image_url",
                   image_url: { url: `data:${item.mimeType};base64,${item.data}` },
                 });
               }
             }
-            result.push({ role: 'user', content: contentParts } as any);
+            result.push({ role: "user", content: contentParts } as any);
           } else {
             result.push({
               role: msg.role,
@@ -673,7 +718,7 @@ export class OpenAIProvider implements LLMProvider {
 
   private convertTools(tools: LLMTool[]): OpenAI.ChatCompletionTool[] {
     return tools.map((tool) => ({
-      type: 'function' as const,
+      type: "function" as const,
       function: {
         name: tool.name,
         description: tool.description,
@@ -689,7 +734,7 @@ export class OpenAIProvider implements LLMProvider {
     // Add text content if present
     if (choice.message.content) {
       content.push({
-        type: 'text',
+        type: "text",
         text: choice.message.content,
       });
     }
@@ -698,12 +743,12 @@ export class OpenAIProvider implements LLMProvider {
     if (choice.message.tool_calls) {
       for (const toolCall of choice.message.tool_calls) {
         // Only handle function-type tool calls
-        if (toolCall.type === 'function') {
+        if (toolCall.type === "function") {
           content.push({
-            type: 'tool_use',
+            type: "tool_use",
             id: toolCall.id,
             name: toolCall.function.name,
-            input: JSON.parse(toolCall.function.arguments || '{}'),
+            input: JSON.parse(toolCall.function.arguments || "{}"),
           });
         }
       }
@@ -722,19 +767,19 @@ export class OpenAIProvider implements LLMProvider {
   }
 
   private mapStopReason(
-    reason: OpenAI.ChatCompletion.Choice['finish_reason']
-  ): LLMResponse['stopReason'] {
+    reason: OpenAI.ChatCompletion.Choice["finish_reason"],
+  ): LLMResponse["stopReason"] {
     switch (reason) {
-      case 'stop':
-        return 'end_turn';
-      case 'tool_calls':
-        return 'tool_use';
-      case 'length':
-        return 'max_tokens';
-      case 'content_filter':
-        return 'stop_sequence';
+      case "stop":
+        return "end_turn";
+      case "tool_calls":
+        return "tool_use";
+      case "length":
+        return "max_tokens";
+      case "content_filter":
+        return "stop_sequence";
       default:
-        return 'end_turn';
+        return "end_turn";
     }
   }
 }

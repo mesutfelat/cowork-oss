@@ -1,7 +1,13 @@
-import { useState, useEffect, useCallback } from 'react';
-import { ChannelData, ChannelUserData, SecurityMode, ContextType, ContextPolicy } from '../../shared/types';
-import { PairingCodeDisplay } from './PairingCodeDisplay';
-import { ContextPolicySettings } from './ContextPolicySettings';
+import { useState, useEffect, useCallback } from "react";
+import {
+  ChannelData,
+  ChannelUserData,
+  SecurityMode,
+  ContextType,
+  ContextPolicy,
+} from "../../shared/types";
+import { PairingCodeDisplay } from "./PairingCodeDisplay";
+import { ContextPolicySettings } from "./ContextPolicySettings";
 
 interface MatrixSettingsProps {
   onStatusChange?: (connected: boolean) => void;
@@ -13,16 +19,20 @@ export function MatrixSettings({ onStatusChange }: MatrixSettingsProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<{ success: boolean; error?: string; botUsername?: string } | null>(null);
+  const [testResult, setTestResult] = useState<{
+    success: boolean;
+    error?: string;
+    botUsername?: string;
+  } | null>(null);
 
   // Form state
-  const [channelName, setChannelName] = useState('Matrix');
-  const [securityMode, setSecurityMode] = useState<SecurityMode>('pairing');
-  const [homeserver, setHomeserver] = useState('');
-  const [userId, setUserId] = useState('');
-  const [accessToken, setAccessToken] = useState('');
-  const [deviceId, setDeviceId] = useState('');
-  const [roomIds, setRoomIds] = useState('');
+  const [channelName, setChannelName] = useState("Matrix");
+  const [securityMode, setSecurityMode] = useState<SecurityMode>("pairing");
+  const [homeserver, setHomeserver] = useState("");
+  const [userId, setUserId] = useState("");
+  const [accessToken, setAccessToken] = useState("");
+  const [deviceId, setDeviceId] = useState("");
+  const [roomIds, setRoomIds] = useState("");
 
   // Pairing code state
   const [pairingCode, setPairingCode] = useState<string | null>(null);
@@ -30,29 +40,31 @@ export function MatrixSettings({ onStatusChange }: MatrixSettingsProps) {
   const [generatingCode, setGeneratingCode] = useState(false);
 
   // Context policy state
-  const [contextPolicies, setContextPolicies] = useState<Record<ContextType, ContextPolicy>>({} as Record<ContextType, ContextPolicy>);
+  const [contextPolicies, setContextPolicies] = useState<Record<ContextType, ContextPolicy>>(
+    {} as Record<ContextType, ContextPolicy>,
+  );
   const [savingPolicy, setSavingPolicy] = useState(false);
 
   const loadChannel = useCallback(async () => {
     try {
       setLoading(true);
       const channels = await window.electronAPI.getGatewayChannels();
-      const matrixChannel = channels.find((c: ChannelData) => c.type === 'matrix');
+      const matrixChannel = channels.find((c: ChannelData) => c.type === "matrix");
 
       if (matrixChannel) {
         setChannel(matrixChannel);
         setChannelName(matrixChannel.name);
         setSecurityMode(matrixChannel.securityMode);
-        onStatusChange?.(matrixChannel.status === 'connected');
+        onStatusChange?.(matrixChannel.status === "connected");
 
         // Load config settings
         if (matrixChannel.config) {
-          setHomeserver(matrixChannel.config.homeserver as string || '');
-          setUserId(matrixChannel.config.userId as string || '');
-          setAccessToken(matrixChannel.config.accessToken as string || '');
-          setDeviceId(matrixChannel.config.deviceId as string || '');
-          const rooms = matrixChannel.config.roomIds as string[] || [];
-          setRoomIds(rooms.join(', '));
+          setHomeserver((matrixChannel.config.homeserver as string) || "");
+          setUserId((matrixChannel.config.userId as string) || "");
+          setAccessToken((matrixChannel.config.accessToken as string) || "");
+          setDeviceId((matrixChannel.config.deviceId as string) || "");
+          const rooms = (matrixChannel.config.roomIds as string[]) || [];
+          setRoomIds(rooms.join(", "));
         }
 
         // Load users for this channel
@@ -61,14 +73,17 @@ export function MatrixSettings({ onStatusChange }: MatrixSettingsProps) {
 
         // Load context policies
         const policies = await window.electronAPI.listContextPolicies(matrixChannel.id);
-        const policyMap: Record<ContextType, ContextPolicy> = {} as Record<ContextType, ContextPolicy>;
+        const policyMap: Record<ContextType, ContextPolicy> = {} as Record<
+          ContextType,
+          ContextPolicy
+        >;
         for (const policy of policies) {
           policyMap[policy.contextType as ContextType] = policy;
         }
         setContextPolicies(policyMap);
       }
     } catch (error) {
-      console.error('Failed to load Matrix channel:', error);
+      console.error("Failed to load Matrix channel:", error);
     } finally {
       setLoading(false);
     }
@@ -80,7 +95,7 @@ export function MatrixSettings({ onStatusChange }: MatrixSettingsProps) {
 
   useEffect(() => {
     const unsubscribe = window.electronAPI?.onGatewayUsersUpdated?.((data) => {
-      if (data?.channelType !== 'matrix') return;
+      if (data?.channelType !== "matrix") return;
       if (channel && data?.channelId && data.channelId !== channel.id) return;
       loadChannel();
     });
@@ -91,7 +106,10 @@ export function MatrixSettings({ onStatusChange }: MatrixSettingsProps) {
 
   const handleAddChannel = async () => {
     if (!homeserver.trim() || !userId.trim() || !accessToken.trim()) {
-      setTestResult({ success: false, error: 'Homeserver, User ID, and Access Token are required' });
+      setTestResult({
+        success: false,
+        error: "Homeserver, User ID, and Access Token are required",
+      });
       return;
     }
 
@@ -100,12 +118,12 @@ export function MatrixSettings({ onStatusChange }: MatrixSettingsProps) {
       setTestResult(null);
 
       const roomIdList = roomIds
-        .split(',')
-        .map(r => r.trim())
+        .split(",")
+        .map((r) => r.trim())
         .filter(Boolean);
 
       await window.electronAPI.addGatewayChannel({
-        type: 'matrix',
+        type: "matrix",
         name: channelName,
         securityMode,
         matrixHomeserver: homeserver.trim(),
@@ -160,7 +178,7 @@ export function MatrixSettings({ onStatusChange }: MatrixSettingsProps) {
   const handleRemoveChannel = async () => {
     if (!channel) return;
 
-    if (!confirm('Are you sure you want to remove the Matrix channel?')) {
+    if (!confirm("Are you sure you want to remove the Matrix channel?")) {
       return;
     }
 
@@ -188,7 +206,7 @@ export function MatrixSettings({ onStatusChange }: MatrixSettingsProps) {
       setSecurityMode(newMode);
       setChannel({ ...channel, securityMode: newMode });
     } catch (error: any) {
-      console.error('Failed to update security mode:', error);
+      console.error("Failed to update security mode:", error);
     }
   };
 
@@ -197,12 +215,12 @@ export function MatrixSettings({ onStatusChange }: MatrixSettingsProps) {
 
     try {
       setGeneratingCode(true);
-      const code = await window.electronAPI.generateGatewayPairing(channel.id, '');
+      const code = await window.electronAPI.generateGatewayPairing(channel.id, "");
       setPairingCode(code);
       // Default TTL is 5 minutes (300 seconds)
       setPairingExpiresAt(Date.now() + 5 * 60 * 1000);
     } catch (error: any) {
-      console.error('Failed to generate pairing code:', error);
+      console.error("Failed to generate pairing code:", error);
     } finally {
       setGeneratingCode(false);
     }
@@ -217,12 +235,12 @@ export function MatrixSettings({ onStatusChange }: MatrixSettingsProps) {
         securityMode: updates.securityMode,
         toolRestrictions: updates.toolRestrictions,
       });
-      setContextPolicies(prev => ({
+      setContextPolicies((prev) => ({
         ...prev,
         [contextType]: updated,
       }));
     } catch (error: any) {
-      console.error('Failed to update context policy:', error);
+      console.error("Failed to update context policy:", error);
     } finally {
       setSavingPolicy(false);
     }
@@ -235,7 +253,7 @@ export function MatrixSettings({ onStatusChange }: MatrixSettingsProps) {
       await window.electronAPI.revokeGatewayAccess(channel.id, channelUserId);
       await loadChannel();
     } catch (error: any) {
-      console.error('Failed to revoke access:', error);
+      console.error("Failed to revoke access:", error);
     }
   };
 
@@ -250,7 +268,8 @@ export function MatrixSettings({ onStatusChange }: MatrixSettingsProps) {
         <div className="settings-section">
           <h3>Connect Matrix</h3>
           <p className="settings-description">
-            Connect to a Matrix homeserver to receive and send messages. Matrix is a decentralized, open-source communication protocol.
+            Connect to a Matrix homeserver to receive and send messages. Matrix is a decentralized,
+            open-source communication protocol.
           </p>
 
           <div className="settings-field">
@@ -273,9 +292,7 @@ export function MatrixSettings({ onStatusChange }: MatrixSettingsProps) {
               value={homeserver}
               onChange={(e) => setHomeserver(e.target.value)}
             />
-            <p className="settings-hint">
-              Your Matrix homeserver URL (include https://)
-            </p>
+            <p className="settings-hint">Your Matrix homeserver URL (include https://)</p>
           </div>
 
           <div className="settings-field">
@@ -287,9 +304,7 @@ export function MatrixSettings({ onStatusChange }: MatrixSettingsProps) {
               value={userId}
               onChange={(e) => setUserId(e.target.value)}
             />
-            <p className="settings-hint">
-              Your Matrix user ID (e.g., @user:matrix.org)
-            </p>
+            <p className="settings-hint">Your Matrix user ID (e.g., @user:matrix.org)</p>
           </div>
 
           <div className="settings-field">
@@ -343,14 +358,16 @@ export function MatrixSettings({ onStatusChange }: MatrixSettingsProps) {
               <option value="open">Open (Anyone can use)</option>
             </select>
             <p className="settings-hint">
-              {securityMode === 'pairing' && 'Users must enter a code generated in this app to use the bot'}
-              {securityMode === 'allowlist' && 'Only pre-approved Matrix user IDs can use the bot'}
-              {securityMode === 'open' && 'Anyone who messages the bot can use it (not recommended)'}
+              {securityMode === "pairing" &&
+                "Users must enter a code generated in this app to use the bot"}
+              {securityMode === "allowlist" && "Only pre-approved Matrix user IDs can use the bot"}
+              {securityMode === "open" &&
+                "Anyone who messages the bot can use it (not recommended)"}
             </p>
           </div>
 
           {testResult && (
-            <div className={`test-result ${testResult.success ? 'success' : 'error'}`}>
+            <div className={`test-result ${testResult.success ? "success" : "error"}`}>
               {testResult.success ? (
                 <>✓ Connected as {testResult.botUsername}</>
               ) : (
@@ -364,7 +381,7 @@ export function MatrixSettings({ onStatusChange }: MatrixSettingsProps) {
             onClick={handleAddChannel}
             disabled={saving || !homeserver.trim() || !userId.trim() || !accessToken.trim()}
           >
-            {saving ? 'Adding...' : 'Add Matrix'}
+            {saving ? "Adding..." : "Add Matrix"}
           </button>
         </div>
 
@@ -393,44 +410,36 @@ export function MatrixSettings({ onStatusChange }: MatrixSettingsProps) {
               {channel.botUsername && <span className="bot-username">{channel.botUsername}</span>}
             </h3>
             <div className={`channel-status ${channel.status}`}>
-              {channel.status === 'connected' && '● Connected'}
-              {channel.status === 'connecting' && '○ Connecting...'}
-              {channel.status === 'disconnected' && '○ Disconnected'}
-              {channel.status === 'error' && '● Error'}
+              {channel.status === "connected" && "● Connected"}
+              {channel.status === "connecting" && "○ Connecting..."}
+              {channel.status === "disconnected" && "○ Disconnected"}
+              {channel.status === "error" && "● Error"}
             </div>
           </div>
           <div className="channel-actions">
             <button
-              className={channel.enabled ? 'button-secondary' : 'button-primary'}
+              className={channel.enabled ? "button-secondary" : "button-primary"}
               onClick={handleToggleEnabled}
               disabled={saving}
             >
-              {channel.enabled ? 'Disable' : 'Enable'}
+              {channel.enabled ? "Disable" : "Enable"}
             </button>
             <button
               className="button-secondary"
               onClick={handleTestConnection}
               disabled={testing || !channel.enabled}
             >
-              {testing ? 'Testing...' : 'Test'}
+              {testing ? "Testing..." : "Test"}
             </button>
-            <button
-              className="button-danger"
-              onClick={handleRemoveChannel}
-              disabled={saving}
-            >
+            <button className="button-danger" onClick={handleRemoveChannel} disabled={saving}>
               Remove
             </button>
           </div>
         </div>
 
         {testResult && (
-          <div className={`test-result ${testResult.success ? 'success' : 'error'}`}>
-            {testResult.success ? (
-              <>✓ Connection successful</>
-            ) : (
-              <>✗ {testResult.error}</>
-            )}
+          <div className={`test-result ${testResult.success ? "success" : "error"}`}>
+            {testResult.success ? <>✓ Connection successful</> : <>✗ {testResult.error}</>}
           </div>
         )}
       </div>
@@ -448,7 +457,7 @@ export function MatrixSettings({ onStatusChange }: MatrixSettingsProps) {
         </select>
       </div>
 
-      {securityMode === 'pairing' && (
+      {securityMode === "pairing" && (
         <div className="settings-section">
           <h4>Generate Pairing Code</h4>
           <p className="settings-description">
@@ -467,7 +476,7 @@ export function MatrixSettings({ onStatusChange }: MatrixSettingsProps) {
               onClick={handleGeneratePairingCode}
               disabled={generatingCode}
             >
-              {generatingCode ? 'Generating...' : 'Generate Code'}
+              {generatingCode ? "Generating..." : "Generate Code"}
             </button>
           )}
         </div>
@@ -499,8 +508,8 @@ export function MatrixSettings({ onStatusChange }: MatrixSettingsProps) {
                 <div className="user-info">
                   <span className="user-name">{user.displayName}</span>
                   {user.username && <span className="user-username">{user.username}</span>}
-                  <span className={`user-status ${user.allowed ? 'allowed' : 'pending'}`}>
-                    {user.allowed ? '✓ Allowed' : '○ Pending'}
+                  <span className={`user-status ${user.allowed ? "allowed" : "pending"}`}>
+                    {user.allowed ? "✓ Allowed" : "○ Pending"}
                   </span>
                 </div>
                 {user.allowed && (

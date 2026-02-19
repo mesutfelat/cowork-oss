@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
-import { Task, TaskEvent } from '../../shared/types';
-import { TaskTimeline } from './TaskTimeline';
-import { useAgentContext } from '../hooks/useAgentContext';
+import { useState, useEffect } from "react";
+import { Task, TaskEvent } from "../../shared/types";
+import { TaskTimeline } from "./TaskTimeline";
+import { useAgentContext } from "../hooks/useAgentContext";
 
 interface TaskViewProps {
   task: Task | undefined;
@@ -27,7 +27,7 @@ export function TaskView({ task }: TaskViewProps) {
     // Subscribe to task events
     const unsubscribe = window.electronAPI.onTaskEvent((event: TaskEvent) => {
       if (event.taskId === task.id) {
-        setEvents(prev => capTaskViewEvents([...prev, event]));
+        setEvents((prev) => capTaskViewEvents([...prev, event]));
       }
     });
 
@@ -39,37 +39,50 @@ export function TaskView({ task }: TaskViewProps) {
     try {
       await window.electronAPI.resumeTask(task.id);
     } catch (error) {
-      console.error('Failed to resume task:', error);
+      console.error("Failed to resume task:", error);
     }
   };
 
-  const getStatusBadgeClass = (status: Task['status']) => {
+  const getStatusBadgeClass = (status: Task["status"]) => {
     switch (status) {
-      case 'completed': return 'status-completed';
-      case 'paused': return 'status-paused';
-      case 'blocked': return 'status-blocked';
-      case 'failed':
-      case 'cancelled': return 'status-failed';
-      case 'executing':
-      case 'planning': return 'status-active';
-      default: return 'status-pending';
+      case "completed":
+        return "status-completed";
+      case "paused":
+        return "status-paused";
+      case "blocked":
+        return "status-blocked";
+      case "failed":
+      case "cancelled":
+        return "status-failed";
+      case "executing":
+      case "planning":
+        return "status-active";
+      default:
+        return "status-pending";
     }
   };
 
-  const latestPauseEvent = [...events].reverse().find(event => event.type === 'task_paused');
+  const latestPauseEvent = [...events].reverse().find((event) => event.type === "task_paused");
 
   if (!task) {
     return (
       <div className="task-view">
         <div className="empty-state">
           <div className="empty-state-icon">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <svg
+              width="48"
+              height="48"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            >
               <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
               <rect x="9" y="3" width="6" height="4" rx="1" />
             </svg>
           </div>
-          <h2>{agentContext.getUiCopy('taskViewEmptyTitle')}</h2>
-          <p>{agentContext.getUiCopy('taskViewEmptyBody')}</p>
+          <h2>{agentContext.getUiCopy("taskViewEmptyTitle")}</h2>
+          <p>{agentContext.getUiCopy("taskViewEmptyBody")}</p>
         </div>
       </div>
     );
@@ -87,31 +100,35 @@ export function TaskView({ task }: TaskViewProps) {
             <span className="task-meta-divider" />
             <span className="task-date">
               {new Date(task.createdAt).toLocaleDateString(undefined, {
-                month: 'long',
-                day: 'numeric',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
+                month: "long",
+                day: "numeric",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
               })}
             </span>
           </div>
         </div>
 
         <div className="task-prompt">
-          <h3>{agentContext.getUiCopy('taskPromptTitle')}</h3>
+          <h3>{agentContext.getUiCopy("taskPromptTitle")}</h3>
           <p>{task.prompt}</p>
         </div>
 
         <TaskTimeline events={events} agentContext={agentContext} />
 
-        {task.status === 'paused' && (
+        {task.status === "paused" && (
           <div className="task-status-banner task-status-banner-paused">
             <div className="task-status-banner-content">
               <strong>I'm waiting for your next direction.</strong>
               {latestPauseEvent?.payload?.message && (
-                <span className="task-status-banner-detail">{latestPauseEvent.payload.message}</span>
+                <span className="task-status-banner-detail">
+                  {latestPauseEvent.payload.message}
+                </span>
               )}
-              <span className="task-status-banner-detail">Send your response in chat and I'll continue right away.</span>
+              <span className="task-status-banner-detail">
+                Send your response in chat and I'll continue right away.
+              </span>
               <button className="mc-btn" type="button" onClick={() => void handleResumeTask()}>
                 Continue
               </button>
@@ -119,16 +136,17 @@ export function TaskView({ task }: TaskViewProps) {
           </div>
         )}
 
-        {task.status === 'blocked' && (
+        {task.status === "blocked" && (
           <div className="task-status-banner task-status-banner-blocked">
             <div className="task-status-banner-content">
-              <strong>{agentContext.getUiCopy('taskStatusBlockedTitle')}</strong>
-              <span className="task-status-banner-detail">{agentContext.getUiCopy('taskStatusBlockedDetail')}</span>
+              <strong>{agentContext.getUiCopy("taskStatusBlockedTitle")}</strong>
+              <span className="task-status-banner-detail">
+                {agentContext.getUiCopy("taskStatusBlockedDetail")}
+              </span>
             </div>
           </div>
         )}
       </div>
-
     </div>
   );
 }

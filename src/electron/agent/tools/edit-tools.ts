@@ -1,9 +1,13 @@
-import * as fs from 'fs';
-import * as path from 'path';
-import { Workspace } from '../../../shared/types';
-import { AgentDaemon } from '../daemon';
-import { checkProjectAccess, getProjectIdFromWorkspaceRelPath, getWorkspaceRelativePosixPath } from '../../security/project-access';
-import { LLMTool } from '../llm/types';
+import * as fs from "fs";
+import * as path from "path";
+import { Workspace } from "../../../shared/types";
+import { AgentDaemon } from "../daemon";
+import {
+  checkProjectAccess,
+  getProjectIdFromWorkspaceRelPath,
+  getWorkspaceRelativePosixPath,
+} from "../../security/project-access";
+import { LLMTool } from "../llm/types";
 
 /**
  * EditTools provides surgical file editing capabilities
@@ -13,7 +17,7 @@ export class EditTools {
   constructor(
     private workspace: Workspace,
     private daemon: AgentDaemon,
-    private taskId: string
+    private taskId: string,
   ) {}
 
   /**
@@ -29,33 +33,35 @@ export class EditTools {
   static getToolDefinitions(): LLMTool[] {
     return [
       {
-        name: 'edit_file',
+        name: "edit_file",
         description:
-          'Perform surgical text replacements in files. ' +
-          'Replaces exact matches of old_string with new_string. ' +
-          'PREFERRED over write_file when making targeted changes - safer and preserves file structure. ' +
-          'The edit will FAIL if old_string is not found or is not unique (unless replace_all is true).',
+          "Perform surgical text replacements in files. " +
+          "Replaces exact matches of old_string with new_string. " +
+          "PREFERRED over write_file when making targeted changes - safer and preserves file structure. " +
+          "The edit will FAIL if old_string is not found or is not unique (unless replace_all is true).",
         input_schema: {
-          type: 'object',
+          type: "object",
           properties: {
             file_path: {
-              type: 'string',
-              description: 'Path to the file to edit (relative to workspace)',
+              type: "string",
+              description: "Path to the file to edit (relative to workspace)",
             },
             old_string: {
-              type: 'string',
-              description: 'The exact text to find and replace (must be unique in file unless replace_all)',
+              type: "string",
+              description:
+                "The exact text to find and replace (must be unique in file unless replace_all)",
             },
             new_string: {
-              type: 'string',
-              description: 'The text to replace it with (can be empty to delete)',
+              type: "string",
+              description: "The text to replace it with (can be empty to delete)",
             },
             replace_all: {
-              type: 'boolean',
-              description: 'Replace all occurrences instead of requiring unique match (default: false)',
+              type: "boolean",
+              description:
+                "Replace all occurrences instead of requiring unique match (default: false)",
             },
           },
-          required: ['file_path', 'old_string', 'new_string'],
+          required: ["file_path", "old_string", "new_string"],
         },
       },
     ];
@@ -77,18 +83,18 @@ export class EditTools {
   }> {
     const { file_path, old_string, new_string, replace_all = false } = input;
 
-    this.daemon.logEvent(this.taskId, 'log', {
+    this.daemon.logEvent(this.taskId, "log", {
       message: `Editing file: ${file_path}`,
     });
 
     try {
       // Validate inputs
       if (!old_string) {
-        throw new Error('old_string cannot be empty');
+        throw new Error("old_string cannot be empty");
       }
 
       if (old_string === new_string) {
-        throw new Error('old_string and new_string are identical - no change needed');
+        throw new Error("old_string and new_string are identical - no change needed");
       }
 
       // Resolve path
@@ -97,8 +103,8 @@ export class EditTools {
 
       // Security check - must be within workspace
       const relToWorkspace = path.relative(workspaceRoot, fullPath);
-      if (relToWorkspace.startsWith('..') || path.isAbsolute(relToWorkspace)) {
-        throw new Error('File path must be within workspace');
+      if (relToWorkspace.startsWith("..") || path.isAbsolute(relToWorkspace)) {
+        throw new Error("File path must be within workspace");
       }
 
       // Enforce per-project access for `.cowork/projects/*`
@@ -107,9 +113,14 @@ export class EditTools {
         const projectId = getProjectIdFromWorkspaceRelPath(relPosix);
         if (projectId) {
           const taskGetter = (this.daemon as any)?.getTask;
-          const task = typeof taskGetter === 'function' ? taskGetter.call(this.daemon, this.taskId) : null;
+          const task =
+            typeof taskGetter === "function" ? taskGetter.call(this.daemon, this.taskId) : null;
           const agentRoleId = task?.assignedAgentRoleId || null;
-          const res = await checkProjectAccess({ workspacePath: workspaceRoot, projectId, agentRoleId });
+          const res = await checkProjectAccess({
+            workspacePath: workspaceRoot,
+            projectId,
+            agentRoleId,
+          });
           if (!res.allowed) {
             throw new Error(res.reason || `Access denied for project "${projectId}"`);
           }
@@ -122,21 +133,21 @@ export class EditTools {
       }
 
       // Read file
-      const content = fs.readFileSync(fullPath, 'utf-8');
+      const content = fs.readFileSync(fullPath, "utf-8");
 
       // Count occurrences
       const occurrences = this.countOccurrences(content, old_string);
 
       if (occurrences === 0) {
         throw new Error(
-          `old_string not found in file. Make sure the string matches exactly (including whitespace and indentation).`
+          `old_string not found in file. Make sure the string matches exactly (including whitespace and indentation).`,
         );
       }
 
       if (occurrences > 1 && !replace_all) {
         throw new Error(
           `old_string found ${occurrences} times in file. ` +
-            `Use replace_all: true to replace all occurrences, or provide more context to make it unique.`
+            `Use replace_all: true to replace all occurrences, or provide more context to make it unique.`,
         );
       }
 
@@ -156,10 +167,10 @@ export class EditTools {
       }
 
       // Write file
-      fs.writeFileSync(fullPath, newContent, 'utf-8');
+      fs.writeFileSync(fullPath, newContent, "utf-8");
 
-      this.daemon.logEvent(this.taskId, 'tool_result', {
-        tool: 'edit_file',
+      this.daemon.logEvent(this.taskId, "tool_result", {
+        tool: "edit_file",
         result: {
           file_path,
           replacements,
@@ -169,15 +180,15 @@ export class EditTools {
       });
 
       // Emit file modified event with edit preview
-      const oldPreview = old_string.length > 80 ? old_string.slice(0, 80) + '...' : old_string;
-      const newPreview = new_string.length > 80 ? new_string.slice(0, 80) + '...' : new_string;
-      const oldLineCount = old_string.split('\n').length;
-      const newLineCount = new_string.split('\n').length;
+      const oldPreview = old_string.length > 80 ? old_string.slice(0, 80) + "..." : old_string;
+      const newPreview = new_string.length > 80 ? new_string.slice(0, 80) + "..." : new_string;
+      const oldLineCount = old_string.split("\n").length;
+      const newLineCount = new_string.split("\n").length;
       const netLines = newLineCount - oldLineCount;
 
-      this.daemon.logEvent(this.taskId, 'file_modified', {
+      this.daemon.logEvent(this.taskId, "file_modified", {
         path: file_path,
-        type: 'edit',
+        type: "edit",
         replacements,
         oldPreview,
         newPreview,
@@ -190,8 +201,8 @@ export class EditTools {
         replacements,
       };
     } catch (error: any) {
-      this.daemon.logEvent(this.taskId, 'tool_result', {
-        tool: 'edit_file',
+      this.daemon.logEvent(this.taskId, "tool_result", {
+        tool: "edit_file",
         error: error.message,
       });
 

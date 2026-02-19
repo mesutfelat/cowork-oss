@@ -1,11 +1,7 @@
-import { useState } from 'react';
-import { ThemeIcon } from './ThemeIcon';
-import { BotIcon, CalendarIcon, ClockIcon, ColumnsIcon, FlagIcon, TagIcon } from './LineIcons';
-import {
-  TaskBoardColumn,
-  TaskLabelData,
-  AgentRoleData,
-} from '../../electron/preload';
+import { useState } from "react";
+import { ThemeIcon } from "./ThemeIcon";
+import { BotIcon, CalendarIcon, ClockIcon, ColumnsIcon, FlagIcon, TagIcon } from "./LineIcons";
+import { TaskBoardColumn, TaskLabelData, AgentRoleData } from "../../electron/preload";
 
 interface Task {
   id: string;
@@ -34,31 +30,31 @@ interface TaskQuickActionsProps {
 }
 
 const COLUMNS: { id: TaskBoardColumn; label: string; color: string }[] = [
-  { id: 'backlog', label: 'Backlog', color: '#6b7280' },
-  { id: 'todo', label: 'To Do', color: '#8b5cf6' },
-  { id: 'in_progress', label: 'In Progress', color: '#3b82f6' },
-  { id: 'review', label: 'Review', color: '#f59e0b' },
-  { id: 'done', label: 'Done', color: '#22c55e' },
+  { id: "backlog", label: "Backlog", color: "#6b7280" },
+  { id: "todo", label: "To Do", color: "#8b5cf6" },
+  { id: "in_progress", label: "In Progress", color: "#3b82f6" },
+  { id: "review", label: "Review", color: "#f59e0b" },
+  { id: "done", label: "Done", color: "#22c55e" },
 ];
 
 const PRIORITIES = [
-  { value: 0, label: 'None', color: '#6b7280' },
-  { value: 1, label: 'Low', color: '#22c55e' },
-  { value: 2, label: 'Medium', color: '#f59e0b' },
-  { value: 3, label: 'High', color: '#ef4444' },
-  { value: 4, label: 'Urgent', color: '#dc2626' },
+  { value: 0, label: "None", color: "#6b7280" },
+  { value: 1, label: "Low", color: "#22c55e" },
+  { value: 2, label: "Medium", color: "#f59e0b" },
+  { value: 3, label: "High", color: "#ef4444" },
+  { value: 4, label: "Urgent", color: "#dc2626" },
 ];
 
 const ESTIMATE_OPTIONS = [
-  { value: null, label: 'No estimate' },
-  { value: 15, label: '15 min' },
-  { value: 30, label: '30 min' },
-  { value: 60, label: '1 hour' },
-  { value: 120, label: '2 hours' },
-  { value: 240, label: '4 hours' },
-  { value: 480, label: '1 day' },
-  { value: 960, label: '2 days' },
-  { value: 2400, label: '1 week' },
+  { value: null, label: "No estimate" },
+  { value: 15, label: "15 min" },
+  { value: 30, label: "30 min" },
+  { value: 60, label: "1 hour" },
+  { value: 120, label: "2 hours" },
+  { value: 240, label: "4 hours" },
+  { value: 480, label: "1 day" },
+  { value: 960, label: "2 days" },
+  { value: 2400, label: "1 week" },
 ];
 
 export function TaskQuickActions({
@@ -74,8 +70,10 @@ export function TaskQuickActions({
   onAssignAgent,
   onClose,
 }: TaskQuickActionsProps) {
-  const [activePanel, setActivePanel] = useState<'column' | 'priority' | 'labels' | 'agent' | 'due' | 'estimate' | null>(null);
-  const [customDueDate, setCustomDueDate] = useState<string>('');
+  const [activePanel, setActivePanel] = useState<
+    "column" | "priority" | "labels" | "agent" | "due" | "estimate" | null
+  >(null);
+  const [customDueDate, setCustomDueDate] = useState<string>("");
 
   const taskLabels = task.labels || [];
 
@@ -101,65 +99,67 @@ export function TaskQuickActions({
       <div className="task-quick-actions" onClick={(e) => e.stopPropagation()}>
         <div className="actions-header">
           <h4>Task Actions</h4>
-          <button className="close-btn" onClick={onClose}>✕</button>
+          <button className="close-btn" onClick={onClose}>
+            ✕
+          </button>
         </div>
 
         <div className="action-buttons">
           <button
-            className={`action-btn ${activePanel === 'column' ? 'active' : ''}`}
-            onClick={() => setActivePanel(activePanel === 'column' ? null : 'column')}
+            className={`action-btn ${activePanel === "column" ? "active" : ""}`}
+            onClick={() => setActivePanel(activePanel === "column" ? null : "column")}
           >
             <ThemeIcon className="action-icon" emoji="📋" icon={<ColumnsIcon size={16} />} />
             Move to Column
           </button>
 
           <button
-            className={`action-btn ${activePanel === 'priority' ? 'active' : ''}`}
-            onClick={() => setActivePanel(activePanel === 'priority' ? null : 'priority')}
+            className={`action-btn ${activePanel === "priority" ? "active" : ""}`}
+            onClick={() => setActivePanel(activePanel === "priority" ? null : "priority")}
           >
             <ThemeIcon className="action-icon" emoji="!" icon={<FlagIcon size={16} />} />
             Set Priority
           </button>
 
           <button
-            className={`action-btn ${activePanel === 'labels' ? 'active' : ''}`}
-            onClick={() => setActivePanel(activePanel === 'labels' ? null : 'labels')}
+            className={`action-btn ${activePanel === "labels" ? "active" : ""}`}
+            onClick={() => setActivePanel(activePanel === "labels" ? null : "labels")}
           >
             <ThemeIcon className="action-icon" emoji="🏷️" icon={<TagIcon size={16} />} />
             Labels
           </button>
 
           <button
-            className={`action-btn ${activePanel === 'agent' ? 'active' : ''}`}
-            onClick={() => setActivePanel(activePanel === 'agent' ? null : 'agent')}
+            className={`action-btn ${activePanel === "agent" ? "active" : ""}`}
+            onClick={() => setActivePanel(activePanel === "agent" ? null : "agent")}
           >
             <ThemeIcon className="action-icon" emoji="🤖" icon={<BotIcon size={16} />} />
             Assign Agent
           </button>
 
           <button
-            className={`action-btn ${activePanel === 'due' ? 'active' : ''}`}
-            onClick={() => setActivePanel(activePanel === 'due' ? null : 'due')}
+            className={`action-btn ${activePanel === "due" ? "active" : ""}`}
+            onClick={() => setActivePanel(activePanel === "due" ? null : "due")}
           >
             <ThemeIcon className="action-icon" emoji="📅" icon={<CalendarIcon size={16} />} />
             Due Date
           </button>
 
           <button
-            className={`action-btn ${activePanel === 'estimate' ? 'active' : ''}`}
-            onClick={() => setActivePanel(activePanel === 'estimate' ? null : 'estimate')}
+            className={`action-btn ${activePanel === "estimate" ? "active" : ""}`}
+            onClick={() => setActivePanel(activePanel === "estimate" ? null : "estimate")}
           >
             <ThemeIcon className="action-icon" emoji="⏱️" icon={<ClockIcon size={16} />} />
             Estimate
           </button>
         </div>
 
-        {activePanel === 'column' && (
+        {activePanel === "column" && (
           <div className="action-panel">
             {COLUMNS.map((col) => (
               <button
                 key={col.id}
-                className={`panel-option ${task.boardColumn === col.id ? 'selected' : ''}`}
+                className={`panel-option ${task.boardColumn === col.id ? "selected" : ""}`}
                 onClick={() => {
                   onMoveToColumn(col.id);
                   setActivePanel(null);
@@ -172,12 +172,12 @@ export function TaskQuickActions({
           </div>
         )}
 
-        {activePanel === 'priority' && (
+        {activePanel === "priority" && (
           <div className="action-panel">
             {PRIORITIES.map((p) => (
               <button
                 key={p.value}
-                className={`panel-option ${task.priority === p.value ? 'selected' : ''}`}
+                className={`panel-option ${task.priority === p.value ? "selected" : ""}`}
                 onClick={() => {
                   onSetPriority(p.value);
                   setActivePanel(null);
@@ -190,7 +190,7 @@ export function TaskQuickActions({
           </div>
         )}
 
-        {activePanel === 'labels' && (
+        {activePanel === "labels" && (
           <div className="action-panel">
             {labels.length === 0 ? (
               <div className="panel-empty">No labels available</div>
@@ -200,7 +200,7 @@ export function TaskQuickActions({
                 return (
                   <button
                     key={label.id}
-                    className={`panel-option ${isAssigned ? 'selected' : ''}`}
+                    className={`panel-option ${isAssigned ? "selected" : ""}`}
                     onClick={() => {
                       if (isAssigned) {
                         onRemoveLabel(label.id);
@@ -220,31 +220,28 @@ export function TaskQuickActions({
           </div>
         )}
 
-        {activePanel === 'agent' && (
+        {activePanel === "agent" && (
           <div className="action-panel">
             <button
-              className={`panel-option ${!task.assignedAgentRoleId ? 'selected' : ''}`}
+              className={`panel-option ${!task.assignedAgentRoleId ? "selected" : ""}`}
               onClick={() => {
                 onAssignAgent(null);
                 setActivePanel(null);
               }}
             >
-              <span className="option-dot" style={{ backgroundColor: '#6b7280' }} />
+              <span className="option-dot" style={{ backgroundColor: "#6b7280" }} />
               Unassigned
             </button>
             {agents.map((agent) => (
               <button
                 key={agent.id}
-                className={`panel-option ${task.assignedAgentRoleId === agent.id ? 'selected' : ''}`}
+                className={`panel-option ${task.assignedAgentRoleId === agent.id ? "selected" : ""}`}
                 onClick={() => {
                   onAssignAgent(agent.id);
                   setActivePanel(null);
                 }}
               >
-                <span
-                  className="agent-avatar"
-                  style={{ backgroundColor: agent.color }}
-                >
+                <span className="agent-avatar" style={{ backgroundColor: agent.color }}>
                   {agent.icon}
                 </span>
                 {agent.displayName}
@@ -253,7 +250,7 @@ export function TaskQuickActions({
           </div>
         )}
 
-        {activePanel === 'due' && (
+        {activePanel === "due" && (
           <div className="action-panel">
             <button
               className="panel-option"
@@ -279,23 +276,19 @@ export function TaskQuickActions({
                 value={customDueDate}
                 onChange={(e) => setCustomDueDate(e.target.value)}
               />
-              <button
-                className="apply-btn"
-                onClick={handleCustomDueDate}
-                disabled={!customDueDate}
-              >
+              <button className="apply-btn" onClick={handleCustomDueDate} disabled={!customDueDate}>
                 Set
               </button>
             </div>
           </div>
         )}
 
-        {activePanel === 'estimate' && (
+        {activePanel === "estimate" && (
           <div className="action-panel">
             {ESTIMATE_OPTIONS.map((opt) => (
               <button
-                key={opt.value ?? 'none'}
-                className={`panel-option ${task.estimatedMinutes === opt.value ? 'selected' : ''}`}
+                key={opt.value ?? "none"}
+                className={`panel-option ${task.estimatedMinutes === opt.value ? "selected" : ""}`}
                 onClick={() => {
                   onSetEstimate(opt.value);
                   setActivePanel(null);

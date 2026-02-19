@@ -32,17 +32,17 @@ type PdfParseModuleShape =
     };
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const pdfParseModule = require('pdf-parse') as PdfParseModuleShape;
+const pdfParseModule = require("pdf-parse") as PdfParseModuleShape;
 
 const legacyPdfParseFn: LegacyPdfParseFn | null =
-  typeof pdfParseModule === 'function'
+  typeof pdfParseModule === "function"
     ? pdfParseModule
-    : typeof pdfParseModule.default === 'function'
+    : typeof pdfParseModule.default === "function"
       ? pdfParseModule.default
       : null;
 
 const pdfParseV2Ctor: V2ParserCtor | undefined =
-  typeof pdfParseModule === 'object' ? pdfParseModule.PDFParse : undefined;
+  typeof pdfParseModule === "object" ? pdfParseModule.PDFParse : undefined;
 
 /**
  * Parse PDF buffers across pdf-parse v1 (function export) and v2 (PDFParse class).
@@ -52,14 +52,14 @@ export async function parsePdfBuffer(dataBuffer: Buffer): Promise<LegacyPdfParse
     return legacyPdfParseFn(dataBuffer);
   }
 
-  if (typeof pdfParseV2Ctor === 'function') {
+  if (typeof pdfParseV2Ctor === "function") {
     const parser = new pdfParseV2Ctor({ data: dataBuffer });
     try {
       const textResult = await parser.getText();
 
       // Metadata is optional for preview and should not block text extraction.
       let infoResult: V2InfoResult | undefined;
-      if (typeof parser.getInfo === 'function') {
+      if (typeof parser.getInfo === "function") {
         try {
           infoResult = await parser.getInfo();
         } catch {
@@ -68,7 +68,7 @@ export async function parsePdfBuffer(dataBuffer: Buffer): Promise<LegacyPdfParse
       }
 
       return {
-        text: textResult.text ?? '',
+        text: textResult.text ?? "",
         numpages: infoResult?.total ?? textResult.total,
         info: infoResult?.info
           ? {
@@ -78,11 +78,11 @@ export async function parsePdfBuffer(dataBuffer: Buffer): Promise<LegacyPdfParse
           : undefined,
       };
     } finally {
-      if (typeof parser.destroy === 'function') {
+      if (typeof parser.destroy === "function") {
         await parser.destroy();
       }
     }
   }
 
-  throw new Error('Unsupported pdf-parse module export shape');
+  throw new Error("Unsupported pdf-parse module export shape");
 }

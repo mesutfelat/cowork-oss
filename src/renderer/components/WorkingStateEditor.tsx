@@ -1,8 +1,5 @@
-import { useState } from 'react';
-import {
-  AgentWorkingStateData,
-  WorkingStateType,
-} from '../../electron/preload';
+import { useState } from "react";
+import { AgentWorkingStateData, WorkingStateType } from "../../electron/preload";
 
 interface WorkingStateEditorProps {
   state: AgentWorkingStateData;
@@ -10,37 +7,36 @@ interface WorkingStateEditorProps {
   onCancel: () => void;
 }
 
-const STATE_TYPE_LABELS: Record<WorkingStateType, { label: string; icon: string; placeholder: string }> = {
+const STATE_TYPE_LABELS: Record<
+  WorkingStateType,
+  { label: string; icon: string; placeholder: string }
+> = {
   context: {
-    label: 'Context',
-    icon: '📋',
-    placeholder: 'Describe the current context, background information, and key understanding...',
+    label: "Context",
+    icon: "📋",
+    placeholder: "Describe the current context, background information, and key understanding...",
   },
   progress: {
-    label: 'Progress',
-    icon: '📊',
-    placeholder: 'Document current progress, completed items, and work status...',
+    label: "Progress",
+    icon: "📊",
+    placeholder: "Document current progress, completed items, and work status...",
   },
   notes: {
-    label: 'Notes',
-    icon: '📝',
-    placeholder: 'Record important observations, reminders, and things to remember...',
+    label: "Notes",
+    icon: "📝",
+    placeholder: "Record important observations, reminders, and things to remember...",
   },
   plan: {
-    label: 'Plan',
-    icon: '🎯',
-    placeholder: 'Outline the action plan, next steps, and goals...',
+    label: "Plan",
+    icon: "🎯",
+    placeholder: "Outline the action plan, next steps, and goals...",
   },
 };
 
-export function WorkingStateEditor({
-  state,
-  onSave,
-  onCancel,
-}: WorkingStateEditorProps) {
+export function WorkingStateEditor({ state, onSave, onCancel }: WorkingStateEditorProps) {
   const [content, setContent] = useState(state.content);
   const [fileReferences, setFileReferences] = useState<string>(
-    state.fileReferences?.join('\n') || ''
+    state.fileReferences?.join("\n") || "",
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,7 +46,7 @@ export function WorkingStateEditor({
 
   const handleSave = async () => {
     if (!content.trim()) {
-      setError('Content cannot be empty');
+      setError("Content cannot be empty");
       return;
     }
 
@@ -59,7 +55,7 @@ export function WorkingStateEditor({
       setError(null);
 
       const refs = fileReferences
-        .split('\n')
+        .split("\n")
         .map((r) => r.trim())
         .filter(Boolean);
 
@@ -74,8 +70,8 @@ export function WorkingStateEditor({
 
       onSave(updatedState);
     } catch (err: any) {
-      console.error('Failed to save working state:', err);
-      setError(err.message || 'Failed to save');
+      console.error("Failed to save working state:", err);
+      setError(err.message || "Failed to save");
     } finally {
       setSaving(false);
     }
@@ -88,7 +84,7 @@ export function WorkingStateEditor({
           <div className="editor-title">
             <span className="title-icon">{config.icon}</span>
             <span className="title-text">
-              {isNew ? 'Add' : 'Edit'} {config.label}
+              {isNew ? "Add" : "Edit"} {config.label}
             </span>
           </div>
           <button className="close-btn" onClick={onCancel}>
@@ -112,8 +108,7 @@ export function WorkingStateEditor({
 
           <div className="form-group">
             <label>
-              Referenced Files{' '}
-              <span className="label-hint">(one per line, optional)</span>
+              Referenced Files <span className="label-hint">(one per line, optional)</span>
             </label>
             <textarea
               value={fileReferences}
@@ -129,12 +124,8 @@ export function WorkingStateEditor({
           <button className="cancel-btn" onClick={onCancel} disabled={saving}>
             Cancel
           </button>
-          <button
-            className="save-btn"
-            onClick={handleSave}
-            disabled={saving || !content.trim()}
-          >
-            {saving ? 'Saving...' : 'Save'}
+          <button className="save-btn" onClick={handleSave} disabled={saving || !content.trim()}>
+            {saving ? "Saving..." : "Save"}
           </button>
         </div>
 

@@ -1,14 +1,14 @@
-import { useState, useEffect, useCallback } from 'react';
-import { ChannelData, ChannelUserData, SecurityMode } from '../../shared/types';
+import { useState, useEffect, useCallback } from "react";
+import { ChannelData, ChannelUserData, SecurityMode } from "../../shared/types";
 
 interface SignalSettingsProps {
   onStatusChange?: (connected: boolean) => void;
 }
 
-type DmPolicy = 'open' | 'allowlist' | 'pairing' | 'disabled';
-type GroupPolicy = 'open' | 'allowlist' | 'disabled';
-type TrustMode = 'tofu' | 'always' | 'manual';
-type SignalMode = 'native' | 'daemon';
+type DmPolicy = "open" | "allowlist" | "pairing" | "disabled";
+type GroupPolicy = "open" | "allowlist" | "disabled";
+type TrustMode = "tofu" | "always" | "manual";
+type SignalMode = "native" | "daemon";
 
 export function SignalSettings({ onStatusChange }: SignalSettingsProps) {
   const [channel, setChannel] = useState<ChannelData | null>(null);
@@ -19,16 +19,16 @@ export function SignalSettings({ onStatusChange }: SignalSettingsProps) {
   const [testResult, setTestResult] = useState<{ success: boolean; error?: string } | null>(null);
 
   // Form state
-  const [channelName, setChannelName] = useState('Signal');
-  const [securityMode, setSecurityMode] = useState<SecurityMode>('pairing');
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [cliPath, setCliPath] = useState('');
-  const [dataDir, setDataDir] = useState('');
-  const [mode, setMode] = useState<SignalMode>('native');
-  const [trustMode, setTrustMode] = useState<TrustMode>('tofu');
-  const [dmPolicy, setDmPolicy] = useState<DmPolicy>('pairing');
-  const [groupPolicy, setGroupPolicy] = useState<GroupPolicy>('allowlist');
-  const [allowedNumbers, setAllowedNumbers] = useState('');
+  const [channelName, setChannelName] = useState("Signal");
+  const [securityMode, setSecurityMode] = useState<SecurityMode>("pairing");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [cliPath, setCliPath] = useState("");
+  const [dataDir, setDataDir] = useState("");
+  const [mode, setMode] = useState<SignalMode>("native");
+  const [trustMode, setTrustMode] = useState<TrustMode>("tofu");
+  const [dmPolicy, setDmPolicy] = useState<DmPolicy>("pairing");
+  const [groupPolicy, setGroupPolicy] = useState<GroupPolicy>("allowlist");
+  const [allowedNumbers, setAllowedNumbers] = useState("");
   const [sendReadReceipts, setSendReadReceipts] = useState(true);
   const [sendTypingIndicators, setSendTypingIndicators] = useState(true);
 
@@ -39,27 +39,27 @@ export function SignalSettings({ onStatusChange }: SignalSettingsProps) {
     try {
       setLoading(true);
       const channels = await window.electronAPI.getGatewayChannels();
-      const signalChannel = channels.find((c: ChannelData) => c.type === 'signal');
+      const signalChannel = channels.find((c: ChannelData) => c.type === "signal");
 
       if (signalChannel) {
         setChannel(signalChannel);
         setChannelName(signalChannel.name);
         setSecurityMode(signalChannel.securityMode);
-        onStatusChange?.(signalChannel.status === 'connected');
+        onStatusChange?.(signalChannel.status === "connected");
 
         // Load config settings
         if (signalChannel.config) {
-          setPhoneNumber(signalChannel.config.phoneNumber as string || '');
-          setCliPath(signalChannel.config.cliPath as string || '');
-          setDataDir(signalChannel.config.dataDir as string || '');
-          setMode(signalChannel.config.mode as SignalMode || 'native');
-          setTrustMode(signalChannel.config.trustMode as TrustMode || 'tofu');
-          setDmPolicy(signalChannel.config.dmPolicy as DmPolicy || 'pairing');
-          setGroupPolicy(signalChannel.config.groupPolicy as GroupPolicy || 'allowlist');
-          setSendReadReceipts(signalChannel.config.sendReadReceipts as boolean ?? true);
-          setSendTypingIndicators(signalChannel.config.sendTypingIndicators as boolean ?? true);
-          const numbers = signalChannel.config.allowedNumbers as string[] || [];
-          setAllowedNumbers(numbers.join(', '));
+          setPhoneNumber((signalChannel.config.phoneNumber as string) || "");
+          setCliPath((signalChannel.config.cliPath as string) || "");
+          setDataDir((signalChannel.config.dataDir as string) || "");
+          setMode((signalChannel.config.mode as SignalMode) || "native");
+          setTrustMode((signalChannel.config.trustMode as TrustMode) || "tofu");
+          setDmPolicy((signalChannel.config.dmPolicy as DmPolicy) || "pairing");
+          setGroupPolicy((signalChannel.config.groupPolicy as GroupPolicy) || "allowlist");
+          setSendReadReceipts((signalChannel.config.sendReadReceipts as boolean) ?? true);
+          setSendTypingIndicators((signalChannel.config.sendTypingIndicators as boolean) ?? true);
+          const numbers = (signalChannel.config.allowedNumbers as string[]) || [];
+          setAllowedNumbers(numbers.join(", "));
         }
 
         // Load users for this channel
@@ -67,7 +67,7 @@ export function SignalSettings({ onStatusChange }: SignalSettingsProps) {
         setUsers(channelUsers);
       }
     } catch (error) {
-      console.error('Failed to load Signal channel:', error);
+      console.error("Failed to load Signal channel:", error);
     } finally {
       setLoading(false);
     }
@@ -79,7 +79,7 @@ export function SignalSettings({ onStatusChange }: SignalSettingsProps) {
 
   useEffect(() => {
     const unsubscribe = window.electronAPI?.onGatewayUsersUpdated?.((data) => {
-      if (data?.channelType !== 'signal') return;
+      if (data?.channelType !== "signal") return;
       if (channel && data?.channelId && data.channelId !== channel.id) return;
       loadChannel();
     });
@@ -90,7 +90,7 @@ export function SignalSettings({ onStatusChange }: SignalSettingsProps) {
 
   const handleAddChannel = async () => {
     if (!phoneNumber.trim()) {
-      setTestResult({ success: false, error: 'Phone number is required' });
+      setTestResult({ success: false, error: "Phone number is required" });
       return;
     }
 
@@ -99,7 +99,7 @@ export function SignalSettings({ onStatusChange }: SignalSettingsProps) {
       setTestResult(null);
 
       await window.electronAPI.addGatewayChannel({
-        type: 'signal',
+        type: "signal",
         name: channelName,
         securityMode,
         phoneNumber: phoneNumber.trim(),
@@ -112,8 +112,8 @@ export function SignalSettings({ onStatusChange }: SignalSettingsProps) {
         sendReadReceipts,
         sendTypingIndicators,
         allowedNumbers: allowedNumbers
-          .split(',')
-          .map(n => n.trim())
+          .split(",")
+          .map((n) => n.trim())
           .filter(Boolean),
       });
 
@@ -162,7 +162,7 @@ export function SignalSettings({ onStatusChange }: SignalSettingsProps) {
   const handleRemoveChannel = async () => {
     if (!channel) return;
 
-    if (!confirm('Are you sure you want to remove the Signal channel?')) {
+    if (!confirm("Are you sure you want to remove the Signal channel?")) {
       return;
     }
 
@@ -190,7 +190,7 @@ export function SignalSettings({ onStatusChange }: SignalSettingsProps) {
       setSecurityMode(newMode);
       setChannel({ ...channel, securityMode: newMode });
     } catch (error: any) {
-      console.error('Failed to update security mode:', error);
+      console.error("Failed to update security mode:", error);
     }
   };
 
@@ -209,8 +209,8 @@ export function SignalSettings({ onStatusChange }: SignalSettingsProps) {
           dmPolicy,
           groupPolicy,
           allowedNumbers: allowedNumbers
-            .split(',')
-            .map(n => n.trim())
+            .split(",")
+            .map((n) => n.trim())
             .filter(Boolean),
         },
       });
@@ -227,10 +227,10 @@ export function SignalSettings({ onStatusChange }: SignalSettingsProps) {
     if (!channel) return;
 
     try {
-      const code = await window.electronAPI.generateGatewayPairing(channel.id, '');
+      const code = await window.electronAPI.generateGatewayPairing(channel.id, "");
       setPairingCode(code);
     } catch (error: any) {
-      console.error('Failed to generate pairing code:', error);
+      console.error("Failed to generate pairing code:", error);
     }
   };
 
@@ -241,7 +241,7 @@ export function SignalSettings({ onStatusChange }: SignalSettingsProps) {
       await window.electronAPI.revokeGatewayAccess(channel.id, userId);
       await loadChannel();
     } catch (error: any) {
-      console.error('Failed to revoke access:', error);
+      console.error("Failed to revoke access:", error);
     }
   };
 
@@ -256,28 +256,49 @@ export function SignalSettings({ onStatusChange }: SignalSettingsProps) {
         <div className="settings-section">
           <h3>Connect Signal</h3>
           <p className="settings-description">
-            Connect Signal to receive and send end-to-end encrypted messages. Requires signal-cli to be installed and registered with your phone number.
+            Connect Signal to receive and send end-to-end encrypted messages. Requires signal-cli to
+            be installed and registered with your phone number.
           </p>
 
           <div className="settings-callout info">
             <strong>Setup Instructions:</strong>
-            <ol style={{ margin: '8px 0 0 0', paddingLeft: '20px' }}>
-              <li style={{ marginBottom: '8px' }}>
-                <strong>Install signal-cli:</strong><br />
-                <code style={{ display: 'inline-block', marginTop: '4px' }}>brew install signal-cli</code>
-                <span style={{ fontSize: '13px', display: 'block', marginTop: '4px' }}>
-                  Or download from <a href="https://github.com/AsamK/signal-cli" target="_blank" rel="noopener noreferrer">github.com/AsamK/signal-cli</a>
+            <ol style={{ margin: "8px 0 0 0", paddingLeft: "20px" }}>
+              <li style={{ marginBottom: "8px" }}>
+                <strong>Install signal-cli:</strong>
+                <br />
+                <code style={{ display: "inline-block", marginTop: "4px" }}>
+                  brew install signal-cli
+                </code>
+                <span style={{ fontSize: "13px", display: "block", marginTop: "4px" }}>
+                  Or download from{" "}
+                  <a
+                    href="https://github.com/AsamK/signal-cli"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    github.com/AsamK/signal-cli
+                  </a>
                 </span>
               </li>
-              <li style={{ marginBottom: '8px' }}>
-                <strong>Register your phone number:</strong><br />
-                <code style={{ display: 'inline-block', marginTop: '4px' }}>signal-cli -u +1YOURNUMBER register</code><br />
-                <code style={{ display: 'inline-block', marginTop: '4px' }}>signal-cli -u +1YOURNUMBER verify CODE</code>
+              <li style={{ marginBottom: "8px" }}>
+                <strong>Register your phone number:</strong>
+                <br />
+                <code style={{ display: "inline-block", marginTop: "4px" }}>
+                  signal-cli -u +1YOURNUMBER register
+                </code>
+                <br />
+                <code style={{ display: "inline-block", marginTop: "4px" }}>
+                  signal-cli -u +1YOURNUMBER verify CODE
+                </code>
               </li>
-              <li style={{ marginBottom: '8px' }}>
-                <strong>Or link to existing device:</strong><br />
-                <code style={{ display: 'inline-block', marginTop: '4px' }}>signal-cli link -n "CoWork OS"</code><br />
-                <span style={{ fontSize: '13px' }}>Scan the QR code with your Signal app</span>
+              <li style={{ marginBottom: "8px" }}>
+                <strong>Or link to existing device:</strong>
+                <br />
+                <code style={{ display: "inline-block", marginTop: "4px" }}>
+                  signal-cli link -n "CoWork OS"
+                </code>
+                <br />
+                <span style={{ fontSize: "13px" }}>Scan the QR code with your Signal app</span>
               </li>
             </ol>
           </div>
@@ -318,9 +339,7 @@ export function SignalSettings({ onStatusChange }: SignalSettingsProps) {
               <option value="allowlist">Allowlist (specific numbers only)</option>
               <option value="pairing">Pairing (require code to connect)</option>
             </select>
-            <p className="settings-hint">
-              Controls who can interact with your bot via Signal
-            </p>
+            <p className="settings-hint">Controls who can interact with your bot via Signal</p>
           </div>
 
           <div className="settings-field">
@@ -335,9 +354,7 @@ export function SignalSettings({ onStatusChange }: SignalSettingsProps) {
               <option value="pairing">Pairing (default)</option>
               <option value="disabled">Disabled</option>
             </select>
-            <p className="settings-hint">
-              How to handle direct messages
-            </p>
+            <p className="settings-hint">How to handle direct messages</p>
           </div>
 
           <div className="settings-field">
@@ -351,12 +368,12 @@ export function SignalSettings({ onStatusChange }: SignalSettingsProps) {
               <option value="allowlist">Allowlist (default)</option>
               <option value="disabled">Disabled</option>
             </select>
-            <p className="settings-hint">
-              How to handle group messages
-            </p>
+            <p className="settings-hint">How to handle group messages</p>
           </div>
 
-          {(securityMode === 'allowlist' || dmPolicy === 'allowlist' || groupPolicy === 'allowlist') && (
+          {(securityMode === "allowlist" ||
+            dmPolicy === "allowlist" ||
+            groupPolicy === "allowlist") && (
             <div className="settings-field">
               <label>Allowed Phone Numbers</label>
               <input
@@ -383,9 +400,7 @@ export function SignalSettings({ onStatusChange }: SignalSettingsProps) {
               <option value="always">Always trust</option>
               <option value="manual">Manual verification</option>
             </select>
-            <p className="settings-hint">
-              How to handle new contact identity keys
-            </p>
+            <p className="settings-hint">How to handle new contact identity keys</p>
           </div>
 
           <div className="settings-field">
@@ -398,9 +413,7 @@ export function SignalSettings({ onStatusChange }: SignalSettingsProps) {
               <option value="native">Native (default)</option>
               <option value="daemon">Daemon (JSON-RPC)</option>
             </select>
-            <p className="settings-hint">
-              How to communicate with signal-cli
-            </p>
+            <p className="settings-hint">How to communicate with signal-cli</p>
           </div>
 
           <div className="settings-field">
@@ -454,8 +467,8 @@ export function SignalSettings({ onStatusChange }: SignalSettingsProps) {
           </div>
 
           {testResult && (
-            <div className={`settings-callout ${testResult.success ? 'success' : 'error'}`}>
-              {testResult.success ? 'Connection successful!' : testResult.error}
+            <div className={`settings-callout ${testResult.success ? "success" : "error"}`}>
+              {testResult.success ? "Connection successful!" : testResult.error}
             </div>
           )}
 
@@ -464,7 +477,7 @@ export function SignalSettings({ onStatusChange }: SignalSettingsProps) {
             onClick={handleAddChannel}
             disabled={saving || !channelName.trim() || !phoneNumber.trim()}
           >
-            {saving ? 'Connecting...' : 'Connect Signal'}
+            {saving ? "Connecting..." : "Connect Signal"}
           </button>
         </div>
       </div>
@@ -476,17 +489,19 @@ export function SignalSettings({ onStatusChange }: SignalSettingsProps) {
     <div className="signal-settings">
       <div className="settings-section">
         <h3>Signal</h3>
-        <p className="settings-description">
-          Manage your Signal connection and access settings.
-        </p>
+        <p className="settings-description">Manage your Signal connection and access settings.</p>
 
         <div className="settings-status">
           <div className="status-row">
             <span className="status-label">Status:</span>
             <span className={`status-value status-${channel.status}`}>
-              {channel.status === 'connected' ? 'Connected' :
-               channel.status === 'connecting' ? 'Connecting...' :
-               channel.status === 'error' ? 'Error' : 'Disconnected'}
+              {channel.status === "connected"
+                ? "Connected"
+                : channel.status === "connecting"
+                  ? "Connecting..."
+                  : channel.status === "error"
+                    ? "Error"
+                    : "Disconnected"}
             </span>
           </div>
           {channel.botUsername && (
@@ -499,11 +514,11 @@ export function SignalSettings({ onStatusChange }: SignalSettingsProps) {
 
         <div className="settings-actions">
           <button
-            className={`settings-button ${channel.enabled ? 'danger' : 'primary'}`}
+            className={`settings-button ${channel.enabled ? "danger" : "primary"}`}
             onClick={handleToggleEnabled}
             disabled={saving}
           >
-            {saving ? 'Updating...' : channel.enabled ? 'Disable' : 'Enable'}
+            {saving ? "Updating..." : channel.enabled ? "Disable" : "Enable"}
           </button>
 
           <button
@@ -511,7 +526,7 @@ export function SignalSettings({ onStatusChange }: SignalSettingsProps) {
             onClick={handleTestConnection}
             disabled={testing || !channel.enabled}
           >
-            {testing ? 'Testing...' : 'Test Connection'}
+            {testing ? "Testing..." : "Test Connection"}
           </button>
 
           <button
@@ -524,8 +539,8 @@ export function SignalSettings({ onStatusChange }: SignalSettingsProps) {
         </div>
 
         {testResult && (
-          <div className={`settings-callout ${testResult.success ? 'success' : 'error'}`}>
-            {testResult.success ? 'Connection test successful!' : testResult.error}
+          <div className={`settings-callout ${testResult.success ? "success" : "error"}`}>
+            {testResult.success ? "Connection test successful!" : testResult.error}
           </div>
         )}
       </div>
@@ -546,7 +561,7 @@ export function SignalSettings({ onStatusChange }: SignalSettingsProps) {
           </select>
         </div>
 
-        {securityMode === 'pairing' && (
+        {securityMode === "pairing" && (
           <div className="settings-field">
             <label>Pairing Code</label>
             {pairingCode ? (
@@ -557,10 +572,7 @@ export function SignalSettings({ onStatusChange }: SignalSettingsProps) {
                 </p>
               </div>
             ) : (
-              <button
-                className="settings-button"
-                onClick={handleGeneratePairingCode}
-              >
+              <button className="settings-button" onClick={handleGeneratePairingCode}>
                 Generate Pairing Code
               </button>
             )}
@@ -598,7 +610,7 @@ export function SignalSettings({ onStatusChange }: SignalSettingsProps) {
           </select>
         </div>
 
-        {(dmPolicy === 'allowlist' || groupPolicy === 'allowlist') && (
+        {(dmPolicy === "allowlist" || groupPolicy === "allowlist") && (
           <div className="settings-field">
             <label>Allowed Phone Numbers</label>
             <input
@@ -608,9 +620,7 @@ export function SignalSettings({ onStatusChange }: SignalSettingsProps) {
               value={allowedNumbers}
               onChange={(e) => setAllowedNumbers(e.target.value)}
             />
-            <p className="settings-hint">
-              Comma-separated phone numbers in E.164 format
-            </p>
+            <p className="settings-hint">Comma-separated phone numbers in E.164 format</p>
           </div>
         )}
 
@@ -649,12 +659,8 @@ export function SignalSettings({ onStatusChange }: SignalSettingsProps) {
           </label>
         </div>
 
-        <button
-          className="settings-button primary"
-          onClick={handleUpdateConfig}
-          disabled={saving}
-        >
-          {saving ? 'Saving...' : 'Save Settings'}
+        <button className="settings-button primary" onClick={handleUpdateConfig} disabled={saving}>
+          {saving ? "Saving..." : "Save Settings"}
         </button>
       </div>
 

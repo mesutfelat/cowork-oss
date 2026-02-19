@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from "react";
 import type {
   ControlPlaneSettingsData,
   ControlPlaneStatus,
@@ -7,52 +7,65 @@ import type {
   ControlPlaneConnectionMode,
   SSHTunnelStatus,
   SSHTunnelConfig,
-} from '../../shared/types';
+} from "../../shared/types";
 
 export function ControlPlaneSettings() {
   const [settings, setSettings] = useState<ControlPlaneSettingsData | null>(null);
   const [status, setStatus] = useState<ControlPlaneStatus | null>(null);
   const [remoteStatus, setRemoteStatus] = useState<RemoteGatewayStatus | null>(null);
-  const [tailscaleAvailability, setTailscaleAvailability] = useState<TailscaleAvailability | null>(null);
+  const [tailscaleAvailability, setTailscaleAvailability] = useState<TailscaleAvailability | null>(
+    null,
+  );
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<{ success: boolean; message: string; latencyMs?: number } | null>(null);
-  const [connectionMode, setConnectionMode] = useState<ControlPlaneConnectionMode>('local');
+  const [testResult, setTestResult] = useState<{
+    success: boolean;
+    message: string;
+    latencyMs?: number;
+  } | null>(null);
+  const [connectionMode, setConnectionMode] = useState<ControlPlaneConnectionMode>("local");
   const [showToken, setShowToken] = useState(false);
   const [showRemoteToken, setShowRemoteToken] = useState(false);
   const [allowLAN, setAllowLAN] = useState(false);
 
   // Remote config form state
-  const [remoteUrl, setRemoteUrl] = useState('ws://127.0.0.1:18789');
-  const [remoteToken, setRemoteToken] = useState('');
-  const [remoteDeviceName, setRemoteDeviceName] = useState('CoWork Remote Client');
+  const [remoteUrl, setRemoteUrl] = useState("ws://127.0.0.1:18789");
+  const [remoteToken, setRemoteToken] = useState("");
+  const [remoteDeviceName, setRemoteDeviceName] = useState("CoWork Remote Client");
 
   // SSH Tunnel state
   const [sshTunnelStatus, setSshTunnelStatus] = useState<SSHTunnelStatus | null>(null);
   const [sshTunnelEnabled, setSshTunnelEnabled] = useState(false);
-  const [sshHost, setSshHost] = useState('');
-  const [sshUsername, setSshUsername] = useState('');
+  const [sshHost, setSshHost] = useState("");
+  const [sshUsername, setSshUsername] = useState("");
   const [sshPort, setSshPort] = useState(22);
-  const [sshKeyPath, setSshKeyPath] = useState('');
+  const [sshKeyPath, setSshKeyPath] = useState("");
   const [sshLocalPort, setSshLocalPort] = useState(18789);
   const [sshRemotePort, setSshRemotePort] = useState(18789);
   const [testingSshTunnel, setTestingSshTunnel] = useState(false);
-  const [sshTestResult, setSshTestResult] = useState<{ success: boolean; message: string; latencyMs?: number } | null>(null);
+  const [sshTestResult, setSshTestResult] = useState<{
+    success: boolean;
+    message: string;
+    latencyMs?: number;
+  } | null>(null);
 
   // Helper to build SSH tunnel config
-  const getSshTunnelConfig = useCallback((): SSHTunnelConfig => ({
-    enabled: sshTunnelEnabled,
-    host: sshHost,
-    username: sshUsername,
-    sshPort: sshPort,
-    keyPath: sshKeyPath || undefined,
-    localPort: sshLocalPort,
-    remotePort: sshRemotePort,
-    autoReconnect: true,
-    reconnectDelayMs: 5000,
-    maxReconnectAttempts: 10,
-  }), [sshTunnelEnabled, sshHost, sshUsername, sshPort, sshKeyPath, sshLocalPort, sshRemotePort]);
+  const getSshTunnelConfig = useCallback(
+    (): SSHTunnelConfig => ({
+      enabled: sshTunnelEnabled,
+      host: sshHost,
+      username: sshUsername,
+      sshPort: sshPort,
+      keyPath: sshKeyPath || undefined,
+      localPort: sshLocalPort,
+      remotePort: sshRemotePort,
+      autoReconnect: true,
+      reconnectDelayMs: 5000,
+      maxReconnectAttempts: 10,
+    }),
+    [sshTunnelEnabled, sshHost, sshUsername, sshPort, sshKeyPath, sshLocalPort, sshRemotePort],
+  );
 
   const loadData = useCallback(async () => {
     try {
@@ -77,30 +90,30 @@ export function ControlPlaneSettings() {
 
       // Set LAN access from settings (host = 0.0.0.0 means LAN is enabled)
       if (settingsData?.host) {
-        setAllowLAN(settingsData.host === '0.0.0.0');
+        setAllowLAN(settingsData.host === "0.0.0.0");
       }
 
       // Set remote config from settings
       if (settingsData?.remote) {
-        setRemoteUrl(settingsData.remote.url || 'ws://127.0.0.1:18789');
-        setRemoteToken(settingsData.remote.token || '');
-        setRemoteDeviceName(settingsData.remote.deviceName || 'CoWork Remote Client');
+        setRemoteUrl(settingsData.remote.url || "ws://127.0.0.1:18789");
+        setRemoteToken(settingsData.remote.token || "");
+        setRemoteDeviceName(settingsData.remote.deviceName || "CoWork Remote Client");
 
         // Set SSH tunnel config from settings
         const remoteSshTunnel = (settingsData.remote as { sshTunnel?: SSHTunnelConfig }).sshTunnel;
         if (remoteSshTunnel) {
           const tunnel = remoteSshTunnel;
           setSshTunnelEnabled(tunnel.enabled || false);
-          setSshHost(tunnel.host || '');
-          setSshUsername(tunnel.username || '');
+          setSshHost(tunnel.host || "");
+          setSshUsername(tunnel.username || "");
           setSshPort(tunnel.sshPort || 22);
-          setSshKeyPath(tunnel.keyPath || '');
+          setSshKeyPath(tunnel.keyPath || "");
           setSshLocalPort(tunnel.localPort || 18789);
           setSshRemotePort(tunnel.remotePort || 18789);
         }
       }
     } catch (error) {
-      console.error('Failed to load control plane data:', error);
+      console.error("Failed to load control plane data:", error);
     } finally {
       setLoading(false);
     }
@@ -129,7 +142,7 @@ export function ControlPlaneSettings() {
       }
       await loadData();
     } catch (error) {
-      console.error('Failed to toggle control plane:', error);
+      console.error("Failed to toggle control plane:", error);
     } finally {
       setSaving(false);
     }
@@ -145,7 +158,7 @@ export function ControlPlaneSettings() {
       }
       await loadData();
     } catch (error) {
-      console.error('Failed to start/stop control plane:', error);
+      console.error("Failed to start/stop control plane:", error);
     } finally {
       setSaving(false);
     }
@@ -157,7 +170,7 @@ export function ControlPlaneSettings() {
       await window.electronAPI?.regenerateControlPlaneToken?.();
       await loadData();
     } catch (error) {
-      console.error('Failed to regenerate token:', error);
+      console.error("Failed to regenerate token:", error);
     } finally {
       setSaving(false);
     }
@@ -168,7 +181,7 @@ export function ControlPlaneSettings() {
     try {
       const newAllowLAN = !allowLAN;
       await window.electronAPI?.saveControlPlaneSettings?.({
-        host: newAllowLAN ? '0.0.0.0' : '127.0.0.1',
+        host: newAllowLAN ? "0.0.0.0" : "127.0.0.1",
       });
       setAllowLAN(newAllowLAN);
       // Need to restart server for host change to take effect
@@ -178,19 +191,19 @@ export function ControlPlaneSettings() {
       }
       await loadData();
     } catch (error) {
-      console.error('Failed to toggle LAN access:', error);
+      console.error("Failed to toggle LAN access:", error);
     } finally {
       setSaving(false);
     }
   };
 
-  const handleTailscaleModeChange = async (mode: 'off' | 'serve' | 'funnel') => {
+  const handleTailscaleModeChange = async (mode: "off" | "serve" | "funnel") => {
     setSaving(true);
     try {
       await window.electronAPI?.setTailscaleMode?.(mode);
       await loadData();
     } catch (error) {
-      console.error('Failed to set Tailscale mode:', error);
+      console.error("Failed to set Tailscale mode:", error);
     } finally {
       setSaving(false);
     }
@@ -199,9 +212,9 @@ export function ControlPlaneSettings() {
   const handleConnectionModeChange = async (mode: ControlPlaneConnectionMode) => {
     setConnectionMode(mode);
 
-    if (mode === 'local') {
+    if (mode === "local") {
       // Disconnect from remote if connected
-      if (remoteStatus?.state === 'connected') {
+      if (remoteStatus?.state === "connected") {
         await window.electronAPI?.disconnectRemoteGateway?.();
       }
     }
@@ -217,7 +230,7 @@ export function ControlPlaneSettings() {
       });
       await loadData();
     } catch (error) {
-      console.error('Failed to save remote config:', error);
+      console.error("Failed to save remote config:", error);
     } finally {
       setSaving(false);
     }
@@ -242,13 +255,13 @@ export function ControlPlaneSettings() {
       } else {
         setTestResult({
           success: false,
-          message: result?.error || 'Connection failed',
+          message: result?.error || "Connection failed",
         });
       }
     } catch (error: any) {
       setTestResult({
         success: false,
-        message: error.message || 'Connection failed',
+        message: error.message || "Connection failed",
       });
     } finally {
       setTesting(false);
@@ -267,14 +280,14 @@ export function ControlPlaneSettings() {
       if (!result?.ok) {
         setTestResult({
           success: false,
-          message: result?.error || 'Connection failed',
+          message: result?.error || "Connection failed",
         });
       }
       await loadData();
     } catch (error: any) {
       setTestResult({
         success: false,
-        message: error.message || 'Connection failed',
+        message: error.message || "Connection failed",
       });
     } finally {
       setSaving(false);
@@ -287,7 +300,7 @@ export function ControlPlaneSettings() {
       await window.electronAPI?.disconnectRemoteGateway?.();
       await loadData();
     } catch (error) {
-      console.error('Failed to disconnect:', error);
+      console.error("Failed to disconnect:", error);
     } finally {
       setSaving(false);
     }
@@ -302,17 +315,17 @@ export function ControlPlaneSettings() {
       if (result?.ok) {
         setSshTestResult({
           success: true,
-          message: 'SSH connection successful',
+          message: "SSH connection successful",
           latencyMs: result.latencyMs,
         });
       } else {
         setSshTestResult({
           success: false,
-          message: result?.error || 'SSH connection failed',
+          message: result?.error || "SSH connection failed",
         });
       }
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'SSH connection failed';
+      const errorMessage = error instanceof Error ? error.message : "SSH connection failed";
       setSshTestResult({
         success: false,
         message: errorMessage,
@@ -333,7 +346,7 @@ export function ControlPlaneSettings() {
       if (!result?.ok) {
         setSshTestResult({
           success: false,
-          message: result?.error || 'Failed to create SSH tunnel',
+          message: result?.error || "Failed to create SSH tunnel",
         });
       } else {
         // Update the remote URL to use the local tunnel endpoint
@@ -342,7 +355,7 @@ export function ControlPlaneSettings() {
       }
       await loadData();
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to create SSH tunnel';
+      const errorMessage = error instanceof Error ? error.message : "Failed to create SSH tunnel";
       setSshTestResult({
         success: false,
         message: errorMessage,
@@ -359,7 +372,7 @@ export function ControlPlaneSettings() {
       setSshTunnelEnabled(false);
       await loadData();
     } catch (error) {
-      console.error('Failed to disconnect SSH tunnel:', error);
+      console.error("Failed to disconnect SSH tunnel:", error);
     } finally {
       setSaving(false);
     }
@@ -377,43 +390,46 @@ export function ControlPlaneSettings() {
     <div className="settings-section">
       <h2>Control Plane</h2>
       <p className="settings-description">
-        WebSocket gateway for remote management. Connect via SSH tunnel, Tailscale, or direct network.
+        WebSocket gateway for remote management. Connect via SSH tunnel, Tailscale, or direct
+        network.
       </p>
 
       {/* Connection Mode Selector */}
       <div className="settings-subsection">
         <h3>Connection Mode</h3>
         <div className="connection-mode-selector">
-          <label className={`mode-option ${connectionMode === 'local' ? 'selected' : ''}`}>
+          <label className={`mode-option ${connectionMode === "local" ? "selected" : ""}`}>
             <input
               type="radio"
               name="connectionMode"
               value="local"
-              checked={connectionMode === 'local'}
-              onChange={() => handleConnectionModeChange('local')}
+              checked={connectionMode === "local"}
+              onChange={() => handleConnectionModeChange("local")}
             />
             <div className="mode-content">
               <span className="mode-title">Local Server</span>
               <span className="mode-description">Host the Control Plane on this machine</span>
             </div>
           </label>
-          <label className={`mode-option ${connectionMode === 'remote' ? 'selected' : ''}`}>
+          <label className={`mode-option ${connectionMode === "remote" ? "selected" : ""}`}>
             <input
               type="radio"
               name="connectionMode"
               value="remote"
-              checked={connectionMode === 'remote'}
-              onChange={() => handleConnectionModeChange('remote')}
+              checked={connectionMode === "remote"}
+              onChange={() => handleConnectionModeChange("remote")}
             />
             <div className="mode-content">
               <span className="mode-title">Remote Gateway</span>
-              <span className="mode-description">Connect to a Control Plane on another machine</span>
+              <span className="mode-description">
+                Connect to a Control Plane on another machine
+              </span>
             </div>
           </label>
         </div>
       </div>
 
-      {connectionMode === 'local' ? (
+      {connectionMode === "local" ? (
         <>
           {/* Local Server Settings */}
           <div className="settings-subsection">
@@ -441,8 +457,9 @@ export function ControlPlaneSettings() {
                   />
                   Allow LAN Connections (Mobile Companions)
                 </label>
-                <p className="hint" style={{ marginLeft: '1.5rem', marginTop: '0.25rem' }}>
-                  Enable this to allow connections from other devices on your local network (required for iOS/Android companion apps)
+                <p className="hint" style={{ marginLeft: "1.5rem", marginTop: "0.25rem" }}>
+                  Enable this to allow connections from other devices on your local network
+                  (required for iOS/Android companion apps)
                 </p>
               </div>
             )}
@@ -451,8 +468,8 @@ export function ControlPlaneSettings() {
               <>
                 <div className="status-card">
                   <div className="status-indicator">
-                    <span className={`status-dot ${status?.running ? 'running' : 'stopped'}`} />
-                    <span>{status?.running ? 'Running' : 'Stopped'}</span>
+                    <span className={`status-dot ${status?.running ? "running" : "stopped"}`} />
+                    <span>{status?.running ? "Running" : "Stopped"}</span>
                   </div>
                   {status?.running && status.address && (
                     <div className="status-details">
@@ -469,7 +486,10 @@ export function ControlPlaneSettings() {
                       </div>
                       <div className="detail-row">
                         <span className="label">Clients:</span>
-                        <span>{status.clients.authenticated} authenticated, {status.clients.pending} pending</span>
+                        <span>
+                          {status.clients.authenticated} authenticated, {status.clients.pending}{" "}
+                          pending
+                        </span>
                       </div>
                     </div>
                   )}
@@ -482,14 +502,18 @@ export function ControlPlaneSettings() {
                   )}
                 </div>
 
-                <div className="button-row" style={{ marginTop: '1rem' }}>
+                <div className="button-row" style={{ marginTop: "1rem" }}>
                   <button
                     onClick={handleStartStop}
                     disabled={saving}
-                    className={status?.running ? 'btn-secondary' : 'btn-primary btn-large'}
-                    style={!status?.running ? { padding: '0.75rem 1.5rem', fontSize: '1rem', fontWeight: 500 } : {}}
+                    className={status?.running ? "btn-secondary" : "btn-primary btn-large"}
+                    style={
+                      !status?.running
+                        ? { padding: "0.75rem 1.5rem", fontSize: "1rem", fontWeight: 500 }
+                        : {}
+                    }
                   >
-                    {saving ? 'Please wait...' : status?.running ? 'Stop Server' : '▶ Start Server'}
+                    {saving ? "Please wait..." : status?.running ? "Stop Server" : "▶ Start Server"}
                   </button>
                 </div>
               </>
@@ -502,31 +526,27 @@ export function ControlPlaneSettings() {
               <h3>Authentication Token</h3>
               <div className="token-display">
                 <input
-                  type={showToken ? 'text' : 'password'}
-                  value={settings.token || ''}
+                  type={showToken ? "text" : "password"}
+                  value={settings.token || ""}
                   readOnly
                   className="token-input"
                 />
                 <button
                   className="btn-icon"
                   onClick={() => setShowToken(!showToken)}
-                  title={showToken ? 'Hide' : 'Show'}
+                  title={showToken ? "Hide" : "Show"}
                 >
-                  {showToken ? 'Hide' : 'Show'}
+                  {showToken ? "Hide" : "Show"}
                 </button>
                 <button
                   className="btn-icon"
-                  onClick={() => copyToClipboard(settings.token || '')}
+                  onClick={() => copyToClipboard(settings.token || "")}
                   title="Copy"
                 >
                   Copy
                 </button>
               </div>
-              <button
-                onClick={handleRegenerateToken}
-                disabled={saving}
-                className="btn-secondary"
-              >
+              <button onClick={handleRegenerateToken} disabled={saving} className="btn-secondary">
                 Regenerate Token
               </button>
               <p className="hint">
@@ -541,10 +561,10 @@ export function ControlPlaneSettings() {
               <h3>Remote Access (Tailscale)</h3>
               {!tailscaleAvailability?.installed ? (
                 <p className="hint">
-                  Tailscale is not installed. Install from{' '}
+                  Tailscale is not installed. Install from{" "}
                   <a href="https://tailscale.com" target="_blank" rel="noopener noreferrer">
                     tailscale.com
-                  </a>{' '}
+                  </a>{" "}
                   for remote access.
                 </p>
               ) : (
@@ -552,7 +572,7 @@ export function ControlPlaneSettings() {
                   <div className="settings-row">
                     <label>Exposure Mode:</label>
                     <select
-                      value={settings.tailscale?.mode || 'off'}
+                      value={settings.tailscale?.mode || "off"}
                       onChange={(e) => handleTailscaleModeChange(e.target.value as any)}
                       disabled={saving}
                     >
@@ -560,7 +580,7 @@ export function ControlPlaneSettings() {
                       <option value="serve">Serve (Tailnet only)</option>
                       <option value="funnel" disabled={!tailscaleAvailability.funnelAvailable}>
                         Funnel (Public Internet)
-                        {!tailscaleAvailability.funnelAvailable && ' - Not available'}
+                        {!tailscaleAvailability.funnelAvailable && " - Not available"}
                       </option>
                     </select>
                   </div>
@@ -589,14 +609,16 @@ export function ControlPlaneSettings() {
           {settings?.enabled && (
             <div className="settings-subsection">
               <h3>SSH Tunnel (Alternative)</h3>
-              <p className="hint">
-                Use SSH port forwarding to access the Control Plane remotely:
-              </p>
+              <p className="hint">Use SSH port forwarding to access the Control Plane remotely:</p>
               <div className="code-block">
                 <code>ssh -N -L 18789:127.0.0.1:{settings.port || 18789} user@remote-host</code>
                 <button
                   className="copy-btn"
-                  onClick={() => copyToClipboard(`ssh -N -L 18789:127.0.0.1:${settings.port || 18789} user@remote-host`)}
+                  onClick={() =>
+                    copyToClipboard(
+                      `ssh -N -L 18789:127.0.0.1:${settings.port || 18789} user@remote-host`,
+                    )
+                  }
                 >
                   Copy
                 </button>
@@ -610,7 +632,8 @@ export function ControlPlaneSettings() {
           <div className="settings-subsection">
             <h3>Remote Gateway Configuration</h3>
             <p className="hint">
-              Connect to a Control Plane server running on another machine via SSH tunnel or Tailscale.
+              Connect to a Control Plane server running on another machine via SSH tunnel or
+              Tailscale.
             </p>
 
             <div className="settings-row">
@@ -628,7 +651,7 @@ export function ControlPlaneSettings() {
               <label>Token:</label>
               <div className="token-display">
                 <input
-                  type={showRemoteToken ? 'text' : 'password'}
+                  type={showRemoteToken ? "text" : "password"}
                   value={remoteToken}
                   onChange={(e) => setRemoteToken(e.target.value)}
                   placeholder="Enter authentication token"
@@ -637,9 +660,9 @@ export function ControlPlaneSettings() {
                 <button
                   className="btn-icon"
                   onClick={() => setShowRemoteToken(!showRemoteToken)}
-                  title={showRemoteToken ? 'Hide' : 'Show'}
+                  title={showRemoteToken ? "Hide" : "Show"}
                 >
-                  {showRemoteToken ? 'Hide' : 'Show'}
+                  {showRemoteToken ? "Hide" : "Show"}
                 </button>
               </div>
             </div>
@@ -656,7 +679,7 @@ export function ControlPlaneSettings() {
             </div>
 
             {testResult && (
-              <div className={`test-result ${testResult.success ? 'success' : 'error'}`}>
+              <div className={`test-result ${testResult.success ? "success" : "error"}`}>
                 {testResult.success ? (
                   <>Connection successful{testResult.latencyMs && ` (${testResult.latencyMs}ms)`}</>
                 ) : (
@@ -671,13 +694,9 @@ export function ControlPlaneSettings() {
                 disabled={testing || !remoteUrl || !remoteToken}
                 className="btn-secondary"
               >
-                {testing ? 'Testing...' : 'Test Connection'}
+                {testing ? "Testing..." : "Test Connection"}
               </button>
-              <button
-                onClick={handleSaveRemoteConfig}
-                disabled={saving}
-                className="btn-secondary"
-              >
+              <button onClick={handleSaveRemoteConfig} disabled={saving} className="btn-secondary">
                 Save Config
               </button>
             </div>
@@ -688,17 +707,20 @@ export function ControlPlaneSettings() {
             <h3>Connection Status</h3>
             <div className="status-card">
               <div className="status-indicator">
-                <span className={`status-dot ${remoteStatus?.state === 'connected' ? 'running' : remoteStatus?.state === 'connecting' || remoteStatus?.state === 'authenticating' ? 'connecting' : 'stopped'}`} />
+                <span
+                  className={`status-dot ${remoteStatus?.state === "connected" ? "running" : remoteStatus?.state === "connecting" || remoteStatus?.state === "authenticating" ? "connecting" : "stopped"}`}
+                />
                 <span className="status-text">
-                  {remoteStatus?.state === 'connected' && 'Connected'}
-                  {remoteStatus?.state === 'connecting' && 'Connecting...'}
-                  {remoteStatus?.state === 'authenticating' && 'Authenticating...'}
-                  {remoteStatus?.state === 'reconnecting' && `Reconnecting (attempt ${remoteStatus.reconnectAttempts})...`}
-                  {remoteStatus?.state === 'error' && `Error: ${remoteStatus.error}`}
-                  {remoteStatus?.state === 'disconnected' && 'Disconnected'}
+                  {remoteStatus?.state === "connected" && "Connected"}
+                  {remoteStatus?.state === "connecting" && "Connecting..."}
+                  {remoteStatus?.state === "authenticating" && "Authenticating..."}
+                  {remoteStatus?.state === "reconnecting" &&
+                    `Reconnecting (attempt ${remoteStatus.reconnectAttempts})...`}
+                  {remoteStatus?.state === "error" && `Error: ${remoteStatus.error}`}
+                  {remoteStatus?.state === "disconnected" && "Disconnected"}
                 </span>
               </div>
-              {remoteStatus?.state === 'connected' && (
+              {remoteStatus?.state === "connected" && (
                 <div className="status-details">
                   <div className="detail-row">
                     <span className="label">Client ID:</span>
@@ -706,14 +728,18 @@ export function ControlPlaneSettings() {
                   </div>
                   <div className="detail-row">
                     <span className="label">Connected:</span>
-                    <span>{remoteStatus.connectedAt ? new Date(remoteStatus.connectedAt).toLocaleTimeString() : 'Unknown'}</span>
+                    <span>
+                      {remoteStatus.connectedAt
+                        ? new Date(remoteStatus.connectedAt).toLocaleTimeString()
+                        : "Unknown"}
+                    </span>
                   </div>
                 </div>
               )}
             </div>
 
             <div className="button-row">
-              {remoteStatus?.state === 'connected' ? (
+              {remoteStatus?.state === "connected" ? (
                 <button
                   onClick={handleDisconnectRemote}
                   disabled={saving}
@@ -727,7 +753,7 @@ export function ControlPlaneSettings() {
                   disabled={saving || !remoteUrl || !remoteToken}
                   className="btn-primary"
                 >
-                  {saving ? 'Connecting...' : 'Connect'}
+                  {saving ? "Connecting..." : "Connect"}
                 </button>
               )}
             </div>
@@ -741,18 +767,21 @@ export function ControlPlaneSettings() {
             </p>
 
             {/* SSH Tunnel Status */}
-            {sshTunnelStatus && sshTunnelStatus.state !== 'disconnected' && (
+            {sshTunnelStatus && sshTunnelStatus.state !== "disconnected" && (
               <div className="status-card">
                 <div className="status-indicator">
-                  <span className={`status-dot ${sshTunnelStatus.state === 'connected' ? 'running' : sshTunnelStatus.state === 'connecting' || sshTunnelStatus.state === 'reconnecting' ? 'connecting' : 'stopped'}`} />
+                  <span
+                    className={`status-dot ${sshTunnelStatus.state === "connected" ? "running" : sshTunnelStatus.state === "connecting" || sshTunnelStatus.state === "reconnecting" ? "connecting" : "stopped"}`}
+                  />
                   <span className="status-text">
-                    {sshTunnelStatus.state === 'connected' && 'Tunnel Connected'}
-                    {sshTunnelStatus.state === 'connecting' && 'Creating Tunnel...'}
-                    {sshTunnelStatus.state === 'reconnecting' && `Reconnecting (attempt ${sshTunnelStatus.reconnectAttempts})...`}
-                    {sshTunnelStatus.state === 'error' && `Error: ${sshTunnelStatus.error}`}
+                    {sshTunnelStatus.state === "connected" && "Tunnel Connected"}
+                    {sshTunnelStatus.state === "connecting" && "Creating Tunnel..."}
+                    {sshTunnelStatus.state === "reconnecting" &&
+                      `Reconnecting (attempt ${sshTunnelStatus.reconnectAttempts})...`}
+                    {sshTunnelStatus.state === "error" && `Error: ${sshTunnelStatus.error}`}
                   </span>
                 </div>
-                {sshTunnelStatus.state === 'connected' && sshTunnelStatus.localEndpoint && (
+                {sshTunnelStatus.state === "connected" && sshTunnelStatus.localEndpoint && (
                   <div className="status-details">
                     <div className="detail-row">
                       <span className="label">Local Endpoint:</span>
@@ -777,7 +806,7 @@ export function ControlPlaneSettings() {
                 onChange={(e) => setSshHost(e.target.value)}
                 placeholder="remote-server.com"
                 className="settings-input"
-                disabled={sshTunnelStatus?.state === 'connected'}
+                disabled={sshTunnelStatus?.state === "connected"}
               />
             </div>
 
@@ -790,7 +819,7 @@ export function ControlPlaneSettings() {
                   onChange={(e) => setSshUsername(e.target.value)}
                   placeholder="username"
                   className="settings-input"
-                  disabled={sshTunnelStatus?.state === 'connected'}
+                  disabled={sshTunnelStatus?.state === "connected"}
                 />
               </div>
               <div className="settings-row half">
@@ -800,7 +829,7 @@ export function ControlPlaneSettings() {
                   value={sshPort}
                   onChange={(e) => setSshPort(parseInt(e.target.value) || 22)}
                   className="settings-input"
-                  disabled={sshTunnelStatus?.state === 'connected'}
+                  disabled={sshTunnelStatus?.state === "connected"}
                 />
               </div>
             </div>
@@ -813,7 +842,7 @@ export function ControlPlaneSettings() {
                 onChange={(e) => setSshKeyPath(e.target.value)}
                 placeholder="~/.ssh/id_rsa"
                 className="settings-input"
-                disabled={sshTunnelStatus?.state === 'connected'}
+                disabled={sshTunnelStatus?.state === "connected"}
               />
             </div>
 
@@ -825,7 +854,7 @@ export function ControlPlaneSettings() {
                   value={sshLocalPort}
                   onChange={(e) => setSshLocalPort(parseInt(e.target.value) || 18789)}
                   className="settings-input"
-                  disabled={sshTunnelStatus?.state === 'connected'}
+                  disabled={sshTunnelStatus?.state === "connected"}
                 />
               </div>
               <div className="settings-row half">
@@ -835,15 +864,18 @@ export function ControlPlaneSettings() {
                   value={sshRemotePort}
                   onChange={(e) => setSshRemotePort(parseInt(e.target.value) || 18789)}
                   className="settings-input"
-                  disabled={sshTunnelStatus?.state === 'connected'}
+                  disabled={sshTunnelStatus?.state === "connected"}
                 />
               </div>
             </div>
 
             {sshTestResult && (
-              <div className={`test-result ${sshTestResult.success ? 'success' : 'error'}`}>
+              <div className={`test-result ${sshTestResult.success ? "success" : "error"}`}>
                 {sshTestResult.success ? (
-                  <>SSH connection successful{sshTestResult.latencyMs && ` (${sshTestResult.latencyMs}ms)`}</>
+                  <>
+                    SSH connection successful
+                    {sshTestResult.latencyMs && ` (${sshTestResult.latencyMs}ms)`}
+                  </>
                 ) : (
                   sshTestResult.message
                 )}
@@ -851,7 +883,7 @@ export function ControlPlaneSettings() {
             )}
 
             <div className="button-row">
-              {sshTunnelStatus?.state === 'connected' ? (
+              {sshTunnelStatus?.state === "connected" ? (
                 <button
                   onClick={handleDisconnectSshTunnel}
                   disabled={saving}
@@ -866,22 +898,26 @@ export function ControlPlaneSettings() {
                     disabled={testingSshTunnel || !sshHost || !sshUsername}
                     className="btn-secondary"
                   >
-                    {testingSshTunnel ? 'Testing...' : 'Test SSH'}
+                    {testingSshTunnel ? "Testing..." : "Test SSH"}
                   </button>
                   <button
                     onClick={handleConnectSshTunnel}
                     disabled={saving || !sshHost || !sshUsername}
                     className="btn-primary"
                   >
-                    {saving ? 'Creating Tunnel...' : 'Create Tunnel'}
+                    {saving ? "Creating Tunnel..." : "Create Tunnel"}
                   </button>
                 </>
               )}
             </div>
 
-            {sshTunnelStatus?.state !== 'connected' && (
-              <p className="hint" style={{ marginTop: '0.75rem' }}>
-                <strong>Manual alternative:</strong> Run <code>ssh -N -L {sshLocalPort}:127.0.0.1:{sshRemotePort} {sshUsername || 'user'}@{sshHost || 'remote-host'}</code>
+            {sshTunnelStatus?.state !== "connected" && (
+              <p className="hint" style={{ marginTop: "0.75rem" }}>
+                <strong>Manual alternative:</strong> Run{" "}
+                <code>
+                  ssh -N -L {sshLocalPort}:127.0.0.1:{sshRemotePort} {sshUsername || "user"}@
+                  {sshHost || "remote-host"}
+                </code>
               </p>
             )}
           </div>

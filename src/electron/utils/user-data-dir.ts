@@ -1,5 +1,5 @@
-import os from 'os';
-import path from 'path';
+import os from "os";
+import path from "path";
 
 /**
  * Resolve the userData directory for persistence (DB + settings).
@@ -13,12 +13,12 @@ import path from 'path';
  */
 export function getUserDataDir(): string {
   const override = process.env.COWORK_USER_DATA_DIR;
-  if (typeof override === 'string' && override.trim().length > 0) {
+  if (typeof override === "string" && override.trim().length > 0) {
     const trimmed = override.trim();
     const expanded =
-      trimmed === '~'
+      trimmed === "~"
         ? os.homedir()
-        : trimmed.startsWith('~/')
+        : trimmed.startsWith("~/")
           ? path.join(os.homedir(), trimmed.slice(2))
           : trimmed;
     return path.resolve(expanded);
@@ -27,17 +27,17 @@ export function getUserDataDir(): string {
   // CLI override (useful for local testing and future non-Electron daemons).
   // Accepts both `--user-data-dir /path` and `--user-data-dir=/path`.
   const argv = process.argv || [];
-  const flag = '--user-data-dir';
+  const flag = "--user-data-dir";
   const idx = argv.indexOf(flag);
   const rawFromArgv =
-    (idx !== -1 && typeof argv[idx + 1] === 'string' ? argv[idx + 1] : undefined)
-    ?? argv.find((a) => typeof a === 'string' && a.startsWith(flag + '='))?.slice(flag.length + 1);
-  if (typeof rawFromArgv === 'string' && rawFromArgv.trim().length > 0) {
+    (idx !== -1 && typeof argv[idx + 1] === "string" ? argv[idx + 1] : undefined) ??
+    argv.find((a) => typeof a === "string" && a.startsWith(flag + "="))?.slice(flag.length + 1);
+  if (typeof rawFromArgv === "string" && rawFromArgv.trim().length > 0) {
     const trimmed = rawFromArgv.trim();
     const expanded =
-      trimmed === '~'
+      trimmed === "~"
         ? os.homedir()
-        : trimmed.startsWith('~/')
+        : trimmed.startsWith("~/")
           ? path.join(os.homedir(), trimmed.slice(2))
           : trimmed;
     return path.resolve(expanded);
@@ -45,15 +45,15 @@ export function getUserDataDir(): string {
 
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const electron = require('electron') as any;
+    const electron = require("electron") as any;
     const app = electron?.app;
     if (app?.getPath) {
-      return app.getPath('userData');
+      return app.getPath("userData");
     }
   } catch {
     // Not running under Electron.
   }
 
-  const home = process.env.HOME || process.env.USERPROFILE || os.homedir() || '';
-  return path.join(home, '.cowork');
+  const home = process.env.HOME || process.env.USERPROFILE || os.homedir() || "";
+  return path.join(home, ".cowork");
 }

@@ -3,10 +3,10 @@
  * Provides HTTP endpoints to trigger scheduled tasks externally
  */
 
-import http from 'http';
-import { URL } from 'url';
-import crypto from 'crypto';
-import type { CronRunResult } from './types';
+import http from "http";
+import { URL } from "url";
+import crypto from "crypto";
+import type { CronRunResult } from "./types";
 
 export interface WebhookServerConfig {
   port: number;
@@ -60,29 +60,29 @@ export class CronWebhookServer {
    */
   async start(): Promise<void> {
     if (!this.config.enabled) {
-      console.log('[CronWebhook] Webhook server disabled');
+      console.log("[CronWebhook] Webhook server disabled");
       return;
     }
 
     if (this.server) {
-      console.log('[CronWebhook] Server already running');
+      console.log("[CronWebhook] Server already running");
       return;
     }
 
     return new Promise((resolve, reject) => {
       this.server = http.createServer((req, res) => {
         this.handleRequest(req, res).catch((err) => {
-          console.error('[CronWebhook] Request error:', err);
-          this.sendJsonResponse(res, 500, { success: false, error: 'Internal server error' });
+          console.error("[CronWebhook] Request error:", err);
+          this.sendJsonResponse(res, 500, { success: false, error: "Internal server error" });
         });
       });
 
-      this.server.on('error', (err) => {
-        console.error('[CronWebhook] Server error:', err);
+      this.server.on("error", (err) => {
+        console.error("[CronWebhook] Server error:", err);
         reject(err);
       });
 
-      const host = this.config.host || '127.0.0.1';
+      const host = this.config.host || "127.0.0.1";
       this.server.listen(this.config.port, host, () => {
         console.log(`[CronWebhook] Server listening on http://${host}:${this.config.port}`);
         resolve();
@@ -98,7 +98,7 @@ export class CronWebhookServer {
 
     return new Promise((resolve) => {
       this.server!.close(() => {
-        console.log('[CronWebhook] Server stopped');
+        console.log("[CronWebhook] Server stopped");
         this.server = null;
         resolve();
       });
@@ -118,7 +118,7 @@ export class CronWebhookServer {
   getAddress(): { host: string; port: number } | null {
     if (!this.server) return null;
     const addr = this.server.address();
-    if (typeof addr === 'string' || !addr) return null;
+    if (typeof addr === "string" || !addr) return null;
     return { host: addr.address, port: addr.port };
   }
 
@@ -127,39 +127,39 @@ export class CronWebhookServer {
    */
   private async handleRequest(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
     // Set CORS headers for local development
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Webhook-Secret');
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Webhook-Secret");
 
     // Handle preflight
-    if (req.method === 'OPTIONS') {
+    if (req.method === "OPTIONS") {
       res.writeHead(204);
       res.end();
       return;
     }
 
-    const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
+    const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
 
     // Health check endpoint
-    if (url.pathname === '/health' && req.method === 'GET') {
-      this.sendJsonResponse(res, 200, { status: 'ok', timestamp: Date.now() });
+    if (url.pathname === "/health" && req.method === "GET") {
+      this.sendJsonResponse(res, 200, { status: "ok", timestamp: Date.now() });
       return;
     }
 
     // Trigger endpoint
-    if (url.pathname === '/trigger' && req.method === 'POST') {
+    if (url.pathname === "/trigger" && req.method === "POST") {
       await this.handleTrigger(req, res);
       return;
     }
 
     // List jobs endpoint (for debugging)
-    if (url.pathname === '/jobs' && req.method === 'GET') {
+    if (url.pathname === "/jobs" && req.method === "GET") {
       await this.handleListJobs(req, res);
       return;
     }
 
     // Not found
-    this.sendJsonResponse(res, 404, { success: false, error: 'Not found' });
+    this.sendJsonResponse(res, 404, { success: false, error: "Not found" });
   }
 
   /**
@@ -169,15 +169,15 @@ export class CronWebhookServer {
     // Parse body
     const body = await this.parseJsonBody<WebhookTriggerPayload>(req);
     if (!body) {
-      this.sendJsonResponse(res, 400, { success: false, error: 'Invalid JSON body' });
+      this.sendJsonResponse(res, 400, { success: false, error: "Invalid JSON body" });
       return;
     }
 
     // Verify secret if configured
     if (this.config.secret) {
-      const providedSecret = body.secret || req.headers['x-webhook-secret'];
+      const providedSecret = body.secret || req.headers["x-webhook-secret"];
       if (!this.verifySecret(providedSecret as string | undefined)) {
-        this.sendJsonResponse(res, 401, { success: false, error: 'Invalid or missing secret' });
+        this.sendJsonResponse(res, 401, { success: false, error: "Invalid or missing secret" });
         return;
       }
     }
@@ -195,12 +195,12 @@ export class CronWebhookServer {
     }
 
     if (!jobId) {
-      this.sendJsonResponse(res, 400, { success: false, error: 'Job ID or name required' });
+      this.sendJsonResponse(res, 400, { success: false, error: "Job ID or name required" });
       return;
     }
 
     if (!this.triggerHandler) {
-      this.sendJsonResponse(res, 503, { success: false, error: 'Trigger handler not configured' });
+      this.sendJsonResponse(res, 503, { success: false, error: "Trigger handler not configured" });
       return;
     }
 
@@ -234,15 +234,15 @@ export class CronWebhookServer {
   private async handleListJobs(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
     // Verify secret if configured
     if (this.config.secret) {
-      const providedSecret = req.headers['x-webhook-secret'];
+      const providedSecret = req.headers["x-webhook-secret"];
       if (!this.verifySecret(providedSecret as string | undefined)) {
-        this.sendJsonResponse(res, 401, { success: false, error: 'Invalid or missing secret' });
+        this.sendJsonResponse(res, 401, { success: false, error: "Invalid or missing secret" });
         return;
       }
     }
 
     if (!this.jobLookup) {
-      this.sendJsonResponse(res, 503, { success: false, error: 'Job lookup not configured' });
+      this.sendJsonResponse(res, 503, { success: false, error: "Job lookup not configured" });
       return;
     }
 
@@ -269,22 +269,22 @@ export class CronWebhookServer {
    */
   private parseJsonBody<T>(req: http.IncomingMessage): Promise<T | null> {
     return new Promise((resolve) => {
-      let body = '';
-      req.on('data', (chunk) => {
+      let body = "";
+      req.on("data", (chunk) => {
         body += chunk;
         // Limit body size to 1MB
         if (body.length > 1024 * 1024) {
           resolve(null);
         }
       });
-      req.on('end', () => {
+      req.on("end", () => {
         try {
           resolve(JSON.parse(body) as T);
         } catch {
           resolve(null);
         }
       });
-      req.on('error', () => resolve(null));
+      req.on("error", () => resolve(null));
     });
   }
 
@@ -292,12 +292,12 @@ export class CronWebhookServer {
    * Send JSON response
    */
   private sendJsonResponse(res: http.ServerResponse, status: number, data: unknown): void {
-    res.writeHead(status, { 'Content-Type': 'application/json' });
+    res.writeHead(status, { "Content-Type": "application/json" });
     res.end(JSON.stringify(data));
   }
 }
 
 // Generate a secure random secret
 export function generateWebhookSecret(): string {
-  return crypto.randomBytes(32).toString('hex');
+  return crypto.randomBytes(32).toString("hex");
 }

@@ -1,7 +1,7 @@
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import type { Workspace } from '../../shared/types';
-import type { ChannelType, IncomingMessage, MessageAttachment } from './channels/types';
+import * as fs from "fs/promises";
+import * as path from "path";
+import type { Workspace } from "../../shared/types";
+import type { ChannelType, IncomingMessage, MessageAttachment } from "./channels/types";
 import {
   clampMontyLimits,
   createMontySafeStdlib,
@@ -9,15 +9,15 @@ import {
   runMontyCode,
   sha256Hex,
   type MontyResourceLimits,
-} from '../sandbox/monty-engine';
+} from "../sandbox/monty-engine";
 
 export type RouterRuleResult =
-  | { action: 'pass' }
-  | { action: 'ignore'; reason?: string }
-  | { action: 'reply'; text: string; parseMode?: 'markdown' }
-  | { action: 'rewrite'; text: string }
-  | { action: 'set_workspace'; workspaceId: string; text?: string }
-  | { action: 'set_agent'; agentRoleId: string; workspaceId?: string; text?: string };
+  | { action: "pass" }
+  | { action: "ignore"; reason?: string }
+  | { action: "reply"; text: string; parseMode?: "markdown" }
+  | { action: "rewrite"; text: string }
+  | { action: "set_workspace"; workspaceId: string; text?: string }
+  | { action: "set_agent"; agentRoleId: string; workspaceId?: string; text?: string };
 
 const ROUTER_DEFAULT_LIMITS: MontyResourceLimits = {
   maxDurationSecs: 0.25,
@@ -47,52 +47,58 @@ function summarizeAttachments(attachments?: MessageAttachment[]): any[] {
     fileName: a.fileName,
     mimeType: a.mimeType,
     sizeBytes: a.size,
-    url: a.url ? '[redacted]' : undefined,
+    url: a.url ? "[redacted]" : undefined,
   }));
 }
 
 function normalizeRuleResult(raw: unknown): RouterRuleResult | null {
-  if (!raw || typeof raw !== 'object') return null;
+  if (!raw || typeof raw !== "object") return null;
   const obj = raw as any;
-  const action = typeof obj.action === 'string' ? obj.action : '';
+  const action = typeof obj.action === "string" ? obj.action : "";
 
-  if (action === 'pass') return { action: 'pass' };
-  if (action === 'ignore') return { action: 'ignore', reason: typeof obj.reason === 'string' ? obj.reason : undefined };
-  if (action === 'reply') {
-    const text = typeof obj.text === 'string' ? obj.text : '';
+  if (action === "pass") return { action: "pass" };
+  if (action === "ignore")
+    return { action: "ignore", reason: typeof obj.reason === "string" ? obj.reason : undefined };
+  if (action === "reply") {
+    const text = typeof obj.text === "string" ? obj.text : "";
     if (!text.trim()) return null;
-    const parseMode = obj.parseMode === 'markdown' ? 'markdown' : undefined;
-    return { action: 'reply', text, ...(parseMode ? { parseMode } : {}) };
+    const parseMode = obj.parseMode === "markdown" ? "markdown" : undefined;
+    return { action: "reply", text, ...(parseMode ? { parseMode } : {}) };
   }
-  if (action === 'rewrite') {
-    const text = typeof obj.text === 'string' ? obj.text : '';
+  if (action === "rewrite") {
+    const text = typeof obj.text === "string" ? obj.text : "";
     if (!text.trim()) return null;
-    return { action: 'rewrite', text };
+    return { action: "rewrite", text };
   }
-  if (action === 'set_workspace') {
-    const workspaceId = typeof obj.workspaceId === 'string' ? obj.workspaceId.trim() : '';
+  if (action === "set_workspace") {
+    const workspaceId = typeof obj.workspaceId === "string" ? obj.workspaceId.trim() : "";
     if (!workspaceId) return null;
-    const text = typeof obj.text === 'string' ? obj.text : undefined;
-    return { action: 'set_workspace', workspaceId, ...(text ? { text } : {}) };
+    const text = typeof obj.text === "string" ? obj.text : undefined;
+    return { action: "set_workspace", workspaceId, ...(text ? { text } : {}) };
   }
-  if (action === 'set_agent') {
-    const agentRoleId = typeof obj.agentRoleId === 'string' ? obj.agentRoleId.trim() : '';
+  if (action === "set_agent") {
+    const agentRoleId = typeof obj.agentRoleId === "string" ? obj.agentRoleId.trim() : "";
     if (!agentRoleId) return null;
-    const workspaceId = typeof obj.workspaceId === 'string' ? obj.workspaceId.trim() : undefined;
-    const text = typeof obj.text === 'string' ? obj.text : undefined;
-    return { action: 'set_agent', agentRoleId, ...(workspaceId ? { workspaceId } : {}), ...(text ? { text } : {}) };
+    const workspaceId = typeof obj.workspaceId === "string" ? obj.workspaceId.trim() : undefined;
+    const text = typeof obj.text === "string" ? obj.text : undefined;
+    return {
+      action: "set_agent",
+      agentRoleId,
+      ...(workspaceId ? { workspaceId } : {}),
+      ...(text ? { text } : {}),
+    };
   }
 
   return null;
 }
 
 async function loadRulesCode(workspacePath: string): Promise<CachedFile | null> {
-  const absPath = path.join(workspacePath, '.cowork', 'router', 'rules.monty');
+  const absPath = path.join(workspacePath, ".cowork", "router", "rules.monty");
   let stat: any;
   try {
     stat = await fs.stat(absPath);
   } catch (err: any) {
-    if (err?.code === 'ENOENT') return null;
+    if (err?.code === "ENOENT") return null;
     throw err;
   }
   if (!stat.isFile()) return null;
@@ -100,7 +106,7 @@ async function loadRulesCode(workspacePath: string): Promise<CachedFile | null> 
   const cached = fileCache.get(absPath);
   if (cached && cached.mtimeMs === stat.mtimeMs) return cached;
 
-  const code = await fs.readFile(absPath, 'utf8');
+  const code = await fs.readFile(absPath, "utf8");
   const hash = sha256Hex(code);
   const next: CachedFile = { mtimeMs: stat.mtimeMs, code, hash };
   fileCache.set(absPath, next);
@@ -112,7 +118,7 @@ export async function evaluateWorkspaceRouterRules(args: {
   channelType: ChannelType;
   sessionId: string;
   message: IncomingMessage;
-  contextType?: 'dm' | 'group';
+  contextType?: "dm" | "group";
   taskId?: string | null;
   limits?: MontyResourceLimits;
 }): Promise<RouterRuleResult | null> {
@@ -126,11 +132,13 @@ export async function evaluateWorkspaceRouterRules(args: {
   const limits: MontyResourceLimits = { ...ROUTER_DEFAULT_LIMITS, ...clamped };
 
   const stdlib = createMontySafeStdlib();
-  const externalFunctions = Object.fromEntries(Object.entries(stdlib).map(([k, fn]) => [k, fn as any]));
+  const externalFunctions = Object.fromEntries(
+    Object.entries(stdlib).map(([k, fn]) => [k, fn as any]),
+  );
 
   const input = {
     channel: args.channelType,
-    contextType: args.contextType || (args.message.isGroup ? 'group' : 'dm'),
+    contextType: args.contextType || (args.message.isGroup ? "group" : "dm"),
     sessionId: args.sessionId,
     taskId: args.taskId || null,
     chatId: args.message.chatId,
@@ -152,7 +160,7 @@ export async function evaluateWorkspaceRouterRules(args: {
   const res = await runMontyCode({
     code: cached.code,
     input,
-    scriptName: 'router_rules.monty',
+    scriptName: "router_rules.monty",
     limits,
     externalFunctions,
     cache: programCache,
@@ -160,12 +168,11 @@ export async function evaluateWorkspaceRouterRules(args: {
   });
 
   if (!res.ok) {
-    console.warn('[RouterRules] rules.monty failed:', res.error);
+    console.warn("[RouterRules] rules.monty failed:", res.error);
     return null;
   }
 
   const normalized = normalizeRuleResult(res.output);
-  if (!normalized || normalized.action === 'pass') return null;
+  if (!normalized || normalized.action === "pass") return null;
   return normalized;
 }
-

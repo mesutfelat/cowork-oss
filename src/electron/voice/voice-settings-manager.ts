@@ -6,23 +6,23 @@
  * using the SecureSettingsRepository.
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
-import Database from 'better-sqlite3';
+import * as fs from "fs";
+import * as path from "path";
+import Database from "better-sqlite3";
 import {
   VoiceSettings,
   VoiceProvider,
   VoiceInputMode,
   VoiceResponseMode,
   DEFAULT_VOICE_SETTINGS,
-} from '../../shared/types';
-import { SecureSettingsRepository } from '../database/SecureSettingsRepository';
-import { getUserDataDir } from '../utils/user-data-dir';
-import { getSafeStorage } from '../utils/safe-storage';
+} from "../../shared/types";
+import { SecureSettingsRepository } from "../database/SecureSettingsRepository";
+import { getUserDataDir } from "../utils/user-data-dir";
+import { getSafeStorage } from "../utils/safe-storage";
 
 // Legacy file names for migration
-const LEGACY_SETTINGS_FILE = 'voice-settings.json';
-const LEGACY_SECURE_KEYS_FILE = 'voice-keys.enc';
+const LEGACY_SETTINGS_FILE = "voice-settings.json";
+const LEGACY_SECURE_KEYS_FILE = "voice-keys.enc";
 
 // Legacy interfaces for migration
 interface LegacyVoiceSettingsFile {
@@ -30,11 +30,11 @@ interface LegacyVoiceSettingsFile {
   ttsProvider?: VoiceProvider;
   sttProvider?: VoiceProvider;
   elevenLabsVoiceId?: string;
-  openaiVoice?: 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer';
+  openaiVoice?: "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer";
   azureEndpoint?: string;
   azureTtsDeploymentName?: string;
   azureSttDeploymentName?: string;
-  azureVoice?: 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer';
+  azureVoice?: "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer";
   azureApiVersion?: string;
   inputMode?: VoiceInputMode;
   responseMode?: VoiceResponseMode;
@@ -68,12 +68,12 @@ export class VoiceSettingsManager {
 
     if (db) {
       this.repository = new SecureSettingsRepository(db);
-      console.log('[VoiceSettingsManager] Initialized with secure database storage');
+      console.log("[VoiceSettingsManager] Initialized with secure database storage");
 
       // Migrate from legacy JSON files if needed
       this.migrateFromLegacyFiles();
     } else {
-      console.warn('[VoiceSettingsManager] No database provided, will initialize on first use');
+      console.warn("[VoiceSettingsManager] No database provided, will initialize on first use");
     }
   }
 
@@ -82,7 +82,7 @@ export class VoiceSettingsManager {
    */
   static setRepository(db: Database.Database): void {
     this.repository = new SecureSettingsRepository(db);
-    console.log('[VoiceSettingsManager] Repository set');
+    console.log("[VoiceSettingsManager] Repository set");
 
     // Migrate from legacy JSON files if needed
     if (!this.migrationComplete) {
@@ -102,7 +102,7 @@ export class VoiceSettingsManager {
 
     try {
       if (this.repository) {
-        const stored = this.repository.load<VoiceSettings>('voice');
+        const stored = this.repository.load<VoiceSettings>("voice");
         if (stored) {
           settings = {
             ...DEFAULT_VOICE_SETTINGS,
@@ -112,10 +112,10 @@ export class VoiceSettingsManager {
           settings = this.validateSettings(settings);
         }
       } else {
-        console.warn('[VoiceSettingsManager] Repository not initialized, using defaults');
+        console.warn("[VoiceSettingsManager] Repository not initialized, using defaults");
       }
     } catch (error) {
-      console.error('[VoiceSettingsManager] Failed to load settings:', error);
+      console.error("[VoiceSettingsManager] Failed to load settings:", error);
       settings = { ...DEFAULT_VOICE_SETTINGS };
     }
 
@@ -133,16 +133,16 @@ export class VoiceSettingsManager {
 
       if (this.repository) {
         // Save all settings (including API keys) encrypted in database
-        this.repository.save('voice', validatedSettings);
+        this.repository.save("voice", validatedSettings);
       } else {
-        console.error('[VoiceSettingsManager] Repository not initialized, cannot save');
-        throw new Error('Settings repository not initialized');
+        console.error("[VoiceSettingsManager] Repository not initialized, cannot save");
+        throw new Error("Settings repository not initialized");
       }
 
       this.cachedSettings = validatedSettings;
-      console.log('[VoiceSettingsManager] Settings saved to encrypted database');
+      console.log("[VoiceSettingsManager] Settings saved to encrypted database");
     } catch (error) {
-      console.error('[VoiceSettingsManager] Failed to save settings:', error);
+      console.error("[VoiceSettingsManager] Failed to save settings:", error);
       throw error;
     }
   }
@@ -170,12 +170,12 @@ export class VoiceSettingsManager {
   static resetSettings(): void {
     try {
       if (this.repository) {
-        this.repository.delete('voice');
+        this.repository.delete("voice");
       }
       this.cachedSettings = null;
-      console.log('[VoiceSettingsManager] Settings reset to defaults');
+      console.log("[VoiceSettingsManager] Settings reset to defaults");
     } catch (error) {
-      console.error('[VoiceSettingsManager] Failed to reset settings:', error);
+      console.error("[VoiceSettingsManager] Failed to reset settings:", error);
       throw error;
     }
   }
@@ -226,18 +226,18 @@ export class VoiceSettingsManager {
     }
 
     // Check if we already have settings in the database
-    if (this.repository.exists('voice')) {
+    if (this.repository.exists("voice")) {
       // Clean up legacy files
       this.cleanupLegacyFiles();
       this.migrationComplete = true;
       return;
     }
 
-    console.log('[VoiceSettingsManager] Migrating from legacy JSON files to encrypted database...');
+    console.log("[VoiceSettingsManager] Migrating from legacy JSON files to encrypted database...");
 
     // Create backups before migration
-    const settingsBackupPath = legacySettingsPath + '.migration-backup';
-    const keysBackupPath = legacyKeysPath + '.migration-backup';
+    const settingsBackupPath = legacySettingsPath + ".migration-backup";
+    const keysBackupPath = legacyKeysPath + ".migration-backup";
 
     try {
       if (hasLegacySettings) {
@@ -247,7 +247,7 @@ export class VoiceSettingsManager {
         fs.copyFileSync(legacyKeysPath, keysBackupPath);
       }
     } catch (backupError) {
-      console.error('[VoiceSettingsManager] Failed to create backups:', backupError);
+      console.error("[VoiceSettingsManager] Failed to create backups:", backupError);
       return;
     }
 
@@ -256,13 +256,13 @@ export class VoiceSettingsManager {
 
       // Load legacy settings file
       if (hasLegacySettings) {
-        const data = fs.readFileSync(legacySettingsPath, 'utf-8');
+        const data = fs.readFileSync(legacySettingsPath, "utf-8");
         const parsed: LegacyVoiceSettingsFile = JSON.parse(data);
         settings = {
           ...DEFAULT_VOICE_SETTINGS,
           ...parsed,
         };
-        console.log('[VoiceSettingsManager] Loaded legacy settings file');
+        console.log("[VoiceSettingsManager] Loaded legacy settings file");
       }
 
       // Load legacy secure keys
@@ -277,15 +277,15 @@ export class VoiceSettingsManager {
         if (secureKeys.azureApiKey) {
           settings.azureApiKey = secureKeys.azureApiKey;
         }
-        console.log('[VoiceSettingsManager] Loaded legacy secure keys');
+        console.log("[VoiceSettingsManager] Loaded legacy secure keys");
       }
 
       // Validate and save to database
       settings = this.validateSettings(settings);
-      this.repository.save('voice', settings);
+      this.repository.save("voice", settings);
       this.cachedSettings = settings;
 
-      console.log('[VoiceSettingsManager] Successfully migrated to encrypted database');
+      console.log("[VoiceSettingsManager] Successfully migrated to encrypted database");
 
       // Migration successful - delete backups and original files
       if (hasLegacySettings) {
@@ -296,16 +296,16 @@ export class VoiceSettingsManager {
         fs.unlinkSync(keysBackupPath);
         fs.unlinkSync(legacyKeysPath);
       }
-      console.log('[VoiceSettingsManager] Migration complete, cleaned up legacy files');
+      console.log("[VoiceSettingsManager] Migration complete, cleaned up legacy files");
 
       this.migrationComplete = true;
     } catch (error) {
-      console.error('[VoiceSettingsManager] Migration failed, backups preserved:', error);
+      console.error("[VoiceSettingsManager] Migration failed, backups preserved:", error);
       if (hasLegacySettings) {
-        console.error('[VoiceSettingsManager] Settings backup at:', settingsBackupPath);
+        console.error("[VoiceSettingsManager] Settings backup at:", settingsBackupPath);
       }
       if (hasLegacyKeys) {
-        console.error('[VoiceSettingsManager] Keys backup at:', keysBackupPath);
+        console.error("[VoiceSettingsManager] Keys backup at:", keysBackupPath);
       }
       // Don't throw - allow app to continue with defaults
       this.migrationComplete = true;
@@ -320,7 +320,7 @@ export class VoiceSettingsManager {
       const safeStorage = getSafeStorage();
       if (!safeStorage?.isEncryptionAvailable?.()) {
         // Fall back to plain text storage if encryption unavailable
-        const data = fs.readFileSync(legacyKeysPath, 'utf-8');
+        const data = fs.readFileSync(legacyKeysPath, "utf-8");
         return JSON.parse(data);
       }
 
@@ -328,7 +328,7 @@ export class VoiceSettingsManager {
       const decryptedString = safeStorage.decryptString(encryptedData);
       return JSON.parse(decryptedString);
     } catch (error) {
-      console.error('[VoiceSettingsManager] Failed to load legacy secure keys:', error);
+      console.error("[VoiceSettingsManager] Failed to load legacy secure keys:", error);
       return {};
     }
   }
@@ -343,16 +343,16 @@ export class VoiceSettingsManager {
     try {
       if (fs.existsSync(legacySettingsPath)) {
         // Rename to .bak instead of deleting (safety)
-        fs.renameSync(legacySettingsPath, legacySettingsPath + '.migrated');
-        console.log('[VoiceSettingsManager] Backed up legacy settings file');
+        fs.renameSync(legacySettingsPath, legacySettingsPath + ".migrated");
+        console.log("[VoiceSettingsManager] Backed up legacy settings file");
       }
       if (fs.existsSync(legacyKeysPath)) {
         // Securely delete encrypted keys file
         fs.unlinkSync(legacyKeysPath);
-        console.log('[VoiceSettingsManager] Removed legacy secure keys file');
+        console.log("[VoiceSettingsManager] Removed legacy secure keys file");
       }
     } catch (error) {
-      console.warn('[VoiceSettingsManager] Failed to clean up legacy files:', error);
+      console.warn("[VoiceSettingsManager] Failed to clean up legacy files:", error);
       // Non-fatal - continue anyway
     }
   }
@@ -363,25 +363,25 @@ export class VoiceSettingsManager {
     const validated = { ...settings };
 
     // Validate provider
-    if (!['elevenlabs', 'openai', 'azure', 'local'].includes(validated.ttsProvider)) {
+    if (!["elevenlabs", "openai", "azure", "local"].includes(validated.ttsProvider)) {
       validated.ttsProvider = DEFAULT_VOICE_SETTINGS.ttsProvider;
     }
-    if (!['elevenlabs', 'openai', 'azure', 'local'].includes(validated.sttProvider)) {
+    if (!["elevenlabs", "openai", "azure", "local"].includes(validated.sttProvider)) {
       validated.sttProvider = DEFAULT_VOICE_SETTINGS.sttProvider;
     }
 
     // Validate input mode
-    if (!['push_to_talk', 'voice_activity', 'disabled'].includes(validated.inputMode)) {
+    if (!["push_to_talk", "voice_activity", "disabled"].includes(validated.inputMode)) {
       validated.inputMode = DEFAULT_VOICE_SETTINGS.inputMode;
     }
 
     // Validate response mode
-    if (!['auto', 'manual', 'smart'].includes(validated.responseMode)) {
+    if (!["auto", "manual", "smart"].includes(validated.responseMode)) {
       validated.responseMode = DEFAULT_VOICE_SETTINGS.responseMode;
     }
 
     // Validate OpenAI and Azure voices
-    const validVoices = ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'];
+    const validVoices = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"];
     if (validated.openaiVoice && !validVoices.includes(validated.openaiVoice)) {
       validated.openaiVoice = undefined;
     }
@@ -390,14 +390,17 @@ export class VoiceSettingsManager {
     }
 
     // Validate numeric ranges
-    validated.volume = Math.max(0, Math.min(100, validated.volume || DEFAULT_VOICE_SETTINGS.volume));
+    validated.volume = Math.max(
+      0,
+      Math.min(100, validated.volume || DEFAULT_VOICE_SETTINGS.volume),
+    );
     validated.speechRate = Math.max(
       0.5,
-      Math.min(2.0, validated.speechRate || DEFAULT_VOICE_SETTINGS.speechRate)
+      Math.min(2.0, validated.speechRate || DEFAULT_VOICE_SETTINGS.speechRate),
     );
     validated.silenceTimeout = Math.max(
       1,
-      Math.min(10, validated.silenceTimeout || DEFAULT_VOICE_SETTINGS.silenceTimeout)
+      Math.min(10, validated.silenceTimeout || DEFAULT_VOICE_SETTINGS.silenceTimeout),
     );
 
     return validated;

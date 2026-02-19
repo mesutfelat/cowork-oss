@@ -13,8 +13,8 @@ import {
   enableTailscaleFunnel,
   disableTailscaleFunnel,
   checkTailscaleFunnelAvailable,
-} from './tailscale';
-import { TailscaleSettingsManager, type TailscaleMode } from './settings';
+} from "./tailscale";
+import { TailscaleSettingsManager, type TailscaleMode } from "./settings";
 
 /**
  * Configuration for starting Tailscale exposure
@@ -95,40 +95,40 @@ export function getExposureStatus(): {
  * @returns Result with URLs and cleanup function
  */
 export async function startTailscaleExposure(
-  config: TailscaleExposureConfig
+  config: TailscaleExposureConfig,
 ): Promise<TailscaleExposureResult> {
   const log = config.log || console.log;
   const warn = config.warn || console.warn;
 
   // Return early if mode is 'off'
-  if (config.mode === 'off') {
+  if (config.mode === "off") {
     return { success: true };
   }
 
   // Check if Tailscale is installed
   const installed = await isTailscaleInstalled();
   if (!installed) {
-    const error = 'Tailscale is not installed. Please install Tailscale first.';
+    const error = "Tailscale is not installed. Please install Tailscale first.";
     warn(`[Tailscale Exposure] ${error}`);
     return { success: false, error };
   }
 
   // If mode is funnel, check availability
-  if (config.mode === 'funnel') {
+  if (config.mode === "funnel") {
     const funnelAvailable = await checkTailscaleFunnelAvailable();
     if (!funnelAvailable) {
-      warn('[Tailscale Exposure] Funnel not available, falling back to Serve mode');
-      config.mode = 'serve';
+      warn("[Tailscale Exposure] Funnel not available, falling back to Serve mode");
+      config.mode = "serve";
     }
   }
 
   // Enable the appropriate mode
   let enabled = false;
   try {
-    if (config.mode === 'funnel') {
-      enabled = await enableTailscaleFunnel(config.port, config.pathPrefix || '/');
-    } else if (config.mode === 'serve') {
-      enabled = await enableTailscaleServe(config.port, config.pathPrefix || '/');
+    if (config.mode === "funnel") {
+      enabled = await enableTailscaleFunnel(config.port, config.pathPrefix || "/");
+    } else if (config.mode === "serve") {
+      enabled = await enableTailscaleServe(config.port, config.pathPrefix || "/");
     }
   } catch (error: any) {
     const message = error.message || String(error);
@@ -144,18 +144,18 @@ export async function startTailscaleExposure(
   // Get the hostname
   const hostname = await getTailnetHostname();
   if (!hostname) {
-    warn('[Tailscale Exposure] Could not determine Tailnet hostname');
+    warn("[Tailscale Exposure] Could not determine Tailnet hostname");
     // Try to clean up
-    if (config.mode === 'funnel') {
+    if (config.mode === "funnel") {
       await disableTailscaleFunnel();
     } else {
       await disableTailscaleServe();
     }
-    return { success: false, error: 'Could not determine Tailnet hostname' };
+    return { success: false, error: "Could not determine Tailnet hostname" };
   }
 
   // Build URLs
-  const pathPrefix = config.pathPrefix || '';
+  const pathPrefix = config.pathPrefix || "";
   const httpsUrl = `https://${hostname}${pathPrefix}`;
   const wssUrl = `wss://${hostname}${pathPrefix}`;
 
@@ -176,7 +176,7 @@ export async function startTailscaleExposure(
     startedAt: Date.now(),
   };
 
-  log(`[Tailscale Exposure] ${config.mode === 'funnel' ? 'Funnel' : 'Serve'} enabled`);
+  log(`[Tailscale Exposure] ${config.mode === "funnel" ? "Funnel" : "Serve"} enabled`);
   log(`[Tailscale Exposure] HTTPS: ${httpsUrl}`);
   log(`[Tailscale Exposure] WSS: ${wssUrl}`);
 
@@ -184,9 +184,9 @@ export async function startTailscaleExposure(
   const cleanup = async () => {
     try {
       if (config.resetOnExit !== false) {
-        if (config.mode === 'funnel') {
+        if (config.mode === "funnel") {
           await disableTailscaleFunnel();
-        } else if (config.mode === 'serve') {
+        } else if (config.mode === "serve") {
           await disableTailscaleServe();
         }
         log(`[Tailscale Exposure] ${config.mode} disabled`);
@@ -195,7 +195,7 @@ export async function startTailscaleExposure(
       warn(`[Tailscale Exposure] Cleanup error: ${error.message || error}`);
     } finally {
       activeExposure = null;
-      TailscaleSettingsManager.updateSettings({ mode: 'off' });
+      TailscaleSettingsManager.updateSettings({ mode: "off" });
     }
   };
 
@@ -217,17 +217,17 @@ export async function stopTailscaleExposure(): Promise<void> {
   }
 
   try {
-    if (activeExposure.mode === 'funnel') {
+    if (activeExposure.mode === "funnel") {
       await disableTailscaleFunnel();
-    } else if (activeExposure.mode === 'serve') {
+    } else if (activeExposure.mode === "serve") {
       await disableTailscaleServe();
     }
     console.log(`[Tailscale Exposure] ${activeExposure.mode} disabled`);
   } catch (error: any) {
-    console.error('[Tailscale Exposure] Stop error:', error.message || error);
+    console.error("[Tailscale Exposure] Stop error:", error.message || error);
   } finally {
     activeExposure = null;
-    TailscaleSettingsManager.updateSettings({ mode: 'off' });
+    TailscaleSettingsManager.updateSettings({ mode: "off" });
   }
 }
 

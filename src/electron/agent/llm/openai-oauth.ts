@@ -3,12 +3,12 @@ import {
   refreshOpenAICodexToken,
   getOAuthApiKey,
   OAuthCredentials,
-} from '@mariozechner/pi-ai';
+} from "@mariozechner/pi-ai";
 
 function getElectronShell(): any | null {
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const electron = require('electron') as any;
+    const electron = require("electron") as any;
     const shell = electron?.shell;
     if (shell) return shell;
   } catch {
@@ -31,7 +31,7 @@ export interface OpenAIOAuthTokens {
  * Convert pi-ai OAuthCredentials to our token format
  */
 function credentialsToTokens(credentials: OAuthCredentials): OpenAIOAuthTokens {
-  const email = typeof credentials.email === 'string' ? credentials.email : undefined;
+  const email = typeof credentials.email === "string" ? credentials.email : undefined;
   return {
     access_token: credentials.access,
     refresh_token: credentials.refresh,
@@ -62,37 +62,39 @@ export class OpenAIOAuth {
    * Opens browser for authentication and waits for callback
    */
   async authenticate(): Promise<OpenAIOAuthTokens> {
-    console.log('[OpenAI OAuth] Starting authentication flow with pi-ai SDK...');
+    console.log("[OpenAI OAuth] Starting authentication flow with pi-ai SDK...");
 
     const credentials = await loginOpenAICodex({
       onAuth: (info) => {
-        console.log('[OpenAI OAuth] Opening browser for authentication...');
+        console.log("[OpenAI OAuth] Opening browser for authentication...");
         const shell = getElectronShell();
         if (shell?.openExternal) {
           shell.openExternal(info.url);
         } else {
-          console.log('[OpenAI OAuth] Browser open is unavailable in this runtime. Open this URL manually:');
+          console.log(
+            "[OpenAI OAuth] Browser open is unavailable in this runtime. Open this URL manually:",
+          );
           console.log(info.url);
         }
         if (info.instructions) {
-          console.log('[OpenAI OAuth] Instructions:', info.instructions);
+          console.log("[OpenAI OAuth] Instructions:", info.instructions);
         }
       },
       onPrompt: async (prompt) => {
         // This is called if manual input is needed (shouldn't happen with browser flow)
-        console.log('[OpenAI OAuth] Prompt:', prompt.message);
+        console.log("[OpenAI OAuth] Prompt:", prompt.message);
         // Return empty string - browser flow should handle this
-        return '';
+        return "";
       },
       onProgress: (message) => {
-        console.log('[OpenAI OAuth] Progress:', message);
+        console.log("[OpenAI OAuth] Progress:", message);
       },
-      originator: 'cowork-os',
+      originator: "cowork-os",
     });
 
-    console.log('[OpenAI OAuth] Authentication successful!');
+    console.log("[OpenAI OAuth] Authentication successful!");
     if (credentials.email) {
-      console.log('[OpenAI OAuth] Logged in as:', credentials.email);
+      console.log("[OpenAI OAuth] Logged in as:", credentials.email);
     }
 
     return credentialsToTokens(credentials);
@@ -102,12 +104,12 @@ export class OpenAIOAuth {
    * Refresh an expired access token using pi-ai SDK
    */
   static async refreshTokens(tokens: OpenAIOAuthTokens): Promise<OpenAIOAuthTokens> {
-    console.log('[OpenAI OAuth] Refreshing tokens...');
+    console.log("[OpenAI OAuth] Refreshing tokens...");
 
     // refreshOpenAICodexToken expects the refresh token string, not the full credentials
     const newCredentials = await refreshOpenAICodexToken(tokens.refresh_token);
 
-    console.log('[OpenAI OAuth] Tokens refreshed successfully!');
+    console.log("[OpenAI OAuth] Tokens refreshed successfully!");
     return credentialsToTokens(newCredentials);
   }
 
@@ -116,14 +118,14 @@ export class OpenAIOAuth {
    * This is used for making API calls with the ChatGPT backend
    */
   static async getApiKeyFromTokens(
-    tokens: OpenAIOAuthTokens
+    tokens: OpenAIOAuthTokens,
   ): Promise<{ apiKey: string; newTokens?: OpenAIOAuthTokens }> {
     const credentials = tokensToCredentials(tokens);
 
-    const result = await getOAuthApiKey('openai-codex', { 'openai-codex': credentials });
+    const result = await getOAuthApiKey("openai-codex", { "openai-codex": credentials });
 
     if (!result) {
-      throw new Error('Failed to get API key from OAuth credentials');
+      throw new Error("Failed to get API key from OAuth credentials");
     }
 
     return {

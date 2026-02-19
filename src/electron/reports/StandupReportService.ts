@@ -1,6 +1,6 @@
-import Database from 'better-sqlite3';
-import { v4 as uuidv4 } from 'uuid';
-import { StandupReport, Task, BoardColumn } from '../../shared/types';
+import Database from "better-sqlite3";
+import { v4 as uuidv4 } from "uuid";
+import { StandupReport, Task, BoardColumn } from "../../shared/types";
 
 /**
  * Query for standup reports
@@ -8,15 +8,15 @@ import { StandupReport, Task, BoardColumn } from '../../shared/types';
 export interface StandupListQuery {
   workspaceId: string;
   limit?: number;
-  startDate?: string;  // YYYY-MM-DD
-  endDate?: string;    // YYYY-MM-DD
+  startDate?: string; // YYYY-MM-DD
+  endDate?: string; // YYYY-MM-DD
 }
 
 /**
  * Channel configuration for report delivery
  */
 export interface DeliveryConfig {
-  channelType: string;  // telegram, discord, slack, etc.
+  channelType: string; // telegram, discord, slack, etc.
   channelId: string;
 }
 
@@ -26,7 +26,7 @@ export interface DeliveryConfig {
 export class StandupReportService {
   constructor(
     private db: Database.Database,
-    private deliverToChannel?: (report: StandupReport, config: DeliveryConfig) => Promise<void>
+    private deliverToChannel?: (report: StandupReport, config: DeliveryConfig) => Promise<void>,
   ) {}
 
   /**
@@ -44,10 +44,10 @@ export class StandupReportService {
     }
 
     // Get completed tasks (done column, updated in last 24h)
-    const completedTasks = this.getTasksByColumn(workspaceId, 'done', yesterday);
+    const completedTasks = this.getTasksByColumn(workspaceId, "done", yesterday);
 
     // Get in-progress tasks
-    const inProgressTasks = this.getTasksByColumn(workspaceId, 'in_progress');
+    const inProgressTasks = this.getTasksByColumn(workspaceId, "in_progress");
 
     // Get blocked tasks (status = 'blocked' or 'failed')
     const blockedTasks = this.getBlockedTasks(workspaceId);
@@ -59,9 +59,9 @@ export class StandupReportService {
       id: uuidv4(),
       workspaceId,
       reportDate,
-      completedTaskIds: completedTasks.map(t => t.id),
-      inProgressTaskIds: inProgressTasks.map(t => t.id),
-      blockedTaskIds: blockedTasks.map(t => t.id),
+      completedTaskIds: completedTasks.map((t) => t.id),
+      inProgressTaskIds: inProgressTasks.map((t) => t.id),
+      blockedTaskIds: blockedTasks.map((t) => t.id),
       summary,
       createdAt: Date.now(),
     };
@@ -77,7 +77,7 @@ export class StandupReportService {
    */
   async deliverReport(report: StandupReport, config: DeliveryConfig): Promise<void> {
     if (!this.deliverToChannel) {
-      throw new Error('No delivery handler configured');
+      throw new Error("No delivery handler configured");
     }
 
     await this.deliverToChannel(report, config);
@@ -85,7 +85,7 @@ export class StandupReportService {
     // Update report with delivery info
     const deliveredToChannel = `${config.channelType}:${config.channelId}`;
     const stmt = this.db.prepare(
-      'UPDATE standup_reports SET delivered_to_channel = ? WHERE id = ?'
+      "UPDATE standup_reports SET delivered_to_channel = ? WHERE id = ?",
     );
     stmt.run(deliveredToChannel, report.id);
   }
@@ -120,20 +120,20 @@ export class StandupReportService {
    * List standup reports for a workspace
    */
   list(query: StandupListQuery): StandupReport[] {
-    const conditions: string[] = ['workspace_id = ?'];
+    const conditions: string[] = ["workspace_id = ?"];
     const params: any[] = [query.workspaceId];
 
     if (query.startDate) {
-      conditions.push('report_date >= ?');
+      conditions.push("report_date >= ?");
       params.push(query.startDate);
     }
 
     if (query.endDate) {
-      conditions.push('report_date <= ?');
+      conditions.push("report_date <= ?");
       params.push(query.endDate);
     }
 
-    let sql = `SELECT * FROM standup_reports WHERE ${conditions.join(' AND ')} ORDER BY report_date DESC`;
+    let sql = `SELECT * FROM standup_reports WHERE ${conditions.join(" AND ")} ORDER BY report_date DESC`;
 
     if (query.limit) {
       sql += ` LIMIT ${query.limit}`;
@@ -141,14 +141,14 @@ export class StandupReportService {
 
     const stmt = this.db.prepare(sql);
     const rows = stmt.all(...params) as any[];
-    return rows.map(row => this.mapRowToReport(row));
+    return rows.map((row) => this.mapRowToReport(row));
   }
 
   /**
    * Find a report by ID
    */
   findById(id: string): StandupReport | undefined {
-    const stmt = this.db.prepare('SELECT * FROM standup_reports WHERE id = ?');
+    const stmt = this.db.prepare("SELECT * FROM standup_reports WHERE id = ?");
     const row = stmt.get(id) as any;
     return row ? this.mapRowToReport(row) : undefined;
   }
@@ -162,7 +162,7 @@ export class StandupReportService {
     const cutoffStr = this.formatDate(cutoffDate);
 
     const stmt = this.db.prepare(
-      'DELETE FROM standup_reports WHERE workspace_id = ? AND report_date < ?'
+      "DELETE FROM standup_reports WHERE workspace_id = ? AND report_date < ?",
     );
     const result = stmt.run(workspaceId, cutoffStr);
     return result.changes;
@@ -172,52 +172,49 @@ export class StandupReportService {
    * Format the standup report as a message for delivery
    */
   formatReportMessage(report: StandupReport, tasks: Map<string, Task>): string {
-    const lines: string[] = [
-      `**Daily Standup Report - ${report.reportDate}**`,
-      '',
-    ];
+    const lines: string[] = [`**Daily Standup Report - ${report.reportDate}**`, ""];
 
     // Completed section
     if (report.completedTaskIds.length > 0) {
-      lines.push('**Completed Today:**');
+      lines.push("**Completed Today:**");
       for (const taskId of report.completedTaskIds) {
         const task = tasks.get(taskId);
         if (task) {
           lines.push(`- ${task.title}`);
         }
       }
-      lines.push('');
+      lines.push("");
     }
 
     // In Progress section
     if (report.inProgressTaskIds.length > 0) {
-      lines.push('**In Progress:**');
+      lines.push("**In Progress:**");
       for (const taskId of report.inProgressTaskIds) {
         const task = tasks.get(taskId);
         if (task) {
           lines.push(`- ${task.title}`);
         }
       }
-      lines.push('');
+      lines.push("");
     }
 
     // Blocked section
     if (report.blockedTaskIds.length > 0) {
-      lines.push('**Blocked:**');
+      lines.push("**Blocked:**");
       for (const taskId of report.blockedTaskIds) {
         const task = tasks.get(taskId);
         if (task) {
           lines.push(`- ${task.title}`);
         }
       }
-      lines.push('');
+      lines.push("");
     }
 
     // Summary
-    lines.push('**Summary:**');
+    lines.push("**Summary:**");
     lines.push(report.summary);
 
-    return lines.join('\n');
+    return lines.join("\n");
   }
 
   /**
@@ -241,7 +238,7 @@ export class StandupReportService {
       JSON.stringify(report.blockedTaskIds),
       report.summary,
       report.deliveredToChannel || null,
-      report.createdAt
+      report.createdAt,
     );
   }
 
@@ -251,7 +248,7 @@ export class StandupReportService {
   private getTasksByColumn(
     workspaceId: string,
     column: BoardColumn,
-    updatedAfter?: number
+    updatedAfter?: number,
   ): Task[] {
     let sql = `
       SELECT * FROM tasks
@@ -260,15 +257,15 @@ export class StandupReportService {
     const params: any[] = [workspaceId, column];
 
     if (updatedAfter) {
-      sql += ' AND updated_at >= ?';
+      sql += " AND updated_at >= ?";
       params.push(updatedAfter);
     }
 
-    sql += ' ORDER BY updated_at DESC';
+    sql += " ORDER BY updated_at DESC";
 
     const stmt = this.db.prepare(sql);
     const rows = stmt.all(...params) as any[];
-    return rows.map(row => this.mapRowToTask(row));
+    return rows.map((row) => this.mapRowToTask(row));
   }
 
   /**
@@ -281,43 +278,39 @@ export class StandupReportService {
       ORDER BY updated_at DESC
     `);
     const rows = stmt.all(workspaceId) as any[];
-    return rows.map(row => this.mapRowToTask(row));
+    return rows.map((row) => this.mapRowToTask(row));
   }
 
   /**
    * Build a summary from task lists
    */
-  private buildSummary(
-    completed: Task[],
-    inProgress: Task[],
-    blocked: Task[]
-  ): string {
+  private buildSummary(completed: Task[], inProgress: Task[], blocked: Task[]): string {
     const parts: string[] = [];
 
     if (completed.length > 0) {
-      parts.push(`${completed.length} task${completed.length === 1 ? '' : 's'} completed`);
+      parts.push(`${completed.length} task${completed.length === 1 ? "" : "s"} completed`);
     }
 
     if (inProgress.length > 0) {
-      parts.push(`${inProgress.length} task${inProgress.length === 1 ? '' : 's'} in progress`);
+      parts.push(`${inProgress.length} task${inProgress.length === 1 ? "" : "s"} in progress`);
     }
 
     if (blocked.length > 0) {
-      parts.push(`${blocked.length} task${blocked.length === 1 ? '' : 's'} blocked`);
+      parts.push(`${blocked.length} task${blocked.length === 1 ? "" : "s"} blocked`);
     }
 
     if (parts.length === 0) {
-      return 'No task activity today.';
+      return "No task activity today.";
     }
 
-    return parts.join(', ') + '.';
+    return parts.join(", ") + ".";
   }
 
   /**
    * Format date as YYYY-MM-DD
    */
   private formatDate(date: Date): string {
-    return date.toISOString().split('T')[0];
+    return date.toISOString().split("T")[0];
   }
 
   /**
@@ -328,9 +321,9 @@ export class StandupReportService {
       id: row.id,
       workspaceId: row.workspace_id,
       reportDate: row.report_date,
-      completedTaskIds: JSON.parse(row.completed_task_ids || '[]'),
-      inProgressTaskIds: JSON.parse(row.in_progress_task_ids || '[]'),
-      blockedTaskIds: JSON.parse(row.blocked_task_ids || '[]'),
+      completedTaskIds: JSON.parse(row.completed_task_ids || "[]"),
+      inProgressTaskIds: JSON.parse(row.in_progress_task_ids || "[]"),
+      blockedTaskIds: JSON.parse(row.blocked_task_ids || "[]"),
       summary: row.summary,
       deliveredToChannel: row.delivered_to_channel || undefined,
       createdAt: row.created_at,

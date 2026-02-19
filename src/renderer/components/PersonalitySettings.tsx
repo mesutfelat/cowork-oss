@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 import {
   PersonalitySettings as PersonalitySettingsType,
   PersonalityDefinition,
@@ -14,7 +14,7 @@ import {
   DEFAULT_QUIRKS,
   DEFAULT_RELATIONSHIP,
   ANALOGY_DOMAINS,
-} from '../../shared/types';
+} from "../../shared/types";
 
 interface PersonalitySettingsProps {
   onSettingsChanged?: () => void;
@@ -22,11 +22,11 @@ interface PersonalitySettingsProps {
 
 export function PersonalitySettings({ onSettingsChanged }: PersonalitySettingsProps) {
   const [settings, setSettings] = useState<PersonalitySettingsType>({
-    activePersonality: 'professional',
-    customPrompt: '',
-    customName: 'Custom Assistant',
-    agentName: 'CoWork',
-    activePersona: 'companion',
+    activePersonality: "professional",
+    customPrompt: "",
+    customName: "Custom Assistant",
+    agentName: "CoWork",
+    activePersona: "companion",
     responseStyle: DEFAULT_RESPONSE_STYLE,
     quirks: DEFAULT_QUIRKS,
     relationship: DEFAULT_RELATIONSHIP,
@@ -42,7 +42,9 @@ export function PersonalitySettings({ onSettingsChanged }: PersonalitySettingsPr
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showCustomEditor, setShowCustomEditor] = useState(false);
-  const [activeSection, setActiveSection] = useState<'personality' | 'persona' | 'style' | 'quirks' | 'relationship'>('personality');
+  const [activeSection, setActiveSection] = useState<
+    "personality" | "persona" | "style" | "quirks" | "relationship"
+  >("personality");
 
   useEffect(() => {
     loadData();
@@ -77,9 +79,9 @@ export function PersonalitySettings({ onSettingsChanged }: PersonalitySettingsPr
       setDefinitions(loadedDefinitions);
       setPersonas(loadedPersonas);
       setRelationshipStats(stats);
-      setShowCustomEditor(loadedSettings.activePersonality === 'custom');
+      setShowCustomEditor(loadedSettings.activePersonality === "custom");
     } catch (error) {
-      console.error('Failed to load personality settings:', error);
+      console.error("Failed to load personality settings:", error);
     } finally {
       setLoading(false);
     }
@@ -93,22 +95,22 @@ export function PersonalitySettings({ onSettingsChanged }: PersonalitySettingsPr
       await window.electronAPI.savePersonalitySettings(updated);
       onSettingsChanged?.();
     } catch (error) {
-      console.error('Failed to save settings:', error);
+      console.error("Failed to save settings:", error);
     } finally {
       setSaving(false);
     }
   };
 
   const handlePersonalitySelect = async (personalityId: string) => {
-    setShowCustomEditor(personalityId === 'custom');
+    setShowCustomEditor(personalityId === "custom");
     await handleSaveSettings({
-      activePersonality: personalityId as PersonalitySettingsType['activePersonality'],
+      activePersonality: personalityId as PersonalitySettingsType["activePersonality"],
     });
   };
 
   const handlePersonaSelect = async (personaId: string) => {
     await handleSaveSettings({
-      activePersona: personaId as PersonalitySettingsType['activePersona'],
+      activePersona: personaId as PersonalitySettingsType["activePersona"],
     });
   };
 
@@ -132,42 +134,42 @@ export function PersonalitySettings({ onSettingsChanged }: PersonalitySettingsPr
     return <div className="settings-loading">Loading personality settings...</div>;
   }
 
-  const activeDefinition = definitions.find(d => d.id === settings.activePersonality);
-  const activePersona = personas.find(p => p.id === settings.activePersona);
+  const activeDefinition = definitions.find((d) => d.id === settings.activePersonality);
+  const activePersona = personas.find((p) => p.id === settings.activePersona);
 
   return (
     <div className="personality-settings">
       {/* Section Navigation */}
       <div className="personality-nav">
         <button
-          className={`personality-nav-btn ${activeSection === 'personality' ? 'active' : ''}`}
-          onClick={() => setActiveSection('personality')}
+          className={`personality-nav-btn ${activeSection === "personality" ? "active" : ""}`}
+          onClick={() => setActiveSection("personality")}
         >
           Personality
         </button>
         {personas.length > 0 && (
           <button
-            className={`personality-nav-btn ${activeSection === 'persona' ? 'active' : ''}`}
-            onClick={() => setActiveSection('persona')}
+            className={`personality-nav-btn ${activeSection === "persona" ? "active" : ""}`}
+            onClick={() => setActiveSection("persona")}
           >
             Personas
           </button>
         )}
         <button
-          className={`personality-nav-btn ${activeSection === 'style' ? 'active' : ''}`}
-          onClick={() => setActiveSection('style')}
+          className={`personality-nav-btn ${activeSection === "style" ? "active" : ""}`}
+          onClick={() => setActiveSection("style")}
         >
           Style
         </button>
         <button
-          className={`personality-nav-btn ${activeSection === 'quirks' ? 'active' : ''}`}
-          onClick={() => setActiveSection('quirks')}
+          className={`personality-nav-btn ${activeSection === "quirks" ? "active" : ""}`}
+          onClick={() => setActiveSection("quirks")}
         >
           Quirks
         </button>
         <button
-          className={`personality-nav-btn ${activeSection === 'relationship' ? 'active' : ''}`}
-          onClick={() => setActiveSection('relationship')}
+          className={`personality-nav-btn ${activeSection === "relationship" ? "active" : ""}`}
+          onClick={() => setActiveSection("relationship")}
         >
           Relationship
         </button>
@@ -188,7 +190,7 @@ export function PersonalitySettings({ onSettingsChanged }: PersonalitySettingsPr
               type="text"
               className="settings-input"
               placeholder="CoWork"
-              value={settings.agentName || 'CoWork'}
+              value={settings.agentName || "CoWork"}
               onChange={(e) => setSettings({ ...settings, agentName: e.target.value })}
               maxLength={50}
             />
@@ -197,14 +199,14 @@ export function PersonalitySettings({ onSettingsChanged }: PersonalitySettingsPr
               onClick={() => handleSaveSettings({ agentName: settings.agentName })}
               disabled={saving || !settings.agentName?.trim()}
             >
-              {saving ? 'Saving...' : 'Save'}
+              {saving ? "Saving..." : "Save"}
             </button>
           </div>
         </div>
       </div>
 
       {/* Personality Section */}
-      {activeSection === 'personality' && (
+      {activeSection === "personality" && (
         <div className="settings-section">
           <h3>Base Personality</h3>
           <p className="settings-description">
@@ -212,10 +214,10 @@ export function PersonalitySettings({ onSettingsChanged }: PersonalitySettingsPr
           </p>
 
           <div className="personality-grid">
-            {definitions.map(personality => (
+            {definitions.map((personality) => (
               <div
                 key={personality.id}
-                className={`personality-card ${settings.activePersonality === personality.id ? 'selected' : ''}`}
+                className={`personality-card ${settings.activePersonality === personality.id ? "selected" : ""}`}
                 onClick={() => handlePersonalitySelect(personality.id)}
               >
                 <div className="personality-card-icon">{personality.icon}</div>
@@ -224,15 +226,24 @@ export function PersonalitySettings({ onSettingsChanged }: PersonalitySettingsPr
                   <div className="personality-card-description">{personality.description}</div>
                   {personality.traits.length > 0 && (
                     <div className="personality-card-traits">
-                      {personality.traits.map(trait => (
-                        <span key={trait} className="personality-trait">{trait}</span>
+                      {personality.traits.map((trait) => (
+                        <span key={trait} className="personality-trait">
+                          {trait}
+                        </span>
                       ))}
                     </div>
                   )}
                 </div>
                 {settings.activePersonality === personality.id && (
                   <div className="personality-card-check">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
                       <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
                       <path d="M22 4L12 14.01l-3-3" />
                     </svg>
@@ -255,7 +266,7 @@ export function PersonalitySettings({ onSettingsChanged }: PersonalitySettingsPr
                   type="text"
                   className="settings-input"
                   placeholder="My Custom Assistant"
-                  value={settings.customName || ''}
+                  value={settings.customName || ""}
                   onChange={(e) => setSettings({ ...settings, customName: e.target.value })}
                 />
               </div>
@@ -265,25 +276,27 @@ export function PersonalitySettings({ onSettingsChanged }: PersonalitySettingsPr
                   id="custom-prompt"
                   className="settings-textarea"
                   placeholder="Describe how the assistant should communicate..."
-                  value={settings.customPrompt || ''}
+                  value={settings.customPrompt || ""}
                   onChange={(e) => setSettings({ ...settings, customPrompt: e.target.value })}
                   rows={8}
                 />
               </div>
               <button
                 className="button-primary"
-                onClick={() => handleSaveSettings({
-                  customName: settings.customName,
-                  customPrompt: settings.customPrompt,
-                })}
+                onClick={() =>
+                  handleSaveSettings({
+                    customName: settings.customName,
+                    customPrompt: settings.customPrompt,
+                  })
+                }
                 disabled={saving}
               >
-                {saving ? 'Saving...' : 'Save Custom Personality'}
+                {saving ? "Saving..." : "Save Custom Personality"}
               </button>
             </div>
           )}
 
-          {activeDefinition && activeDefinition.id !== 'custom' && (
+          {activeDefinition && activeDefinition.id !== "custom" && (
             <div className="personality-preview">
               <h4>Active: {activeDefinition.name}</h4>
               <pre>{activeDefinition.promptTemplate}</pre>
@@ -293,7 +306,7 @@ export function PersonalitySettings({ onSettingsChanged }: PersonalitySettingsPr
       )}
 
       {/* Persona Section */}
-      {activeSection === 'persona' && personas.length > 0 && (
+      {activeSection === "persona" && personas.length > 0 && (
         <div className="settings-section">
           <h3>Character Persona</h3>
           <p className="settings-description">
@@ -301,10 +314,10 @@ export function PersonalitySettings({ onSettingsChanged }: PersonalitySettingsPr
           </p>
 
           <div className="persona-grid">
-            {personas.map(persona => (
+            {personas.map((persona) => (
               <div
                 key={persona.id}
-                className={`persona-card ${settings.activePersona === persona.id ? 'selected' : ''}`}
+                className={`persona-card ${settings.activePersona === persona.id ? "selected" : ""}`}
                 onClick={() => handlePersonaSelect(persona.id)}
               >
                 <div className="persona-card-icon">{persona.icon}</div>
@@ -317,7 +330,14 @@ export function PersonalitySettings({ onSettingsChanged }: PersonalitySettingsPr
                 </div>
                 {settings.activePersona === persona.id && (
                   <div className="persona-card-check">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
                       <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
                       <path d="M22 4L12 14.01l-3-3" />
                     </svg>
@@ -327,7 +347,7 @@ export function PersonalitySettings({ onSettingsChanged }: PersonalitySettingsPr
             ))}
           </div>
 
-          {activePersona && activePersona.id !== 'none' && (
+          {activePersona && activePersona.id !== "none" && (
             <div className="persona-preview">
               <h4>Active Persona: {activePersona.name}</h4>
               <p>{activePersona.description}</p>
@@ -350,28 +370,26 @@ export function PersonalitySettings({ onSettingsChanged }: PersonalitySettingsPr
       )}
 
       {/* Response Style Section */}
-      {activeSection === 'style' && (
+      {activeSection === "style" && (
         <div className="settings-section">
           <h3>Response Style</h3>
-          <p className="settings-description">
-            Fine-tune how the assistant responds to you.
-          </p>
+          <p className="settings-description">Fine-tune how the assistant responds to you.</p>
 
           <div className="style-controls">
             <div className="style-control">
               <label>Emoji Usage</label>
               <p className="style-hint">How much emoji to include in responses</p>
               <div className="style-options">
-                {(['none', 'minimal', 'moderate', 'expressive'] as EmojiUsage[]).map(option => (
+                {(["none", "minimal", "moderate", "expressive"] as EmojiUsage[]).map((option) => (
                   <button
                     key={option}
-                    className={`style-option ${settings.responseStyle?.emojiUsage === option ? 'selected' : ''}`}
-                    onClick={() => handleResponseStyleChange('emojiUsage', option)}
+                    className={`style-option ${settings.responseStyle?.emojiUsage === option ? "selected" : ""}`}
+                    onClick={() => handleResponseStyleChange("emojiUsage", option)}
                   >
-                    {option === 'none' && 'None'}
-                    {option === 'minimal' && 'Minimal'}
-                    {option === 'moderate' && 'Moderate'}
-                    {option === 'expressive' && 'Expressive'}
+                    {option === "none" && "None"}
+                    {option === "minimal" && "Minimal"}
+                    {option === "moderate" && "Moderate"}
+                    {option === "expressive" && "Expressive"}
                   </button>
                 ))}
               </div>
@@ -381,15 +399,15 @@ export function PersonalitySettings({ onSettingsChanged }: PersonalitySettingsPr
               <label>Response Length</label>
               <p className="style-hint">How detailed responses should be</p>
               <div className="style-options">
-                {(['terse', 'balanced', 'detailed'] as ResponseLength[]).map(option => (
+                {(["terse", "balanced", "detailed"] as ResponseLength[]).map((option) => (
                   <button
                     key={option}
-                    className={`style-option ${settings.responseStyle?.responseLength === option ? 'selected' : ''}`}
-                    onClick={() => handleResponseStyleChange('responseLength', option)}
+                    className={`style-option ${settings.responseStyle?.responseLength === option ? "selected" : ""}`}
+                    onClick={() => handleResponseStyleChange("responseLength", option)}
                   >
-                    {option === 'terse' && 'Terse'}
-                    {option === 'balanced' && 'Balanced'}
-                    {option === 'detailed' && 'Detailed'}
+                    {option === "terse" && "Terse"}
+                    {option === "balanced" && "Balanced"}
+                    {option === "detailed" && "Detailed"}
                   </button>
                 ))}
               </div>
@@ -399,15 +417,15 @@ export function PersonalitySettings({ onSettingsChanged }: PersonalitySettingsPr
               <label>Code Comments</label>
               <p className="style-hint">How verbose code comments should be</p>
               <div className="style-options">
-                {(['minimal', 'moderate', 'verbose'] as CodeCommentStyle[]).map(option => (
+                {(["minimal", "moderate", "verbose"] as CodeCommentStyle[]).map((option) => (
                   <button
                     key={option}
-                    className={`style-option ${settings.responseStyle?.codeCommentStyle === option ? 'selected' : ''}`}
-                    onClick={() => handleResponseStyleChange('codeCommentStyle', option)}
+                    className={`style-option ${settings.responseStyle?.codeCommentStyle === option ? "selected" : ""}`}
+                    onClick={() => handleResponseStyleChange("codeCommentStyle", option)}
                   >
-                    {option === 'minimal' && 'Minimal'}
-                    {option === 'moderate' && 'Moderate'}
-                    {option === 'verbose' && 'Verbose'}
+                    {option === "minimal" && "Minimal"}
+                    {option === "moderate" && "Moderate"}
+                    {option === "verbose" && "Verbose"}
                   </button>
                 ))}
               </div>
@@ -417,15 +435,15 @@ export function PersonalitySettings({ onSettingsChanged }: PersonalitySettingsPr
               <label>Explanation Depth</label>
               <p className="style-hint">How much to explain concepts</p>
               <div className="style-options">
-                {(['expert', 'balanced', 'teaching'] as ExplanationDepth[]).map(option => (
+                {(["expert", "balanced", "teaching"] as ExplanationDepth[]).map((option) => (
                   <button
                     key={option}
-                    className={`style-option ${settings.responseStyle?.explanationDepth === option ? 'selected' : ''}`}
-                    onClick={() => handleResponseStyleChange('explanationDepth', option)}
+                    className={`style-option ${settings.responseStyle?.explanationDepth === option ? "selected" : ""}`}
+                    onClick={() => handleResponseStyleChange("explanationDepth", option)}
                   >
-                    {option === 'expert' && 'Expert'}
-                    {option === 'balanced' && 'Balanced'}
-                    {option === 'teaching' && 'Teaching'}
+                    {option === "expert" && "Expert"}
+                    {option === "balanced" && "Balanced"}
+                    {option === "teaching" && "Teaching"}
                   </button>
                 ))}
               </div>
@@ -435,7 +453,7 @@ export function PersonalitySettings({ onSettingsChanged }: PersonalitySettingsPr
       )}
 
       {/* Quirks Section */}
-      {activeSection === 'quirks' && (
+      {activeSection === "quirks" && (
         <div className="settings-section">
           <h3>Personality Quirks</h3>
           <p className="settings-description">
@@ -451,11 +469,16 @@ export function PersonalitySettings({ onSettingsChanged }: PersonalitySettingsPr
                 type="text"
                 className="settings-input"
                 placeholder='e.g., "Consider it done!" or "Let&apos;s dive in!"'
-                value={settings.quirks?.catchphrase || ''}
-                onChange={(e) => setSettings({
-                  ...settings,
-                  quirks: { ...settings.quirks, catchphrase: e.target.value } as PersonalityQuirks,
-                })}
+                value={settings.quirks?.catchphrase || ""}
+                onChange={(e) =>
+                  setSettings({
+                    ...settings,
+                    quirks: {
+                      ...settings.quirks,
+                      catchphrase: e.target.value,
+                    } as PersonalityQuirks,
+                  })
+                }
                 maxLength={100}
               />
             </div>
@@ -468,11 +491,13 @@ export function PersonalitySettings({ onSettingsChanged }: PersonalitySettingsPr
                 type="text"
                 className="settings-input"
                 placeholder='e.g., "Happy coding!" or "Until next time..."'
-                value={settings.quirks?.signOff || ''}
-                onChange={(e) => setSettings({
-                  ...settings,
-                  quirks: { ...settings.quirks, signOff: e.target.value } as PersonalityQuirks,
-                })}
+                value={settings.quirks?.signOff || ""}
+                onChange={(e) =>
+                  setSettings({
+                    ...settings,
+                    quirks: { ...settings.quirks, signOff: e.target.value } as PersonalityQuirks,
+                  })
+                }
                 maxLength={100}
               />
             </div>
@@ -481,11 +506,11 @@ export function PersonalitySettings({ onSettingsChanged }: PersonalitySettingsPr
               <label>Analogy Domain</label>
               <p className="style-hint">Preferred domain for analogies and examples</p>
               <div className="analogy-grid">
-                {(Object.keys(ANALOGY_DOMAINS) as AnalogyDomain[]).map(domain => (
+                {(Object.keys(ANALOGY_DOMAINS) as AnalogyDomain[]).map((domain) => (
                   <button
                     key={domain}
-                    className={`analogy-option ${settings.quirks?.analogyDomain === domain ? 'selected' : ''}`}
-                    onClick={() => handleQuirksChange('analogyDomain', domain)}
+                    className={`analogy-option ${settings.quirks?.analogyDomain === domain ? "selected" : ""}`}
+                    onClick={() => handleQuirksChange("analogyDomain", domain)}
                   >
                     <span className="analogy-name">{ANALOGY_DOMAINS[domain].name}</span>
                     {ANALOGY_DOMAINS[domain].examples && (
@@ -501,14 +526,14 @@ export function PersonalitySettings({ onSettingsChanged }: PersonalitySettingsPr
               onClick={() => handleSaveSettings({ quirks: settings.quirks })}
               disabled={saving}
             >
-              {saving ? 'Saving...' : 'Save Quirks'}
+              {saving ? "Saving..." : "Save Quirks"}
             </button>
           </div>
         </div>
       )}
 
       {/* Relationship Section */}
-      {activeSection === 'relationship' && (
+      {activeSection === "relationship" && (
         <div className="settings-section">
           <h3>Relationship</h3>
           <p className="settings-description">
@@ -524,15 +549,17 @@ export function PersonalitySettings({ onSettingsChanged }: PersonalitySettingsPr
                 type="text"
                 className="settings-input"
                 placeholder="What should I call you?"
-                value={settings.relationship?.userName || ''}
-                onChange={(e) => setSettings({
-                  ...settings,
-                  relationship: {
-                    ...DEFAULT_RELATIONSHIP,
-                    ...settings.relationship,
-                    userName: e.target.value,
-                  },
-                })}
+                value={settings.relationship?.userName || ""}
+                onChange={(e) =>
+                  setSettings({
+                    ...settings,
+                    relationship: {
+                      ...DEFAULT_RELATIONSHIP,
+                      ...settings.relationship,
+                      userName: e.target.value,
+                    },
+                  })
+                }
                 maxLength={50}
               />
               <button
@@ -540,7 +567,7 @@ export function PersonalitySettings({ onSettingsChanged }: PersonalitySettingsPr
                 onClick={() => handleSaveSettings({ relationship: settings.relationship })}
                 disabled={saving}
               >
-                {saving ? 'Saving...' : 'Save'}
+                {saving ? "Saving..." : "Save"}
               </button>
             </div>
           </div>
@@ -573,7 +600,8 @@ export function PersonalitySettings({ onSettingsChanged }: PersonalitySettingsPr
                     />
                   </div>
                   <span className="progress-text">
-                    {relationshipStats.tasksCompleted} / {relationshipStats.nextMilestone} to next milestone
+                    {relationshipStats.tasksCompleted} / {relationshipStats.nextMilestone} to next
+                    milestone
                   </span>
                 </div>
               )}
@@ -586,10 +614,18 @@ export function PersonalitySettings({ onSettingsChanged }: PersonalitySettingsPr
       <div className="settings-tip">
         <h4>Chat Commands</h4>
         <ul className="command-examples">
-          <li><code>be more friendly</code> - Switch personality</li>
-          <li><code>call yourself Jarvis</code> - Change name</li>
-          <li><code>my name is Alex</code> - Set your name</li>
-          <li><code>be like a pirate</code> - Apply persona</li>
+          <li>
+            <code>be more friendly</code> - Switch personality
+          </li>
+          <li>
+            <code>call yourself Jarvis</code> - Change name
+          </li>
+          <li>
+            <code>my name is Alex</code> - Set your name
+          </li>
+          <li>
+            <code>be like a pirate</code> - Apply persona
+          </li>
         </ul>
       </div>
     </div>

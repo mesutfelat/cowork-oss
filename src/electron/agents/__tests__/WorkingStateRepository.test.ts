@@ -2,19 +2,19 @@
  * Tests for WorkingStateRepository
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import type {
   AgentWorkingState,
   UpdateWorkingStateRequest,
   WorkingStateQuery,
   WorkingStateHistoryQuery,
   WorkingStateType,
-} from '../../../shared/types';
+} from "../../../shared/types";
 
 // Mock electron to avoid getPath errors
-vi.mock('electron', () => ({
+vi.mock("electron", () => ({
   app: {
-    getPath: vi.fn().mockReturnValue('/tmp/test-cowork'),
+    getPath: vi.fn().mockReturnValue("/tmp/test-cowork"),
   },
 }));
 
@@ -119,17 +119,12 @@ class MockWorkingStateRepository {
 
     const results: AgentWorkingState[] = [];
     mockStates.forEach((state) => {
-      if (
-        state.agentRoleId === query.agentRoleId &&
-        state.workspaceId === query.workspaceId
-      ) {
+      if (state.agentRoleId === query.agentRoleId && state.workspaceId === query.workspaceId) {
         results.push(this.mapRowToState(state));
       }
     });
 
-    return results
-      .sort((a, b) => b.updatedAt - a.updatedAt)
-      .slice(offset, offset + limit);
+    return results.sort((a, b) => b.updatedAt - a.updatedAt).slice(offset, offset + limit);
   }
 
   listForTask(taskId: string): AgentWorkingState[] {
@@ -231,7 +226,7 @@ class MockWorkingStateRepository {
   }
 }
 
-describe('WorkingStateRepository', () => {
+describe("WorkingStateRepository", () => {
   let repository: MockWorkingStateRepository;
 
   beforeEach(() => {
@@ -240,61 +235,61 @@ describe('WorkingStateRepository', () => {
     repository = new MockWorkingStateRepository();
   });
 
-  describe('update', () => {
-    it('should create a new working state', () => {
+  describe("update", () => {
+    it("should create a new working state", () => {
       const state = repository.update({
-        agentRoleId: 'agent-1',
-        workspaceId: 'workspace-1',
-        stateType: 'context',
-        content: 'Working on feature X',
+        agentRoleId: "agent-1",
+        workspaceId: "workspace-1",
+        stateType: "context",
+        content: "Working on feature X",
       });
 
       expect(state).toBeDefined();
       expect(state.id).toBeDefined();
-      expect(state.agentRoleId).toBe('agent-1');
-      expect(state.workspaceId).toBe('workspace-1');
-      expect(state.stateType).toBe('context');
-      expect(state.content).toBe('Working on feature X');
+      expect(state.agentRoleId).toBe("agent-1");
+      expect(state.workspaceId).toBe("workspace-1");
+      expect(state.stateType).toBe("context");
+      expect(state.content).toBe("Working on feature X");
       expect(state.isCurrent).toBe(true);
     });
 
-    it('should create state with file references', () => {
+    it("should create state with file references", () => {
       const state = repository.update({
-        agentRoleId: 'agent-1',
-        workspaceId: 'workspace-1',
-        stateType: 'notes',
-        content: 'Important notes',
-        fileReferences: ['src/index.ts', 'src/utils.ts'],
+        agentRoleId: "agent-1",
+        workspaceId: "workspace-1",
+        stateType: "notes",
+        content: "Important notes",
+        fileReferences: ["src/index.ts", "src/utils.ts"],
       });
 
-      expect(state.fileReferences).toEqual(['src/index.ts', 'src/utils.ts']);
+      expect(state.fileReferences).toEqual(["src/index.ts", "src/utils.ts"]);
     });
 
-    it('should create state with task association', () => {
+    it("should create state with task association", () => {
       const state = repository.update({
-        agentRoleId: 'agent-1',
-        workspaceId: 'workspace-1',
-        taskId: 'task-123',
-        stateType: 'progress',
-        content: 'Task progress update',
+        agentRoleId: "agent-1",
+        workspaceId: "workspace-1",
+        taskId: "task-123",
+        stateType: "progress",
+        content: "Task progress update",
       });
 
-      expect(state.taskId).toBe('task-123');
+      expect(state.taskId).toBe("task-123");
     });
 
-    it('should mark previous current state as not current', () => {
+    it("should mark previous current state as not current", () => {
       const first = repository.update({
-        agentRoleId: 'agent-1',
-        workspaceId: 'workspace-1',
-        stateType: 'context',
-        content: 'First context',
+        agentRoleId: "agent-1",
+        workspaceId: "workspace-1",
+        stateType: "context",
+        content: "First context",
       });
 
       const second = repository.update({
-        agentRoleId: 'agent-1',
-        workspaceId: 'workspace-1',
-        stateType: 'context',
-        content: 'Second context',
+        agentRoleId: "agent-1",
+        workspaceId: "workspace-1",
+        stateType: "context",
+        content: "Second context",
       });
 
       expect(second.isCurrent).toBe(true);
@@ -303,19 +298,19 @@ describe('WorkingStateRepository', () => {
       expect(firstAfter?.isCurrent).toBe(false);
     });
 
-    it('should not affect different state types', () => {
+    it("should not affect different state types", () => {
       const context = repository.update({
-        agentRoleId: 'agent-1',
-        workspaceId: 'workspace-1',
-        stateType: 'context',
-        content: 'Context state',
+        agentRoleId: "agent-1",
+        workspaceId: "workspace-1",
+        stateType: "context",
+        content: "Context state",
       });
 
       const progress = repository.update({
-        agentRoleId: 'agent-1',
-        workspaceId: 'workspace-1',
-        stateType: 'progress',
-        content: 'Progress state',
+        agentRoleId: "agent-1",
+        workspaceId: "workspace-1",
+        stateType: "progress",
+        content: "Progress state",
       });
 
       expect(context.isCurrent).toBe(true);
@@ -326,183 +321,183 @@ describe('WorkingStateRepository', () => {
     });
   });
 
-  describe('findById', () => {
-    it('should find an existing state', () => {
+  describe("findById", () => {
+    it("should find an existing state", () => {
       const created = repository.update({
-        agentRoleId: 'agent-1',
-        workspaceId: 'workspace-1',
-        stateType: 'plan',
-        content: 'The plan',
+        agentRoleId: "agent-1",
+        workspaceId: "workspace-1",
+        stateType: "plan",
+        content: "The plan",
       });
 
       const found = repository.findById(created.id);
       expect(found).toBeDefined();
-      expect(found?.content).toBe('The plan');
+      expect(found?.content).toBe("The plan");
     });
 
-    it('should return undefined for non-existent state', () => {
-      const found = repository.findById('non-existent');
+    it("should return undefined for non-existent state", () => {
+      const found = repository.findById("non-existent");
       expect(found).toBeUndefined();
     });
   });
 
-  describe('getCurrent', () => {
-    it('should get current state for agent/workspace/type', () => {
+  describe("getCurrent", () => {
+    it("should get current state for agent/workspace/type", () => {
       repository.update({
-        agentRoleId: 'agent-1',
-        workspaceId: 'workspace-1',
-        stateType: 'context',
-        content: 'Old context',
+        agentRoleId: "agent-1",
+        workspaceId: "workspace-1",
+        stateType: "context",
+        content: "Old context",
       });
 
       repository.update({
-        agentRoleId: 'agent-1',
-        workspaceId: 'workspace-1',
-        stateType: 'context',
-        content: 'Current context',
+        agentRoleId: "agent-1",
+        workspaceId: "workspace-1",
+        stateType: "context",
+        content: "Current context",
       });
 
       const current = repository.getCurrent({
-        agentRoleId: 'agent-1',
-        workspaceId: 'workspace-1',
-        stateType: 'context',
+        agentRoleId: "agent-1",
+        workspaceId: "workspace-1",
+        stateType: "context",
       });
 
       expect(current).toBeDefined();
-      expect(current?.content).toBe('Current context');
+      expect(current?.content).toBe("Current context");
       expect(current?.isCurrent).toBe(true);
     });
 
-    it('should return undefined when no current state exists', () => {
+    it("should return undefined when no current state exists", () => {
       const current = repository.getCurrent({
-        agentRoleId: 'agent-1',
-        workspaceId: 'workspace-1',
-        stateType: 'notes',
+        agentRoleId: "agent-1",
+        workspaceId: "workspace-1",
+        stateType: "notes",
       });
 
       expect(current).toBeUndefined();
     });
 
-    it('should filter by taskId', () => {
+    it("should filter by taskId", () => {
       repository.update({
-        agentRoleId: 'agent-1',
-        workspaceId: 'workspace-1',
-        taskId: 'task-1',
-        stateType: 'progress',
-        content: 'Task 1 progress',
+        agentRoleId: "agent-1",
+        workspaceId: "workspace-1",
+        taskId: "task-1",
+        stateType: "progress",
+        content: "Task 1 progress",
       });
 
       repository.update({
-        agentRoleId: 'agent-1',
-        workspaceId: 'workspace-1',
-        taskId: 'task-2',
-        stateType: 'progress',
-        content: 'Task 2 progress',
+        agentRoleId: "agent-1",
+        workspaceId: "workspace-1",
+        taskId: "task-2",
+        stateType: "progress",
+        content: "Task 2 progress",
       });
 
       const current = repository.getCurrent({
-        agentRoleId: 'agent-1',
-        workspaceId: 'workspace-1',
-        taskId: 'task-1',
-        stateType: 'progress',
+        agentRoleId: "agent-1",
+        workspaceId: "workspace-1",
+        taskId: "task-1",
+        stateType: "progress",
       });
 
-      expect(current?.content).toBe('Task 1 progress');
+      expect(current?.content).toBe("Task 1 progress");
     });
   });
 
-  describe('getAllCurrent', () => {
-    it('should return all current states for agent/workspace', () => {
+  describe("getAllCurrent", () => {
+    it("should return all current states for agent/workspace", () => {
       repository.update({
-        agentRoleId: 'agent-1',
-        workspaceId: 'workspace-1',
-        stateType: 'context',
-        content: 'Context',
+        agentRoleId: "agent-1",
+        workspaceId: "workspace-1",
+        stateType: "context",
+        content: "Context",
       });
 
       repository.update({
-        agentRoleId: 'agent-1',
-        workspaceId: 'workspace-1',
-        stateType: 'progress',
-        content: 'Progress',
+        agentRoleId: "agent-1",
+        workspaceId: "workspace-1",
+        stateType: "progress",
+        content: "Progress",
       });
 
       repository.update({
-        agentRoleId: 'agent-1',
-        workspaceId: 'workspace-1',
-        stateType: 'notes',
-        content: 'Notes',
+        agentRoleId: "agent-1",
+        workspaceId: "workspace-1",
+        stateType: "notes",
+        content: "Notes",
       });
 
-      const states = repository.getAllCurrent('agent-1', 'workspace-1');
+      const states = repository.getAllCurrent("agent-1", "workspace-1");
       expect(states).toHaveLength(3);
     });
 
-    it('should not include non-current states', () => {
+    it("should not include non-current states", () => {
       repository.update({
-        agentRoleId: 'agent-1',
-        workspaceId: 'workspace-1',
-        stateType: 'context',
-        content: 'Old context',
+        agentRoleId: "agent-1",
+        workspaceId: "workspace-1",
+        stateType: "context",
+        content: "Old context",
       });
 
       repository.update({
-        agentRoleId: 'agent-1',
-        workspaceId: 'workspace-1',
-        stateType: 'context',
-        content: 'New context',
+        agentRoleId: "agent-1",
+        workspaceId: "workspace-1",
+        stateType: "context",
+        content: "New context",
       });
 
-      const states = repository.getAllCurrent('agent-1', 'workspace-1');
+      const states = repository.getAllCurrent("agent-1", "workspace-1");
       expect(states).toHaveLength(1);
-      expect(states[0].content).toBe('New context');
+      expect(states[0].content).toBe("New context");
     });
   });
 
-  describe('getHistory', () => {
-    it('should return all states for agent/workspace', () => {
+  describe("getHistory", () => {
+    it("should return all states for agent/workspace", () => {
       repository.update({
-        agentRoleId: 'agent-1',
-        workspaceId: 'workspace-1',
-        stateType: 'context',
-        content: 'First',
+        agentRoleId: "agent-1",
+        workspaceId: "workspace-1",
+        stateType: "context",
+        content: "First",
       });
 
       repository.update({
-        agentRoleId: 'agent-1',
-        workspaceId: 'workspace-1',
-        stateType: 'context',
-        content: 'Second',
+        agentRoleId: "agent-1",
+        workspaceId: "workspace-1",
+        stateType: "context",
+        content: "Second",
       });
 
       repository.update({
-        agentRoleId: 'agent-1',
-        workspaceId: 'workspace-1',
-        stateType: 'context',
-        content: 'Third',
+        agentRoleId: "agent-1",
+        workspaceId: "workspace-1",
+        stateType: "context",
+        content: "Third",
       });
 
       const history = repository.getHistory({
-        agentRoleId: 'agent-1',
-        workspaceId: 'workspace-1',
+        agentRoleId: "agent-1",
+        workspaceId: "workspace-1",
       });
 
       expect(history).toHaveLength(3);
     });
 
-    it('should respect limit and offset', () => {
+    it("should respect limit and offset", () => {
       for (let i = 0; i < 10; i++) {
         repository.update({
-          agentRoleId: 'agent-1',
-          workspaceId: 'workspace-1',
-          stateType: 'notes',
+          agentRoleId: "agent-1",
+          workspaceId: "workspace-1",
+          stateType: "notes",
           content: `Note ${i}`,
         });
       }
 
       const history = repository.getHistory({
-        agentRoleId: 'agent-1',
-        workspaceId: 'workspace-1',
+        agentRoleId: "agent-1",
+        workspaceId: "workspace-1",
         limit: 3,
         offset: 2,
       });
@@ -510,66 +505,66 @@ describe('WorkingStateRepository', () => {
       expect(history).toHaveLength(3);
     });
 
-    it('should return empty array for workspace with no states', () => {
+    it("should return empty array for workspace with no states", () => {
       const history = repository.getHistory({
-        agentRoleId: 'agent-1',
-        workspaceId: 'empty-workspace',
+        agentRoleId: "agent-1",
+        workspaceId: "empty-workspace",
       });
 
       expect(history).toHaveLength(0);
     });
   });
 
-  describe('listForTask', () => {
-    it('should return all states for a task', () => {
+  describe("listForTask", () => {
+    it("should return all states for a task", () => {
       repository.update({
-        agentRoleId: 'agent-1',
-        workspaceId: 'workspace-1',
-        taskId: 'task-1',
-        stateType: 'context',
-        content: 'Task context',
+        agentRoleId: "agent-1",
+        workspaceId: "workspace-1",
+        taskId: "task-1",
+        stateType: "context",
+        content: "Task context",
       });
 
       repository.update({
-        agentRoleId: 'agent-1',
-        workspaceId: 'workspace-1',
-        taskId: 'task-1',
-        stateType: 'progress',
-        content: 'Task progress',
+        agentRoleId: "agent-1",
+        workspaceId: "workspace-1",
+        taskId: "task-1",
+        stateType: "progress",
+        content: "Task progress",
       });
 
       repository.update({
-        agentRoleId: 'agent-1',
-        workspaceId: 'workspace-1',
-        taskId: 'task-2',
-        stateType: 'context',
-        content: 'Different task',
+        agentRoleId: "agent-1",
+        workspaceId: "workspace-1",
+        taskId: "task-2",
+        stateType: "context",
+        content: "Different task",
       });
 
-      const states = repository.listForTask('task-1');
+      const states = repository.listForTask("task-1");
       expect(states).toHaveLength(2);
     });
 
-    it('should return empty array for task with no states', () => {
-      const states = repository.listForTask('non-existent');
+    it("should return empty array for task with no states", () => {
+      const states = repository.listForTask("non-existent");
       expect(states).toHaveLength(0);
     });
   });
 
-  describe('restore', () => {
-    it('should restore a previous state as current', () => {
+  describe("restore", () => {
+    it("should restore a previous state as current", () => {
       const first = repository.update({
-        agentRoleId: 'agent-1',
-        workspaceId: 'workspace-1',
-        stateType: 'context',
-        content: 'First context',
+        agentRoleId: "agent-1",
+        workspaceId: "workspace-1",
+        stateType: "context",
+        content: "First context",
       });
 
       repository.update({
-        agentRoleId: 'agent-1',
-        workspaceId: 'workspace-1',
-        stateType: 'context',
-        content: 'Second context',
+        agentRoleId: "agent-1",
+        workspaceId: "workspace-1",
+        stateType: "context",
+        content: "Second context",
       });
 
       const restored = repository.restore(first.id);
@@ -578,27 +573,27 @@ describe('WorkingStateRepository', () => {
       expect(restored?.isCurrent).toBe(true);
 
       const current = repository.getCurrent({
-        agentRoleId: 'agent-1',
-        workspaceId: 'workspace-1',
-        stateType: 'context',
+        agentRoleId: "agent-1",
+        workspaceId: "workspace-1",
+        stateType: "context",
       });
 
-      expect(current?.content).toBe('First context');
+      expect(current?.content).toBe("First context");
     });
 
-    it('should return undefined for non-existent state', () => {
-      const result = repository.restore('non-existent');
+    it("should return undefined for non-existent state", () => {
+      const result = repository.restore("non-existent");
       expect(result).toBeUndefined();
     });
   });
 
-  describe('delete', () => {
-    it('should delete a state', () => {
+  describe("delete", () => {
+    it("should delete a state", () => {
       const state = repository.update({
-        agentRoleId: 'agent-1',
-        workspaceId: 'workspace-1',
-        stateType: 'notes',
-        content: 'Delete me',
+        agentRoleId: "agent-1",
+        workspaceId: "workspace-1",
+        stateType: "notes",
+        content: "Delete me",
       });
 
       const deleted = repository.delete(state.id);
@@ -608,95 +603,95 @@ describe('WorkingStateRepository', () => {
       expect(found).toBeUndefined();
     });
 
-    it('should return false for non-existent state', () => {
-      const deleted = repository.delete('non-existent');
+    it("should return false for non-existent state", () => {
+      const deleted = repository.delete("non-existent");
       expect(deleted).toBe(false);
     });
   });
 
-  describe('deleteByAgentAndWorkspace', () => {
-    it('should delete all states for agent/workspace', () => {
+  describe("deleteByAgentAndWorkspace", () => {
+    it("should delete all states for agent/workspace", () => {
       repository.update({
-        agentRoleId: 'agent-1',
-        workspaceId: 'workspace-1',
-        stateType: 'context',
-        content: 'Context',
+        agentRoleId: "agent-1",
+        workspaceId: "workspace-1",
+        stateType: "context",
+        content: "Context",
       });
 
       repository.update({
-        agentRoleId: 'agent-1',
-        workspaceId: 'workspace-1',
-        stateType: 'progress',
-        content: 'Progress',
+        agentRoleId: "agent-1",
+        workspaceId: "workspace-1",
+        stateType: "progress",
+        content: "Progress",
       });
 
       repository.update({
-        agentRoleId: 'agent-2',
-        workspaceId: 'workspace-1',
-        stateType: 'context',
-        content: 'Other agent',
+        agentRoleId: "agent-2",
+        workspaceId: "workspace-1",
+        stateType: "context",
+        content: "Other agent",
       });
 
-      const count = repository.deleteByAgentAndWorkspace('agent-1', 'workspace-1');
+      const count = repository.deleteByAgentAndWorkspace("agent-1", "workspace-1");
 
       expect(count).toBe(2);
-      expect(repository.getAllCurrent('agent-1', 'workspace-1')).toHaveLength(0);
-      expect(repository.getAllCurrent('agent-2', 'workspace-1')).toHaveLength(1);
+      expect(repository.getAllCurrent("agent-1", "workspace-1")).toHaveLength(0);
+      expect(repository.getAllCurrent("agent-2", "workspace-1")).toHaveLength(1);
     });
 
-    it('should return 0 when no states exist', () => {
-      const count = repository.deleteByAgentAndWorkspace('agent-1', 'empty-workspace');
+    it("should return 0 when no states exist", () => {
+      const count = repository.deleteByAgentAndWorkspace("agent-1", "empty-workspace");
       expect(count).toBe(0);
     });
   });
 
-  describe('deleteByTask', () => {
-    it('should delete all states for a task', () => {
+  describe("deleteByTask", () => {
+    it("should delete all states for a task", () => {
       repository.update({
-        agentRoleId: 'agent-1',
-        workspaceId: 'workspace-1',
-        taskId: 'task-1',
-        stateType: 'context',
-        content: 'Task 1 context',
+        agentRoleId: "agent-1",
+        workspaceId: "workspace-1",
+        taskId: "task-1",
+        stateType: "context",
+        content: "Task 1 context",
       });
 
       repository.update({
-        agentRoleId: 'agent-1',
-        workspaceId: 'workspace-1',
-        taskId: 'task-1',
-        stateType: 'progress',
-        content: 'Task 1 progress',
+        agentRoleId: "agent-1",
+        workspaceId: "workspace-1",
+        taskId: "task-1",
+        stateType: "progress",
+        content: "Task 1 progress",
       });
 
       repository.update({
-        agentRoleId: 'agent-1',
-        workspaceId: 'workspace-1',
-        taskId: 'task-2',
-        stateType: 'context',
-        content: 'Task 2 context',
+        agentRoleId: "agent-1",
+        workspaceId: "workspace-1",
+        taskId: "task-2",
+        stateType: "context",
+        content: "Task 2 context",
       });
 
-      const count = repository.deleteByTask('task-1');
+      const count = repository.deleteByTask("task-1");
 
       expect(count).toBe(2);
-      expect(repository.listForTask('task-1')).toHaveLength(0);
-      expect(repository.listForTask('task-2')).toHaveLength(1);
+      expect(repository.listForTask("task-1")).toHaveLength(0);
+      expect(repository.listForTask("task-2")).toHaveLength(1);
     });
 
-    it('should return 0 when task has no states', () => {
-      const count = repository.deleteByTask('non-existent');
+    it("should return 0 when task has no states", () => {
+      const count = repository.deleteByTask("non-existent");
       expect(count).toBe(0);
     });
   });
 
-  describe('state types', () => {
-    it('should support all state types', () => {
-      const types: WorkingStateType[] = ['context', 'progress', 'notes', 'plan'];
+  describe("state types", () => {
+    it("should support all state types", () => {
+      const types: WorkingStateType[] = ["context", "progress", "notes", "plan"];
 
       for (const stateType of types) {
         const state = repository.update({
-          agentRoleId: 'agent-1',
-          workspaceId: 'workspace-1',
+          agentRoleId: "agent-1",
+          workspaceId: "workspace-1",
           stateType,
           content: `${stateType} content`,
         });
@@ -704,7 +699,7 @@ describe('WorkingStateRepository', () => {
         expect(state.stateType).toBe(stateType);
       }
 
-      const allCurrent = repository.getAllCurrent('agent-1', 'workspace-1');
+      const allCurrent = repository.getAllCurrent("agent-1", "workspace-1");
       expect(allCurrent).toHaveLength(4);
     });
   });

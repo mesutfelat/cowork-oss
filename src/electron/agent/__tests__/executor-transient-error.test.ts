@@ -2,144 +2,150 @@
  * Tests for TaskExecutor transient provider error detection
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from "vitest";
 
 // Test the isTransientProviderError logic directly
 function isTransientProviderError(error: any): boolean {
   if (!error) return false;
-  const message = String(error.message || '').toLowerCase();
+  const message = String(error.message || "").toLowerCase();
   const code = error.cause?.code || error.code;
-  const retryableCodes = new Set(['ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED']);
+  const retryableCodes = new Set([
+    "ECONNRESET",
+    "ETIMEDOUT",
+    "ENOTFOUND",
+    "EAI_AGAIN",
+    "ECONNREFUSED",
+  ]);
   if (code && retryableCodes.has(code)) return true;
   return (
-    message.includes('fetch failed') ||
-    message.includes('network') ||
-    message.includes('timeout') ||
-    message.includes('socket hang up')
+    message.includes("fetch failed") ||
+    message.includes("network") ||
+    message.includes("timeout") ||
+    message.includes("socket hang up")
   );
 }
 
-describe('isTransientProviderError', () => {
-  describe('error codes', () => {
-    it('should return true for ECONNRESET', () => {
-      const error = { code: 'ECONNRESET', message: 'Connection reset' };
+describe("isTransientProviderError", () => {
+  describe("error codes", () => {
+    it("should return true for ECONNRESET", () => {
+      const error = { code: "ECONNRESET", message: "Connection reset" };
       expect(isTransientProviderError(error)).toBe(true);
     });
 
-    it('should return true for ETIMEDOUT', () => {
-      const error = { code: 'ETIMEDOUT', message: 'Connection timed out' };
+    it("should return true for ETIMEDOUT", () => {
+      const error = { code: "ETIMEDOUT", message: "Connection timed out" };
       expect(isTransientProviderError(error)).toBe(true);
     });
 
-    it('should return true for ENOTFOUND', () => {
-      const error = { code: 'ENOTFOUND', message: 'DNS lookup failed' };
+    it("should return true for ENOTFOUND", () => {
+      const error = { code: "ENOTFOUND", message: "DNS lookup failed" };
       expect(isTransientProviderError(error)).toBe(true);
     });
 
-    it('should return true for EAI_AGAIN', () => {
-      const error = { code: 'EAI_AGAIN', message: 'DNS lookup temporary failure' };
+    it("should return true for EAI_AGAIN", () => {
+      const error = { code: "EAI_AGAIN", message: "DNS lookup temporary failure" };
       expect(isTransientProviderError(error)).toBe(true);
     });
 
-    it('should return true for ECONNREFUSED', () => {
-      const error = { code: 'ECONNREFUSED', message: 'Connection refused' };
+    it("should return true for ECONNREFUSED", () => {
+      const error = { code: "ECONNREFUSED", message: "Connection refused" };
       expect(isTransientProviderError(error)).toBe(true);
     });
 
-    it('should return true for error code in cause', () => {
+    it("should return true for error code in cause", () => {
       const error = {
-        message: 'Some error',
-        cause: { code: 'ECONNRESET' }
+        message: "Some error",
+        cause: { code: "ECONNRESET" },
       };
       expect(isTransientProviderError(error)).toBe(true);
     });
   });
 
-  describe('error messages', () => {
-    it('should return true for fetch failed', () => {
-      const error = { message: 'fetch failed: connection terminated' };
+  describe("error messages", () => {
+    it("should return true for fetch failed", () => {
+      const error = { message: "fetch failed: connection terminated" };
       expect(isTransientProviderError(error)).toBe(true);
     });
 
-    it('should return true for network errors', () => {
-      const error = { message: 'Network request failed' };
+    it("should return true for network errors", () => {
+      const error = { message: "Network request failed" };
       expect(isTransientProviderError(error)).toBe(true);
     });
 
-    it('should return true for timeout messages', () => {
-      const error = { message: 'Request timeout after 30s' };
+    it("should return true for timeout messages", () => {
+      const error = { message: "Request timeout after 30s" };
       expect(isTransientProviderError(error)).toBe(true);
     });
 
-    it('should return true for socket hang up', () => {
-      const error = { message: 'socket hang up' };
+    it("should return true for socket hang up", () => {
+      const error = { message: "socket hang up" };
       expect(isTransientProviderError(error)).toBe(true);
     });
 
-    it('should be case insensitive', () => {
-      const error = { message: 'FETCH FAILED: CONNECTION RESET' };
+    it("should be case insensitive", () => {
+      const error = { message: "FETCH FAILED: CONNECTION RESET" };
       expect(isTransientProviderError(error)).toBe(true);
     });
   });
 
-  describe('non-transient errors', () => {
-    it('should return false for null', () => {
+  describe("non-transient errors", () => {
+    it("should return false for null", () => {
       expect(isTransientProviderError(null)).toBe(false);
     });
 
-    it('should return false for undefined', () => {
+    it("should return false for undefined", () => {
       expect(isTransientProviderError(undefined)).toBe(false);
     });
 
-    it('should return false for API errors', () => {
-      const error = { message: 'Invalid API key', code: 'INVALID_KEY' };
+    it("should return false for API errors", () => {
+      const error = { message: "Invalid API key", code: "INVALID_KEY" };
       expect(isTransientProviderError(error)).toBe(false);
     });
 
-    it('should return false for rate limit messages without code', () => {
+    it("should return false for rate limit messages without code", () => {
       // Rate limits are handled elsewhere, not by this function
-      const error = { message: 'Rate limit exceeded' };
+      const error = { message: "Rate limit exceeded" };
       expect(isTransientProviderError(error)).toBe(false);
     });
 
-    it('should return false for permission errors', () => {
-      const error = { message: 'Permission denied', code: 'EPERM' };
+    it("should return false for permission errors", () => {
+      const error = { message: "Permission denied", code: "EPERM" };
       expect(isTransientProviderError(error)).toBe(false);
     });
 
-    it('should return false for validation errors', () => {
-      const error = { message: 'Invalid input: missing required field' };
+    it("should return false for validation errors", () => {
+      const error = { message: "Invalid input: missing required field" };
       expect(isTransientProviderError(error)).toBe(false);
     });
 
-    it('should return false for empty error object', () => {
+    it("should return false for empty error object", () => {
       expect(isTransientProviderError({})).toBe(false);
     });
   });
 
-  describe('edge cases', () => {
-    it('should handle error with only message', () => {
-      const error = { message: 'Some network issue' };
+  describe("edge cases", () => {
+    it("should handle error with only message", () => {
+      const error = { message: "Some network issue" };
       expect(isTransientProviderError(error)).toBe(true);
     });
 
-    it('should handle error with only code', () => {
-      const error = { code: 'ETIMEDOUT' };
+    it("should handle error with only code", () => {
+      const error = { code: "ETIMEDOUT" };
       expect(isTransientProviderError(error)).toBe(true);
     });
 
-    it('should handle TypeError with fetch failed', () => {
-      const error = new TypeError('fetch failed');
+    it("should handle TypeError with fetch failed", () => {
+      const error = new TypeError("fetch failed");
       expect(isTransientProviderError(error)).toBe(true);
     });
 
-    it('should handle nested error structures', () => {
+    it("should handle nested error structures", () => {
       const error = {
-        message: 'Request failed',
+        message: "Request failed",
         cause: {
-          code: 'ECONNREFUSED',
-          message: 'Connection refused'
-        }
+          code: "ECONNREFUSED",
+          message: "Connection refused",
+        },
       };
       expect(isTransientProviderError(error)).toBe(true);
     });

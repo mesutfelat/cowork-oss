@@ -1,13 +1,17 @@
-import * as fs from 'fs/promises';
-import * as fsSync from 'fs';
-import * as path from 'path';
-import { Workspace } from '../../../shared/types';
-import { AgentDaemon } from '../daemon';
-import { GuardrailManager } from '../../guardrails/guardrail-manager';
-import { checkProjectAccess, getProjectIdFromWorkspaceRelPath, getWorkspaceRelativePosixPath } from '../../security/project-access';
-import mammoth from 'mammoth';
-import { extractPptxContentFromFile } from '../../utils/pptx-extractor';
-import { parsePdfBuffer } from '../../utils/pdf-parser';
+import * as fs from "fs/promises";
+import * as fsSync from "fs";
+import * as path from "path";
+import { Workspace } from "../../../shared/types";
+import { AgentDaemon } from "../daemon";
+import { GuardrailManager } from "../../guardrails/guardrail-manager";
+import {
+  checkProjectAccess,
+  getProjectIdFromWorkspaceRelPath,
+  getWorkspaceRelativePosixPath,
+} from "../../security/project-access";
+import mammoth from "mammoth";
+import { extractPptxContentFromFile } from "../../utils/pptx-extractor";
+import { parsePdfBuffer } from "../../utils/pdf-parser";
 
 // Limits to prevent context overflow
 const MAX_FILE_SIZE = 100 * 1024; // 100KB max for file reads
@@ -18,7 +22,7 @@ const MAX_NAME_PAD = 48; // Cap for aligned directory listings
 function getElectronShell(): any | null {
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const electron = require('electron') as any;
+    const electron = require("electron") as any;
     const shell = electron?.shell;
     if (shell) return shell;
   } catch {
@@ -34,7 +38,7 @@ export class FileTools {
   constructor(
     private workspace: Workspace,
     private daemon: AgentDaemon,
-    private taskId: string
+    private taskId: string,
   ) {}
 
   /**
@@ -48,17 +52,17 @@ export class FileTools {
    * Dangerous paths that should never be written to, even with unrestricted access
    */
   private static readonly PROTECTED_PATHS = [
-    '/System',
-    '/Library',
-    '/usr',
-    '/bin',
-    '/sbin',
-    '/etc',
-    '/var',
-    '/private',
-    'C:\\Windows',
-    'C:\\Program Files',
-    'C:\\Program Files (x86)',
+    "/System",
+    "/Library",
+    "/usr",
+    "/bin",
+    "/sbin",
+    "/etc",
+    "/var",
+    "/private",
+    "C:\\Windows",
+    "C:\\Program Files",
+    "C:\\Program Files (x86)",
   ];
 
   /**
@@ -66,8 +70,8 @@ export class FileTools {
    */
   private isProtectedPath(absolutePath: string): boolean {
     const normalizedPath = path.normalize(absolutePath).toLowerCase();
-    return FileTools.PROTECTED_PATHS.some(protectedPath =>
-      normalizedPath.startsWith(protectedPath.toLowerCase())
+    return FileTools.PROTECTED_PATHS.some((protectedPath) =>
+      normalizedPath.startsWith(protectedPath.toLowerCase()),
     );
   }
 
@@ -81,11 +85,13 @@ export class FileTools {
     }
 
     const normalizedPath = path.normalize(absolutePath);
-    return allowedPaths.some(allowed => {
+    return allowedPaths.some((allowed) => {
       const normalizedAllowed = path.normalize(allowed);
       // Check if the path starts with or equals an allowed path
-      return normalizedPath === normalizedAllowed ||
-             normalizedPath.startsWith(normalizedAllowed + path.sep);
+      return (
+        normalizedPath === normalizedAllowed ||
+        normalizedPath.startsWith(normalizedAllowed + path.sep)
+      );
     });
   }
 
@@ -94,7 +100,10 @@ export class FileTools {
    * (for example "/old/root/<workspaceName>/..."), remap it into the active
    * workspace when the original absolute path no longer exists.
    */
-  private remapStaleAbsolutePathToWorkspace(absolutePath: string, normalizedWorkspace: string): string | null {
+  private remapStaleAbsolutePathToWorkspace(
+    absolutePath: string,
+    normalizedWorkspace: string,
+  ): string | null {
     if (!path.isAbsolute(absolutePath)) return null;
     if (fsSync.existsSync(absolutePath)) return null;
 
@@ -103,15 +112,14 @@ export class FileTools {
 
     const normalizedAbsolute = path.normalize(absolutePath);
     const parts = normalizedAbsolute.split(path.sep).filter(Boolean);
-    const workspaceIdx = parts.findIndex(part => part.toLowerCase() === workspaceName);
+    const workspaceIdx = parts.findIndex((part) => part.toLowerCase() === workspaceName);
     if (workspaceIdx < 0) return null;
 
     const suffix = parts.slice(workspaceIdx + 1);
-    const remapped = suffix.length > 0
-      ? path.join(normalizedWorkspace, ...suffix)
-      : normalizedWorkspace;
+    const remapped =
+      suffix.length > 0 ? path.join(normalizedWorkspace, ...suffix) : normalizedWorkspace;
     const relative = path.relative(normalizedWorkspace, remapped);
-    if (relative.startsWith('..') || path.isAbsolute(relative)) return null;
+    if (relative.startsWith("..") || path.isAbsolute(relative)) return null;
 
     return remapped;
   }
@@ -121,7 +129,7 @@ export class FileTools {
    * When unrestrictedFileAccess is enabled, allows absolute paths anywhere (except protected locations)
    * When allowedPaths is configured, allows specific paths outside workspace
    */
-  private resolvePath(inputPath: string, operation: 'read' | 'write' | 'delete' = 'read'): string {
+  private resolvePath(inputPath: string, operation: "read" | "write" | "delete" = "read"): string {
     const normalizedWorkspace = path.resolve(this.workspace.path);
 
     // Handle absolute paths
@@ -130,15 +138,18 @@ export class FileTools {
 
       // Check if it's inside workspace (always allowed)
       const relativeToWorkspace = path.relative(normalizedWorkspace, absolutePath);
-      if (!relativeToWorkspace.startsWith('..') && !path.isAbsolute(relativeToWorkspace)) {
+      if (!relativeToWorkspace.startsWith("..") && !path.isAbsolute(relativeToWorkspace)) {
         return absolutePath;
       }
 
       // Recover from stale absolute paths that still embed the current
       // workspace folder name but point to an old root.
-      const remappedPath = this.remapStaleAbsolutePathToWorkspace(absolutePath, normalizedWorkspace);
+      const remappedPath = this.remapStaleAbsolutePathToWorkspace(
+        absolutePath,
+        normalizedWorkspace,
+      );
       if (remappedPath) {
-        this.daemon.logEvent(this.taskId, 'log', {
+        this.daemon.logEvent(this.taskId, "log", {
           message: `Remapped stale absolute path to workspace: ${absolutePath} -> ${remappedPath}`,
         });
         return remappedPath;
@@ -147,7 +158,7 @@ export class FileTools {
       // Outside workspace - check permissions
       if (this.workspace.isTemp || this.workspace.permissions.unrestrictedFileAccess) {
         // With unrestricted access, block protected paths for writes
-        if (operation !== 'read' && this.isProtectedPath(absolutePath)) {
+        if (operation !== "read" && this.isProtectedPath(absolutePath)) {
           throw new Error(`Cannot ${operation} protected system path: ${absolutePath}`);
         }
         return absolutePath;
@@ -155,7 +166,7 @@ export class FileTools {
 
       // Check if in allowed paths
       if (this.isPathAllowed(absolutePath)) {
-        if (operation !== 'read' && this.isProtectedPath(absolutePath)) {
+        if (operation !== "read" && this.isProtectedPath(absolutePath)) {
           throw new Error(`Cannot ${operation} protected system path: ${absolutePath}`);
         }
         return absolutePath;
@@ -163,8 +174,8 @@ export class FileTools {
 
       throw new Error(
         'Path is outside workspace boundary. Enable "Unrestricted File Access" in workspace settings ' +
-        'or add specific paths to "Allowed Paths" to access files outside the workspace. ' +
-        `Attempted path: ${absolutePath}. Workspace: ${normalizedWorkspace}.`
+          'or add specific paths to "Allowed Paths" to access files outside the workspace. ' +
+          `Attempted path: ${absolutePath}. Workspace: ${normalizedWorkspace}.`,
       );
     }
 
@@ -172,17 +183,17 @@ export class FileTools {
     const resolved = path.resolve(normalizedWorkspace, inputPath);
     const relative = path.relative(normalizedWorkspace, resolved);
 
-    if (relative.startsWith('..') || path.isAbsolute(relative)) {
+    if (relative.startsWith("..") || path.isAbsolute(relative)) {
       // Path escapes workspace via ../ traversal
       if (this.workspace.isTemp || this.workspace.permissions.unrestrictedFileAccess) {
-        if (operation !== 'read' && this.isProtectedPath(resolved)) {
+        if (operation !== "read" && this.isProtectedPath(resolved)) {
           throw new Error(`Cannot ${operation} protected system path: ${resolved}`);
         }
         return resolved;
       }
 
       if (this.isPathAllowed(resolved)) {
-        if (operation !== 'read' && this.isProtectedPath(resolved)) {
+        if (operation !== "read" && this.isProtectedPath(resolved)) {
           throw new Error(`Cannot ${operation} protected system path: ${resolved}`);
         }
         return resolved;
@@ -190,8 +201,8 @@ export class FileTools {
 
       throw new Error(
         'Path traversal outside workspace is not allowed. Enable "Unrestricted File Access" ' +
-        'in workspace settings to access files outside the workspace. ' +
-        `Attempted path: ${resolved}. Workspace: ${normalizedWorkspace}.`
+          "in workspace settings to access files outside the workspace. " +
+          `Attempted path: ${resolved}. Workspace: ${normalizedWorkspace}.`,
       );
     }
 
@@ -201,15 +212,15 @@ export class FileTools {
   /**
    * Check if operation is allowed based on permissions
    */
-  private checkPermission(operation: 'read' | 'write' | 'delete'): void {
-    if (operation === 'read' && !this.workspace.permissions.read) {
-      throw new Error('Read permission not granted');
+  private checkPermission(operation: "read" | "write" | "delete"): void {
+    if (operation === "read" && !this.workspace.permissions.read) {
+      throw new Error("Read permission not granted");
     }
-    if (operation === 'write' && !this.workspace.permissions.write) {
-      throw new Error('Write permission not granted');
+    if (operation === "write" && !this.workspace.permissions.write) {
+      throw new Error("Write permission not granted");
     }
-    if (operation === 'delete' && !this.workspace.permissions.delete) {
-      throw new Error('Delete permission not granted');
+    if (operation === "delete" && !this.workspace.permissions.delete) {
+      throw new Error("Delete permission not granted");
     }
   }
 
@@ -220,9 +231,14 @@ export class FileTools {
     if (!projectId) return;
 
     const taskGetter = (this.daemon as any)?.getTask;
-    const task = typeof taskGetter === 'function' ? taskGetter.call(this.daemon, this.taskId) : null;
+    const task =
+      typeof taskGetter === "function" ? taskGetter.call(this.daemon, this.taskId) : null;
     const agentRoleId = task?.assignedAgentRoleId || null;
-    const res = await checkProjectAccess({ workspacePath: this.workspace.path, projectId, agentRoleId });
+    const res = await checkProjectAccess({
+      workspacePath: this.workspace.path,
+      projectId,
+      agentRoleId,
+    });
     if (!res.allowed) {
       throw new Error(res.reason || `Access denied for project "${projectId}"`);
     }
@@ -236,25 +252,42 @@ export class FileTools {
    */
   async readTextFileRaw(
     relativePath: string,
-    options?: { maxBytes?: number }
+    options?: { maxBytes?: number },
   ): Promise<{ content: string; size: number; truncated: boolean }> {
-    if (!relativePath || typeof relativePath !== 'string') {
-      throw new Error('Invalid path: path must be a non-empty string');
+    if (!relativePath || typeof relativePath !== "string") {
+      throw new Error("Invalid path: path must be a non-empty string");
     }
 
     const maxBytes =
-      typeof options?.maxBytes === 'number' && Number.isFinite(options.maxBytes)
+      typeof options?.maxBytes === "number" && Number.isFinite(options.maxBytes)
         ? Math.max(1, Math.min(10_000_000, options.maxBytes))
         : 1_000_000;
 
-    const binaryExtensions = ['.docx', '.xlsx', '.pptx', '.ppt', '.pdf', '.zip', '.png', '.jpg', '.jpeg', '.gif', '.mp3', '.mp4', '.exe', '.dmg'];
+    const binaryExtensions = [
+      ".docx",
+      ".xlsx",
+      ".pptx",
+      ".ppt",
+      ".pdf",
+      ".zip",
+      ".png",
+      ".jpg",
+      ".jpeg",
+      ".gif",
+      ".mp3",
+      ".mp4",
+      ".exe",
+      ".dmg",
+    ];
 
-    this.checkPermission('read');
-    let fullPath = this.resolvePath(relativePath, 'read');
+    this.checkPermission("read");
+    let fullPath = this.resolvePath(relativePath, "read");
     let ext = path.extname(fullPath).toLowerCase();
 
     if (binaryExtensions.includes(ext)) {
-      throw new Error(`readTextFileRaw does not support binary file type "${ext}". Use read_file instead.`);
+      throw new Error(
+        `readTextFileRaw does not support binary file type "${ext}". Use read_file instead.`,
+      );
     }
 
     try {
@@ -269,7 +302,9 @@ export class FileTools {
             fullPath = fallbackPath;
             ext = path.extname(fullPath).toLowerCase();
             if (binaryExtensions.includes(ext)) {
-              throw new Error(`readTextFileRaw does not support binary file type "${ext}". Use read_file instead.`);
+              throw new Error(
+                `readTextFileRaw does not support binary file type "${ext}". Use read_file instead.`,
+              );
             }
             await this.enforceProjectAccess(fullPath);
             stats = await fs.stat(fullPath);
@@ -282,19 +317,19 @@ export class FileTools {
       }
 
       if (!stats?.isFile?.()) {
-        throw new Error('Path is not a file');
+        throw new Error("Path is not a file");
       }
 
       if (stats.size <= maxBytes) {
-        const content = await fs.readFile(fullPath, 'utf8');
+        const content = await fs.readFile(fullPath, "utf8");
         return { content, size: stats.size, truncated: false };
       }
 
-      const fileHandle = await fs.open(fullPath, 'r');
+      const fileHandle = await fs.open(fullPath, "r");
       try {
         const buffer = Buffer.alloc(maxBytes);
         const readRes = await fileHandle.read(buffer, 0, maxBytes, 0);
-        const content = buffer.toString('utf8', 0, readRes.bytesRead);
+        const content = buffer.toString("utf8", 0, readRes.bytesRead);
         return { content, size: stats.size, truncated: true };
       } finally {
         await fileHandle.close();
@@ -308,14 +343,16 @@ export class FileTools {
    * Read file contents (with size limit to prevent context overflow)
    * Supports plain text, DOCX, PDF, and PPTX files
    */
-  async readFile(relativePath: string): Promise<{ content: string; size: number; truncated?: boolean; format?: string }> {
+  async readFile(
+    relativePath: string,
+  ): Promise<{ content: string; size: number; truncated?: boolean; format?: string }> {
     // Validate input
-    if (!relativePath || typeof relativePath !== 'string') {
-      throw new Error('Invalid path: path must be a non-empty string');
+    if (!relativePath || typeof relativePath !== "string") {
+      throw new Error("Invalid path: path must be a non-empty string");
     }
 
-    this.checkPermission('read');
-    let fullPath = this.resolvePath(relativePath, 'read');
+    this.checkPermission("read");
+    let fullPath = this.resolvePath(relativePath, "read");
     let ext = path.extname(fullPath).toLowerCase();
 
     try {
@@ -340,37 +377,39 @@ export class FileTools {
       }
 
       // Handle DOCX files
-      if (ext === '.docx') {
+      if (ext === ".docx") {
         return await this.readDocxFile(fullPath, stats.size);
       }
 
       // Handle PDF files
-      if (ext === '.pdf') {
+      if (ext === ".pdf") {
         return await this.readPdfFile(fullPath, stats.size);
       }
 
       // Handle PPTX files
-      if (ext === '.pptx') {
+      if (ext === ".pptx") {
         return await this.readPptxFile(fullPath, stats.size);
       }
 
       // Legacy PPT files
-      if (ext === '.ppt') {
-        throw new Error('Legacy .ppt files are not supported. Please upload as .pptx.');
+      if (ext === ".ppt") {
+        throw new Error("Legacy .ppt files are not supported. Please upload as .pptx.");
       }
 
       // Handle plain text files
       // Check file size before reading
       if (stats.size > MAX_FILE_SIZE) {
         // Read only the first portion of large files
-        const fileHandle = await fs.open(fullPath, 'r');
+        const fileHandle = await fs.open(fullPath, "r");
         try {
           const buffer = Buffer.alloc(MAX_FILE_SIZE);
           await fileHandle.read(buffer, 0, MAX_FILE_SIZE, 0);
 
-          const content = buffer.toString('utf-8');
+          const content = buffer.toString("utf-8");
           return {
-            content: content + `\n\n[... File truncated. Showing first ${Math.round(MAX_FILE_SIZE / 1024)}KB of ${Math.round(stats.size / 1024)}KB ...]`,
+            content:
+              content +
+              `\n\n[... File truncated. Showing first ${Math.round(MAX_FILE_SIZE / 1024)}KB of ${Math.round(stats.size / 1024)}KB ...]`,
             size: stats.size,
             truncated: true,
           };
@@ -379,7 +418,7 @@ export class FileTools {
         }
       }
 
-      const content = await fs.readFile(fullPath, 'utf-8');
+      const content = await fs.readFile(fullPath, "utf-8");
       return {
         content,
         size: stats.size,
@@ -391,8 +430,8 @@ export class FileTools {
 
   private isNotFoundError(error: any): boolean {
     const code = error?.code;
-    if (code === 'ENOENT' || code === 'ENOTDIR') return true;
-    const message = String(error?.message || '');
+    if (code === "ENOENT" || code === "ENOTDIR") return true;
+    const message = String(error?.message || "");
     return /no such file/i.test(message) || /not found/i.test(message);
   }
 
@@ -405,7 +444,7 @@ export class FileTools {
     if (path.isAbsolute(normalized)) return null;
 
     const parts = normalized.split(path.sep).filter(Boolean);
-    if (parts.some(part => part === '..')) return null;
+    if (parts.some((part) => part === "..")) return null;
 
     let current = this.workspace.path;
     for (let i = 0; i < parts.length; i++) {
@@ -422,7 +461,7 @@ export class FileTools {
         return null;
       }
 
-      const match = entries.find(entry => entry.name.toLowerCase() === lower);
+      const match = entries.find((entry) => entry.name.toLowerCase() === lower);
       if (!match) return null;
 
       const nextPath = path.join(current, match.name);
@@ -439,7 +478,10 @@ export class FileTools {
   /**
    * Read DOCX file and extract text content
    */
-  private async readDocxFile(fullPath: string, size: number): Promise<{ content: string; size: number; truncated?: boolean; format: string }> {
+  private async readDocxFile(
+    fullPath: string,
+    size: number,
+  ): Promise<{ content: string; size: number; truncated?: boolean; format: string }> {
     try {
       const result = await mammoth.extractRawText({ path: fullPath });
       let content = result.value;
@@ -447,13 +489,14 @@ export class FileTools {
       // Check if extracted text exceeds limit
       const truncated = content.length > MAX_FILE_SIZE;
       if (truncated) {
-        content = content.slice(0, MAX_FILE_SIZE) +
+        content =
+          content.slice(0, MAX_FILE_SIZE) +
           `\n\n[... Content truncated. Showing first ${Math.round(MAX_FILE_SIZE / 1024)}KB of extracted text ...]`;
       }
 
       // Add any warnings from mammoth
       if (result.messages && result.messages.length > 0) {
-        const warnings = result.messages.map(m => m.message).join('\n');
+        const warnings = result.messages.map((m) => m.message).join("\n");
         content = `[Document warnings: ${warnings}]\n\n${content}`;
       }
 
@@ -461,7 +504,7 @@ export class FileTools {
         content,
         size,
         truncated,
-        format: 'docx',
+        format: "docx",
       };
     } catch (error: any) {
       throw new Error(`Failed to read DOCX file: ${error.message}`);
@@ -471,7 +514,10 @@ export class FileTools {
   /**
    * Read PDF file and extract text content
    */
-  private async readPdfFile(fullPath: string, size: number): Promise<{ content: string; size: number; truncated?: boolean; format: string }> {
+  private async readPdfFile(
+    fullPath: string,
+    size: number,
+  ): Promise<{ content: string; size: number; truncated?: boolean; format: string }> {
     try {
       const dataBuffer = await fs.readFile(fullPath);
       const data = await parsePdfBuffer(dataBuffer);
@@ -485,13 +531,14 @@ export class FileTools {
       if (data.info?.Author) metadata.push(`Author: ${data.info.Author}`);
 
       if (metadata.length > 0) {
-        content = `[PDF Metadata: ${metadata.join(' | ')}]\n\n${content}`;
+        content = `[PDF Metadata: ${metadata.join(" | ")}]\n\n${content}`;
       }
 
       // Check if extracted text exceeds limit
       const truncated = content.length > MAX_FILE_SIZE;
       if (truncated) {
-        content = content.slice(0, MAX_FILE_SIZE) +
+        content =
+          content.slice(0, MAX_FILE_SIZE) +
           `\n\n[... Content truncated. Showing first ${Math.round(MAX_FILE_SIZE / 1024)}KB of extracted text ...]`;
       }
 
@@ -499,7 +546,7 @@ export class FileTools {
         content,
         size,
         truncated,
-        format: 'pdf',
+        format: "pdf",
       };
     } catch (error: any) {
       throw new Error(`Failed to read PDF file: ${error.message}`);
@@ -509,18 +556,21 @@ export class FileTools {
   /**
    * Read PPTX file and extract slide text content
    */
-  private async readPptxFile(fullPath: string, size: number): Promise<{ content: string; size: number; truncated?: boolean; format: string }> {
+  private async readPptxFile(
+    fullPath: string,
+    size: number,
+  ): Promise<{ content: string; size: number; truncated?: boolean; format: string }> {
     try {
       const content = await extractPptxContentFromFile(fullPath, {
         outputCharLimit: MAX_FILE_SIZE,
         maxFileSizeBytes: 50 * 1024 * 1024,
       });
-      const truncated = content.includes('[... Content truncated.');
+      const truncated = content.includes("[... Content truncated.");
       return {
         content,
         size,
         truncated,
-        format: 'pptx',
+        format: "pptx",
       };
     } catch (error: any) {
       throw new Error(`Failed to read PPTX file: ${error.message}`);
@@ -530,47 +580,65 @@ export class FileTools {
   /**
    * Write file contents
    */
-  async writeFile(relativePath: string, content: string): Promise<{ success: boolean; path: string }> {
+  async writeFile(
+    relativePath: string,
+    content: string,
+  ): Promise<{ success: boolean; path: string }> {
     // Validate inputs before proceeding
-    if (!relativePath || typeof relativePath !== 'string') {
-      throw new Error('Invalid path: path must be a non-empty string');
+    if (!relativePath || typeof relativePath !== "string") {
+      throw new Error("Invalid path: path must be a non-empty string");
     }
 
     // Check for binary file extensions that shouldn't be written with write_file
     const ext = path.extname(relativePath).toLowerCase();
-    const binaryExtensions = ['.docx', '.xlsx', '.pptx', '.ppt', '.pdf', '.zip', '.png', '.jpg', '.jpeg', '.gif', '.mp3', '.mp4', '.exe', '.dmg'];
+    const binaryExtensions = [
+      ".docx",
+      ".xlsx",
+      ".pptx",
+      ".ppt",
+      ".pdf",
+      ".zip",
+      ".png",
+      ".jpg",
+      ".jpeg",
+      ".gif",
+      ".mp3",
+      ".mp4",
+      ".exe",
+      ".dmg",
+    ];
     if (binaryExtensions.includes(ext)) {
       const suggestions: Record<string, string> = {
-        '.docx': 'Use "create_document" or "edit_document" tool instead',
-        '.xlsx': 'Use "create_spreadsheet" tool instead',
-        '.pptx': 'Use "create_presentation" tool instead',
-        '.pdf': 'Use "create_document" with format="pdf" instead',
+        ".docx": 'Use "create_document" or "edit_document" tool instead',
+        ".xlsx": 'Use "create_spreadsheet" tool instead',
+        ".pptx": 'Use "create_presentation" tool instead',
+        ".pdf": 'Use "create_document" with format="pdf" instead',
       };
-      const suggestion = suggestions[ext] || 'Use the appropriate skill tool for binary files';
+      const suggestion = suggestions[ext] || "Use the appropriate skill tool for binary files";
       throw new Error(
         `Cannot use write_file for binary file type "${ext}". ` +
-        `The write_file tool is for text files only. ${suggestion}.`
+          `The write_file tool is for text files only. ${suggestion}.`,
       );
     }
 
     if (content === undefined || content === null) {
-      throw new Error('Invalid content: content parameter is required but was not provided');
+      throw new Error("Invalid content: content parameter is required but was not provided");
     }
-    if (typeof content !== 'string') {
+    if (typeof content !== "string") {
       throw new Error(`Invalid content: expected string but received ${typeof content}`);
     }
 
-    this.checkPermission('write');
-    const fullPath = this.resolvePath(relativePath, 'write');
+    this.checkPermission("write");
+    const fullPath = this.resolvePath(relativePath, "write");
     await this.enforceProjectAccess(fullPath);
 
     // Check file size against guardrail limits
-    const contentSizeBytes = Buffer.byteLength(content, 'utf-8');
+    const contentSizeBytes = Buffer.byteLength(content, "utf-8");
     const sizeCheck = GuardrailManager.isFileSizeExceeded(contentSizeBytes);
     if (sizeCheck.exceeded) {
       throw new Error(
         `File size limit exceeded: ${sizeCheck.sizeMB.toFixed(2)}MB exceeds limit of ${sizeCheck.limitMB}MB.\n` +
-        `You can adjust this limit in Settings > Guardrails.`
+          `You can adjust this limit in Settings > Guardrails.`,
       );
     }
 
@@ -579,17 +647,18 @@ export class FileTools {
       await fs.mkdir(path.dirname(fullPath), { recursive: true });
 
       // Write file
-      await fs.writeFile(fullPath, content, 'utf-8');
+      await fs.writeFile(fullPath, content, "utf-8");
 
       // Build content preview (full content up to 20KB cap)
       const MAX_PREVIEW_CHARS = 20_000;
-      const lines = content.split('\n');
-      let preview = content.length > MAX_PREVIEW_CHARS ? content.slice(0, MAX_PREVIEW_CHARS) : content;
+      const lines = content.split("\n");
+      let preview =
+        content.length > MAX_PREVIEW_CHARS ? content.slice(0, MAX_PREVIEW_CHARS) : content;
       const previewTruncated = content.length > MAX_PREVIEW_CHARS;
-      const ext = path.extname(relativePath).toLowerCase().replace('.', '');
+      const ext = path.extname(relativePath).toLowerCase().replace(".", "");
 
       // Log artifact
-      this.daemon.logEvent(this.taskId, 'file_created', {
+      this.daemon.logEvent(this.taskId, "file_created", {
         path: relativePath,
         size: content.length,
         lineCount: lines.length,
@@ -610,16 +679,16 @@ export class FileTools {
   /**
    * List directory contents (limited to prevent context overflow)
    */
-  async listDirectory(relativePath: string = '.'): Promise<{
-    files: Array<{ name: string; type: 'file' | 'directory'; size: number }>;
+  async listDirectory(relativePath: string = "."): Promise<{
+    files: Array<{ name: string; type: "file" | "directory"; size: number }>;
     totalCount: number;
     truncated?: boolean;
   }> {
     // Validate and normalize input (use default if null/undefined)
-    const pathToUse = (relativePath && typeof relativePath === 'string') ? relativePath : '.';
+    const pathToUse = relativePath && typeof relativePath === "string" ? relativePath : ".";
 
-    this.checkPermission('read');
-    const fullPath = this.resolvePath(pathToUse, 'read');
+    this.checkPermission("read");
+    const fullPath = this.resolvePath(pathToUse, "read");
     await this.enforceProjectAccess(fullPath);
 
     try {
@@ -630,23 +699,23 @@ export class FileTools {
       const limitedEntries = entries.slice(0, MAX_DIR_ENTRIES);
 
       const files = await Promise.all(
-        limitedEntries.map(async entry => {
+        limitedEntries.map(async (entry) => {
           const entryPath = path.join(fullPath, entry.name);
           try {
             const stats = await fs.stat(entryPath);
             return {
               name: entry.name,
-              type: entry.isDirectory() ? 'directory' as const : 'file' as const,
+              type: entry.isDirectory() ? ("directory" as const) : ("file" as const),
               size: stats.size,
             };
           } catch {
             return {
               name: entry.name,
-              type: 'file' as const,
+              type: "file" as const,
               size: 0,
             };
           }
-        })
+        }),
       );
 
       return {
@@ -663,17 +732,17 @@ export class FileTools {
    * List directory contents in a compact, size-aware format
    * Mirrors MCP filesystem output for easier agent consumption.
    */
-  async listDirectoryWithSizes(relativePath: string = '.'): Promise<{
+  async listDirectoryWithSizes(relativePath: string = "."): Promise<{
     output: string;
-    files: Array<{ name: string; type: 'file' | 'directory'; size: number }>;
+    files: Array<{ name: string; type: "file" | "directory"; size: number }>;
     totalCount: number;
     truncated?: boolean;
     combinedSize: number;
   }> {
-    const pathToUse = (relativePath && typeof relativePath === 'string') ? relativePath : '.';
+    const pathToUse = relativePath && typeof relativePath === "string" ? relativePath : ".";
 
-    this.checkPermission('read');
-    const fullPath = this.resolvePath(pathToUse, 'read');
+    this.checkPermission("read");
+    const fullPath = this.resolvePath(pathToUse, "read");
     await this.enforceProjectAccess(fullPath);
 
     try {
@@ -682,26 +751,29 @@ export class FileTools {
       const limitedEntries = entries.slice(0, MAX_DIR_ENTRIES);
 
       const files = await Promise.all(
-        limitedEntries.map(async entry => {
+        limitedEntries.map(async (entry) => {
           const entryPath = path.join(fullPath, entry.name);
           try {
             const stats = await fs.stat(entryPath);
             return {
               name: entry.name,
-              type: entry.isDirectory() ? 'directory' as const : 'file' as const,
+              type: entry.isDirectory() ? ("directory" as const) : ("file" as const),
               size: stats.size,
             };
           } catch {
             return {
               name: entry.name,
-              type: entry.isDirectory() ? 'directory' as const : 'file' as const,
+              type: entry.isDirectory() ? ("directory" as const) : ("file" as const),
               size: 0,
             };
           }
-        })
+        }),
       );
 
-      const combinedSize = files.reduce((sum, entry) => sum + (entry.type === 'file' ? entry.size : 0), 0);
+      const combinedSize = files.reduce(
+        (sum, entry) => sum + (entry.type === "file" ? entry.size : 0),
+        0,
+      );
       const output = this.formatDirectoryListing(files, combinedSize);
 
       return {
@@ -728,12 +800,12 @@ export class FileTools {
     isFile: boolean;
     permissions: string;
   }> {
-    if (!relativePath || typeof relativePath !== 'string') {
-      throw new Error('Invalid path: path must be a non-empty string');
+    if (!relativePath || typeof relativePath !== "string") {
+      throw new Error("Invalid path: path must be a non-empty string");
     }
 
-    this.checkPermission('read');
-    const fullPath = this.resolvePath(relativePath, 'read');
+    this.checkPermission("read");
+    const fullPath = this.resolvePath(relativePath, "read");
     await this.enforceProjectAccess(fullPath);
 
     try {
@@ -758,16 +830,16 @@ export class FileTools {
    */
   async renameFile(oldPath: string, newPath: string): Promise<{ success: boolean }> {
     // Validate inputs
-    if (!oldPath || typeof oldPath !== 'string') {
-      throw new Error('Invalid oldPath: must be a non-empty string');
+    if (!oldPath || typeof oldPath !== "string") {
+      throw new Error("Invalid oldPath: must be a non-empty string");
     }
-    if (!newPath || typeof newPath !== 'string') {
-      throw new Error('Invalid newPath: must be a non-empty string');
+    if (!newPath || typeof newPath !== "string") {
+      throw new Error("Invalid newPath: must be a non-empty string");
     }
 
-    this.checkPermission('write');
-    const oldFullPath = this.resolvePath(oldPath, 'write');
-    const newFullPath = this.resolvePath(newPath, 'write');
+    this.checkPermission("write");
+    const oldFullPath = this.resolvePath(oldPath, "write");
+    const newFullPath = this.resolvePath(newPath, "write");
     await this.enforceProjectAccess(oldFullPath);
     await this.enforceProjectAccess(newFullPath);
 
@@ -777,8 +849,8 @@ export class FileTools {
 
       await fs.rename(oldFullPath, newFullPath);
 
-      this.daemon.logEvent(this.taskId, 'file_modified', {
-        action: 'rename',
+      this.daemon.logEvent(this.taskId, "file_modified", {
+        action: "rename",
         from: oldPath,
         to: newPath,
       });
@@ -792,19 +864,22 @@ export class FileTools {
   /**
    * Copy file (supports binary files like DOCX, PDF, images, etc.)
    */
-  async copyFile(sourcePath: string, destPath: string): Promise<{ success: boolean; path: string }> {
+  async copyFile(
+    sourcePath: string,
+    destPath: string,
+  ): Promise<{ success: boolean; path: string }> {
     // Validate inputs
-    if (!sourcePath || typeof sourcePath !== 'string') {
-      throw new Error('Invalid sourcePath: must be a non-empty string');
+    if (!sourcePath || typeof sourcePath !== "string") {
+      throw new Error("Invalid sourcePath: must be a non-empty string");
     }
-    if (!destPath || typeof destPath !== 'string') {
-      throw new Error('Invalid destPath: must be a non-empty string');
+    if (!destPath || typeof destPath !== "string") {
+      throw new Error("Invalid destPath: must be a non-empty string");
     }
 
-    this.checkPermission('read');
-    this.checkPermission('write');
-    const sourceFullPath = this.resolvePath(sourcePath, 'read');
-    const destFullPath = this.resolvePath(destPath, 'write');
+    this.checkPermission("read");
+    this.checkPermission("write");
+    const sourceFullPath = this.resolvePath(sourcePath, "read");
+    const destFullPath = this.resolvePath(destPath, "write");
     await this.enforceProjectAccess(sourceFullPath);
     await this.enforceProjectAccess(destFullPath);
 
@@ -815,7 +890,7 @@ export class FileTools {
       // Copy file using binary buffer (preserves exact content)
       await fs.copyFile(sourceFullPath, destFullPath);
 
-      this.daemon.logEvent(this.taskId, 'file_created', {
+      this.daemon.logEvent(this.taskId, "file_created", {
         path: destPath,
         copiedFrom: sourcePath,
       });
@@ -837,28 +912,28 @@ export class FileTools {
    */
   async deleteFile(relativePath: string): Promise<{ success: boolean; movedToTrash?: boolean }> {
     // Validate input
-    if (!relativePath || typeof relativePath !== 'string') {
-      throw new Error('Invalid path: path must be a non-empty string');
+    if (!relativePath || typeof relativePath !== "string") {
+      throw new Error("Invalid path: path must be a non-empty string");
     }
 
-    const fullPath = this.resolvePath(relativePath, 'delete');
+    const fullPath = this.resolvePath(relativePath, "delete");
     await this.enforceProjectAccess(fullPath);
 
     // Request user approval
     const approved = await this.daemon.requestApproval(
       this.taskId,
-      'delete_file',
+      "delete_file",
       `Delete file: ${relativePath}`,
-      { path: relativePath }
+      { path: relativePath },
     );
 
     if (!approved) {
-      throw new Error('User denied file deletion');
+      throw new Error("User denied file deletion");
     }
 
     try {
       // For .app bundles on macOS, use shell.trashItem directly (safer and expected behavior)
-      if (fullPath.endsWith('.app')) {
+      if (fullPath.endsWith(".app")) {
         const shell = getElectronShell();
         if (shell?.trashItem) {
           await shell.trashItem(fullPath);
@@ -866,7 +941,7 @@ export class FileTools {
           await fs.rm(fullPath, { recursive: true, force: true });
         }
 
-        this.daemon.logEvent(this.taskId, 'file_deleted', {
+        this.daemon.logEvent(this.taskId, "file_deleted", {
           path: relativePath,
           movedToTrash: true,
         });
@@ -883,7 +958,7 @@ export class FileTools {
         await fs.unlink(fullPath);
       }
 
-      this.daemon.logEvent(this.taskId, 'file_deleted', {
+      this.daemon.logEvent(this.taskId, "file_deleted", {
         path: relativePath,
       });
 
@@ -891,22 +966,29 @@ export class FileTools {
     } catch (error: any) {
       // If deletion fails, try moving to Trash as fallback
       // This handles EPERM, EACCES, ENOTEMPTY and other filesystem errors
-      if (error.code === 'EPERM' || error.code === 'EACCES' || error.code === 'ENOTEMPTY' || error.code === 'EBUSY') {
+      if (
+        error.code === "EPERM" ||
+        error.code === "EACCES" ||
+        error.code === "ENOTEMPTY" ||
+        error.code === "EBUSY"
+      ) {
         try {
           const shell = getElectronShell();
           if (!shell?.trashItem) {
-            throw new Error('trashItem not available (Electron shell unavailable)');
+            throw new Error("trashItem not available (Electron shell unavailable)");
           }
           await shell.trashItem(fullPath);
 
-          this.daemon.logEvent(this.taskId, 'file_deleted', {
+          this.daemon.logEvent(this.taskId, "file_deleted", {
             path: relativePath,
             movedToTrash: true,
           });
 
           return { success: true, movedToTrash: true };
         } catch (trashError: any) {
-          throw new Error(`Failed to delete file: ${error.code}. Could not move to Trash: ${trashError.message}`);
+          throw new Error(
+            `Failed to delete file: ${error.code}. Could not move to Trash: ${trashError.message}`,
+          );
         }
       }
       throw new Error(`Failed to delete file: ${error.message}`);
@@ -918,20 +1000,20 @@ export class FileTools {
    */
   async createDirectory(relativePath: string): Promise<{ success: boolean }> {
     // Validate input
-    if (!relativePath || typeof relativePath !== 'string') {
-      throw new Error('Invalid path: path must be a non-empty string');
+    if (!relativePath || typeof relativePath !== "string") {
+      throw new Error("Invalid path: path must be a non-empty string");
     }
 
-    this.checkPermission('write');
-    const fullPath = this.resolvePath(relativePath, 'write');
+    this.checkPermission("write");
+    const fullPath = this.resolvePath(relativePath, "write");
     await this.enforceProjectAccess(fullPath);
 
     try {
       await fs.mkdir(fullPath, { recursive: true });
 
-      this.daemon.logEvent(this.taskId, 'file_created', {
+      this.daemon.logEvent(this.taskId, "file_created", {
         path: relativePath,
-        type: 'directory',
+        type: "directory",
       });
 
       return { success: true };
@@ -945,21 +1027,21 @@ export class FileTools {
    */
   async searchFiles(
     query: string,
-    relativePath: string = '.'
+    relativePath: string = ".",
   ): Promise<{
-    matches: Array<{ path: string; type: 'filename' | 'content' }>;
+    matches: Array<{ path: string; type: "filename" | "content" }>;
     totalFound: number;
     truncated?: boolean;
   }> {
     // Validate input
-    if (!query || typeof query !== 'string') {
-      throw new Error('Invalid query: query must be a non-empty string');
+    if (!query || typeof query !== "string") {
+      throw new Error("Invalid query: query must be a non-empty string");
     }
 
-    this.checkPermission('read');
-    const fullPath = this.resolvePath(relativePath, 'read');
+    this.checkPermission("read");
+    const fullPath = this.resolvePath(relativePath, "read");
     await this.enforceProjectAccess(fullPath);
-    const matches: Array<{ path: string; type: 'filename' | 'content' }> = [];
+    const matches: Array<{ path: string; type: "filename" | "content" }> = [];
     let filesSearched = 0;
     const maxFilesToSearch = 500; // Limit files to search for performance
 
@@ -984,7 +1066,7 @@ export class FileTools {
         const relPath = path.relative(this.workspace.path, entryPath);
 
         // Skip hidden files/directories and node_modules
-        if (entry.name.startsWith('.') || entry.name === 'node_modules') {
+        if (entry.name.startsWith(".") || entry.name === "node_modules") {
           continue;
         }
 
@@ -999,7 +1081,7 @@ export class FileTools {
         if (entry.name.toLowerCase().includes(query.toLowerCase())) {
           matches.push({
             path: relPath,
-            type: 'filename',
+            type: "filename",
           });
         }
 
@@ -1010,12 +1092,12 @@ export class FileTools {
             const stats = await fs.stat(entryPath);
             // Only search small text files
             if (stats.size < 50 * 1024) {
-              const content = await fs.readFile(entryPath, 'utf-8');
+              const content = await fs.readFile(entryPath, "utf-8");
               if (content.toLowerCase().includes(query.toLowerCase())) {
-                if (!matches.some(m => m.path === relPath)) {
+                if (!matches.some((m) => m.path === relPath)) {
                   matches.push({
                     path: relPath,
-                    type: 'content',
+                    type: "content",
                   });
                 }
               }
@@ -1045,26 +1127,26 @@ export class FileTools {
    * Format directory listing to match MCP-style output
    */
   private formatDirectoryListing(
-    entries: Array<{ name: string; type: 'file' | 'directory'; size: number }>,
-    combinedSize: number
+    entries: Array<{ name: string; type: "file" | "directory"; size: number }>,
+    combinedSize: number,
   ): string {
     const maxNameLength = entries.reduce((max, entry) => Math.max(max, entry.name.length), 0);
     const namePad = Math.min(Math.max(maxNameLength + 2, 16), MAX_NAME_PAD);
 
-    const lines = entries.map(entry => {
-      const label = entry.type === 'directory' ? '[DIR]' : '[FILE]';
-      const name = entry.name.padEnd(namePad, ' ');
-      const size = entry.type === 'file' ? this.formatBytes(entry.size) : '';
+    const lines = entries.map((entry) => {
+      const label = entry.type === "directory" ? "[DIR]" : "[FILE]";
+      const name = entry.name.padEnd(namePad, " ");
+      const size = entry.type === "file" ? this.formatBytes(entry.size) : "";
       return `${label} ${name}${size}`.trimEnd();
     });
 
-    const fileCount = entries.filter(entry => entry.type === 'file').length;
-    const dirCount = entries.filter(entry => entry.type === 'directory').length;
-    lines.push('');
+    const fileCount = entries.filter((entry) => entry.type === "file").length;
+    const dirCount = entries.filter((entry) => entry.type === "directory").length;
+    lines.push("");
     lines.push(`Total: ${fileCount} files, ${dirCount} directories`);
     lines.push(`Combined size: ${this.formatBytes(combinedSize)}`);
 
-    return lines.join('\n');
+    return lines.join("\n");
   }
 
   /**

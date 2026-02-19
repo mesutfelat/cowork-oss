@@ -3,10 +3,10 @@
  * Uses atomic writes with temporary files for data safety
  */
 
-import fs from 'node:fs';
-import path from 'node:path';
-import type { CanvasSession } from '../../shared/types';
-import { getUserDataDir } from '../utils/user-data-dir';
+import fs from "node:fs";
+import path from "node:path";
+import type { CanvasSession } from "../../shared/types";
+import { getUserDataDir } from "../utils/user-data-dir";
 
 export interface CanvasStoreFile {
   version: number;
@@ -19,14 +19,14 @@ let _canvasStorePath: string | null = null;
 
 export function getCanvasDir(): string {
   if (!_canvasDir) {
-    _canvasDir = path.join(getUserDataDir(), 'canvas');
+    _canvasDir = path.join(getUserDataDir(), "canvas");
   }
   return _canvasDir;
 }
 
 export function getCanvasStorePath(): string {
   if (!_canvasStorePath) {
-    _canvasStorePath = path.join(getCanvasDir(), 'sessions.json');
+    _canvasStorePath = path.join(getCanvasDir(), "sessions.json");
   }
   return _canvasStorePath;
 }
@@ -38,23 +38,23 @@ const MAX_SESSIONS = 50;
  * Validate a single canvas session object
  */
 function isValidSession(s: unknown): s is CanvasSession {
-  if (!s || typeof s !== 'object') return false;
+  if (!s || typeof s !== "object") return false;
   const session = s as Record<string, unknown>;
   const mode = session.mode;
-  const isValidMode = mode === undefined || mode === 'html' || mode === 'browser';
+  const isValidMode = mode === undefined || mode === "html" || mode === "browser";
   const url = session.url;
-  const isValidUrl = url === undefined || typeof url === 'string';
+  const isValidUrl = url === undefined || typeof url === "string";
   return (
-    typeof session.id === 'string' &&
-    typeof session.taskId === 'string' &&
-    typeof session.workspaceId === 'string' &&
-    typeof session.sessionDir === 'string' &&
+    typeof session.id === "string" &&
+    typeof session.taskId === "string" &&
+    typeof session.workspaceId === "string" &&
+    typeof session.sessionDir === "string" &&
     isValidMode &&
     isValidUrl &&
-    typeof session.status === 'string' &&
-    ['active', 'paused', 'closed'].includes(session.status as string) &&
-    typeof session.createdAt === 'number' &&
-    typeof session.lastUpdatedAt === 'number'
+    typeof session.status === "string" &&
+    ["active", "paused", "closed"].includes(session.status as string) &&
+    typeof session.createdAt === "number" &&
+    typeof session.lastUpdatedAt === "number"
   );
 }
 
@@ -65,7 +65,7 @@ function isValidSession(s: unknown): s is CanvasSession {
 export async function loadCanvasStore(storePath?: string): Promise<CanvasStoreFile> {
   const effectivePath = storePath || getCanvasStorePath();
   try {
-    const raw = await fs.promises.readFile(effectivePath, 'utf-8');
+    const raw = await fs.promises.readFile(effectivePath, "utf-8");
     const parsed = JSON.parse(raw) as Partial<CanvasStoreFile> | null;
     const sessions = Array.isArray(parsed?.sessions) ? parsed.sessions : [];
 
@@ -97,7 +97,7 @@ export async function loadCanvasStore(storePath?: string): Promise<CanvasStoreFi
 export function loadCanvasStoreSync(storePath?: string): CanvasStoreFile {
   const effectivePath = storePath || getCanvasStorePath();
   try {
-    const raw = fs.readFileSync(effectivePath, 'utf-8');
+    const raw = fs.readFileSync(effectivePath, "utf-8");
     const parsed = JSON.parse(raw) as Partial<CanvasStoreFile> | null;
     const sessions = Array.isArray(parsed?.sessions) ? parsed.sessions : [];
 
@@ -126,17 +126,14 @@ export function loadCanvasStoreSync(storePath?: string): CanvasStoreFile {
  * Save canvas sessions to the store file
  * Uses atomic writes to prevent data corruption
  */
-export async function saveCanvasStore(
-  store: CanvasStoreFile,
-  storePath?: string
-): Promise<void> {
+export async function saveCanvasStore(store: CanvasStoreFile, storePath?: string): Promise<void> {
   const effectivePath = storePath || getCanvasStorePath();
 
   // Ensure directory exists
   await fs.promises.mkdir(path.dirname(effectivePath), { recursive: true });
 
   // Only keep non-closed sessions, and limit to max
-  let sessionsToSave = store.sessions.filter(s => s.status !== 'closed');
+  let sessionsToSave = store.sessions.filter((s) => s.status !== "closed");
 
   // Trim to max sessions (keep most recent)
   if (sessionsToSave.length > MAX_SESSIONS) {
@@ -155,7 +152,7 @@ export async function saveCanvasStore(
 
   // Write to temp file
   const json = JSON.stringify(storeToSave, null, 2);
-  await fs.promises.writeFile(tmp, json, 'utf-8');
+  await fs.promises.writeFile(tmp, json, "utf-8");
 
   // Atomic rename
   await fs.promises.rename(tmp, effectivePath);
@@ -164,17 +161,14 @@ export async function saveCanvasStore(
 /**
  * Save canvas store synchronously
  */
-export function saveCanvasStoreSync(
-  store: CanvasStoreFile,
-  storePath?: string
-): void {
+export function saveCanvasStoreSync(store: CanvasStoreFile, storePath?: string): void {
   const effectivePath = storePath || getCanvasStorePath();
 
   // Ensure directory exists
   fs.mkdirSync(path.dirname(effectivePath), { recursive: true });
 
   // Only keep non-closed sessions, and limit to max
-  let sessionsToSave = store.sessions.filter(s => s.status !== 'closed');
+  let sessionsToSave = store.sessions.filter((s) => s.status !== "closed");
 
   // Trim to max sessions (keep most recent)
   if (sessionsToSave.length > MAX_SESSIONS) {
@@ -193,7 +187,7 @@ export function saveCanvasStoreSync(
 
   // Write to temp file
   const json = JSON.stringify(storeToSave, null, 2);
-  fs.writeFileSync(tmp, json, 'utf-8');
+  fs.writeFileSync(tmp, json, "utf-8");
 
   // Atomic rename
   fs.renameSync(tmp, effectivePath);

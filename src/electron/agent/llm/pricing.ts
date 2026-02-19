@@ -6,7 +6,7 @@
  */
 
 export interface ModelPricing {
-  inputPer1M: number;  // Cost per 1M input tokens in USD
+  inputPer1M: number; // Cost per 1M input tokens in USD
   outputPer1M: number; // Cost per 1M output tokens in USD
 }
 
@@ -16,58 +16,58 @@ export interface ModelPricing {
  */
 export const MODEL_PRICING: Record<string, ModelPricing> = {
   // Anthropic Claude models
-  'claude-opus-4-5-20251101': { inputPer1M: 15.00, outputPer1M: 75.00 },
-  'claude-opus-4-5-20250101': { inputPer1M: 15.00, outputPer1M: 75.00 },
-  'claude-sonnet-4-5-20250514': { inputPer1M: 3.00, outputPer1M: 15.00 },
-  'claude-sonnet-4-20250514': { inputPer1M: 3.00, outputPer1M: 15.00 },
-  'claude-3-5-sonnet-20241022': { inputPer1M: 3.00, outputPer1M: 15.00 },
-  'claude-3-5-sonnet-latest': { inputPer1M: 3.00, outputPer1M: 15.00 },
-  'claude-3-5-haiku-20241022': { inputPer1M: 0.80, outputPer1M: 4.00 },
-  'claude-3-5-haiku-latest': { inputPer1M: 0.80, outputPer1M: 4.00 },
-  'claude-3-opus-20240229': { inputPer1M: 15.00, outputPer1M: 75.00 },
-  'claude-3-sonnet-20240229': { inputPer1M: 3.00, outputPer1M: 15.00 },
-  'claude-3-haiku-20240307': { inputPer1M: 0.25, outputPer1M: 1.25 },
+  "claude-opus-4-5-20251101": { inputPer1M: 15.0, outputPer1M: 75.0 },
+  "claude-opus-4-5-20250101": { inputPer1M: 15.0, outputPer1M: 75.0 },
+  "claude-sonnet-4-5-20250514": { inputPer1M: 3.0, outputPer1M: 15.0 },
+  "claude-sonnet-4-20250514": { inputPer1M: 3.0, outputPer1M: 15.0 },
+  "claude-3-5-sonnet-20241022": { inputPer1M: 3.0, outputPer1M: 15.0 },
+  "claude-3-5-sonnet-latest": { inputPer1M: 3.0, outputPer1M: 15.0 },
+  "claude-3-5-haiku-20241022": { inputPer1M: 0.8, outputPer1M: 4.0 },
+  "claude-3-5-haiku-latest": { inputPer1M: 0.8, outputPer1M: 4.0 },
+  "claude-3-opus-20240229": { inputPer1M: 15.0, outputPer1M: 75.0 },
+  "claude-3-sonnet-20240229": { inputPer1M: 3.0, outputPer1M: 15.0 },
+  "claude-3-haiku-20240307": { inputPer1M: 0.25, outputPer1M: 1.25 },
 
   // AWS Bedrock model IDs
-  'anthropic.claude-3-5-sonnet-20241022-v2:0': { inputPer1M: 3.00, outputPer1M: 15.00 },
-  'anthropic.claude-3-5-haiku-20241022-v1:0': { inputPer1M: 0.80, outputPer1M: 4.00 },
-  'anthropic.claude-3-opus-20240229-v1:0': { inputPer1M: 15.00, outputPer1M: 75.00 },
-  'anthropic.claude-3-sonnet-20240229-v1:0': { inputPer1M: 3.00, outputPer1M: 15.00 },
-  'anthropic.claude-3-haiku-20240307-v1:0': { inputPer1M: 0.25, outputPer1M: 1.25 },
-  'us.anthropic.claude-opus-4-5-20251101-v1:0': { inputPer1M: 15.00, outputPer1M: 75.00 },
-  'anthropic.claude-opus-4-5-20251101': { inputPer1M: 15.00, outputPer1M: 75.00 },
-  'anthropic.claude-opus-4-5-20250514': { inputPer1M: 15.00, outputPer1M: 75.00 },
-  'us.anthropic.claude-sonnet-4-5-20250514-v1:0': { inputPer1M: 3.00, outputPer1M: 15.00 },
-  'anthropic.claude-sonnet-4-5-20250514': { inputPer1M: 3.00, outputPer1M: 15.00 },
-  'us.anthropic.claude-sonnet-4-20250514-v1:0': { inputPer1M: 3.00, outputPer1M: 15.00 },
+  "anthropic.claude-3-5-sonnet-20241022-v2:0": { inputPer1M: 3.0, outputPer1M: 15.0 },
+  "anthropic.claude-3-5-haiku-20241022-v1:0": { inputPer1M: 0.8, outputPer1M: 4.0 },
+  "anthropic.claude-3-opus-20240229-v1:0": { inputPer1M: 15.0, outputPer1M: 75.0 },
+  "anthropic.claude-3-sonnet-20240229-v1:0": { inputPer1M: 3.0, outputPer1M: 15.0 },
+  "anthropic.claude-3-haiku-20240307-v1:0": { inputPer1M: 0.25, outputPer1M: 1.25 },
+  "us.anthropic.claude-opus-4-5-20251101-v1:0": { inputPer1M: 15.0, outputPer1M: 75.0 },
+  "anthropic.claude-opus-4-5-20251101": { inputPer1M: 15.0, outputPer1M: 75.0 },
+  "anthropic.claude-opus-4-5-20250514": { inputPer1M: 15.0, outputPer1M: 75.0 },
+  "us.anthropic.claude-sonnet-4-5-20250514-v1:0": { inputPer1M: 3.0, outputPer1M: 15.0 },
+  "anthropic.claude-sonnet-4-5-20250514": { inputPer1M: 3.0, outputPer1M: 15.0 },
+  "us.anthropic.claude-sonnet-4-20250514-v1:0": { inputPer1M: 3.0, outputPer1M: 15.0 },
 
   // Google Gemini models (prices may vary, free tier has limits)
-  'gemini-2.0-flash': { inputPer1M: 0.10, outputPer1M: 0.40 },
-  'gemini-2.0-flash-lite': { inputPer1M: 0.075, outputPer1M: 0.30 },
-  'gemini-2.5-pro': { inputPer1M: 1.25, outputPer1M: 5.00 },
-  'gemini-2.5-flash': { inputPer1M: 0.15, outputPer1M: 0.60 },
-  'gemini-1.5-pro': { inputPer1M: 1.25, outputPer1M: 5.00 },
-  'gemini-1.5-flash': { inputPer1M: 0.075, outputPer1M: 0.30 },
+  "gemini-2.0-flash": { inputPer1M: 0.1, outputPer1M: 0.4 },
+  "gemini-2.0-flash-lite": { inputPer1M: 0.075, outputPer1M: 0.3 },
+  "gemini-2.5-pro": { inputPer1M: 1.25, outputPer1M: 5.0 },
+  "gemini-2.5-flash": { inputPer1M: 0.15, outputPer1M: 0.6 },
+  "gemini-1.5-pro": { inputPer1M: 1.25, outputPer1M: 5.0 },
+  "gemini-1.5-flash": { inputPer1M: 0.075, outputPer1M: 0.3 },
 
   // OpenAI models (direct API)
-  'gpt-4o': { inputPer1M: 2.50, outputPer1M: 10.00 },
-  'gpt-4o-mini': { inputPer1M: 0.15, outputPer1M: 0.60 },
-  'gpt-4-turbo': { inputPer1M: 10.00, outputPer1M: 30.00 },
-  'gpt-4': { inputPer1M: 30.00, outputPer1M: 60.00 },
-  'gpt-3.5-turbo': { inputPer1M: 0.50, outputPer1M: 1.50 },
-  'o1': { inputPer1M: 15.00, outputPer1M: 60.00 },
-  'o1-mini': { inputPer1M: 3.00, outputPer1M: 12.00 },
-  'o1-preview': { inputPer1M: 15.00, outputPer1M: 60.00 },
+  "gpt-4o": { inputPer1M: 2.5, outputPer1M: 10.0 },
+  "gpt-4o-mini": { inputPer1M: 0.15, outputPer1M: 0.6 },
+  "gpt-4-turbo": { inputPer1M: 10.0, outputPer1M: 30.0 },
+  "gpt-4": { inputPer1M: 30.0, outputPer1M: 60.0 },
+  "gpt-3.5-turbo": { inputPer1M: 0.5, outputPer1M: 1.5 },
+  o1: { inputPer1M: 15.0, outputPer1M: 60.0 },
+  "o1-mini": { inputPer1M: 3.0, outputPer1M: 12.0 },
+  "o1-preview": { inputPer1M: 15.0, outputPer1M: 60.0 },
 
   // OpenRouter passes through various model pricing
   // These are common models accessed through OpenRouter
-  'anthropic/claude-3.5-sonnet': { inputPer1M: 3.00, outputPer1M: 15.00 },
-  'anthropic/claude-3-opus': { inputPer1M: 15.00, outputPer1M: 75.00 },
-  'openai/gpt-4o': { inputPer1M: 2.50, outputPer1M: 10.00 },
-  'openai/gpt-4o-mini': { inputPer1M: 0.15, outputPer1M: 0.60 },
-  'google/gemini-pro-1.5': { inputPer1M: 1.25, outputPer1M: 5.00 },
-  'meta-llama/llama-3.1-405b-instruct': { inputPer1M: 3.00, outputPer1M: 3.00 },
-  'meta-llama/llama-3.1-70b-instruct': { inputPer1M: 0.52, outputPer1M: 0.75 },
+  "anthropic/claude-3.5-sonnet": { inputPer1M: 3.0, outputPer1M: 15.0 },
+  "anthropic/claude-3-opus": { inputPer1M: 15.0, outputPer1M: 75.0 },
+  "openai/gpt-4o": { inputPer1M: 2.5, outputPer1M: 10.0 },
+  "openai/gpt-4o-mini": { inputPer1M: 0.15, outputPer1M: 0.6 },
+  "google/gemini-pro-1.5": { inputPer1M: 1.25, outputPer1M: 5.0 },
+  "meta-llama/llama-3.1-405b-instruct": { inputPer1M: 3.0, outputPer1M: 3.0 },
+  "meta-llama/llama-3.1-70b-instruct": { inputPer1M: 0.52, outputPer1M: 0.75 },
 
   // Ollama (local) - free
   // Ollama models are free since they run locally
@@ -75,8 +75,8 @@ export const MODEL_PRICING: Record<string, ModelPricing> = {
   // Google Gemini image generation models
   // Note: Image generation is priced per image, not per token
   // These are approximate costs (actual pricing may vary)
-  'gemini-2.5-flash-image': { inputPer1M: 0.00, outputPer1M: 0.00 },
-  'gemini-3-pro-image-preview': { inputPer1M: 0.00, outputPer1M: 0.00 },
+  "gemini-2.5-flash-image": { inputPer1M: 0.0, outputPer1M: 0.0 },
+  "gemini-3-pro-image-preview": { inputPer1M: 0.0, outputPer1M: 0.0 },
 };
 
 /**
@@ -84,8 +84,8 @@ export const MODEL_PRICING: Record<string, ModelPricing> = {
  * Separate from token-based pricing for LLMs
  */
 export const IMAGE_GENERATION_PRICING: Record<string, number> = {
-  'gemini-2.5-flash-image': 0.02,
-  'gemini-3-pro-image-preview': 0.04,
+  "gemini-2.5-flash-image": 0.02,
+  "gemini-3-pro-image-preview": 0.04,
 };
 
 /**
@@ -95,11 +95,7 @@ export const IMAGE_GENERATION_PRICING: Record<string, number> = {
  * @param outputTokens Number of output tokens
  * @returns Cost in USD
  */
-export function calculateCost(
-  modelId: string,
-  inputTokens: number,
-  outputTokens: number
-): number {
+export function calculateCost(modelId: string, inputTokens: number, outputTokens: number): number {
   // Try exact match first
   let pricing = MODEL_PRICING[modelId];
 
@@ -164,7 +160,8 @@ export function formatCost(cost: number): string {
  * @returns Cost in USD
  */
 export function calculateImageCost(modelId: string, numberOfImages: number): number {
-  const pricePerImage = IMAGE_GENERATION_PRICING[modelId] || IMAGE_GENERATION_PRICING[modelId.toLowerCase()];
+  const pricePerImage =
+    IMAGE_GENERATION_PRICING[modelId] || IMAGE_GENERATION_PRICING[modelId.toLowerCase()];
   if (!pricePerImage) {
     // Default to common Gemini image pricing if unknown model
     return 0.03 * numberOfImages;
@@ -178,5 +175,7 @@ export function calculateImageCost(modelId: string, numberOfImages: number): num
  * @returns Price per image in USD, or null if unknown
  */
 export function getImagePricing(modelId: string): number | null {
-  return IMAGE_GENERATION_PRICING[modelId] || IMAGE_GENERATION_PRICING[modelId.toLowerCase()] || null;
+  return (
+    IMAGE_GENERATION_PRICING[modelId] || IMAGE_GENERATION_PRICING[modelId.toLowerCase()] || null
+  );
 }

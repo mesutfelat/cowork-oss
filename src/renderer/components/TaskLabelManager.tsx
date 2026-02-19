@@ -1,8 +1,5 @@
-import { useState, useEffect } from 'react';
-import {
-  TaskLabelData,
-  CreateTaskLabelRequest,
-} from '../../electron/preload';
+import { useState, useEffect } from "react";
+import { TaskLabelData, CreateTaskLabelRequest } from "../../electron/preload";
 
 interface TaskLabelManagerProps {
   workspaceId: string;
@@ -10,29 +7,29 @@ interface TaskLabelManagerProps {
 }
 
 const DEFAULT_COLORS = [
-  '#ef4444', // Red
-  '#f97316', // Orange
-  '#f59e0b', // Amber
-  '#eab308', // Yellow
-  '#84cc16', // Lime
-  '#22c55e', // Green
-  '#14b8a6', // Teal
-  '#06b6d4', // Cyan
-  '#3b82f6', // Blue
-  '#6366f1', // Indigo
-  '#8b5cf6', // Violet
-  '#a855f7', // Purple
-  '#d946ef', // Fuchsia
-  '#ec4899', // Pink
-  '#f43f5e', // Rose
-  '#64748b', // Slate
+  "#ef4444", // Red
+  "#f97316", // Orange
+  "#f59e0b", // Amber
+  "#eab308", // Yellow
+  "#84cc16", // Lime
+  "#22c55e", // Green
+  "#14b8a6", // Teal
+  "#06b6d4", // Cyan
+  "#3b82f6", // Blue
+  "#6366f1", // Indigo
+  "#8b5cf6", // Violet
+  "#a855f7", // Purple
+  "#d946ef", // Fuchsia
+  "#ec4899", // Pink
+  "#f43f5e", // Rose
+  "#64748b", // Slate
 ];
 
 export function TaskLabelManager({ workspaceId, onClose }: TaskLabelManagerProps) {
   const [labels, setLabels] = useState<TaskLabelData[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingLabel, setEditingLabel] = useState<TaskLabelData | null>(null);
-  const [newLabelName, setNewLabelName] = useState('');
+  const [newLabelName, setNewLabelName] = useState("");
   const [newLabelColor, setNewLabelColor] = useState(DEFAULT_COLORS[0]);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,8 +44,8 @@ export function TaskLabelManager({ workspaceId, onClose }: TaskLabelManagerProps
       const result = await window.electronAPI.listTaskLabels({ workspaceId });
       setLabels(result);
     } catch (err) {
-      console.error('Failed to load labels:', err);
-      setError('Failed to load labels');
+      console.error("Failed to load labels:", err);
+      setError("Failed to load labels");
     } finally {
       setLoading(false);
     }
@@ -65,12 +62,12 @@ export function TaskLabelManager({ workspaceId, onClose }: TaskLabelManagerProps
         color: newLabelColor,
       };
       const created = await window.electronAPI.createTaskLabel(request);
-      setLabels(prev => [...prev, created]);
-      setNewLabelName('');
+      setLabels((prev) => [...prev, created]);
+      setNewLabelName("");
       setNewLabelColor(DEFAULT_COLORS[Math.floor(Math.random() * DEFAULT_COLORS.length)]);
     } catch (err: any) {
-      console.error('Failed to create label:', err);
-      setError(err.message || 'Failed to create label');
+      console.error("Failed to create label:", err);
+      setError(err.message || "Failed to create label");
     }
   };
 
@@ -83,24 +80,24 @@ export function TaskLabelManager({ workspaceId, onClose }: TaskLabelManagerProps
         name: editingLabel.name.trim(),
         color: editingLabel.color,
       });
-      setLabels(prev => prev.map(l => (l.id === updated.id ? updated : l)));
+      setLabels((prev) => prev.map((l) => (l.id === updated.id ? updated : l)));
       setEditingLabel(null);
     } catch (err: any) {
-      console.error('Failed to update label:', err);
-      setError(err.message || 'Failed to update label');
+      console.error("Failed to update label:", err);
+      setError(err.message || "Failed to update label");
     }
   };
 
   const handleDeleteLabel = async (id: string) => {
-    if (!confirm('Delete this label? It will be removed from all tasks.')) return;
+    if (!confirm("Delete this label? It will be removed from all tasks.")) return;
 
     try {
       setError(null);
       await window.electronAPI.deleteTaskLabel(id);
-      setLabels(prev => prev.filter(l => l.id !== id));
+      setLabels((prev) => prev.filter((l) => l.id !== id));
     } catch (err: any) {
-      console.error('Failed to delete label:', err);
-      setError(err.message || 'Failed to delete label');
+      console.error("Failed to delete label:", err);
+      setError(err.message || "Failed to delete label");
     }
   };
 
@@ -138,7 +135,7 @@ export function TaskLabelManager({ workspaceId, onClose }: TaskLabelManagerProps
               value={newLabelName}
               onChange={(e) => setNewLabelName(e.target.value)}
               placeholder="New label name..."
-              onKeyDown={(e) => e.key === 'Enter' && handleCreateLabel()}
+              onKeyDown={(e) => e.key === "Enter" && handleCreateLabel()}
             />
             <button
               className="create-btn"
@@ -153,7 +150,7 @@ export function TaskLabelManager({ workspaceId, onClose }: TaskLabelManagerProps
               {DEFAULT_COLORS.map((color) => (
                 <button
                   key={color}
-                  className={`color-option ${color === newLabelColor ? 'selected' : ''}`}
+                  className={`color-option ${color === newLabelColor ? "selected" : ""}`}
                   style={{ backgroundColor: color }}
                   onClick={() => {
                     setNewLabelColor(color);
@@ -186,7 +183,7 @@ export function TaskLabelManager({ workspaceId, onClose }: TaskLabelManagerProps
                       type="text"
                       value={editingLabel.name}
                       onChange={(e) => setEditingLabel({ ...editingLabel, name: e.target.value })}
-                      onKeyDown={(e) => e.key === 'Enter' && handleUpdateLabel()}
+                      onKeyDown={(e) => e.key === "Enter" && handleUpdateLabel()}
                       autoFocus
                     />
                     <button className="save-btn" onClick={handleUpdateLabel}>
@@ -198,23 +195,14 @@ export function TaskLabelManager({ workspaceId, onClose }: TaskLabelManagerProps
                   </div>
                 ) : (
                   <>
-                    <span
-                      className="label-preview"
-                      style={{ backgroundColor: label.color }}
-                    >
+                    <span className="label-preview" style={{ backgroundColor: label.color }}>
                       {label.name}
                     </span>
                     <div className="label-actions">
-                      <button
-                        className="edit-btn"
-                        onClick={() => setEditingLabel(label)}
-                      >
+                      <button className="edit-btn" onClick={() => setEditingLabel(label)}>
                         Edit
                       </button>
-                      <button
-                        className="delete-btn"
-                        onClick={() => handleDeleteLabel(label.id)}
-                      >
+                      <button className="delete-btn" onClick={() => handleDeleteLabel(label.id)}>
                         Delete
                       </button>
                     </div>

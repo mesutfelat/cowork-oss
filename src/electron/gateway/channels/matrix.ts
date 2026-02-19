@@ -30,17 +30,17 @@ import {
   ChannelInfo,
   MatrixConfig,
   MessageAttachment,
-} from './types';
-import { MatrixClient, MatrixRoomEvent, MatrixUser } from './matrix-client';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
+} from "./types";
+import { MatrixClient, MatrixRoomEvent, MatrixUser } from "./matrix-client";
+import * as fs from "fs";
+import * as path from "path";
+import * as os from "os";
 
 export class MatrixAdapter implements ChannelAdapter {
-  readonly type = 'matrix' as const;
+  readonly type = "matrix" as const;
 
   private client: MatrixClient | null = null;
-  private _status: ChannelStatus = 'disconnected';
+  private _status: ChannelStatus = "disconnected";
   private _botUsername?: string;
   private messageHandlers: MessageHandler[] = [];
   private errorHandlers: ErrorHandler[] = [];
@@ -73,7 +73,7 @@ export class MatrixAdapter implements ChannelAdapter {
     };
 
     // Set up attachments directory
-    this.attachmentsDir = path.join(os.tmpdir(), 'cowork-matrix-attachments');
+    this.attachmentsDir = path.join(os.tmpdir(), "cowork-matrix-attachments");
     if (!fs.existsSync(this.attachmentsDir)) {
       fs.mkdirSync(this.attachmentsDir, { recursive: true });
     }
@@ -91,11 +91,11 @@ export class MatrixAdapter implements ChannelAdapter {
    * Connect to Matrix
    */
   async connect(): Promise<void> {
-    if (this._status === 'connected' || this._status === 'connecting') {
+    if (this._status === "connected" || this._status === "connecting") {
       return;
     }
 
-    this.setStatus('connecting');
+    this.setStatus("connecting");
 
     try {
       // Create Matrix client
@@ -105,13 +105,13 @@ export class MatrixAdapter implements ChannelAdapter {
         accessToken: this.config.accessToken,
         deviceId: this.config.deviceId,
         roomIds: this.config.roomIds,
-        verbose: process.env.NODE_ENV === 'development',
+        verbose: process.env.NODE_ENV === "development",
       });
 
       // Check connection
       const check = await this.client.checkConnection();
       if (!check.success) {
-        throw new Error(check.error || 'Failed to connect to Matrix');
+        throw new Error(check.error || "Failed to connect to Matrix");
       }
 
       // Get bot user profile
@@ -119,22 +119,22 @@ export class MatrixAdapter implements ChannelAdapter {
       this._botUsername = profile.displayname || this.config.userId;
 
       // Set up event handlers
-      this.client.on('message', (event: MatrixRoomEvent) => {
+      this.client.on("message", (event: MatrixRoomEvent) => {
         this.handleIncomingEvent(event);
       });
 
-      this.client.on('error', (error: Error) => {
-        this.handleError(error, 'client');
+      this.client.on("error", (error: Error) => {
+        this.handleError(error, "client");
       });
 
-      this.client.on('connected', () => {
-        console.log('Matrix client connected');
+      this.client.on("connected", () => {
+        console.log("Matrix client connected");
       });
 
-      this.client.on('disconnected', () => {
-        console.log('Matrix client disconnected');
-        if (this._status === 'connected') {
-          this.setStatus('disconnected');
+      this.client.on("disconnected", () => {
+        console.log("Matrix client disconnected");
+        if (this._status === "connected") {
+          this.setStatus("disconnected");
         }
       });
 
@@ -146,11 +146,11 @@ export class MatrixAdapter implements ChannelAdapter {
         this.startDedupCleanup();
       }
 
-      this.setStatus('connected');
+      this.setStatus("connected");
       console.log(`Matrix adapter connected as ${this._botUsername}`);
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
-      this.setStatus('error', err);
+      this.setStatus("error", err);
       throw err;
     }
   }
@@ -176,15 +176,15 @@ export class MatrixAdapter implements ChannelAdapter {
     }
 
     this._botUsername = undefined;
-    this.setStatus('disconnected');
+    this.setStatus("disconnected");
   }
 
   /**
    * Send a message
    */
   async sendMessage(message: OutgoingMessage): Promise<string> {
-    if (!this.client || this._status !== 'connected') {
-      throw new Error('Matrix client is not connected');
+    if (!this.client || this._status !== "connected") {
+      throw new Error("Matrix client is not connected");
     }
 
     // Handle attachments first
@@ -202,14 +202,14 @@ export class MatrixAdapter implements ChannelAdapter {
 
     // Prepare formatted content for markdown
     let formattedBody: string | undefined;
-    if (message.parseMode === 'markdown' || message.parseMode === 'html') {
+    if (message.parseMode === "markdown" || message.parseMode === "html") {
       formattedBody = text; // Matrix supports HTML; markdown would need conversion
     }
 
     // Send the message
     const eventId = await this.client.sendMessage(message.chatId, text, {
       formattedBody,
-      format: formattedBody ? 'org.matrix.custom.html' : undefined,
+      format: formattedBody ? "org.matrix.custom.html" : undefined,
       replyTo: message.replyTo,
     });
 
@@ -221,7 +221,7 @@ export class MatrixAdapter implements ChannelAdapter {
    */
   private async sendAttachment(
     roomId: string,
-    attachment: MessageAttachment
+    attachment: MessageAttachment,
   ): Promise<string | null> {
     if (!this.client) return null;
 
@@ -244,7 +244,7 @@ export class MatrixAdapter implements ChannelAdapter {
       const fileName = attachment.fileName || path.basename(filePath);
 
       // Send based on type
-      if (attachment.type === 'image') {
+      if (attachment.type === "image") {
         return await this.client.sendImage(roomId, mxcUrl, fileName, {
           mimetype: attachment.mimeType,
           size: attachment.size,
@@ -256,7 +256,7 @@ export class MatrixAdapter implements ChannelAdapter {
         });
       }
     } catch (error) {
-      console.error('Failed to send attachment:', error);
+      console.error("Failed to send attachment:", error);
       return null;
     }
   }
@@ -267,16 +267,16 @@ export class MatrixAdapter implements ChannelAdapter {
   async editMessage(chatId: string, messageId: string, text: string): Promise<void> {
     // Matrix doesn't have native edit - we'd need to use m.replace relation
     // For simplicity, we'll throw an error indicating this limitation
-    console.warn('Matrix message editing requires m.replace relation - not fully implemented');
-    throw new Error('Matrix message editing not fully supported');
+    console.warn("Matrix message editing requires m.replace relation - not fully implemented");
+    throw new Error("Matrix message editing not fully supported");
   }
 
   /**
    * Delete a message (redact)
    */
   async deleteMessage(chatId: string, messageId: string): Promise<void> {
-    if (!this.client || this._status !== 'connected') {
-      throw new Error('Matrix client is not connected');
+    if (!this.client || this._status !== "connected") {
+      throw new Error("Matrix client is not connected");
     }
 
     await this.client.redactMessage(chatId, messageId);
@@ -286,8 +286,8 @@ export class MatrixAdapter implements ChannelAdapter {
    * Send a document/file
    */
   async sendDocument(chatId: string, filePath: string, caption?: string): Promise<string> {
-    if (!this.client || this._status !== 'connected') {
-      throw new Error('Matrix client is not connected');
+    if (!this.client || this._status !== "connected") {
+      throw new Error("Matrix client is not connected");
     }
 
     const uploadResult = await this.client.uploadMedia(filePath);
@@ -307,8 +307,8 @@ export class MatrixAdapter implements ChannelAdapter {
    * Send a photo/image
    */
   async sendPhoto(chatId: string, filePath: string, caption?: string): Promise<string> {
-    if (!this.client || this._status !== 'connected') {
-      throw new Error('Matrix client is not connected');
+    if (!this.client || this._status !== "connected") {
+      throw new Error("Matrix client is not connected");
     }
 
     const uploadResult = await this.client.uploadMedia(filePath);
@@ -350,7 +350,7 @@ export class MatrixAdapter implements ChannelAdapter {
    */
   async getInfo(): Promise<ChannelInfo> {
     return {
-      type: 'matrix',
+      type: "matrix",
       status: this._status,
       botId: this.config.userId,
       botUsername: this._botUsername,
@@ -400,8 +400,8 @@ export class MatrixAdapter implements ChannelAdapter {
    * Add reaction to a message
    */
   async addReaction(chatId: string, messageId: string, emoji: string): Promise<void> {
-    if (!this.client || this._status !== 'connected') {
-      throw new Error('Matrix client is not connected');
+    if (!this.client || this._status !== "connected") {
+      throw new Error("Matrix client is not connected");
     }
 
     await this.client.sendReaction(chatId, messageId, emoji);
@@ -426,8 +426,8 @@ export class MatrixAdapter implements ChannelAdapter {
    * Join a room
    */
   async joinRoom(roomIdOrAlias: string): Promise<string> {
-    if (!this.client || this._status !== 'connected') {
-      throw new Error('Matrix client is not connected');
+    if (!this.client || this._status !== "connected") {
+      throw new Error("Matrix client is not connected");
     }
 
     return this.client.joinRoom(roomIdOrAlias);
@@ -437,8 +437,8 @@ export class MatrixAdapter implements ChannelAdapter {
    * Leave a room
    */
   async leaveRoom(roomId: string): Promise<void> {
-    if (!this.client || this._status !== 'connected') {
-      throw new Error('Matrix client is not connected');
+    if (!this.client || this._status !== "connected") {
+      throw new Error("Matrix client is not connected");
     }
 
     await this.client.leaveRoom(roomId);
@@ -475,14 +475,14 @@ export class MatrixAdapter implements ChannelAdapter {
       const user = await this.getCachedUser(event.sender);
       userName = user.displayname || event.sender;
     } catch (error) {
-      console.error('Failed to get user info:', error);
+      console.error("Failed to get user info:", error);
     }
 
     // Convert attachments
     const attachments = this.convertAttachments(event);
 
     // Get reply-to
-    const replyTo = event.content['m.relates_to']?.['m.in_reply_to']?.event_id;
+    const replyTo = event.content["m.relates_to"]?.["m.in_reply_to"]?.event_id;
 
     const directRooms = await this.getDirectRooms();
     const isGroup = directRooms ? !directRooms.has(event.room_id) : undefined;
@@ -490,7 +490,7 @@ export class MatrixAdapter implements ChannelAdapter {
     // Convert to IncomingMessage
     const message: IncomingMessage = {
       messageId: event.event_id,
-      channel: 'matrix',
+      channel: "matrix",
       userId: event.sender,
       userName,
       chatId: event.room_id,
@@ -512,10 +512,10 @@ export class MatrixAdapter implements ChannelAdapter {
       try {
         await handler(message);
       } catch (error) {
-        console.error('Error in Matrix message handler:', error);
+        console.error("Error in Matrix message handler:", error);
         this.handleError(
           error instanceof Error ? error : new Error(String(error)),
-          'messageHandler'
+          "messageHandler",
         );
       }
     }
@@ -533,20 +533,20 @@ export class MatrixAdapter implements ChannelAdapter {
     }
 
     // Only handle media message types
-    if (!['m.image', 'm.file', 'm.audio', 'm.video'].includes(msgtype)) {
+    if (!["m.image", "m.file", "m.audio", "m.video"].includes(msgtype)) {
       return undefined;
     }
 
-    let type: MessageAttachment['type'] = 'file';
+    let type: MessageAttachment["type"] = "file";
     switch (msgtype) {
-      case 'm.image':
-        type = 'image';
+      case "m.image":
+        type = "image";
         break;
-      case 'm.audio':
-        type = 'audio';
+      case "m.audio":
+        type = "audio";
         break;
-      case 'm.video':
-        type = 'video';
+      case "m.video":
+        type = "video";
         break;
     }
 
@@ -577,7 +577,7 @@ export class MatrixAdapter implements ChannelAdapter {
       this.directRoomsLoadedAt = now;
       return this.directRooms;
     } catch (error) {
-      console.warn('Failed to load Matrix direct rooms:', error);
+      console.warn("Failed to load Matrix direct rooms:", error);
       this.directRoomsLoadedAt = now;
       return null;
     }
@@ -593,7 +593,7 @@ export class MatrixAdapter implements ChannelAdapter {
     }
 
     if (!this.client) {
-      throw new Error('Client not connected');
+      throw new Error("Client not connected");
     }
 
     const user = await this.client.getUserProfile(userId);
@@ -649,7 +649,7 @@ export class MatrixAdapter implements ChannelAdapter {
       try {
         handler(error, context);
       } catch (e) {
-        console.error('Error in error handler:', e);
+        console.error("Error in error handler:", e);
       }
     }
   }
@@ -663,7 +663,7 @@ export class MatrixAdapter implements ChannelAdapter {
       try {
         handler(status, error);
       } catch (e) {
-        console.error('Error in status handler:', e);
+        console.error("Error in status handler:", e);
       }
     }
   }
@@ -674,13 +674,13 @@ export class MatrixAdapter implements ChannelAdapter {
  */
 export function createMatrixAdapter(config: MatrixConfig): MatrixAdapter {
   if (!config.homeserver) {
-    throw new Error('Matrix homeserver URL is required');
+    throw new Error("Matrix homeserver URL is required");
   }
   if (!config.userId) {
-    throw new Error('Matrix user ID is required');
+    throw new Error("Matrix user ID is required");
   }
   if (!config.accessToken) {
-    throw new Error('Matrix access token is required');
+    throw new Error("Matrix access token is required");
   }
   return new MatrixAdapter(config);
 }

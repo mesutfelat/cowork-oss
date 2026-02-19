@@ -2,10 +2,10 @@
  * Dropbox API helpers
  */
 
-import { DropboxConnectionTestResult, DropboxSettingsData } from '../../shared/types';
+import { DropboxConnectionTestResult, DropboxSettingsData } from "../../shared/types";
 
-export const DROPBOX_API_BASE = 'https://api.dropboxapi.com/2';
-export const DROPBOX_CONTENT_BASE = 'https://content.dropboxapi.com/2';
+export const DROPBOX_API_BASE = "https://api.dropboxapi.com/2";
+export const DROPBOX_CONTENT_BASE = "https://content.dropboxapi.com/2";
 const DEFAULT_TIMEOUT_MS = 20000;
 
 function parseJsonSafe(text: string): any | undefined {
@@ -20,16 +20,12 @@ function parseJsonSafe(text: string): any | undefined {
 
 function formatDropboxError(status: number, data: any, fallback?: string): string {
   const message =
-    data?.error_summary ||
-    data?.error?.summary ||
-    data?.message ||
-    fallback ||
-    'Dropbox API error';
+    data?.error_summary || data?.error?.summary || data?.message || fallback || "Dropbox API error";
   return `Dropbox API error ${status}: ${message}`;
 }
 
 export interface DropboxRequestOptions {
-  method: 'POST';
+  method: "POST";
   path: string;
   body?: Record<string, any>;
   timeoutMs?: number;
@@ -43,16 +39,18 @@ export interface DropboxRequestResult {
 
 export async function dropboxRequest(
   settings: DropboxSettingsData,
-  options: DropboxRequestOptions
+  options: DropboxRequestOptions,
 ): Promise<DropboxRequestResult> {
   if (!settings.accessToken) {
-    throw new Error('Dropbox access token not configured. Add it in Settings > Integrations > Dropbox.');
+    throw new Error(
+      "Dropbox access token not configured. Add it in Settings > Integrations > Dropbox.",
+    );
   }
 
   const url = `${DROPBOX_API_BASE}${options.path}`;
   const headers: Record<string, string> = {
     Authorization: `Bearer ${settings.accessToken}`,
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   };
 
   const timeoutMs = options.timeoutMs ?? settings.timeoutMs ?? DEFAULT_TIMEOUT_MS;
@@ -67,7 +65,7 @@ export async function dropboxRequest(
       signal: controller.signal,
     });
 
-    const rawText = typeof response.text === 'function' ? await response.text() : '';
+    const rawText = typeof response.text === "function" ? await response.text() : "";
     const data = rawText ? parseJsonSafe(rawText) : undefined;
 
     if (!response.ok) {
@@ -80,8 +78,8 @@ export async function dropboxRequest(
       raw: rawText || undefined,
     };
   } catch (error: any) {
-    if (error?.name === 'AbortError') {
-      throw new Error('Dropbox API request timed out');
+    if (error?.name === "AbortError") {
+      throw new Error("Dropbox API request timed out");
     }
     throw error;
   } finally {
@@ -91,19 +89,21 @@ export async function dropboxRequest(
 
 export async function dropboxContentUpload(
   settings: DropboxSettingsData,
-  opts: { path: string; data: Uint8Array; timeoutMs?: number }
+  opts: { path: string; data: Uint8Array; timeoutMs?: number },
 ): Promise<DropboxRequestResult> {
   if (!settings.accessToken) {
-    throw new Error('Dropbox access token not configured. Add it in Settings > Integrations > Dropbox.');
+    throw new Error(
+      "Dropbox access token not configured. Add it in Settings > Integrations > Dropbox.",
+    );
   }
 
   const url = `${DROPBOX_CONTENT_BASE}/files/upload`;
   const headers: Record<string, string> = {
     Authorization: `Bearer ${settings.accessToken}`,
-    'Content-Type': 'application/octet-stream',
-    'Dropbox-API-Arg': JSON.stringify({
+    "Content-Type": "application/octet-stream",
+    "Dropbox-API-Arg": JSON.stringify({
       path: opts.path,
-      mode: 'add',
+      mode: "add",
       autorename: true,
       mute: false,
       strict_conflict: false,
@@ -116,13 +116,13 @@ export async function dropboxContentUpload(
 
   try {
     const response = await fetch(url, {
-      method: 'POST',
+      method: "POST",
       headers,
       body: Buffer.from(opts.data),
       signal: controller.signal,
     });
 
-    const rawText = typeof response.text === 'function' ? await response.text() : '';
+    const rawText = typeof response.text === "function" ? await response.text() : "";
     const data = rawText ? parseJsonSafe(rawText) : undefined;
 
     if (!response.ok) {
@@ -135,8 +135,8 @@ export async function dropboxContentUpload(
       raw: rawText || undefined,
     };
   } catch (error: any) {
-    if (error?.name === 'AbortError') {
-      throw new Error('Dropbox upload request timed out');
+    if (error?.name === "AbortError") {
+      throw new Error("Dropbox upload request timed out");
     }
     throw error;
   } finally {
@@ -145,16 +145,21 @@ export async function dropboxContentUpload(
 }
 
 function extractAccountInfo(data: any): { name?: string; userId?: string; email?: string } {
-  if (!data || typeof data !== 'object') return {};
+  if (!data || typeof data !== "object") return {};
   const name = data?.name?.display_name || data?.name?.abbreviated_name || undefined;
   const userId = data?.account_id || data?.id || undefined;
   const email = data?.email || undefined;
   return { name, userId, email };
 }
 
-export async function testDropboxConnection(settings: DropboxSettingsData): Promise<DropboxConnectionTestResult> {
+export async function testDropboxConnection(
+  settings: DropboxSettingsData,
+): Promise<DropboxConnectionTestResult> {
   try {
-    const result = await dropboxRequest(settings, { method: 'POST', path: '/users/get_current_account' });
+    const result = await dropboxRequest(settings, {
+      method: "POST",
+      path: "/users/get_current_account",
+    });
     const extracted = extractAccountInfo(result.data);
     return {
       success: true,
@@ -165,7 +170,7 @@ export async function testDropboxConnection(settings: DropboxSettingsData): Prom
   } catch (error: any) {
     return {
       success: false,
-      error: error?.message || 'Failed to connect to Dropbox',
+      error: error?.message || "Failed to connect to Dropbox",
     };
   }
 }

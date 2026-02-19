@@ -1,24 +1,29 @@
-import { describe, it, expect, vi } from 'vitest';
-import type { AgentTeam, AgentTeamItem, AgentTeamRun, Task, UpdateAgentTeamItemRequest } from '../../../shared/types';
+import { describe, it, expect, vi } from "vitest";
+import type {
+  AgentTeam,
+  AgentTeamItem,
+  AgentTeamRun,
+  Task,
+  UpdateAgentTeamItemRequest,
+} from "../../../shared/types";
 
-vi.mock('electron', () => ({
+vi.mock("electron", () => ({
   BrowserWindow: {
     getAllWindows: vi.fn(() => []),
   },
 }));
 
 // Avoid loading the native module in test environment.
-vi.mock('better-sqlite3', () => ({
+vi.mock("better-sqlite3", () => ({
   default: class FakeDatabase {},
 }));
 
-function makeRepos(seed: {
-  team: AgentTeam;
-  run: AgentTeamRun;
-  items: AgentTeamItem[];
-}): {
+function makeRepos(seed: { team: AgentTeam; run: AgentTeamRun; items: AgentTeamItem[] }): {
   teamRepo: { findById: (id: string) => AgentTeam | undefined };
-  runRepo: { findById: (id: string) => AgentTeamRun | undefined; update: (id: string, updates: any) => AgentTeamRun | undefined };
+  runRepo: {
+    findById: (id: string) => AgentTeamRun | undefined;
+    update: (id: string, updates: any) => AgentTeamRun | undefined;
+  };
   itemRepo: {
     listByRun: (runId: string) => AgentTeamItem[];
     listBySourceTaskId: (taskId: string) => AgentTeamItem[];
@@ -43,7 +48,9 @@ function makeRepos(seed: {
           ...(updates.status !== undefined ? { status: updates.status } : {}),
           ...(updates.error !== undefined ? { error: updates.error ?? undefined } : {}),
           ...(updates.summary !== undefined ? { summary: updates.summary ?? undefined } : {}),
-          ...(updates.completedAt !== undefined ? { completedAt: updates.completedAt ?? undefined } : {}),
+          ...(updates.completedAt !== undefined
+            ? { completedAt: updates.completedAt ?? undefined }
+            : {}),
         };
         runs.set(id, next);
         return next;
@@ -51,19 +58,30 @@ function makeRepos(seed: {
     },
     itemRepo: {
       listByRun: (runId) => Array.from(items.values()).filter((i) => i.teamRunId === runId),
-      listBySourceTaskId: (taskId) => Array.from(items.values()).filter((i) => i.sourceTaskId === taskId),
+      listBySourceTaskId: (taskId) =>
+        Array.from(items.values()).filter((i) => i.sourceTaskId === taskId),
       update: (req) => {
         const existing = items.get(req.id);
         if (!existing) return undefined;
         const next: AgentTeamItem = {
           ...existing,
-          ...(req.parentItemId !== undefined ? { parentItemId: (req.parentItemId as any) ?? undefined } : {}),
+          ...(req.parentItemId !== undefined
+            ? { parentItemId: (req.parentItemId as any) ?? undefined }
+            : {}),
           ...(req.title !== undefined ? { title: req.title } : {}),
-          ...(req.description !== undefined ? { description: (req.description as any) ?? undefined } : {}),
-          ...(req.ownerAgentRoleId !== undefined ? { ownerAgentRoleId: (req.ownerAgentRoleId as any) ?? undefined } : {}),
-          ...(req.sourceTaskId !== undefined ? { sourceTaskId: (req.sourceTaskId as any) ?? undefined } : {}),
+          ...(req.description !== undefined
+            ? { description: (req.description as any) ?? undefined }
+            : {}),
+          ...(req.ownerAgentRoleId !== undefined
+            ? { ownerAgentRoleId: (req.ownerAgentRoleId as any) ?? undefined }
+            : {}),
+          ...(req.sourceTaskId !== undefined
+            ? { sourceTaskId: (req.sourceTaskId as any) ?? undefined }
+            : {}),
           ...(req.status !== undefined ? { status: req.status as any } : {}),
-          ...(req.resultSummary !== undefined ? { resultSummary: (req.resultSummary as any) ?? undefined } : {}),
+          ...(req.resultSummary !== undefined
+            ? { resultSummary: (req.resultSummary as any) ?? undefined }
+            : {}),
           ...(req.sortOrder !== undefined ? { sortOrder: req.sortOrder as any } : {}),
           updatedAt: Date.now(),
         };
@@ -74,29 +92,29 @@ function makeRepos(seed: {
   };
 }
 
-describe('AgentTeamOrchestrator', () => {
-  it('spawns with team defaults and sets bypassQueue=false', async () => {
+describe("AgentTeamOrchestrator", () => {
+  it("spawns with team defaults and sets bypassQueue=false", async () => {
     const now = Date.now();
 
     const team: AgentTeam = {
-      id: 'team-1',
-      workspaceId: 'ws-1',
-      name: 'Team A',
+      id: "team-1",
+      workspaceId: "ws-1",
+      name: "Team A",
       description: undefined,
-      leadAgentRoleId: 'role-lead',
+      leadAgentRoleId: "role-lead",
       maxParallelAgents: 2,
-      defaultModelPreference: 'cheaper',
-      defaultPersonality: 'technical',
+      defaultModelPreference: "cheaper",
+      defaultPersonality: "technical",
       isActive: true,
       createdAt: now,
       updatedAt: now,
     };
 
     const run: AgentTeamRun = {
-      id: 'run-1',
+      id: "run-1",
       teamId: team.id,
-      rootTaskId: 'task-root',
-      status: 'running',
+      rootTaskId: "task-root",
+      status: "running",
       startedAt: now,
       completedAt: undefined,
       error: undefined,
@@ -104,14 +122,14 @@ describe('AgentTeamOrchestrator', () => {
     };
 
     const item: AgentTeamItem = {
-      id: 'item-1',
+      id: "item-1",
       teamRunId: run.id,
       parentItemId: undefined,
-      title: 'Item 1',
-      description: 'Detail',
-      ownerAgentRoleId: 'role-owner',
+      title: "Item 1",
+      description: "Detail",
+      ownerAgentRoleId: "role-owner",
       sourceTaskId: undefined,
-      status: 'todo',
+      status: "todo",
       resultSummary: undefined,
       sortOrder: 1,
       createdAt: now,
@@ -120,13 +138,13 @@ describe('AgentTeamOrchestrator', () => {
 
     const rootTask: Task = {
       id: run.rootTaskId,
-      title: 'Root',
-      prompt: 'Do the thing',
-      status: 'executing',
+      title: "Root",
+      prompt: "Do the thing",
+      status: "executing",
       workspaceId: team.workspaceId,
       createdAt: now,
       updatedAt: now,
-      agentType: 'main',
+      agentType: "main",
       depth: 0,
     };
 
@@ -137,7 +155,7 @@ describe('AgentTeamOrchestrator', () => {
         id: `task-child-${Math.random().toString(16).slice(2)}`,
         title: params.title,
         prompt: params.prompt,
-        status: 'pending',
+        status: "pending",
         workspaceId: params.workspaceId,
         createdAt: Date.now(),
         updatedAt: Date.now(),
@@ -153,18 +171,18 @@ describe('AgentTeamOrchestrator', () => {
 
     const { teamRepo, runRepo, itemRepo } = makeRepos({ team, run, items: [item] });
 
-    const { AgentTeamOrchestrator } = await import('../AgentTeamOrchestrator');
+    const { AgentTeamOrchestrator } = await import("../AgentTeamOrchestrator");
     const orch = new AgentTeamOrchestrator(
       {
-        getDatabase: () => ({} as any),
+        getDatabase: () => ({}) as any,
         getTaskById: async (taskId: string) => tasksById.get(taskId),
         createChildTask,
         cancelTask: async () => {},
       },
-      { teamRepo, runRepo, itemRepo }
+      { teamRepo, runRepo, itemRepo },
     );
 
-    await orch.tickRun(run.id, 'test');
+    await orch.tickRun(run.id, "test");
 
     expect(createChildTask).toHaveBeenCalledTimes(1);
     const call = createChildTask.mock.calls[0][0];
@@ -172,38 +190,38 @@ describe('AgentTeamOrchestrator', () => {
     expect(call.agentConfig).toMatchObject({
       retainMemory: false,
       bypassQueue: false,
-      modelKey: 'haiku-4-5',
-      personalityId: 'technical',
+      modelKey: "haiku-4-5",
+      personalityId: "technical",
     });
 
     const updated = itemRepo.listByRun(run.id)[0];
-    expect(updated.status).toBe('in_progress');
-    expect(typeof updated.sourceTaskId).toBe('string');
-    expect((updated.sourceTaskId || '').length).toBeGreaterThan(0);
+    expect(updated.status).toBe("in_progress");
+    expect(typeof updated.sourceTaskId).toBe("string");
+    expect((updated.sourceTaskId || "").length).toBeGreaterThan(0);
   });
 
-  it('does not override model/personality when defaults inherit', async () => {
+  it("does not override model/personality when defaults inherit", async () => {
     const now = Date.now();
 
     const team: AgentTeam = {
-      id: 'team-2',
-      workspaceId: 'ws-2',
-      name: 'Team B',
+      id: "team-2",
+      workspaceId: "ws-2",
+      name: "Team B",
       description: undefined,
-      leadAgentRoleId: 'role-lead-2',
+      leadAgentRoleId: "role-lead-2",
       maxParallelAgents: 1,
-      defaultModelPreference: 'same',
-      defaultPersonality: 'same',
+      defaultModelPreference: "same",
+      defaultPersonality: "same",
       isActive: true,
       createdAt: now,
       updatedAt: now,
     };
 
     const run: AgentTeamRun = {
-      id: 'run-2',
+      id: "run-2",
       teamId: team.id,
-      rootTaskId: 'task-root-2',
-      status: 'running',
+      rootTaskId: "task-root-2",
+      status: "running",
       startedAt: now,
       completedAt: undefined,
       error: undefined,
@@ -211,14 +229,14 @@ describe('AgentTeamOrchestrator', () => {
     };
 
     const item: AgentTeamItem = {
-      id: 'item-2',
+      id: "item-2",
       teamRunId: run.id,
       parentItemId: undefined,
-      title: 'Item',
+      title: "Item",
       description: undefined,
       ownerAgentRoleId: undefined,
       sourceTaskId: undefined,
-      status: 'todo',
+      status: "todo",
       resultSummary: undefined,
       sortOrder: 1,
       createdAt: now,
@@ -227,13 +245,13 @@ describe('AgentTeamOrchestrator', () => {
 
     const rootTask: Task = {
       id: run.rootTaskId,
-      title: 'Root 2',
-      prompt: 'Do the other thing',
-      status: 'executing',
+      title: "Root 2",
+      prompt: "Do the other thing",
+      status: "executing",
       workspaceId: team.workspaceId,
       createdAt: now,
       updatedAt: now,
-      agentType: 'main',
+      agentType: "main",
       depth: 0,
     };
 
@@ -244,7 +262,7 @@ describe('AgentTeamOrchestrator', () => {
         id: `task-child-${Math.random().toString(16).slice(2)}`,
         title: params.title,
         prompt: params.prompt,
-        status: 'pending',
+        status: "pending",
         workspaceId: params.workspaceId,
         createdAt: Date.now(),
         updatedAt: Date.now(),
@@ -260,18 +278,18 @@ describe('AgentTeamOrchestrator', () => {
 
     const { teamRepo, runRepo, itemRepo } = makeRepos({ team, run, items: [item] });
 
-    const { AgentTeamOrchestrator } = await import('../AgentTeamOrchestrator');
+    const { AgentTeamOrchestrator } = await import("../AgentTeamOrchestrator");
     const orch = new AgentTeamOrchestrator(
       {
-        getDatabase: () => ({} as any),
+        getDatabase: () => ({}) as any,
         getTaskById: async (taskId: string) => tasksById.get(taskId),
         createChildTask,
         cancelTask: async () => {},
       },
-      { teamRepo, runRepo, itemRepo }
+      { teamRepo, runRepo, itemRepo },
     );
 
-    await orch.tickRun(run.id, 'test');
+    await orch.tickRun(run.id, "test");
 
     const call = createChildTask.mock.calls[0][0];
     expect(call.agentConfig).toMatchObject({
@@ -282,4 +300,3 @@ describe('AgentTeamOrchestrator', () => {
     expect(call.agentConfig.personalityId).toBeUndefined();
   });
 });
-

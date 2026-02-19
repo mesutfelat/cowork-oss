@@ -9,22 +9,22 @@
  * Skills with the same ID from higher precedence sources override lower ones.
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from "fs";
+import * as path from "path";
 import {
   CustomSkill,
   SkillSource,
   SkillStatusEntry,
   SkillStatusReport,
   SkillsConfig,
-} from '../../shared/types';
-import { SkillEligibilityChecker, getSkillEligibilityChecker } from './skill-eligibility';
-import { getSkillRegistry } from './skill-registry';
-import { InputSanitizer } from './security';
-import { getUserDataDir } from '../utils/user-data-dir';
+} from "../../shared/types";
+import { SkillEligibilityChecker, getSkillEligibilityChecker } from "./skill-eligibility";
+import { getSkillRegistry } from "./skill-registry";
+import { InputSanitizer } from "./security";
+import { getUserDataDir } from "../utils/user-data-dir";
 
-const SKILLS_FOLDER_NAME = 'skills';
-const SKILL_FILE_EXTENSION = '.json';
+const SKILLS_FOLDER_NAME = "skills";
+const SKILL_FILE_EXTENSION = ".json";
 const RELOAD_DEBOUNCE_MS = 100; // Debounce rapid reload calls
 
 export interface SkillLoaderConfig {
@@ -36,12 +36,8 @@ export interface SkillLoaderConfig {
 
 export class CustomSkillLoader {
   private static readonly LOW_SIGNAL_ROUTING_HINT_PATTERNS = {
-    dontUseWhen: [
-      /planning documents,\s*high-level strategy,\s*or non-executable discussion/i,
-    ],
-    outputs: [
-      /^Outcome from .*task-specific result plus concrete action notes\.?$/i,
-    ],
+    dontUseWhen: [/planning documents,\s*high-level strategy,\s*or non-executable discussion/i],
+    outputs: [/^Outcome from .*task-specific result plus concrete action notes\.?$/i],
     successCriteria: [
       /returns concrete actions and decisions matching the requested task/i,
       /no fabricated tool-side behavior/i,
@@ -63,19 +59,18 @@ export class CustomSkillLoader {
 
   constructor(config?: SkillLoaderConfig) {
     // Bundled skills directory
-    const isDev = process.env.NODE_ENV === 'development';
+    const isDev = process.env.NODE_ENV === "development";
     if (config?.bundledSkillsDir) {
       this.bundledSkillsDir = config.bundledSkillsDir;
     } else if (isDev) {
-      this.bundledSkillsDir = path.join(process.cwd(), 'resources', SKILLS_FOLDER_NAME);
+      this.bundledSkillsDir = path.join(process.cwd(), "resources", SKILLS_FOLDER_NAME);
     } else {
-      this.bundledSkillsDir = path.join(process.resourcesPath || '', SKILLS_FOLDER_NAME);
+      this.bundledSkillsDir = path.join(process.resourcesPath || "", SKILLS_FOLDER_NAME);
     }
 
     // Managed skills directory (from registry)
     this.managedSkillsDir =
-      config?.managedSkillsDir ||
-      path.join(getUserDataDir(), SKILLS_FOLDER_NAME);
+      config?.managedSkillsDir || path.join(getUserDataDir(), SKILLS_FOLDER_NAME);
 
     // Workspace skills directory (set later when workspace is loaded)
     this.workspaceSkillsDir = config?.workspaceSkillsDir || null;
@@ -156,7 +151,7 @@ export class CustomSkillLoader {
       for (const file of skillFiles) {
         try {
           const filePath = path.join(dir, file);
-          const content = fs.readFileSync(filePath, 'utf-8');
+          const content = fs.readFileSync(filePath, "utf-8");
           const skill = JSON.parse(content) as CustomSkill;
 
           // Add metadata
@@ -222,10 +217,10 @@ export class CustomSkillLoader {
     this.skills.clear();
 
     // Load from all sources
-    const bundledSkills = this.loadSkillsFromDir(this.bundledSkillsDir, 'bundled');
-    const managedSkills = this.loadSkillsFromDir(this.managedSkillsDir, 'managed');
+    const bundledSkills = this.loadSkillsFromDir(this.bundledSkillsDir, "bundled");
+    const managedSkills = this.loadSkillsFromDir(this.managedSkillsDir, "managed");
     const workspaceSkills = this.workspaceSkillsDir
-      ? this.loadSkillsFromDir(this.workspaceSkillsDir, 'workspace')
+      ? this.loadSkillsFromDir(this.workspaceSkillsDir, "workspace")
       : [];
 
     // Merge with precedence: bundled < managed < workspace
@@ -251,7 +246,8 @@ export class CustomSkillLoader {
     console.log(
       `[CustomSkillLoader] Loaded ${counts.total} skills ` +
         `(bundled: ${counts.bundled}, managed: ${counts.managed}, workspace: ${counts.workspace}` +
-        (overridden > 0 ? `, ${overridden} overridden` : '') + ')'
+        (overridden > 0 ? `, ${overridden} overridden` : "") +
+        ")",
     );
 
     return this.listSkills();
@@ -266,10 +262,10 @@ export class CustomSkillLoader {
       skill.name &&
       skill.description &&
       skill.prompt &&
-      typeof skill.id === 'string' &&
-      typeof skill.name === 'string' &&
-      typeof skill.description === 'string' &&
-      typeof skill.prompt === 'string'
+      typeof skill.id === "string" &&
+      typeof skill.name === "string" &&
+      typeof skill.description === "string" &&
+      typeof skill.prompt === "string"
     );
   }
 
@@ -305,14 +301,14 @@ export class CustomSkillLoader {
    * Used for the skill dropdown in UI
    */
   listTaskSkills(): CustomSkill[] {
-    return this.listSkills().filter((skill) => skill.type !== 'guideline');
+    return this.listSkills().filter((skill) => skill.type !== "guideline");
   }
 
   /**
    * List only guideline skills
    */
   listGuidelineSkills(): CustomSkill[] {
-    return this.listSkills().filter((skill) => skill.type === 'guideline');
+    return this.listSkills().filter((skill) => skill.type === "guideline");
   }
 
   /**
@@ -321,24 +317,24 @@ export class CustomSkillLoader {
    * Guidelines are validated and sanitized to prevent injection attacks
    */
   getEnabledGuidelinesPrompt(): string {
-    const enabledGuidelines = this.listGuidelineSkills().filter(
-      (skill) => skill.enabled !== false
-    );
+    const enabledGuidelines = this.listGuidelineSkills().filter((skill) => skill.enabled !== false);
     if (enabledGuidelines.length === 0) {
-      return '';
+      return "";
     }
     // Validate and sanitize each guideline before injection
-    return enabledGuidelines.map((skill) => {
-      const validation = InputSanitizer.validateSkillGuidelines(skill.prompt);
-      if (!validation.valid) {
-        console.warn(
-          `[CustomSkillLoader] Security: Skill "${skill.id}" guidelines contain suspicious patterns:`,
-          validation.issues
-        );
-        return validation.sanitized;
-      }
-      return skill.prompt;
-    }).join('\n\n');
+    return enabledGuidelines
+      .map((skill) => {
+        const validation = InputSanitizer.validateSkillGuidelines(skill.prompt);
+        if (!validation.valid) {
+          console.warn(
+            `[CustomSkillLoader] Security: Skill "${skill.id}" guidelines contain suspicious patterns:`,
+            validation.issues,
+          );
+          return validation.sanitized;
+        }
+        return skill.prompt;
+      })
+      .join("\n\n");
   }
 
   /**
@@ -349,7 +345,7 @@ export class CustomSkillLoader {
     const availableToolNames = options.availableToolNames;
     return this.listSkills().filter((skill) => {
       // Exclude guideline skills
-      if (skill.type === 'guideline') return false;
+      if (skill.type === "guideline") return false;
       // Exclude disabled skills
       if (skill.enabled === false) return false;
       // Exclude skills that explicitly disable model invocation
@@ -359,7 +355,9 @@ export class CustomSkillLoader {
       if (availableToolNames) {
         const skillRequires = (skill.requires || {}) as any;
         const requiredTools: string[] = Array.isArray(skillRequires.tools)
-          ? skillRequires.tools.filter((tool: unknown): tool is string => typeof tool === 'string' && tool.trim().length > 0)
+          ? skillRequires.tools.filter(
+              (tool: unknown): tool is string => typeof tool === "string" && tool.trim().length > 0,
+            )
           : [];
 
         if (requiredTools.some((tool) => !availableToolNames.has(tool))) {
@@ -370,7 +368,7 @@ export class CustomSkillLoader {
         const hasBinaryRequirements =
           (Array.isArray(skill.requires?.bins) && skill.requires.bins.length > 0) ||
           (Array.isArray(skill.requires?.anyBins) && skill.requires.anyBins.length > 0);
-        if (hasBinaryRequirements && !availableToolNames.has('run_command')) {
+        if (hasBinaryRequirements && !availableToolNames.has("run_command")) {
           return false;
         }
       }
@@ -386,13 +384,13 @@ export class CustomSkillLoader {
   getSkillDescriptionsForModel(options: { availableToolNames?: Set<string> } = {}): string {
     const skills = this.listModelInvocableSkills(options);
     if (skills.length === 0) {
-      return '';
+      return "";
     }
 
     // Group skills by category
     const byCategory: Record<string, CustomSkill[]> = {};
     for (const skill of skills) {
-      const category = skill.category || 'General';
+      const category = skill.category || "General";
       if (!byCategory[category]) {
         byCategory[category] = [];
       }
@@ -405,8 +403,8 @@ export class CustomSkillLoader {
       lines.push(`\n${category}:`);
       for (const skill of categorySkills) {
         const paramInfo = skill.parameters?.length
-          ? ` (params: ${skill.parameters.map(p => p.name + (p.required ? '*' : '')).join(', ')})`
-          : '';
+          ? ` (params: ${skill.parameters.map((p) => p.name + (p.required ? "*" : "")).join(", ")})`
+          : "";
         lines.push(`- ${skill.id}: ${skill.description}${paramInfo}`);
 
         const routingHints = this.getSkillRoutingHints(skill);
@@ -416,7 +414,7 @@ export class CustomSkillLoader {
       }
     }
 
-    return lines.join('\n');
+    return lines.join("\n");
   }
 
   /**
@@ -433,29 +431,34 @@ export class CustomSkillLoader {
     if (routing.useWhen) {
       hints.push(`Use when: ${routing.useWhen}`);
     }
-    if (routing.dontUseWhen && !this.isLowSignalRoutingHint('dontUseWhen', routing.dontUseWhen)) {
+    if (routing.dontUseWhen && !this.isLowSignalRoutingHint("dontUseWhen", routing.dontUseWhen)) {
       hints.push(`Don't use when: ${routing.dontUseWhen}`);
     }
-    if (routing.outputs && !this.isLowSignalRoutingHint('outputs', routing.outputs)) {
+    if (routing.outputs && !this.isLowSignalRoutingHint("outputs", routing.outputs)) {
       hints.push(`Outputs: ${routing.outputs}`);
     }
-    if (routing.successCriteria && !this.isLowSignalRoutingHint('successCriteria', routing.successCriteria)) {
+    if (
+      routing.successCriteria &&
+      !this.isLowSignalRoutingHint("successCriteria", routing.successCriteria)
+    ) {
       hints.push(`Success criteria: ${routing.successCriteria}`);
     }
     if (routing.expectedArtifacts?.length) {
-      hints.push(`Artifacts: ${routing.expectedArtifacts.join(', ')}`);
+      hints.push(`Artifacts: ${routing.expectedArtifacts.join(", ")}`);
     }
 
     return hints;
   }
 
   private isLowSignalRoutingHint(
-    kind: 'dontUseWhen' | 'outputs' | 'successCriteria',
-    value: string
+    kind: "dontUseWhen" | "outputs" | "successCriteria",
+    value: string,
   ): boolean {
     const normalized = value.trim();
     if (!normalized) return true;
-    return CustomSkillLoader.LOW_SIGNAL_ROUTING_HINT_PATTERNS[kind].some((pattern) => pattern.test(normalized));
+    return CustomSkillLoader.LOW_SIGNAL_ROUTING_HINT_PATTERNS[kind].some((pattern) =>
+      pattern.test(normalized),
+    );
   }
 
   /**
@@ -471,21 +474,21 @@ export class CustomSkillLoader {
   expandPrompt(
     skill: CustomSkill,
     parameterValues: Record<string, string | number | boolean>,
-    context: { artifactDir?: string } = {}
+    context: { artifactDir?: string } = {},
   ): string {
     let prompt = this.expandSkillPromptPlaceholders(skill.prompt, skill, context);
 
     // Replace {{param}} placeholders with values
     if (skill.parameters) {
       for (const param of skill.parameters) {
-        const value = parameterValues[param.name] ?? param.default ?? '';
-        const placeholder = new RegExp(`\\{\\{${param.name}\\}\\}`, 'g');
+        const value = parameterValues[param.name] ?? param.default ?? "";
+        const placeholder = new RegExp(`\\{\\{${param.name}\\}\\}`, "g");
         prompt = prompt.replace(placeholder, String(value));
       }
     }
 
     // Remove any remaining unreplaced placeholders
-    prompt = prompt.replace(/\{\{[^}]+\}\}/g, '');
+    prompt = prompt.replace(/\{\{[^}]+\}\}/g, "");
 
     return prompt.trim();
   }
@@ -494,7 +497,7 @@ export class CustomSkillLoader {
    * Expand {baseDir} placeholders to the resolved skill base directory.
    */
   expandBaseDir(prompt: string, skill: CustomSkill): string {
-    if (!prompt.includes('{baseDir}')) {
+    if (!prompt.includes("{baseDir}")) {
       return prompt;
     }
     const baseDir = this.resolveBaseDir(skill);
@@ -504,7 +507,7 @@ export class CustomSkillLoader {
   private expandSkillPromptPlaceholders(
     prompt: string,
     skill: CustomSkill,
-    context: { artifactDir?: string }
+    context: { artifactDir?: string },
   ): string {
     let output = this.expandBaseDir(prompt, skill);
     if (context.artifactDir) {
@@ -519,12 +522,12 @@ export class CustomSkillLoader {
       fileDir,
       this.bundledSkillsDir,
       this.managedSkillsDir,
-      this.workspaceSkillsDir || '',
+      this.workspaceSkillsDir || "",
     ].filter(Boolean) as string[];
 
     for (const dir of candidates) {
       try {
-        if (fs.existsSync(path.join(dir, 'scripts'))) {
+        if (fs.existsSync(path.join(dir, "scripts"))) {
           return dir;
         }
       } catch {
@@ -558,12 +561,12 @@ export class CustomSkillLoader {
       eligible: statusEntries.filter((s) => s.eligible).length,
       disabled: statusEntries.filter((s) => s.disabled).length,
       missingRequirements: statusEntries.filter(
-        (s) => !s.eligible && !s.disabled && !s.blockedByAllowlist
+        (s) => !s.eligible && !s.disabled && !s.blockedByAllowlist,
       ).length,
     };
 
     return {
-      workspaceDir: this.workspaceSkillsDir || '',
+      workspaceDir: this.workspaceSkillsDir || "",
       managedSkillsDir: this.managedSkillsDir,
       bundledSkillsDir: this.bundledSkillsDir,
       skills: statusEntries,
@@ -599,9 +602,11 @@ export class CustomSkillLoader {
   /**
    * Create a skill in the workspace directory
    */
-  async createWorkspaceSkill(skill: Omit<CustomSkill, 'filePath' | 'source'>): Promise<CustomSkill> {
+  async createWorkspaceSkill(
+    skill: Omit<CustomSkill, "filePath" | "source">,
+  ): Promise<CustomSkill> {
     if (!this.workspaceSkillsDir) {
-      throw new Error('Workspace skills directory not set');
+      throw new Error("Workspace skills directory not set");
     }
 
     // Ensure workspace skills directory exists
@@ -612,11 +617,11 @@ export class CustomSkillLoader {
     const filePath = path.join(this.workspaceSkillsDir, `${skill.id}.json`);
     const fullSkill: CustomSkill = {
       ...skill,
-      source: 'workspace',
+      source: "workspace",
       filePath,
     };
 
-    fs.writeFileSync(filePath, JSON.stringify(fullSkill, null, 2), 'utf-8');
+    fs.writeFileSync(filePath, JSON.stringify(fullSkill, null, 2), "utf-8");
 
     // Reload skills to pick up the new one
     await this.reloadSkills();
@@ -629,7 +634,7 @@ export class CustomSkillLoader {
    */
   async updateSkill(
     skillId: string,
-    updates: Partial<Omit<CustomSkill, 'id' | 'filePath' | 'source'>>
+    updates: Partial<Omit<CustomSkill, "id" | "filePath" | "source">>,
   ): Promise<CustomSkill | null> {
     const skill = this.getSkill(skillId);
     if (!skill || !skill.filePath) {
@@ -637,8 +642,8 @@ export class CustomSkillLoader {
     }
 
     // Only allow updating workspace and managed skills
-    if (skill.source === 'bundled') {
-      throw new Error('Cannot update bundled skills');
+    if (skill.source === "bundled") {
+      throw new Error("Cannot update bundled skills");
     }
 
     const updatedSkill: CustomSkill = {
@@ -646,7 +651,7 @@ export class CustomSkillLoader {
       ...updates,
     };
 
-    fs.writeFileSync(skill.filePath, JSON.stringify(updatedSkill, null, 2), 'utf-8');
+    fs.writeFileSync(skill.filePath, JSON.stringify(updatedSkill, null, 2), "utf-8");
 
     // Reload skills to pick up the update
     await this.reloadSkills();
@@ -659,7 +664,7 @@ export class CustomSkillLoader {
    */
   async deleteWorkspaceSkill(skillId: string): Promise<boolean> {
     const skill = this.getSkill(skillId);
-    if (!skill || !skill.filePath || skill.source !== 'workspace') {
+    if (!skill || !skill.filePath || skill.source !== "workspace") {
       return false;
     }
 
@@ -677,7 +682,7 @@ export class CustomSkillLoader {
    */
   async deleteManagedSkill(skillId: string): Promise<boolean> {
     const skill = this.getSkill(skillId);
-    if (!skill || !skill.filePath || skill.source !== 'managed') {
+    if (!skill || !skill.filePath || skill.source !== "managed") {
       return false;
     }
 
@@ -694,7 +699,7 @@ export class CustomSkillLoader {
    * Open the managed skills folder in the system file browser
    */
   async openSkillsFolder(): Promise<void> {
-    const { shell } = await import('electron');
+    const { shell } = await import("electron");
 
     // Ensure directory exists
     if (!fs.existsSync(this.managedSkillsDir)) {
@@ -710,16 +715,16 @@ export class CustomSkillLoader {
    * Create a skill (alias for createWorkspaceSkill)
    * @deprecated Use createWorkspaceSkill instead
    */
-  async createSkill(skill: Omit<CustomSkill, 'filePath' | 'source'>): Promise<CustomSkill> {
+  async createSkill(skill: Omit<CustomSkill, "filePath" | "source">): Promise<CustomSkill> {
     // For backward compatibility, if no workspace is set, create in managed dir
     if (!this.workspaceSkillsDir) {
       const filePath = path.join(this.managedSkillsDir, `${skill.id}.json`);
       const fullSkill: CustomSkill = {
         ...skill,
-        source: 'managed',
+        source: "managed",
         filePath,
       };
-      fs.writeFileSync(filePath, JSON.stringify(fullSkill, null, 2), 'utf-8');
+      fs.writeFileSync(filePath, JSON.stringify(fullSkill, null, 2), "utf-8");
       await this.reloadSkills();
       return fullSkill;
     }
@@ -734,10 +739,10 @@ export class CustomSkillLoader {
     const skill = this.getSkill(skillId);
     if (!skill) return false;
 
-    if (skill.source === 'workspace') {
+    if (skill.source === "workspace") {
       return this.deleteWorkspaceSkill(skillId);
     }
-    if (skill.source === 'managed') {
+    if (skill.source === "managed") {
       return this.deleteManagedSkill(skillId);
     }
     return false;

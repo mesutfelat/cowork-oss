@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from "react";
 
 interface BrowserViewProps {
   initialUrl?: string;
@@ -6,8 +6,8 @@ interface BrowserViewProps {
 }
 
 export function BrowserView({ initialUrl, onBack }: BrowserViewProps) {
-  const [url, setUrl] = useState(initialUrl || '');
-  const [activeUrl, setActiveUrl] = useState(initialUrl || '');
+  const [url, setUrl] = useState(initialUrl || "");
+  const [activeUrl, setActiveUrl] = useState(initialUrl || "");
   const webviewRef = useRef<any>(null);
 
   useEffect(() => {
@@ -25,7 +25,7 @@ export function BrowserView({ initialUrl, onBack }: BrowserViewProps) {
   };
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Enter') {
+    if (event.key === "Enter") {
       event.preventDefault();
       navigate();
     }
@@ -41,7 +41,15 @@ export function BrowserView({ initialUrl, onBack }: BrowserViewProps) {
           title="Back to app"
           aria-label="Back to app"
         >
-          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg
+            aria-hidden="true"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
             <polyline points="15 18 9 12 15 6" />
           </svg>
           Back
@@ -53,7 +61,15 @@ export function BrowserView({ initialUrl, onBack }: BrowserViewProps) {
           title="Back"
           aria-label="Go back in browser history"
         >
-          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg
+            aria-hidden="true"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
             <polyline points="15 18 9 12 15 6" />
           </svg>
         </button>
@@ -64,7 +80,15 @@ export function BrowserView({ initialUrl, onBack }: BrowserViewProps) {
           title="Forward"
           aria-label="Go forward in browser history"
         >
-          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg
+            aria-hidden="true"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
             <polyline points="9 18 15 12 9 6" />
           </svg>
         </button>
@@ -75,7 +99,15 @@ export function BrowserView({ initialUrl, onBack }: BrowserViewProps) {
           title="Reload"
           aria-label="Reload page"
         >
-          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg
+            aria-hidden="true"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
             <polyline points="23 4 23 10 17 10" />
             <polyline points="1 20 1 14 7 14" />
             <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
@@ -109,9 +141,7 @@ export function BrowserView({ initialUrl, onBack }: BrowserViewProps) {
             webpreferences="contextIsolation=yes, nodeIntegration=no"
           />
         ) : (
-          <div className="browser-empty">
-            Enter a URL above to start browsing.
-          </div>
+          <div className="browser-empty">Enter a URL above to start browsing.</div>
         )}
       </div>
     </div>

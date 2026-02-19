@@ -1,12 +1,23 @@
-import { useEffect, useState } from 'react';
-import { DropboxSettingsData } from '../../shared/types';
+import { useEffect, useState } from "react";
+import { DropboxSettingsData } from "../../shared/types";
 
 export function DropboxSettings() {
   const [settings, setSettings] = useState<DropboxSettingsData | null>(null);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<{ success: boolean; error?: string; name?: string; userId?: string; email?: string } | null>(null);
-  const [status, setStatus] = useState<{ configured: boolean; connected: boolean; name?: string; error?: string } | null>(null);
+  const [testResult, setTestResult] = useState<{
+    success: boolean;
+    error?: string;
+    name?: string;
+    userId?: string;
+    email?: string;
+  } | null>(null);
+  const [status, setStatus] = useState<{
+    configured: boolean;
+    connected: boolean;
+    name?: string;
+    error?: string;
+  } | null>(null);
   const [statusLoading, setStatusLoading] = useState(false);
 
   useEffect(() => {
@@ -19,7 +30,7 @@ export function DropboxSettings() {
       const loaded = await window.electronAPI.getDropboxSettings();
       setSettings(loaded);
     } catch (error) {
-      console.error('Failed to load Dropbox settings:', error);
+      console.error("Failed to load Dropbox settings:", error);
     }
   };
 
@@ -38,7 +49,7 @@ export function DropboxSettings() {
       setSettings(payload);
       await refreshStatus();
     } catch (error) {
-      console.error('Failed to save Dropbox settings:', error);
+      console.error("Failed to save Dropbox settings:", error);
     } finally {
       setSaving(false);
     }
@@ -50,7 +61,7 @@ export function DropboxSettings() {
       const result = await window.electronAPI.getDropboxStatus();
       setStatus(result);
     } catch (error) {
-      console.error('Failed to load Dropbox status:', error);
+      console.error("Failed to load Dropbox status:", error);
     } finally {
       setStatusLoading(false);
     }
@@ -64,7 +75,7 @@ export function DropboxSettings() {
       setTestResult(result);
       await refreshStatus();
     } catch (error: any) {
-      setTestResult({ success: false, error: error.message || 'Failed to test connection' });
+      setTestResult({ success: false, error: error.message || "Failed to test connection" });
     } finally {
       setTesting(false);
     }
@@ -75,16 +86,16 @@ export function DropboxSettings() {
   }
 
   const statusLabel = !status?.configured
-    ? 'Missing Token'
+    ? "Missing Token"
     : status.connected
-      ? 'Connected'
-      : 'Configured';
+      ? "Connected"
+      : "Configured";
 
   const statusClass = !status?.configured
-    ? 'missing'
+    ? "missing"
     : status.connected
-      ? 'connected'
-      : 'configured';
+      ? "connected"
+      : "configured";
 
   return (
     <div className="dropbox-settings">
@@ -95,7 +106,13 @@ export function DropboxSettings() {
             {status && (
               <span
                 className={`dropbox-status-badge ${statusClass}`}
-                title={!status.configured ? 'Access token not configured' : status.connected ? 'Connected to Dropbox' : 'Configured'}
+                title={
+                  !status.configured
+                    ? "Access token not configured"
+                    : status.connected
+                      ? "Connected to Dropbox"
+                      : "Configured"
+                }
               >
                 {statusLabel}
               </span>
@@ -105,20 +122,20 @@ export function DropboxSettings() {
             )}
           </div>
           <button className="btn-secondary btn-sm" onClick={refreshStatus} disabled={statusLoading}>
-            {statusLoading ? 'Checking...' : 'Refresh Status'}
+            {statusLoading ? "Checking..." : "Refresh Status"}
           </button>
         </div>
         <p className="settings-description">
           Connect the agent to Dropbox using an access token, then use the built-in `dropbox_action`
           tool to search and manage files.
         </p>
-        {status?.error && (
-          <p className="settings-hint">Status check: {status.error}</p>
-        )}
+        {status?.error && <p className="settings-hint">Status check: {status.error}</p>}
         <div className="settings-actions">
           <button
             className="btn-secondary btn-sm"
-            onClick={() => window.electronAPI.openExternal('https://www.dropbox.com/developers/apps')}
+            onClick={() =>
+              window.electronAPI.openExternal("https://www.dropbox.com/developers/apps")
+            }
           >
             Open Dropbox App Console
           </button>
@@ -144,10 +161,12 @@ export function DropboxSettings() {
             type="password"
             className="settings-input"
             placeholder="Dropbox access token"
-            value={settings.accessToken || ''}
+            value={settings.accessToken || ""}
             onChange={(e) => updateSettings({ accessToken: e.target.value || undefined })}
           />
-          <p className="settings-hint">Use a token with files.content.read/write or full access scopes.</p>
+          <p className="settings-hint">
+            Use a token with files.content.read/write or full access scopes.
+          </p>
         </div>
 
         <div className="settings-field">
@@ -163,18 +182,22 @@ export function DropboxSettings() {
         </div>
 
         <div className="settings-actions">
-          <button className="btn-secondary btn-sm" onClick={handleTestConnection} disabled={testing}>
-            {testing ? 'Testing...' : 'Test Connection'}
+          <button
+            className="btn-secondary btn-sm"
+            onClick={handleTestConnection}
+            disabled={testing}
+          >
+            {testing ? "Testing..." : "Test Connection"}
           </button>
           <button className="btn-primary btn-sm" onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving...' : 'Save Settings'}
+            {saving ? "Saving..." : "Save Settings"}
           </button>
         </div>
 
         {testResult && (
-          <div className={`test-result ${testResult.success ? 'success' : 'error'}`}>
+          <div className={`test-result ${testResult.success ? "success" : "error"}`}>
             {testResult.success ? (
-              <span>Connected{testResult.name ? ` as ${testResult.name}` : ''}</span>
+              <span>Connected{testResult.name ? ` as ${testResult.name}` : ""}</span>
             ) : (
               <span>Connection failed: {testResult.error}</span>
             )}

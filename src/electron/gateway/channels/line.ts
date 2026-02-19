@@ -32,14 +32,14 @@ import {
   StatusHandler,
   ChannelInfo,
   LineConfig,
-} from './types';
-import { LineClient, LineMessage, LineUserProfile } from './line-client';
+} from "./types";
+import { LineClient, LineMessage, LineUserProfile } from "./line-client";
 
 export class LineAdapter implements ChannelAdapter {
-  readonly type = 'line' as const;
+  readonly type = "line" as const;
 
   private client: LineClient | null = null;
-  private _status: ChannelStatus = 'disconnected';
+  private _status: ChannelStatus = "disconnected";
   private _botUsername?: string;
   private _botId?: string;
   private messageHandlers: MessageHandler[] = [];
@@ -69,7 +69,7 @@ export class LineAdapter implements ChannelAdapter {
   constructor(config: LineConfig) {
     this.config = {
       webhookPort: 3100,
-      webhookPath: '/line/webhook',
+      webhookPath: "/line/webhook",
       deduplicationEnabled: true,
       useReplyTokens: true,
       ...config,
@@ -88,11 +88,11 @@ export class LineAdapter implements ChannelAdapter {
    * Connect to LINE
    */
   async connect(): Promise<void> {
-    if (this._status === 'connected' || this._status === 'connecting') {
+    if (this._status === "connected" || this._status === "connecting") {
       return;
     }
 
-    this.setStatus('connecting');
+    this.setStatus("connecting");
     this.shouldReconnect = true;
 
     try {
@@ -102,13 +102,13 @@ export class LineAdapter implements ChannelAdapter {
         channelSecret: this.config.channelSecret,
         webhookPort: this.config.webhookPort!,
         webhookPath: this.config.webhookPath!,
-        verbose: process.env.NODE_ENV === 'development',
+        verbose: process.env.NODE_ENV === "development",
       });
 
       // Check connection
       const check = await this.client.checkConnection();
       if (!check.success) {
-        throw new Error(check.error || 'Failed to connect to LINE');
+        throw new Error(check.error || "Failed to connect to LINE");
       }
 
       this._botId = check.botId;
@@ -118,26 +118,26 @@ export class LineAdapter implements ChannelAdapter {
         const botInfo = await this.client.getBotInfo();
         this._botUsername = botInfo.displayName;
       } catch {
-        this._botUsername = 'LINE Bot';
+        this._botUsername = "LINE Bot";
       }
 
       // Set up event handlers
-      this.client.on('message', (message: LineMessage) => {
+      this.client.on("message", (message: LineMessage) => {
         this.handleIncomingMessage(message);
       });
 
-      this.client.on('error', (error: Error) => {
-        this.handleError(error, 'client');
+      this.client.on("error", (error: Error) => {
+        this.handleError(error, "client");
       });
 
-      this.client.on('connected', () => {
-        console.log('LINE webhook server started');
+      this.client.on("connected", () => {
+        console.log("LINE webhook server started");
       });
 
-      this.client.on('disconnected', () => {
-        console.log('LINE webhook server stopped');
-        if (this._status === 'connected') {
-          this.setStatus('disconnected');
+      this.client.on("disconnected", () => {
+        console.log("LINE webhook server stopped");
+        if (this._status === "connected") {
+          this.setStatus("disconnected");
           // Attempt to reconnect if not intentionally disconnected
           this.scheduleReconnect();
         }
@@ -151,11 +151,11 @@ export class LineAdapter implements ChannelAdapter {
         this.startDedupCleanup();
       }
 
-      this.setStatus('connected');
+      this.setStatus("connected");
       console.log(`LINE adapter connected as ${this._botUsername}`);
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
-      this.setStatus('error', err);
+      this.setStatus("error", err);
       throw err;
     }
   }
@@ -191,7 +191,7 @@ export class LineAdapter implements ChannelAdapter {
 
     this._botUsername = undefined;
     this._botId = undefined;
-    this.setStatus('disconnected');
+    this.setStatus("disconnected");
   }
 
   /**
@@ -199,12 +199,16 @@ export class LineAdapter implements ChannelAdapter {
    */
   private scheduleReconnect(): void {
     if (!this.shouldReconnect || this.reconnectAttempts >= this.MAX_RECONNECT_ATTEMPTS) {
-      console.log(`LINE: Not reconnecting (shouldReconnect=${this.shouldReconnect}, attempts=${this.reconnectAttempts})`);
+      console.log(
+        `LINE: Not reconnecting (shouldReconnect=${this.shouldReconnect}, attempts=${this.reconnectAttempts})`,
+      );
       return;
     }
 
     const delay = this.RECONNECT_BASE_DELAY * Math.pow(2, this.reconnectAttempts);
-    console.log(`LINE: Scheduling reconnect attempt ${this.reconnectAttempts + 1}/${this.MAX_RECONNECT_ATTEMPTS} in ${delay}ms`);
+    console.log(
+      `LINE: Scheduling reconnect attempt ${this.reconnectAttempts + 1}/${this.MAX_RECONNECT_ATTEMPTS} in ${delay}ms`,
+    );
 
     this.reconnectTimer = setTimeout(async () => {
       this.reconnectAttempts++;
@@ -212,9 +216,9 @@ export class LineAdapter implements ChannelAdapter {
         await this.connect();
         // Reset attempts on successful connection
         this.reconnectAttempts = 0;
-        console.log('LINE: Reconnected successfully');
+        console.log("LINE: Reconnected successfully");
       } catch (error) {
-        console.error('LINE: Reconnect failed:', error);
+        console.error("LINE: Reconnect failed:", error);
         // Schedule next attempt
         this.scheduleReconnect();
       }
@@ -239,9 +243,9 @@ export class LineAdapter implements ChannelAdapter {
       }
 
       // Try to split at a newline or space
-      let splitIndex = remaining.lastIndexOf('\n', this.MAX_MESSAGE_LENGTH);
+      let splitIndex = remaining.lastIndexOf("\n", this.MAX_MESSAGE_LENGTH);
       if (splitIndex === -1 || splitIndex < this.MAX_MESSAGE_LENGTH * 0.5) {
-        splitIndex = remaining.lastIndexOf(' ', this.MAX_MESSAGE_LENGTH);
+        splitIndex = remaining.lastIndexOf(" ", this.MAX_MESSAGE_LENGTH);
       }
       if (splitIndex === -1 || splitIndex < this.MAX_MESSAGE_LENGTH * 0.5) {
         splitIndex = this.MAX_MESSAGE_LENGTH;
@@ -258,8 +262,8 @@ export class LineAdapter implements ChannelAdapter {
    * Send a message
    */
   async sendMessage(message: OutgoingMessage): Promise<string> {
-    if (!this.client || this._status !== 'connected') {
-      throw new Error('LINE client is not connected');
+    if (!this.client || this._status !== "connected") {
+      throw new Error("LINE client is not connected");
     }
 
     // Add response prefix if configured
@@ -280,51 +284,51 @@ export class LineAdapter implements ChannelAdapter {
         const cachedToken = this.replyTokenCache.get(message.chatId);
         if (cachedToken && cachedToken.expires > Date.now() + REPLY_TOKEN_SAFETY_BUFFER) {
           try {
-            await this.client.replyMessage(cachedToken.token, [{ type: 'text', text: chunk }]);
+            await this.client.replyMessage(cachedToken.token, [{ type: "text", text: chunk }]);
             this.replyTokenCache.delete(message.chatId);
             messageIds.push(`reply-${Date.now()}`);
             continue;
           } catch {
             // Reply token expired or invalid, fall through to push
-            console.log('LINE: Reply token failed, falling back to push message');
+            console.log("LINE: Reply token failed, falling back to push message");
           }
         }
       }
 
       // Use push message (uses quota)
-      await this.client.pushMessage(message.chatId, [{ type: 'text', text: chunk }]);
+      await this.client.pushMessage(message.chatId, [{ type: "text", text: chunk }]);
       messageIds.push(`push-${Date.now()}`);
     }
 
-    return messageIds.join(',');
+    return messageIds.join(",");
   }
 
   /**
    * Edit a message (not supported by LINE)
    */
   async editMessage(chatId: string, messageId: string, text: string): Promise<void> {
-    throw new Error('LINE does not support message editing');
+    throw new Error("LINE does not support message editing");
   }
 
   /**
    * Delete a message (limited support - can only unsend own messages)
    */
   async deleteMessage(chatId: string, messageId: string): Promise<void> {
-    throw new Error('LINE message deletion not implemented');
+    throw new Error("LINE message deletion not implemented");
   }
 
   /**
    * Send a document/file
    */
   async sendDocument(chatId: string, filePath: string, caption?: string): Promise<string> {
-    throw new Error('LINE file sending requires hosting - not implemented');
+    throw new Error("LINE file sending requires hosting - not implemented");
   }
 
   /**
    * Send a photo/image
    */
   async sendPhoto(chatId: string, filePath: string, caption?: string): Promise<string> {
-    throw new Error('LINE image sending requires hosting - not implemented');
+    throw new Error("LINE image sending requires hosting - not implemented");
   }
 
   /**
@@ -353,11 +357,11 @@ export class LineAdapter implements ChannelAdapter {
    */
   async getInfo(): Promise<ChannelInfo> {
     return {
-      type: 'line',
+      type: "line",
       status: this._status,
       botId: this._botId,
       botUsername: this._botUsername,
-      botDisplayName: `LINE (${this._botUsername || 'Not connected'})`,
+      botDisplayName: `LINE (${this._botUsername || "Not connected"})`,
       extra: {
         webhookPort: this.config.webhookPort,
         webhookPath: this.config.webhookPath,
@@ -373,7 +377,7 @@ export class LineAdapter implements ChannelAdapter {
    * Get user profile
    */
   async getUserProfile(userId: string): Promise<LineUserProfile | null> {
-    if (!this.client || this._status !== 'connected') {
+    if (!this.client || this._status !== "connected") {
       return null;
     }
 
@@ -388,8 +392,8 @@ export class LineAdapter implements ChannelAdapter {
    * Leave a group
    */
   async leaveGroup(groupId: string): Promise<void> {
-    if (!this.client || this._status !== 'connected') {
-      throw new Error('LINE client is not connected');
+    if (!this.client || this._status !== "connected") {
+      throw new Error("LINE client is not connected");
     }
     await this.client.leaveGroup(groupId);
   }
@@ -398,8 +402,8 @@ export class LineAdapter implements ChannelAdapter {
    * Leave a room
    */
   async leaveRoom(roomId: string): Promise<void> {
-    if (!this.client || this._status !== 'connected') {
-      throw new Error('LINE client is not connected');
+    if (!this.client || this._status !== "connected") {
+      throw new Error("LINE client is not connected");
     }
     await this.client.leaveRoom(roomId);
   }
@@ -413,7 +417,7 @@ export class LineAdapter implements ChannelAdapter {
    */
   private async handleIncomingMessage(lineMessage: LineMessage): Promise<void> {
     // Skip non-text messages for now
-    if (lineMessage.type !== 'text' || !lineMessage.text) {
+    if (lineMessage.type !== "text" || !lineMessage.text) {
       return;
     }
 
@@ -429,7 +433,7 @@ export class LineAdapter implements ChannelAdapter {
     }
 
     // Get user profile for display name
-    let userName = lineMessage.source.userId || 'Unknown';
+    let userName = lineMessage.source.userId || "Unknown";
     if (this.client && lineMessage.source.userId) {
       try {
         const profile = await this.client.getUserProfile(lineMessage.source.userId);
@@ -441,7 +445,7 @@ export class LineAdapter implements ChannelAdapter {
 
     // Determine chat ID
     const chatId =
-      lineMessage.source.groupId || lineMessage.source.roomId || lineMessage.source.userId || '';
+      lineMessage.source.groupId || lineMessage.source.roomId || lineMessage.source.userId || "";
 
     // Cache reply token for potential quick reply
     if (lineMessage.replyToken) {
@@ -451,13 +455,13 @@ export class LineAdapter implements ChannelAdapter {
       });
     }
 
-    const isGroup = lineMessage.source.type !== 'user';
+    const isGroup = lineMessage.source.type !== "user";
 
     // Convert to IncomingMessage
     const message: IncomingMessage = {
       messageId: lineMessage.id,
-      channel: 'line',
-      userId: lineMessage.source.userId || '',
+      channel: "line",
+      userId: lineMessage.source.userId || "",
       userName,
       chatId,
       isGroup,
@@ -471,10 +475,10 @@ export class LineAdapter implements ChannelAdapter {
       try {
         await handler(message);
       } catch (error) {
-        console.error('Error in LINE message handler:', error);
+        console.error("Error in LINE message handler:", error);
         this.handleError(
           error instanceof Error ? error : new Error(String(error)),
-          'messageHandler'
+          "messageHandler",
         );
       }
     }
@@ -528,7 +532,7 @@ export class LineAdapter implements ChannelAdapter {
       try {
         handler(error, context);
       } catch (e) {
-        console.error('Error in error handler:', e);
+        console.error("Error in error handler:", e);
       }
     }
   }
@@ -542,7 +546,7 @@ export class LineAdapter implements ChannelAdapter {
       try {
         handler(status, error);
       } catch (e) {
-        console.error('Error in status handler:', e);
+        console.error("Error in status handler:", e);
       }
     }
   }
@@ -553,10 +557,10 @@ export class LineAdapter implements ChannelAdapter {
  */
 export function createLineAdapter(config: LineConfig): LineAdapter {
   if (!config.channelAccessToken) {
-    throw new Error('LINE channel access token is required');
+    throw new Error("LINE channel access token is required");
   }
   if (!config.channelSecret) {
-    throw new Error('LINE channel secret is required');
+    throw new Error("LINE channel secret is required");
   }
   return new LineAdapter(config);
 }

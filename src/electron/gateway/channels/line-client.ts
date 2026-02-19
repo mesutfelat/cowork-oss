@@ -21,27 +21,27 @@
  * - Reply messages: Unlimited (use reply tokens when possible)
  */
 
-import { EventEmitter } from 'events';
-import * as http from 'http';
-import * as https from 'https';
-import * as crypto from 'crypto';
+import { EventEmitter } from "events";
+import * as http from "http";
+import * as https from "https";
+import * as crypto from "crypto";
 
 /**
  * LINE message types
  */
 export type LineMessageType =
-  | 'text'
-  | 'image'
-  | 'video'
-  | 'audio'
-  | 'file'
-  | 'location'
-  | 'sticker';
+  | "text"
+  | "image"
+  | "video"
+  | "audio"
+  | "file"
+  | "location"
+  | "sticker";
 
 /**
  * LINE source types
  */
-export type LineSourceType = 'user' | 'group' | 'room';
+export type LineSourceType = "user" | "group" | "room";
 
 /**
  * LINE incoming message
@@ -64,7 +64,7 @@ export interface LineMessage {
   text?: string;
   /** Content provider info (for media messages) */
   contentProvider?: {
-    type: 'line' | 'external';
+    type: "line" | "external";
     originalContentUrl?: string;
     previewImageUrl?: string;
   };
@@ -135,8 +135,8 @@ export class LineClient extends EventEmitter {
   private connected = false;
   private userCache: Map<string, LineUserProfile> = new Map();
 
-  private readonly API_BASE = 'https://api.line.me/v2';
-  private readonly DATA_API_BASE = 'https://api-data.line.me/v2';
+  private readonly API_BASE = "https://api.line.me/v2";
+  private readonly DATA_API_BASE = "https://api-data.line.me/v2";
 
   constructor(options: LineClientOptions) {
     super();
@@ -148,9 +148,9 @@ export class LineClient extends EventEmitter {
    */
   private verifySignature(body: string, signature: string): boolean {
     const hash = crypto
-      .createHmac('sha256', this.options.channelSecret)
+      .createHmac("sha256", this.options.channelSecret)
       .update(body)
-      .digest('base64');
+      .digest("base64");
     return hash === signature;
   }
 
@@ -164,7 +164,7 @@ export class LineClient extends EventEmitter {
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error.message : "Unknown error",
       };
     }
   }
@@ -173,7 +173,7 @@ export class LineClient extends EventEmitter {
    * Get bot's own profile
    */
   async getBotInfo(): Promise<LineUserProfile> {
-    const response = await this.apiRequest('GET', '/bot/info');
+    const response = await this.apiRequest("GET", "/bot/info");
     return {
       userId: response.userId as string,
       displayName: response.displayName as string,
@@ -194,27 +194,27 @@ export class LineClient extends EventEmitter {
         this.handleWebhook(req, res);
       });
 
-      this.server.on('error', (error: NodeJS.ErrnoException) => {
+      this.server.on("error", (error: NodeJS.ErrnoException) => {
         let enhancedError = error;
         // Provide better error messages for common issues
-        if (error.code === 'EADDRINUSE') {
+        if (error.code === "EADDRINUSE") {
           enhancedError = new Error(
             `Port ${this.options.webhookPort} is already in use. ` +
-            `Another application or LINE channel may be using this port. ` +
-            `Try a different webhook port in settings.`
+              `Another application or LINE channel may be using this port. ` +
+              `Try a different webhook port in settings.`,
           ) as NodeJS.ErrnoException;
-          enhancedError.code = 'EADDRINUSE';
-        } else if (error.code === 'EACCES') {
+          enhancedError.code = "EADDRINUSE";
+        } else if (error.code === "EACCES") {
           enhancedError = new Error(
             `Permission denied to use port ${this.options.webhookPort}. ` +
-            `Try a port number above 1024.`
+              `Try a port number above 1024.`,
           ) as NodeJS.ErrnoException;
-          enhancedError.code = 'EACCES';
+          enhancedError.code = "EACCES";
         }
         if (this.options.verbose) {
-          console.error('LINE webhook server error:', enhancedError);
+          console.error("LINE webhook server error:", enhancedError);
         }
-        this.emit('error', enhancedError);
+        this.emit("error", enhancedError);
         if (!this.connected) {
           reject(enhancedError);
         }
@@ -224,10 +224,10 @@ export class LineClient extends EventEmitter {
         this.connected = true;
         if (this.options.verbose) {
           console.log(
-            `LINE webhook server listening on port ${this.options.webhookPort}${this.options.webhookPath}`
+            `LINE webhook server listening on port ${this.options.webhookPort}${this.options.webhookPath}`,
           );
         }
-        this.emit('connected');
+        this.emit("connected");
         resolve();
       });
     });
@@ -238,24 +238,24 @@ export class LineClient extends EventEmitter {
    */
   private handleWebhook(req: http.IncomingMessage, res: http.ServerResponse): void {
     // Only handle POST requests to webhook path
-    if (req.method !== 'POST' || req.url !== this.options.webhookPath) {
+    if (req.method !== "POST" || req.url !== this.options.webhookPath) {
       res.writeHead(404);
       res.end();
       return;
     }
 
-    let body = '';
-    req.on('data', (chunk) => {
+    let body = "";
+    req.on("data", (chunk) => {
       body += chunk.toString();
     });
 
-    req.on('end', async () => {
+    req.on("end", async () => {
       try {
         // Verify signature
-        const signature = req.headers['x-line-signature'] as string;
+        const signature = req.headers["x-line-signature"] as string;
         if (!signature || !this.verifySignature(body, signature)) {
           if (this.options.verbose) {
-            console.warn('LINE webhook: Invalid signature');
+            console.warn("LINE webhook: Invalid signature");
           }
           res.writeHead(401);
           res.end();
@@ -273,7 +273,7 @@ export class LineClient extends EventEmitter {
         res.writeHead(200);
         res.end();
       } catch (error) {
-        console.error('LINE webhook processing error:', error);
+        console.error("LINE webhook processing error:", error);
         res.writeHead(500);
         res.end();
       }
@@ -287,31 +287,35 @@ export class LineClient extends EventEmitter {
     const eventType = event.type as string;
 
     switch (eventType) {
-      case 'message':
+      case "message":
         await this.handleMessageEvent(event);
         break;
 
-      case 'follow':
-        this.emit('follow', event.source && (event.source as Record<string, unknown>).userId, event.replyToken);
+      case "follow":
+        this.emit(
+          "follow",
+          event.source && (event.source as Record<string, unknown>).userId,
+          event.replyToken,
+        );
         break;
 
-      case 'unfollow':
-        this.emit('unfollow', event.source && (event.source as Record<string, unknown>).userId);
+      case "unfollow":
+        this.emit("unfollow", event.source && (event.source as Record<string, unknown>).userId);
         break;
 
-      case 'join':
+      case "join":
         {
           const source = event.source as Record<string, unknown>;
           const groupOrRoomId = source.groupId || source.roomId;
-          this.emit('join', groupOrRoomId, event.replyToken);
+          this.emit("join", groupOrRoomId, event.replyToken);
         }
         break;
 
-      case 'leave':
+      case "leave":
         {
           const source = event.source as Record<string, unknown>;
           const groupOrRoomId = source.groupId || source.roomId;
-          this.emit('leave', groupOrRoomId);
+          this.emit("leave", groupOrRoomId);
         }
         break;
 
@@ -345,25 +349,25 @@ export class LineClient extends EventEmitter {
 
     // Add type-specific content
     switch (messageData.type) {
-      case 'text':
+      case "text":
         message.text = messageData.text as string;
         break;
 
-      case 'image':
-      case 'video':
-      case 'audio':
-      case 'file':
-        message.contentProvider = messageData.contentProvider as LineMessage['contentProvider'];
+      case "image":
+      case "video":
+      case "audio":
+      case "file":
+        message.contentProvider = messageData.contentProvider as LineMessage["contentProvider"];
         break;
 
-      case 'sticker':
+      case "sticker":
         message.sticker = {
           packageId: messageData.packageId as string,
           stickerId: messageData.stickerId as string,
         };
         break;
 
-      case 'location':
+      case "location":
         message.location = {
           title: messageData.title as string,
           address: messageData.address as string,
@@ -373,7 +377,7 @@ export class LineClient extends EventEmitter {
         break;
     }
 
-    this.emit('message', message);
+    this.emit("message", message);
   }
 
   /**
@@ -385,7 +389,7 @@ export class LineClient extends EventEmitter {
         this.server!.close(() => {
           this.server = undefined;
           this.connected = false;
-          this.emit('disconnected');
+          this.emit("disconnected");
           resolve();
         });
       });
@@ -398,9 +402,9 @@ export class LineClient extends EventEmitter {
    */
   async replyMessage(
     replyToken: string,
-    messages: Array<{ type: string; text?: string; [key: string]: unknown }>
+    messages: Array<{ type: string; text?: string; [key: string]: unknown }>,
   ): Promise<void> {
-    await this.apiRequest('POST', '/bot/message/reply', {
+    await this.apiRequest("POST", "/bot/message/reply", {
       replyToken,
       messages,
     });
@@ -411,9 +415,9 @@ export class LineClient extends EventEmitter {
    */
   async pushMessage(
     to: string,
-    messages: Array<{ type: string; text?: string; [key: string]: unknown }>
+    messages: Array<{ type: string; text?: string; [key: string]: unknown }>,
   ): Promise<void> {
-    await this.apiRequest('POST', '/bot/message/push', {
+    await this.apiRequest("POST", "/bot/message/push", {
       to,
       messages,
     });
@@ -423,7 +427,7 @@ export class LineClient extends EventEmitter {
    * Send text message (convenience method)
    */
   async sendTextMessage(to: string, text: string, replyToken?: string): Promise<void> {
-    const messages = [{ type: 'text', text }];
+    const messages = [{ type: "text", text }];
 
     if (replyToken) {
       await this.replyMessage(replyToken, messages);
@@ -442,7 +446,7 @@ export class LineClient extends EventEmitter {
       return cached;
     }
 
-    const response = await this.apiRequest('GET', `/bot/profile/${userId}`);
+    const response = await this.apiRequest("GET", `/bot/profile/${userId}`);
     const profile: LineUserProfile = {
       userId: response.userId as string,
       displayName: response.displayName as string,
@@ -459,7 +463,7 @@ export class LineClient extends EventEmitter {
    * Get group member profile
    */
   async getGroupMemberProfile(groupId: string, userId: string): Promise<LineUserProfile> {
-    const response = await this.apiRequest('GET', `/bot/group/${groupId}/member/${userId}`);
+    const response = await this.apiRequest("GET", `/bot/group/${groupId}/member/${userId}`);
     return {
       userId: response.userId as string,
       displayName: response.displayName as string,
@@ -471,7 +475,7 @@ export class LineClient extends EventEmitter {
    * Get room member profile
    */
   async getRoomMemberProfile(roomId: string, userId: string): Promise<LineUserProfile> {
-    const response = await this.apiRequest('GET', `/bot/room/${roomId}/member/${userId}`);
+    const response = await this.apiRequest("GET", `/bot/room/${roomId}/member/${userId}`);
     return {
       userId: response.userId as string,
       displayName: response.displayName as string,
@@ -483,14 +487,14 @@ export class LineClient extends EventEmitter {
    * Leave a group
    */
   async leaveGroup(groupId: string): Promise<void> {
-    await this.apiRequest('POST', `/bot/group/${groupId}/leave`);
+    await this.apiRequest("POST", `/bot/group/${groupId}/leave`);
   }
 
   /**
    * Leave a room
    */
   async leaveRoom(roomId: string): Promise<void> {
-    await this.apiRequest('POST', `/bot/room/${roomId}/leave`);
+    await this.apiRequest("POST", `/bot/room/${roomId}/leave`);
   }
 
   /**
@@ -504,25 +508,25 @@ export class LineClient extends EventEmitter {
         {
           hostname: url.hostname,
           path: url.pathname,
-          method: 'GET',
+          method: "GET",
           headers: {
             Authorization: `Bearer ${this.options.channelAccessToken}`,
           },
         },
         (res) => {
           const chunks: Buffer[] = [];
-          res.on('data', (chunk) => chunks.push(chunk));
-          res.on('end', () => {
+          res.on("data", (chunk) => chunks.push(chunk));
+          res.on("end", () => {
             if (res.statusCode === 200) {
               resolve(Buffer.concat(chunks));
             } else {
               reject(new Error(`Failed to get content: ${res.statusCode}`));
             }
           });
-        }
+        },
       );
 
-      req.on('error', reject);
+      req.on("error", reject);
       req.end();
     });
   }
@@ -533,7 +537,7 @@ export class LineClient extends EventEmitter {
   private async apiRequest(
     method: string,
     path: string,
-    body?: Record<string, unknown>
+    body?: Record<string, unknown>,
   ): Promise<Record<string, unknown>> {
     return new Promise((resolve, reject) => {
       const url = new URL(`${this.API_BASE}${path}`);
@@ -544,16 +548,16 @@ export class LineClient extends EventEmitter {
         method,
         headers: {
           Authorization: `Bearer ${this.options.channelAccessToken}`,
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
       };
 
       const req = https.request(options, (res) => {
-        let data = '';
-        res.on('data', (chunk) => {
+        let data = "";
+        res.on("data", (chunk) => {
           data += chunk;
         });
-        res.on('end', () => {
+        res.on("end", () => {
           if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
             try {
               resolve(data ? JSON.parse(data) : {});
@@ -573,7 +577,7 @@ export class LineClient extends EventEmitter {
         });
       });
 
-      req.on('error', reject);
+      req.on("error", reject);
 
       if (body) {
         req.write(JSON.stringify(body));

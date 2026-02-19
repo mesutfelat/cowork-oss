@@ -1,12 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from "react";
 import {
   MentionData,
   MentionEvent,
   MentionType,
   MentionStatus,
   AgentRoleData,
-} from '../../electron/preload';
-import { useAgentContext } from '../hooks/useAgentContext';
+} from "../../electron/preload";
+import { useAgentContext } from "../hooks/useAgentContext";
 
 interface MentionListProps {
   workspaceId?: string;
@@ -17,23 +17,23 @@ interface MentionListProps {
 }
 
 const MENTION_TYPE_LABELS: Record<MentionType, string> = {
-  request: 'Request',
-  handoff: 'Handoff',
-  review: 'Review',
-  fyi: 'FYI',
+  request: "Request",
+  handoff: "Handoff",
+  review: "Review",
+  fyi: "FYI",
 };
 
 const STATUS_COLORS: Record<MentionStatus, string> = {
-  pending: '#f59e0b',
-  acknowledged: '#3b82f6',
-  completed: '#22c55e',
-  dismissed: '#6b7280',
+  pending: "#f59e0b",
+  acknowledged: "#3b82f6",
+  completed: "#22c55e",
+  dismissed: "#6b7280",
 };
 
 function formatTimeAgo(timestamp: number): string {
   const seconds = Math.floor((Date.now() - timestamp) / 1000);
 
-  if (seconds < 60) return 'just now';
+  if (seconds < 60) return "just now";
   if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
   if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
   if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
@@ -51,8 +51,8 @@ export function MentionList({
   const [mentions, setMentions] = useState<MentionData[]>([]);
   const [agents, setAgents] = useState<Record<string, AgentRoleData>>({});
   const [loading, setLoading] = useState(true);
-  const [filterStatus, setFilterStatus] = useState<MentionStatus | ''>('');
-  const [filterType, setFilterType] = useState<MentionType | ''>('');
+  const [filterStatus, setFilterStatus] = useState<MentionStatus | "">("");
+  const [filterType, setFilterType] = useState<MentionType | "">("");
   const agentContext = useAgentContext();
 
   // Load agents for display names
@@ -66,7 +66,7 @@ export function MentionList({
         });
         setAgents(agentMap);
       } catch (err) {
-        console.error('Failed to load agents:', err);
+        console.error("Failed to load agents:", err);
       }
     };
     loadAgents();
@@ -91,7 +91,7 @@ export function MentionList({
 
       setMentions(filtered);
     } catch (err) {
-      console.error('Failed to load mentions:', err);
+      console.error("Failed to load mentions:", err);
     } finally {
       setLoading(false);
     }
@@ -105,7 +105,7 @@ export function MentionList({
   useEffect(() => {
     const unsubscribe = window.electronAPI.onMentionEvent((event: MentionEvent) => {
       switch (event.type) {
-        case 'created':
+        case "created":
           if (event.mention) {
             const matches =
               (!workspaceId || event.mention.workspaceId === workspaceId) &&
@@ -116,12 +116,12 @@ export function MentionList({
             }
           }
           break;
-        case 'acknowledged':
-        case 'completed':
-        case 'dismissed':
+        case "acknowledged":
+        case "completed":
+        case "dismissed":
           if (event.mention) {
             setMentions((prev) =>
-              prev.map((m) => (m.id === event.mention!.id ? event.mention! : m))
+              prev.map((m) => (m.id === event.mention!.id ? event.mention! : m)),
             );
           }
           break;
@@ -136,7 +136,7 @@ export function MentionList({
     try {
       await window.electronAPI.acknowledgeMention(id);
     } catch (err) {
-      console.error('Failed to acknowledge mention:', err);
+      console.error("Failed to acknowledge mention:", err);
     }
   };
 
@@ -145,7 +145,7 @@ export function MentionList({
     try {
       await window.electronAPI.completeMention(id);
     } catch (err) {
-      console.error('Failed to complete mention:', err);
+      console.error("Failed to complete mention:", err);
     }
   };
 
@@ -154,23 +154,23 @@ export function MentionList({
     try {
       await window.electronAPI.dismissMention(id);
     } catch (err) {
-      console.error('Failed to dismiss mention:', err);
+      console.error("Failed to dismiss mention:", err);
     }
   };
 
   const getAgentName = (agentId: string | undefined): string => {
-    if (!agentId) return agentContext.getUiCopy('mentionUser');
-    return agents[agentId]?.displayName || agentContext.getUiCopy('mentionUnknownAgent');
+    if (!agentId) return agentContext.getUiCopy("mentionUser");
+    return agents[agentId]?.displayName || agentContext.getUiCopy("mentionUnknownAgent");
   };
 
   const getAgentIcon = (agentId: string | undefined): { icon: string; color: string } => {
-    if (!agentId) return { icon: '?', color: '#6366f1' };
+    if (!agentId) return { icon: "?", color: "#6366f1" };
     const agent = agents[agentId];
-    return agent ? { icon: agent.icon, color: agent.color } : { icon: '?', color: '#6366f1' };
+    return agent ? { icon: agent.icon, color: agent.color } : { icon: "?", color: "#6366f1" };
   };
 
   if (loading) {
-    return <div className="mention-loading">{agentContext.getUiCopy('mentionLoading')}</div>;
+    return <div className="mention-loading">{agentContext.getUiCopy("mentionLoading")}</div>;
   }
 
   return (
@@ -179,31 +179,33 @@ export function MentionList({
         <div className="mention-filters">
           <select
             value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value as MentionStatus | '')}
+            onChange={(e) => setFilterStatus(e.target.value as MentionStatus | "")}
           >
-            <option value="">{agentContext.getUiCopy('mentionAllStatuses')}</option>
-            <option value="pending">{agentContext.getUiCopy('mentionStatusPending')}</option>
-            <option value="acknowledged">{agentContext.getUiCopy('mentionStatusAcknowledged')}</option>
-            <option value="completed">{agentContext.getUiCopy('mentionStatusCompleted')}</option>
-            <option value="dismissed">{agentContext.getUiCopy('mentionStatusDismissed')}</option>
+            <option value="">{agentContext.getUiCopy("mentionAllStatuses")}</option>
+            <option value="pending">{agentContext.getUiCopy("mentionStatusPending")}</option>
+            <option value="acknowledged">
+              {agentContext.getUiCopy("mentionStatusAcknowledged")}
+            </option>
+            <option value="completed">{agentContext.getUiCopy("mentionStatusCompleted")}</option>
+            <option value="dismissed">{agentContext.getUiCopy("mentionStatusDismissed")}</option>
           </select>
 
           <select
             value={filterType}
-            onChange={(e) => setFilterType(e.target.value as MentionType | '')}
+            onChange={(e) => setFilterType(e.target.value as MentionType | "")}
           >
-            <option value="">{agentContext.getUiCopy('mentionAllTypes')}</option>
-            <option value="request">{agentContext.getUiCopy('mentionTypeRequest')}</option>
-            <option value="handoff">{agentContext.getUiCopy('mentionTypeHandoff')}</option>
-            <option value="review">{agentContext.getUiCopy('mentionTypeReview')}</option>
-            <option value="fyi">{agentContext.getUiCopy('mentionTypeFyi')}</option>
+            <option value="">{agentContext.getUiCopy("mentionAllTypes")}</option>
+            <option value="request">{agentContext.getUiCopy("mentionTypeRequest")}</option>
+            <option value="handoff">{agentContext.getUiCopy("mentionTypeHandoff")}</option>
+            <option value="review">{agentContext.getUiCopy("mentionTypeReview")}</option>
+            <option value="fyi">{agentContext.getUiCopy("mentionTypeFyi")}</option>
           </select>
         </div>
       )}
 
       {mentions.length === 0 ? (
         <div className="mention-empty">
-          <p>{agentContext.getUiCopy('mentionEmpty')}</p>
+          <p>{agentContext.getUiCopy("mentionEmpty")}</p>
         </div>
       ) : (
         <div className="mention-items">
@@ -219,17 +221,11 @@ export function MentionList({
               >
                 <div className="mention-header">
                   <div className="mention-agents">
-                    <span
-                      className="agent-avatar"
-                      style={{ backgroundColor: fromAgent.color }}
-                    >
+                    <span className="agent-avatar" style={{ backgroundColor: fromAgent.color }}>
                       {fromAgent.icon}
                     </span>
                     <span className="mention-arrow">→</span>
-                    <span
-                      className="agent-avatar"
-                      style={{ backgroundColor: toAgent.color }}
-                    >
+                    <span className="agent-avatar" style={{ backgroundColor: toAgent.color }}>
                       {toAgent.icon}
                     </span>
                   </div>
@@ -248,15 +244,13 @@ export function MentionList({
                 <div className="mention-body">
                   <div className="mention-from-to">
                     <strong>{getAgentName(mention.fromAgentRoleId)}</strong>
-                    {' → '}
+                    {" → "}
                     <strong>{getAgentName(mention.toAgentRoleId)}</strong>
                   </div>
-                  {mention.context && (
-                    <p className="mention-context">{mention.context}</p>
-                  )}
+                  {mention.context && <p className="mention-context">{mention.context}</p>}
                 </div>
 
-                {mention.status === 'pending' && (
+                {mention.status === "pending" && (
                   <div className="mention-actions">
                     <button
                       className="btn-action btn-acknowledge"
@@ -279,7 +273,7 @@ export function MentionList({
                   </div>
                 )}
 
-                {mention.status === 'acknowledged' && (
+                {mention.status === "acknowledged" && (
                   <div className="mention-actions">
                     <button
                       className="btn-action btn-complete"

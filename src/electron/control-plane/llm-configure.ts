@@ -1,10 +1,10 @@
-import { LLMProviderFactory } from '../agent/llm';
-import { ErrorCodes, type ErrorCode } from './protocol';
-import type { LLMProviderType } from '../../shared/types';
-import { LLM_PROVIDER_TYPES } from '../../shared/types';
+import { LLMProviderFactory } from "../agent/llm";
+import { ErrorCodes, type ErrorCode } from "./protocol";
+import type { LLMProviderType } from "../../shared/types";
+import { LLM_PROVIDER_TYPES } from "../../shared/types";
 
 const VALID_LLM_PROVIDER_TYPES = new Set<string>(LLM_PROVIDER_TYPES as readonly string[]);
-const BASE_URL_PROVIDER_KEYS = new Set<string>(['openrouter', 'groq', 'xai', 'kimi', 'ollama']);
+const BASE_URL_PROVIDER_KEYS = new Set<string>(["openrouter", "groq", "xai", "kimi", "ollama"]);
 
 type LlmValidationError = Error & { code: ErrorCode };
 
@@ -18,9 +18,13 @@ type SanitizedLlmConfigureParams = {
 const createInvalidParamsError = (message: string): LlmValidationError =>
   Object.assign(new Error(message), { code: ErrorCodes.INVALID_PARAMS });
 
-function sanitizeOptionalStringField(value: unknown, fieldName: string, maxLength: number): string | undefined {
+function sanitizeOptionalStringField(
+  value: unknown,
+  fieldName: string,
+  maxLength: number,
+): string | undefined {
   if (value === undefined || value === null) return undefined;
-  if (typeof value !== 'string') {
+  if (typeof value !== "string") {
     throw createInvalidParamsError(`${fieldName} must be a string`);
   }
   const trimmed = value.trim();
@@ -33,9 +37,9 @@ function sanitizeOptionalStringField(value: unknown, fieldName: string, maxLengt
 
 function sanitizeLlmConfigureParams(params: unknown): SanitizedLlmConfigureParams {
   const p = (params ?? {}) as any;
-  const providerTypeRaw = typeof p.providerType === 'string' ? p.providerType.trim() : '';
+  const providerTypeRaw = typeof p.providerType === "string" ? p.providerType.trim() : "";
   if (!providerTypeRaw) {
-    throw createInvalidParamsError('providerType is required');
+    throw createInvalidParamsError("providerType is required");
   }
   if (!VALID_LLM_PROVIDER_TYPES.has(providerTypeRaw)) {
     throw createInvalidParamsError(`Unsupported providerType: ${providerTypeRaw}`);
@@ -43,16 +47,16 @@ function sanitizeLlmConfigureParams(params: unknown): SanitizedLlmConfigureParam
 
   const settings = (() => {
     if (p.settings === undefined || p.settings === null) return undefined;
-    if (!p.settings || typeof p.settings !== 'object' || Array.isArray(p.settings)) {
-      throw createInvalidParamsError('settings must be an object');
+    if (!p.settings || typeof p.settings !== "object" || Array.isArray(p.settings)) {
+      throw createInvalidParamsError("settings must be an object");
     }
     return p.settings as Record<string, unknown>;
   })();
 
   return {
     providerType: providerTypeRaw as LLMProviderType,
-    apiKey: sanitizeOptionalStringField(p.apiKey, 'apiKey', 5000),
-    model: sanitizeOptionalStringField(p.model, 'model', 500),
+    apiKey: sanitizeOptionalStringField(p.apiKey, "apiKey", 5000),
+    model: sanitizeOptionalStringField(p.model, "model", 500),
     ...(settings ? { settings } : {}),
   };
 }
@@ -60,7 +64,7 @@ function sanitizeLlmConfigureParams(params: unknown): SanitizedLlmConfigureParam
 function readOptionalSettingString(
   settings: Record<string, unknown> | undefined,
   key: string,
-  maxLength: number
+  maxLength: number,
 ): string | undefined {
   if (!settings || !(key in settings)) return undefined;
   return sanitizeOptionalStringField(settings[key], `settings.${key}`, maxLength);
@@ -68,12 +72,12 @@ function readOptionalSettingString(
 
 function readOptionalSettingBoolean(
   settings: Record<string, unknown> | undefined,
-  key: string
+  key: string,
 ): boolean | undefined {
   if (!settings || !(key in settings)) return undefined;
   const value = settings[key];
   if (value === undefined || value === null) return undefined;
-  if (typeof value !== 'boolean') {
+  if (typeof value !== "boolean") {
     throw createInvalidParamsError(`settings.${key} must be a boolean`);
   }
   return value;
@@ -83,7 +87,7 @@ function applyProviderApiKeyAndBaseUrl(
   updatedSettings: any,
   providerKey: string,
   apiKey: string | undefined,
-  baseUrl: string | undefined
+  baseUrl: string | undefined,
 ): any {
   if (!apiKey && !baseUrl) return updatedSettings;
   return {
@@ -105,20 +109,22 @@ export function getControlPlaneLlmStatus() {
   };
 }
 
-export function configureLlmFromControlPlaneParams(params: unknown): { llm: ReturnType<typeof getControlPlaneLlmStatus> } {
+export function configureLlmFromControlPlaneParams(params: unknown): {
+  llm: ReturnType<typeof getControlPlaneLlmStatus>;
+} {
   const validated = sanitizeLlmConfigureParams(params);
   const settingsPatch = validated.settings;
-  const baseUrl = readOptionalSettingString(settingsPatch, 'baseUrl', 2000);
-  const endpoint = readOptionalSettingString(settingsPatch, 'endpoint', 2000);
-  const deployment = readOptionalSettingString(settingsPatch, 'deployment', 500);
-  const apiVersion = readOptionalSettingString(settingsPatch, 'apiVersion', 200);
-  const region = readOptionalSettingString(settingsPatch, 'region', 100);
-  const accessKeyId = readOptionalSettingString(settingsPatch, 'accessKeyId', 500);
-  const secretAccessKey = readOptionalSettingString(settingsPatch, 'secretAccessKey', 5000);
-  const sessionToken = readOptionalSettingString(settingsPatch, 'sessionToken', 5000);
-  const profile = readOptionalSettingString(settingsPatch, 'profile', 200);
-  const useDefaultCredentials = readOptionalSettingBoolean(settingsPatch, 'useDefaultCredentials');
-  const piProvider = readOptionalSettingString(settingsPatch, 'provider', 100);
+  const baseUrl = readOptionalSettingString(settingsPatch, "baseUrl", 2000);
+  const endpoint = readOptionalSettingString(settingsPatch, "endpoint", 2000);
+  const deployment = readOptionalSettingString(settingsPatch, "deployment", 500);
+  const apiVersion = readOptionalSettingString(settingsPatch, "apiVersion", 200);
+  const region = readOptionalSettingString(settingsPatch, "region", 100);
+  const accessKeyId = readOptionalSettingString(settingsPatch, "accessKeyId", 500);
+  const secretAccessKey = readOptionalSettingString(settingsPatch, "secretAccessKey", 5000);
+  const sessionToken = readOptionalSettingString(settingsPatch, "sessionToken", 5000);
+  const profile = readOptionalSettingString(settingsPatch, "profile", 200);
+  const useDefaultCredentials = readOptionalSettingBoolean(settingsPatch, "useDefaultCredentials");
+  const piProvider = readOptionalSettingString(settingsPatch, "provider", 100);
 
   let updatedSettings: any = {
     ...LLMProviderFactory.loadSettings(),
@@ -126,35 +132,36 @@ export function configureLlmFromControlPlaneParams(params: unknown): { llm: Retu
   };
 
   switch (validated.providerType) {
-    case 'anthropic':
+    case "anthropic":
       if (validated.apiKey) {
         updatedSettings.anthropic = { ...updatedSettings.anthropic, apiKey: validated.apiKey };
       }
       break;
-    case 'openai':
+    case "openai":
       if (validated.apiKey) {
         updatedSettings.openai = {
           ...updatedSettings.openai,
           apiKey: validated.apiKey,
-          authMethod: 'api_key',
+          authMethod: "api_key",
           accessToken: undefined,
           refreshToken: undefined,
           tokenExpiresAt: undefined,
         };
       }
       break;
-    case 'gemini':
+    case "gemini":
       if (validated.apiKey) {
         updatedSettings.gemini = { ...updatedSettings.gemini, apiKey: validated.apiKey };
       }
       break;
-    case 'azure': {
+    case "azure": {
       const existingDeployments = (updatedSettings.azure?.deployments || [])
         .map((entry: string) => entry.trim())
         .filter(Boolean);
-      const nextDeployments = deployment && !existingDeployments.includes(deployment)
-        ? [deployment, ...existingDeployments]
-        : existingDeployments;
+      const nextDeployments =
+        deployment && !existingDeployments.includes(deployment)
+          ? [deployment, ...existingDeployments]
+          : existingDeployments;
 
       if (validated.apiKey || endpoint || deployment || apiVersion) {
         updatedSettings.azure = {
@@ -163,24 +170,26 @@ export function configureLlmFromControlPlaneParams(params: unknown): { llm: Retu
           ...(endpoint ? { endpoint } : {}),
           ...(deployment ? { deployment } : {}),
           ...(apiVersion ? { apiVersion } : {}),
-          ...(nextDeployments.length > 0 ? { deployments: Array.from(new Set(nextDeployments)) } : {}),
+          ...(nextDeployments.length > 0
+            ? { deployments: Array.from(new Set(nextDeployments)) }
+            : {}),
         };
       }
       break;
     }
-    case 'bedrock':
+    case "bedrock":
       if (validated.apiKey) {
         throw createInvalidParamsError(
-          'For providerType=bedrock, pass accessKeyId/secretAccessKey/profile under settings JSON (apiKey is not used).'
+          "For providerType=bedrock, pass accessKeyId/secretAccessKey/profile under settings JSON (apiKey is not used).",
         );
       }
       if (
-        region !== undefined
-        || accessKeyId !== undefined
-        || secretAccessKey !== undefined
-        || sessionToken !== undefined
-        || profile !== undefined
-        || useDefaultCredentials !== undefined
+        region !== undefined ||
+        accessKeyId !== undefined ||
+        secretAccessKey !== undefined ||
+        sessionToken !== undefined ||
+        profile !== undefined ||
+        useDefaultCredentials !== undefined
       ) {
         updatedSettings.bedrock = {
           ...updatedSettings.bedrock,
@@ -193,7 +202,7 @@ export function configureLlmFromControlPlaneParams(params: unknown): { llm: Retu
         };
       }
       break;
-    case 'pi':
+    case "pi":
       if (validated.apiKey || piProvider) {
         updatedSettings.pi = {
           ...updatedSettings.pi,
@@ -208,7 +217,7 @@ export function configureLlmFromControlPlaneParams(params: unknown): { llm: Retu
           updatedSettings,
           validated.providerType,
           validated.apiKey,
-          baseUrl
+          baseUrl,
         );
       } else if (validated.apiKey || baseUrl) {
         const currentCustom = updatedSettings.customProviders?.[validated.providerType] || {};

@@ -6,14 +6,19 @@
  */
 
 // Transport types supported by MCP
-export type MCPTransportType = 'stdio' | 'sse' | 'websocket';
+export type MCPTransportType = "stdio" | "sse" | "websocket";
 
 // Connection status for MCP servers
-export type MCPConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'reconnecting' | 'error';
+export type MCPConnectionStatus =
+  | "disconnected"
+  | "connecting"
+  | "connected"
+  | "reconnecting"
+  | "error";
 
 // Authentication types
 export interface MCPAuthConfig {
-  type: 'none' | 'bearer' | 'api-key' | 'basic';
+  type: "none" | "bearer" | "api-key" | "basic";
   token?: string; // Encrypted when stored
   apiKey?: string; // Encrypted when stored
   username?: string;
@@ -67,7 +72,7 @@ export interface MCPTool {
   name: string;
   description?: string;
   inputSchema: {
-    type: 'object';
+    type: "object";
     properties?: Record<string, MCPToolProperty>;
     required?: string[];
     additionalProperties?: boolean;
@@ -129,18 +134,18 @@ export interface MCPServerInfo {
 
 // Tool call result content types
 export interface MCPTextContent {
-  type: 'text';
+  type: "text";
   text: string;
 }
 
 export interface MCPImageContent {
-  type: 'image';
+  type: "image";
   data: string; // Base64 encoded
   mimeType: string;
 }
 
 export interface MCPResourceContent {
-  type: 'resource';
+  type: "resource";
   resource: {
     uri: string;
     text?: string;
@@ -195,24 +200,24 @@ export interface MCPSettings {
 export const DEFAULT_MCP_SETTINGS: MCPSettings = {
   servers: [],
   autoConnect: true,
-  toolNamePrefix: 'mcp_',
+  toolNamePrefix: "mcp_",
   maxReconnectAttempts: 5,
   reconnectDelayMs: 1000,
   registryEnabled: true,
-  registryUrl: 'https://registry.modelcontextprotocol.io/servers.json',
+  registryUrl: "https://registry.modelcontextprotocol.io/servers.json",
   hostEnabled: false,
 };
 
 // JSON-RPC types for MCP protocol
 export interface JSONRPCRequest {
-  jsonrpc: '2.0';
+  jsonrpc: "2.0";
   id: string | number;
   method: string;
   params?: Record<string, any>;
 }
 
 export interface JSONRPCResponse {
-  jsonrpc: '2.0';
+  jsonrpc: "2.0";
   id: string | number;
   result?: any;
   error?: JSONRPCError;
@@ -225,7 +230,7 @@ export interface JSONRPCError {
 }
 
 export interface JSONRPCNotification {
-  jsonrpc: '2.0';
+  jsonrpc: "2.0";
   method: string;
   params?: Record<string, any>;
 }
@@ -233,35 +238,35 @@ export interface JSONRPCNotification {
 // MCP Protocol Methods
 export const MCP_METHODS = {
   // Lifecycle
-  INITIALIZE: 'initialize',
-  INITIALIZED: 'notifications/initialized',
-  SHUTDOWN: 'shutdown',
+  INITIALIZE: "initialize",
+  INITIALIZED: "notifications/initialized",
+  SHUTDOWN: "shutdown",
 
   // Tools
-  TOOLS_LIST: 'tools/list',
-  TOOLS_CALL: 'tools/call',
+  TOOLS_LIST: "tools/list",
+  TOOLS_CALL: "tools/call",
 
   // Resources
-  RESOURCES_LIST: 'resources/list',
-  RESOURCES_READ: 'resources/read',
-  RESOURCES_SUBSCRIBE: 'resources/subscribe',
-  RESOURCES_UNSUBSCRIBE: 'resources/unsubscribe',
+  RESOURCES_LIST: "resources/list",
+  RESOURCES_READ: "resources/read",
+  RESOURCES_SUBSCRIBE: "resources/subscribe",
+  RESOURCES_UNSUBSCRIBE: "resources/unsubscribe",
 
   // Prompts
-  PROMPTS_LIST: 'prompts/list',
-  PROMPTS_GET: 'prompts/get',
+  PROMPTS_LIST: "prompts/list",
+  PROMPTS_GET: "prompts/get",
 
   // Logging
-  LOGGING_SET_LEVEL: 'logging/setLevel',
+  LOGGING_SET_LEVEL: "logging/setLevel",
 
   // Notifications
-  TOOLS_LIST_CHANGED: 'notifications/tools/list_changed',
-  RESOURCES_LIST_CHANGED: 'notifications/resources/list_changed',
-  RESOURCES_UPDATED: 'notifications/resources/updated',
-  PROMPTS_LIST_CHANGED: 'notifications/prompts/list_changed',
-  CANCELLED: 'notifications/cancelled',
-  PROGRESS: 'notifications/progress',
-  MESSAGE: 'notifications/message',
+  TOOLS_LIST_CHANGED: "notifications/tools/list_changed",
+  RESOURCES_LIST_CHANGED: "notifications/resources/list_changed",
+  RESOURCES_UPDATED: "notifications/resources/updated",
+  PROMPTS_LIST_CHANGED: "notifications/prompts/list_changed",
+  CANCELLED: "notifications/cancelled",
+  PROGRESS: "notifications/progress",
+  MESSAGE: "notifications/message",
 } as const;
 
 // MCP Error Codes
@@ -290,18 +295,18 @@ export interface MCPTransport {
 
 // Events emitted by MCP client manager
 export type MCPClientEvent =
-  | { type: 'server_connected'; serverId: string; serverInfo: MCPServerInfo }
-  | { type: 'server_disconnected'; serverId: string; error?: string }
-  | { type: 'server_error'; serverId: string; error: string }
-  | { type: 'server_reconnecting'; serverId: string; attempt: number }
-  | { type: 'tools_changed'; serverId: string; tools: MCPTool[] }
-  | { type: 'resources_changed'; serverId: string; resources: MCPResource[] }
-  | { type: 'prompts_changed'; serverId: string; prompts: MCPPrompt[] };
+  | { type: "server_connected"; serverId: string; serverInfo: MCPServerInfo }
+  | { type: "server_disconnected"; serverId: string; error?: string }
+  | { type: "server_error"; serverId: string; error: string }
+  | { type: "server_reconnecting"; serverId: string; attempt: number }
+  | { type: "tools_changed"; serverId: string; tools: MCPTool[] }
+  | { type: "resources_changed"; serverId: string; resources: MCPResource[] }
+  | { type: "prompts_changed"; serverId: string; prompts: MCPPrompt[] };
 
 // ==================== MCP Registry Types ====================
 
 // Installation method for MCP servers
-export type MCPInstallMethod = 'npm' | 'pip' | 'binary' | 'docker' | 'manual';
+export type MCPInstallMethod = "npm" | "pip" | "binary" | "docker" | "manual";
 
 // Registry entry for an MCP server
 export interface MCPRegistryEntry {

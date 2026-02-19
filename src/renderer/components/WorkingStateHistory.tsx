@@ -1,11 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
-import {
-  AgentWorkingStateData,
-  WorkingStateType,
-} from '../../electron/preload';
-import { useAgentContext } from '../hooks/useAgentContext';
-import { ThemeIcon } from './ThemeIcon';
-import { ChartIcon, ClipboardIcon, EditIcon, TargetIcon } from './LineIcons';
+import { useState, useEffect, useCallback } from "react";
+import { AgentWorkingStateData, WorkingStateType } from "../../electron/preload";
+import { useAgentContext } from "../hooks/useAgentContext";
+import { ThemeIcon } from "./ThemeIcon";
+import { ChartIcon, ClipboardIcon, EditIcon, TargetIcon } from "./LineIcons";
 
 interface WorkingStateHistoryProps {
   agentRoleId: string;
@@ -15,10 +12,10 @@ interface WorkingStateHistoryProps {
 }
 
 const STATE_TYPE_LABELS: Record<WorkingStateType, { label: string; icon: React.ReactNode }> = {
-  context: { label: 'Context', icon: <ThemeIcon emoji="📋" icon={<ClipboardIcon size={14} />} /> },
-  progress: { label: 'Progress', icon: <ThemeIcon emoji="📊" icon={<ChartIcon size={14} />} /> },
-  notes: { label: 'Notes', icon: <ThemeIcon emoji="📝" icon={<EditIcon size={14} />} /> },
-  plan: { label: 'Plan', icon: <ThemeIcon emoji="🎯" icon={<TargetIcon size={14} />} /> },
+  context: { label: "Context", icon: <ThemeIcon emoji="📋" icon={<ClipboardIcon size={14} />} /> },
+  progress: { label: "Progress", icon: <ThemeIcon emoji="📊" icon={<ChartIcon size={14} />} /> },
+  notes: { label: "Notes", icon: <ThemeIcon emoji="📝" icon={<EditIcon size={14} />} /> },
+  plan: { label: "Plan", icon: <ThemeIcon emoji="🎯" icon={<TargetIcon size={14} />} /> },
 };
 
 function formatDate(timestamp: number): string {
@@ -27,8 +24,8 @@ function formatDate(timestamp: number): string {
   const isToday = date.toDateString() === now.toDateString();
 
   const time = date.toLocaleTimeString(undefined, {
-    hour: '2-digit',
-    minute: '2-digit',
+    hour: "2-digit",
+    minute: "2-digit",
   });
 
   if (isToday) {
@@ -42,10 +39,10 @@ function formatDate(timestamp: number): string {
   }
 
   return date.toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 }
 
@@ -58,7 +55,7 @@ export function WorkingStateHistory({
   const [history, setHistory] = useState<AgentWorkingStateData[]>([]);
   const [loading, setLoading] = useState(true);
   const [restoring, setRestoring] = useState<string | null>(null);
-  const [filterType, setFilterType] = useState<WorkingStateType | ''>('');
+  const [filterType, setFilterType] = useState<WorkingStateType | "">("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const agentContext = useAgentContext();
 
@@ -72,7 +69,7 @@ export function WorkingStateHistory({
       });
       setHistory(result);
     } catch (err) {
-      console.error('Failed to load history:', err);
+      console.error("Failed to load history:", err);
     } finally {
       setLoading(false);
     }
@@ -90,26 +87,24 @@ export function WorkingStateHistory({
         onRestore(restored);
       }
     } catch (err) {
-      console.error('Failed to restore state:', err);
+      console.error("Failed to restore state:", err);
     } finally {
       setRestoring(null);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm(agentContext.getUiCopy('workingStateHistoryDeleteConfirm'))) return;
+    if (!confirm(agentContext.getUiCopy("workingStateHistoryDeleteConfirm"))) return;
 
     try {
       await window.electronAPI.deleteWorkingState(id);
       setHistory((prev) => prev.filter((h) => h.id !== id));
     } catch (err) {
-      console.error('Failed to delete state:', err);
+      console.error("Failed to delete state:", err);
     }
   };
 
-  const filteredHistory = filterType
-    ? history.filter((h) => h.stateType === filterType)
-    : history;
+  const filteredHistory = filterType ? history.filter((h) => h.stateType === filterType) : history;
 
   // Group by date
   const groupedHistory: Record<string, AgentWorkingStateData[]> = {};
@@ -125,7 +120,9 @@ export function WorkingStateHistory({
     return (
       <div className="history-overlay" onClick={onClose}>
         <div className="history-panel" onClick={(e) => e.stopPropagation()}>
-          <div className="history-loading">{agentContext.getUiCopy('workingStateHistoryLoading')}</div>
+          <div className="history-loading">
+            {agentContext.getUiCopy("workingStateHistoryLoading")}
+          </div>
         </div>
       </div>
     );
@@ -135,7 +132,7 @@ export function WorkingStateHistory({
     <div className="history-overlay" onClick={onClose}>
       <div className="history-panel" onClick={(e) => e.stopPropagation()}>
         <div className="history-header">
-          <h3>{agentContext.getUiCopy('workingStateHistoryTitle')}</h3>
+          <h3>{agentContext.getUiCopy("workingStateHistoryTitle")}</h3>
           <button className="close-btn" onClick={onClose}>
             ✕
           </button>
@@ -144,32 +141,34 @@ export function WorkingStateHistory({
         <div className="history-filters">
           <select
             value={filterType}
-            onChange={(e) => setFilterType(e.target.value as WorkingStateType | '')}
+            onChange={(e) => setFilterType(e.target.value as WorkingStateType | "")}
           >
-            <option value="">{agentContext.getUiCopy('workingStateHistoryAllTypes')}</option>
+            <option value="">{agentContext.getUiCopy("workingStateHistoryAllTypes")}</option>
             <option value="context">Context</option>
             <option value="progress">Progress</option>
             <option value="notes">Notes</option>
             <option value="plan">Plan</option>
           </select>
           <span className="history-count">
-            {agentContext.getUiCopy('workingStateHistoryEntries', { count: filteredHistory.length })}
+            {agentContext.getUiCopy("workingStateHistoryEntries", {
+              count: filteredHistory.length,
+            })}
           </span>
         </div>
 
         <div className="history-list">
           {filteredHistory.length === 0 ? (
             <div className="history-empty">
-              <p>{agentContext.getUiCopy('workingStateHistoryEmpty')}</p>
+              <p>{agentContext.getUiCopy("workingStateHistoryEmpty")}</p>
             </div>
           ) : (
             Object.entries(groupedHistory).map(([dateKey, items]) => (
               <div key={dateKey} className="history-group">
                 <div className="group-header">
                   {new Date(dateKey).toLocaleDateString(undefined, {
-                    weekday: 'long',
-                    month: 'long',
-                    day: 'numeric',
+                    weekday: "long",
+                    month: "long",
+                    day: "numeric",
                   })}
                 </div>
                 {items.map((item) => {
@@ -179,7 +178,7 @@ export function WorkingStateHistory({
                   return (
                     <div
                       key={item.id}
-                      className={`history-item ${item.isCurrent ? 'current' : ''}`}
+                      className={`history-item ${item.isCurrent ? "current" : ""}`}
                     >
                       <div
                         className="item-header"
@@ -188,28 +187,28 @@ export function WorkingStateHistory({
                         <div className="item-info">
                           <span className="item-icon">{config.icon}</span>
                           <span className="item-type">{config.label}</span>
-                          <span className="item-time">
-                            {formatDate(item.updatedAt)}
-                          </span>
+                          <span className="item-time">{formatDate(item.updatedAt)}</span>
                           {item.isCurrent && (
-                            <span className="current-badge">{agentContext.getUiCopy('workingStateHistoryCurrent')}</span>
+                            <span className="current-badge">
+                              {agentContext.getUiCopy("workingStateHistoryCurrent")}
+                            </span>
                           )}
                         </div>
-                        <span className="expand-icon">
-                          {isExpanded ? '▼' : '▶'}
-                        </span>
+                        <span className="expand-icon">{isExpanded ? "▼" : "▶"}</span>
                       </div>
 
                       {isExpanded && (
                         <div className="item-content">
                           <div className="content-preview">
                             {item.content.length > 500
-                              ? item.content.slice(0, 500) + '...'
+                              ? item.content.slice(0, 500) + "..."
                               : item.content}
                           </div>
                           {item.fileReferences && item.fileReferences.length > 0 && (
                             <div className="file-refs">
-                              <span className="refs-label">{agentContext.getUiCopy('workingStateHistoryFilesLabel')}</span>
+                              <span className="refs-label">
+                                {agentContext.getUiCopy("workingStateHistoryFilesLabel")}
+                              </span>
                               {item.fileReferences.map((file, idx) => (
                                 <span key={idx} className="file-ref">
                                   {file}
@@ -225,15 +224,12 @@ export function WorkingStateHistory({
                                 disabled={restoring === item.id}
                               >
                                 {restoring === item.id
-                                  ? agentContext.getUiCopy('workingStateHistoryRestoring')
-                                  : agentContext.getUiCopy('workingStateHistoryRestore')}
+                                  ? agentContext.getUiCopy("workingStateHistoryRestoring")
+                                  : agentContext.getUiCopy("workingStateHistoryRestore")}
                               </button>
                             )}
-                            <button
-                              className="delete-btn"
-                              onClick={() => handleDelete(item.id)}
-                            >
-                              {agentContext.getUiCopy('workingStateHistoryDelete')}
+                            <button className="delete-btn" onClick={() => handleDelete(item.id)}>
+                              {agentContext.getUiCopy("workingStateHistoryDelete")}
                             </button>
                           </div>
                         </div>

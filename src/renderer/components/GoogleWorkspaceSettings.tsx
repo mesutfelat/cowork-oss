@@ -1,16 +1,17 @@
-import { useEffect, useState } from 'react';
-import { GoogleWorkspaceSettingsData } from '../../shared/types';
+import { useEffect, useState } from "react";
+import { GoogleWorkspaceSettingsData } from "../../shared/types";
 
 const DEFAULT_SCOPES = [
-  'https://www.googleapis.com/auth/drive',
-  'https://www.googleapis.com/auth/gmail.readonly',
-  'https://www.googleapis.com/auth/gmail.send',
-  'https://www.googleapis.com/auth/calendar',
+  "https://www.googleapis.com/auth/drive",
+  "https://www.googleapis.com/auth/gmail.readonly",
+  "https://www.googleapis.com/auth/gmail.send",
+  "https://www.googleapis.com/auth/calendar",
 ];
 
 const DEFAULT_TIMEOUT_MS = 20000;
 
-const scopesToText = (scopes?: string[]) => (scopes && scopes.length > 0 ? scopes.join(' ') : DEFAULT_SCOPES.join(' '));
+const scopesToText = (scopes?: string[]) =>
+  scopes && scopes.length > 0 ? scopes.join(" ") : DEFAULT_SCOPES.join(" ");
 
 const textToScopes = (value: string) =>
   value
@@ -22,8 +23,19 @@ export function GoogleWorkspaceSettings() {
   const [settings, setSettings] = useState<GoogleWorkspaceSettingsData | null>(null);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<{ success: boolean; error?: string; name?: string; userId?: string; email?: string } | null>(null);
-  const [status, setStatus] = useState<{ configured: boolean; connected: boolean; name?: string; error?: string } | null>(null);
+  const [testResult, setTestResult] = useState<{
+    success: boolean;
+    error?: string;
+    name?: string;
+    userId?: string;
+    email?: string;
+  } | null>(null);
+  const [status, setStatus] = useState<{
+    configured: boolean;
+    connected: boolean;
+    name?: string;
+    error?: string;
+  } | null>(null);
   const [statusLoading, setStatusLoading] = useState(false);
   const [oauthBusy, setOauthBusy] = useState(false);
   const [oauthError, setOauthError] = useState<string | null>(null);
@@ -38,7 +50,7 @@ export function GoogleWorkspaceSettings() {
       const loaded = await window.electronAPI.getGoogleWorkspaceSettings();
       setSettings(loaded);
     } catch (error) {
-      console.error('Failed to load Google Workspace settings:', error);
+      console.error("Failed to load Google Workspace settings:", error);
     }
   };
 
@@ -57,7 +69,7 @@ export function GoogleWorkspaceSettings() {
       setSettings(payload);
       await refreshStatus();
     } catch (error) {
-      console.error('Failed to save Google Workspace settings:', error);
+      console.error("Failed to save Google Workspace settings:", error);
     } finally {
       setSaving(false);
     }
@@ -69,7 +81,7 @@ export function GoogleWorkspaceSettings() {
       const result = await window.electronAPI.getGoogleWorkspaceStatus();
       setStatus(result);
     } catch (error) {
-      console.error('Failed to load Google Workspace status:', error);
+      console.error("Failed to load Google Workspace status:", error);
     } finally {
       setStatusLoading(false);
     }
@@ -83,7 +95,7 @@ export function GoogleWorkspaceSettings() {
       setTestResult(result);
       await refreshStatus();
     } catch (error: any) {
-      setTestResult({ success: false, error: error.message || 'Failed to test connection' });
+      setTestResult({ success: false, error: error.message || "Failed to test connection" });
     } finally {
       setTesting(false);
     }
@@ -91,7 +103,7 @@ export function GoogleWorkspaceSettings() {
 
   const handleOAuthConnect = async () => {
     if (!settings?.clientId) {
-      setOauthError('Client ID is required to start OAuth.');
+      setOauthError("Client ID is required to start OAuth.");
       return;
     }
 
@@ -99,14 +111,17 @@ export function GoogleWorkspaceSettings() {
     setOauthError(null);
 
     try {
-      const scopes = settings.scopes && settings.scopes.length > 0 ? settings.scopes : DEFAULT_SCOPES;
+      const scopes =
+        settings.scopes && settings.scopes.length > 0 ? settings.scopes : DEFAULT_SCOPES;
       const result = await window.electronAPI.startGoogleWorkspaceOAuth({
         clientId: settings.clientId,
         clientSecret: settings.clientSecret || undefined,
         scopes,
       });
 
-      const tokenExpiresAt = result.expiresIn ? Date.now() + result.expiresIn * 1000 : settings.tokenExpiresAt;
+      const tokenExpiresAt = result.expiresIn
+        ? Date.now() + result.expiresIn * 1000
+        : settings.tokenExpiresAt;
 
       const payload: GoogleWorkspaceSettingsData = {
         ...settings,
@@ -121,7 +136,7 @@ export function GoogleWorkspaceSettings() {
       setSettings(payload);
       await refreshStatus();
     } catch (error: any) {
-      setOauthError(error.message || 'Google Workspace OAuth failed');
+      setOauthError(error.message || "Google Workspace OAuth failed");
     } finally {
       setOauthBusy(false);
     }
@@ -132,16 +147,16 @@ export function GoogleWorkspaceSettings() {
   }
 
   const statusLabel = !status?.configured
-    ? 'Missing Token'
+    ? "Missing Token"
     : status.connected
-      ? 'Connected'
-      : 'Configured';
+      ? "Connected"
+      : "Configured";
 
   const statusClass = !status?.configured
-    ? 'missing'
+    ? "missing"
     : status.connected
-      ? 'connected'
-      : 'configured';
+      ? "connected"
+      : "configured";
 
   return (
     <div className="google-workspace-settings">
@@ -152,7 +167,13 @@ export function GoogleWorkspaceSettings() {
             {status && (
               <span
                 className={`google-workspace-status-badge ${statusClass}`}
-                title={!status.configured ? 'Tokens not configured' : status.connected ? 'Connected to Google Workspace' : 'Configured'}
+                title={
+                  !status.configured
+                    ? "Tokens not configured"
+                    : status.connected
+                      ? "Connected to Google Workspace"
+                      : "Configured"
+                }
               >
                 {statusLabel}
               </span>
@@ -162,32 +183,27 @@ export function GoogleWorkspaceSettings() {
             )}
           </div>
           <button className="btn-secondary btn-sm" onClick={refreshStatus} disabled={statusLoading}>
-            {statusLoading ? 'Checking...' : 'Refresh Status'}
+            {statusLoading ? "Checking..." : "Refresh Status"}
           </button>
         </div>
         <p className="settings-description">
-          Connect Gmail, Calendar, and Drive with a single Google Workspace OAuth flow. After connecting, use
-          `google_drive_action`, `gmail_action`, and `calendar_action` tools in tasks.
+          Connect Gmail, Calendar, and Drive with a single Google Workspace OAuth flow. After
+          connecting, use `google_drive_action`, `gmail_action`, and `calendar_action` tools in
+          tasks.
         </p>
-        {status?.error && (
-          <p className="settings-hint">Status check: {status.error}</p>
-        )}
-        {oauthError && (
-          <p className="settings-hint">OAuth error: {oauthError}</p>
-        )}
+        {status?.error && <p className="settings-hint">Status check: {status.error}</p>}
+        {oauthError && <p className="settings-hint">OAuth error: {oauthError}</p>}
         <div className="settings-actions">
           <button
             className="btn-secondary btn-sm"
-            onClick={() => window.electronAPI.openExternal('https://console.cloud.google.com/apis/credentials')}
+            onClick={() =>
+              window.electronAPI.openExternal("https://console.cloud.google.com/apis/credentials")
+            }
           >
             Open Google Cloud Console
           </button>
-          <button
-            className="btn-primary btn-sm"
-            onClick={handleOAuthConnect}
-            disabled={oauthBusy}
-          >
-            {oauthBusy ? 'Connecting...' : 'Connect'}
+          <button className="btn-primary btn-sm" onClick={handleOAuthConnect} disabled={oauthBusy}>
+            {oauthBusy ? "Connecting..." : "Connect"}
           </button>
         </div>
       </div>
@@ -211,7 +227,7 @@ export function GoogleWorkspaceSettings() {
             type="text"
             className="settings-input"
             placeholder="Google OAuth client ID"
-            value={settings.clientId || ''}
+            value={settings.clientId || ""}
             onChange={(e) => updateSettings({ clientId: e.target.value || undefined })}
           />
         </div>
@@ -222,10 +238,12 @@ export function GoogleWorkspaceSettings() {
             type="password"
             className="settings-input"
             placeholder="Google OAuth client secret"
-            value={settings.clientSecret || ''}
+            value={settings.clientSecret || ""}
             onChange={(e) => updateSettings({ clientSecret: e.target.value || undefined })}
           />
-          <p className="settings-hint">Use an OAuth client configured for Desktop or Web applications.</p>
+          <p className="settings-hint">
+            Use an OAuth client configured for Desktop or Web applications.
+          </p>
         </div>
 
         <div className="settings-field">
@@ -245,7 +263,7 @@ export function GoogleWorkspaceSettings() {
             type="password"
             className="settings-input"
             placeholder="Google OAuth access token"
-            value={settings.accessToken || ''}
+            value={settings.accessToken || ""}
             onChange={(e) => updateSettings({ accessToken: e.target.value || undefined })}
           />
         </div>
@@ -256,7 +274,7 @@ export function GoogleWorkspaceSettings() {
             type="password"
             className="settings-input"
             placeholder="Google OAuth refresh token"
-            value={settings.refreshToken || ''}
+            value={settings.refreshToken || ""}
             onChange={(e) => updateSettings({ refreshToken: e.target.value || undefined })}
           />
         </div>
@@ -267,8 +285,10 @@ export function GoogleWorkspaceSettings() {
             type="number"
             className="settings-input"
             min={0}
-            value={settings.tokenExpiresAt ?? ''}
-            onChange={(e) => updateSettings({ tokenExpiresAt: Number(e.target.value) || undefined })}
+            value={settings.tokenExpiresAt ?? ""}
+            onChange={(e) =>
+              updateSettings({ tokenExpiresAt: Number(e.target.value) || undefined })
+            }
           />
           <p className="settings-hint">Used for auto-refresh; set automatically after OAuth.</p>
         </div>
@@ -286,18 +306,22 @@ export function GoogleWorkspaceSettings() {
         </div>
 
         <div className="settings-actions">
-          <button className="btn-secondary btn-sm" onClick={handleTestConnection} disabled={testing}>
-            {testing ? 'Testing...' : 'Test Connection'}
+          <button
+            className="btn-secondary btn-sm"
+            onClick={handleTestConnection}
+            disabled={testing}
+          >
+            {testing ? "Testing..." : "Test Connection"}
           </button>
           <button className="btn-primary btn-sm" onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving...' : 'Save Settings'}
+            {saving ? "Saving..." : "Save Settings"}
           </button>
         </div>
 
         {testResult && (
-          <div className={`test-result ${testResult.success ? 'success' : 'error'}`}>
+          <div className={`test-result ${testResult.success ? "success" : "error"}`}>
             {testResult.success ? (
-              <span>Connected{testResult.name ? ` as ${testResult.name}` : ''}</span>
+              <span>Connected{testResult.name ? ` as ${testResult.name}` : ""}</span>
             ) : (
               <span>Connection failed: {testResult.error}</span>
             )}

@@ -7,10 +7,10 @@
  * - String escaping for sandbox profiles
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
-import * as crypto from 'crypto';
+import * as fs from "fs";
+import * as path from "path";
+import * as os from "os";
+import * as crypto from "crypto";
 
 /**
  * Create a secure temporary file with random name
@@ -22,10 +22,10 @@ import * as crypto from 'crypto';
  */
 export function createSecureTempFile(
   extension: string,
-  content: string
+  content: string,
 ): { filePath: string; cleanup: () => void } {
   // Generate cryptographically random filename
-  const randomBytes = crypto.randomBytes(16).toString('hex');
+  const randomBytes = crypto.randomBytes(16).toString("hex");
   const filename = `cowork_${randomBytes}${extension}`;
   const tempDir = os.tmpdir();
 
@@ -38,9 +38,13 @@ export function createSecureTempFile(
 
   // Use O_CREAT | O_EXCL to atomically create file (fails if exists)
   // This prevents TOCTOU race conditions
-  const fd = fs.openSync(filePath, fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_WRONLY, 0o600);
+  const fd = fs.openSync(
+    filePath,
+    fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_WRONLY,
+    0o600,
+  );
   try {
-    fs.writeSync(fd, content, 0, 'utf8');
+    fs.writeSync(fd, content, 0, "utf8");
   } finally {
     fs.closeSync(fd);
   }
@@ -68,10 +72,10 @@ export function createSecureTempFile(
  */
 export function validateAndResolvePath(
   targetPath: string,
-  allowedBasePaths: string[]
+  allowedBasePaths: string[],
 ): string | null {
   // Reject paths with null bytes (path traversal attack vector)
-  if (targetPath.includes('\0')) {
+  if (targetPath.includes("\0")) {
     return null;
   }
 
@@ -83,8 +87,10 @@ export function validateAndResolvePath(
     // For non-existent paths, just validate against normalized path
     for (const basePath of allowedBasePaths) {
       const normalizedBase = path.resolve(basePath);
-      if (path.resolve(normalizedTarget).startsWith(normalizedBase + path.sep) ||
-          path.resolve(normalizedTarget) === normalizedBase) {
+      if (
+        path.resolve(normalizedTarget).startsWith(normalizedBase + path.sep) ||
+        path.resolve(normalizedTarget) === normalizedBase
+      ) {
         return path.resolve(normalizedTarget);
       }
     }
@@ -122,8 +128,8 @@ export function validateAndResolvePath(
  */
 export function escapeSandboxProfileString(input: string): string {
   // Validate input doesn't contain null bytes
-  if (input.includes('\0')) {
-    throw new Error('Path contains null byte, which is not allowed');
+  if (input.includes("\0")) {
+    throw new Error("Path contains null byte, which is not allowed");
   }
 
   // Escape characters that have special meaning in sandbox profiles:
@@ -132,11 +138,11 @@ export function escapeSandboxProfileString(input: string): string {
   // - Parentheses: LISP-like syntax
   // - Semicolon: comment start
   return input
-    .replace(/\\/g, '\\\\')     // Escape backslashes first
-    .replace(/"/g, '\\"')       // Escape double quotes
-    .replace(/\(/g, '\\(')      // Escape open paren
-    .replace(/\)/g, '\\)')      // Escape close paren
-    .replace(/;/g, '\\;');      // Escape semicolons
+    .replace(/\\/g, "\\\\") // Escape backslashes first
+    .replace(/"/g, '\\"') // Escape double quotes
+    .replace(/\(/g, "\\(") // Escape open paren
+    .replace(/\)/g, "\\)") // Escape close paren
+    .replace(/;/g, "\\;"); // Escape semicolons
 }
 
 /**
@@ -148,18 +154,18 @@ export function escapeSandboxProfileString(input: string): string {
  */
 export function validatePathForSandboxProfile(pathToValidate: string): boolean {
   // Check for null bytes
-  if (pathToValidate.includes('\0')) {
-    throw new Error('Path contains null byte');
+  if (pathToValidate.includes("\0")) {
+    throw new Error("Path contains null byte");
   }
 
   // Check for newlines (could inject new profile lines)
-  if (pathToValidate.includes('\n') || pathToValidate.includes('\r')) {
-    throw new Error('Path contains newline characters');
+  if (pathToValidate.includes("\n") || pathToValidate.includes("\r")) {
+    throw new Error("Path contains newline characters");
   }
 
   // Validate path is absolute and normalized
   if (!path.isAbsolute(pathToValidate)) {
-    throw new Error('Path must be absolute');
+    throw new Error("Path must be absolute");
   }
 
   return true;
@@ -174,8 +180,8 @@ export function validatePathForSandboxProfile(pathToValidate: string): boolean {
  */
 export function escapeDockerEnvValue(value: string): string {
   // Reject values with null bytes
-  if (value.includes('\0')) {
-    throw new Error('Environment value contains null byte');
+  if (value.includes("\0")) {
+    throw new Error("Environment value contains null byte");
   }
 
   // For Docker, we need to handle shell metacharacters
@@ -183,8 +189,8 @@ export function escapeDockerEnvValue(value: string): string {
   // or use Docker's --env-file feature for complex values
 
   // Check for newlines which could inject additional arguments
-  if (value.includes('\n') || value.includes('\r')) {
-    throw new Error('Environment value contains newline characters');
+  if (value.includes("\n") || value.includes("\r")) {
+    throw new Error("Environment value contains newline characters");
   }
 
   return value;
@@ -204,15 +210,15 @@ export function validateEnvVarName(name: string): boolean {
 
   // Blacklist dangerous environment variables that could affect sandboxed processes
   const dangerousVars = [
-    'LD_PRELOAD',
-    'LD_LIBRARY_PATH',
-    'DYLD_INSERT_LIBRARIES',
-    'DYLD_LIBRARY_PATH',
-    'PYTHONPATH',
-    'NODE_OPTIONS',
-    'NODE_PATH',
-    'PERL5OPT',
-    'RUBYOPT',
+    "LD_PRELOAD",
+    "LD_LIBRARY_PATH",
+    "DYLD_INSERT_LIBRARIES",
+    "DYLD_LIBRARY_PATH",
+    "PYTHONPATH",
+    "NODE_OPTIONS",
+    "NODE_PATH",
+    "PERL5OPT",
+    "RUBYOPT",
   ];
 
   if (dangerousVars.includes(name.toUpperCase())) {
@@ -228,9 +234,7 @@ export function validateEnvVarName(name: string): boolean {
  * @param requestedVars - List of environment variable names to pass through
  * @returns Record of safe environment variables
  */
-export function buildSafeEnvironment(
-  requestedVars: string[]
-): Record<string, string | undefined> {
+export function buildSafeEnvironment(requestedVars: string[]): Record<string, string | undefined> {
   const safeEnv: Record<string, string | undefined> = {};
 
   for (const name of requestedVars) {

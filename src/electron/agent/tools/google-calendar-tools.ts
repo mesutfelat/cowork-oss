@@ -1,15 +1,15 @@
-import { Workspace } from '../../../shared/types';
-import { AgentDaemon } from '../daemon';
-import { GoogleWorkspaceSettingsManager } from '../../settings/google-workspace-manager';
-import { googleCalendarRequest } from '../../utils/google-calendar-api';
+import { Workspace } from "../../../shared/types";
+import { AgentDaemon } from "../daemon";
+import { GoogleWorkspaceSettingsManager } from "../../settings/google-workspace-manager";
+import { googleCalendarRequest } from "../../utils/google-calendar-api";
 
 type CalendarAction =
-  | 'list_calendars'
-  | 'list_events'
-  | 'get_event'
-  | 'create_event'
-  | 'update_event'
-  | 'delete_event';
+  | "list_calendars"
+  | "list_events"
+  | "get_event"
+  | "create_event"
+  | "update_event"
+  | "delete_event";
 
 interface GoogleCalendarActionInput {
   action: CalendarAction;
@@ -21,7 +21,7 @@ interface GoogleCalendarActionInput {
   max_results?: number;
   page_token?: string;
   single_events?: boolean;
-  order_by?: 'startTime' | 'updated';
+  order_by?: "startTime" | "updated";
   summary?: string;
   description?: string;
   location?: string;
@@ -32,14 +32,18 @@ interface GoogleCalendarActionInput {
   payload?: Record<string, any>;
 }
 
-function buildAttendees(attendees?: Array<string | { email: string }>): Array<{ email: string }> | undefined {
+function buildAttendees(
+  attendees?: Array<string | { email: string }>,
+): Array<{ email: string }> | undefined {
   if (!attendees || attendees.length === 0) return undefined;
-  return attendees.map((attendee) => {
-    if (typeof attendee === 'string') {
-      return { email: attendee };
-    }
-    return { email: attendee.email };
-  }).filter((attendee) => attendee.email);
+  return attendees
+    .map((attendee) => {
+      if (typeof attendee === "string") {
+        return { email: attendee };
+      }
+      return { email: attendee.email };
+    })
+    .filter((attendee) => attendee.email);
 }
 
 function buildEventPayload(input: GoogleCalendarActionInput): Record<string, any> {
@@ -48,7 +52,7 @@ function buildEventPayload(input: GoogleCalendarActionInput): Record<string, any
   }
 
   if (!input.summary || !input.start || !input.end) {
-    throw new Error('Missing summary/start/end for calendar event');
+    throw new Error("Missing summary/start/end for calendar event");
   }
 
   const event: Record<string, any> = {
@@ -60,8 +64,10 @@ function buildEventPayload(input: GoogleCalendarActionInput): Record<string, any
 
   const timeZone = input.time_zone;
 
-  const buildDateField = (value: string | { dateTime?: string; date?: string; timeZone?: string }) => {
-    if (typeof value === 'string') {
+  const buildDateField = (
+    value: string | { dateTime?: string; date?: string; timeZone?: string },
+  ) => {
+    if (typeof value === "string") {
       return {
         dateTime: value,
         timeZone,
@@ -88,7 +94,7 @@ export class GoogleCalendarTools {
   constructor(
     private workspace: Workspace,
     private daemon: AgentDaemon,
-    private taskId: string
+    private taskId: string,
   ) {}
 
   setWorkspace(workspace: Workspace): void {
@@ -100,12 +106,16 @@ export class GoogleCalendarTools {
   }
 
   private formatAuthError(error: unknown): string | null {
-    const message = String((error as any)?.message ?? '');
+    const message = String((error as any)?.message ?? "");
     const status = (error as any)?.status;
     if (status === 401) {
-      return 'Google Workspace authorization failed (401). Reconnect in Settings > Integrations > Google Workspace.';
+      return "Google Workspace authorization failed (401). Reconnect in Settings > Integrations > Google Workspace.";
     }
-    if (/token refresh failed|refresh token not configured|access token not configured|access token expired/i.test(message)) {
+    if (
+      /token refresh failed|refresh token not configured|access token not configured|access token expired/i.test(
+        message,
+      )
+    ) {
       return `Google Workspace authorization error: ${message}`;
     }
     return null;
@@ -114,20 +124,22 @@ export class GoogleCalendarTools {
   private async requireApproval(summary: string, details: Record<string, unknown>): Promise<void> {
     const approved = await this.daemon.requestApproval(
       this.taskId,
-      'external_service',
+      "external_service",
       summary,
-      details
+      details,
     );
 
     if (!approved) {
-      throw new Error('User denied Google Calendar action');
+      throw new Error("User denied Google Calendar action");
     }
   }
 
   async executeAction(input: GoogleCalendarActionInput): Promise<any> {
     const settings = GoogleWorkspaceSettingsManager.loadSettings();
     if (!settings.enabled) {
-      throw new Error('Google Workspace integration is disabled. Enable it in Settings > Integrations > Google Workspace.');
+      throw new Error(
+        "Google Workspace integration is disabled. Enable it in Settings > Integrations > Google Workspace.",
+      );
     }
 
     const action = input.action;
@@ -135,15 +147,15 @@ export class GoogleCalendarTools {
       throw new Error('Missing required "action" parameter');
     }
 
-    const calendarId = input.calendar_id || 'primary';
+    const calendarId = input.calendar_id || "primary";
     let result;
 
     try {
       switch (action) {
-        case 'list_calendars': {
+        case "list_calendars": {
           result = await googleCalendarRequest(settings, {
-            method: 'GET',
-            path: '/users/me/calendarList',
+            method: "GET",
+            path: "/users/me/calendarList",
             query: {
               maxResults: input.max_results,
               pageToken: input.page_token,
@@ -151,9 +163,9 @@ export class GoogleCalendarTools {
           });
           break;
         }
-        case 'list_events': {
+        case "list_events": {
           result = await googleCalendarRequest(settings, {
-            method: 'GET',
+            method: "GET",
             path: `/calendars/${encodeURIComponent(calendarId)}/events`,
             query: {
               q: input.query,
@@ -167,53 +179,53 @@ export class GoogleCalendarTools {
           });
           break;
         }
-        case 'get_event': {
-          if (!input.event_id) throw new Error('Missing event_id for get_event');
+        case "get_event": {
+          if (!input.event_id) throw new Error("Missing event_id for get_event");
           result = await googleCalendarRequest(settings, {
-            method: 'GET',
+            method: "GET",
             path: `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(input.event_id)}`,
           });
           break;
         }
-        case 'create_event': {
+        case "create_event": {
           const eventPayload = buildEventPayload(input);
-          await this.requireApproval('Create a Google Calendar event', {
-            action: 'create_event',
+          await this.requireApproval("Create a Google Calendar event", {
+            action: "create_event",
             calendar_id: calendarId,
             summary: eventPayload.summary,
           });
           result = await googleCalendarRequest(settings, {
-            method: 'POST',
+            method: "POST",
             path: `/calendars/${encodeURIComponent(calendarId)}/events`,
             body: eventPayload,
           });
           break;
         }
-        case 'update_event': {
-          if (!input.event_id) throw new Error('Missing event_id for update_event');
+        case "update_event": {
+          if (!input.event_id) throw new Error("Missing event_id for update_event");
           const updatePayload = buildEventPayload(input);
-          await this.requireApproval('Update a Google Calendar event', {
-            action: 'update_event',
+          await this.requireApproval("Update a Google Calendar event", {
+            action: "update_event",
             calendar_id: calendarId,
             event_id: input.event_id,
             summary: updatePayload.summary,
           });
           result = await googleCalendarRequest(settings, {
-            method: 'PATCH',
+            method: "PATCH",
             path: `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(input.event_id)}`,
             body: updatePayload,
           });
           break;
         }
-        case 'delete_event': {
-          if (!input.event_id) throw new Error('Missing event_id for delete_event');
-          await this.requireApproval('Delete a Google Calendar event', {
-            action: 'delete_event',
+        case "delete_event": {
+          if (!input.event_id) throw new Error("Missing event_id for delete_event");
+          await this.requireApproval("Delete a Google Calendar event", {
+            action: "delete_event",
             calendar_id: calendarId,
             event_id: input.event_id,
           });
           result = await googleCalendarRequest(settings, {
-            method: 'DELETE',
+            method: "DELETE",
             path: `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(input.event_id)}`,
           });
           break;
@@ -225,8 +237,8 @@ export class GoogleCalendarTools {
       const message = error instanceof Error ? error.message : String(error);
       const authMessage = this.formatAuthError(error);
       const finalMessage = authMessage ?? message;
-      this.daemon.logEvent(this.taskId, 'tool_error', {
-        tool: 'calendar_action',
+      this.daemon.logEvent(this.taskId, "tool_error", {
+        tool: "calendar_action",
         action,
         message: finalMessage,
         status: (error as any)?.status,
@@ -240,8 +252,8 @@ export class GoogleCalendarTools {
       throw new Error(message);
     }
 
-    this.daemon.logEvent(this.taskId, 'tool_result', {
-      tool: 'calendar_action',
+    this.daemon.logEvent(this.taskId, "tool_result", {
+      tool: "calendar_action",
       action,
       status: result?.status,
       hasData: result?.data ? true : false,

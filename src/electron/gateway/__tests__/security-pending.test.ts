@@ -2,12 +2,12 @@
  * Tests for SecurityManager pending user handling
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock electron
-vi.mock('electron', () => ({
+vi.mock("electron", () => ({
   app: {
-    getPath: vi.fn().mockReturnValue('/tmp/test-cowork'),
+    getPath: vi.fn().mockReturnValue("/tmp/test-cowork"),
   },
 }));
 
@@ -28,15 +28,18 @@ function createMockSecurityManager() {
     userRepo: mockUserRepo,
 
     createPairingCode(): string {
-      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-      let code = '';
+      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+      let code = "";
       for (let i = 0; i < 6; i++) {
         code += chars.charAt(Math.floor(Math.random() * chars.length));
       }
       return code;
     },
 
-    async generatePairingCode(channel: { id: string; securityConfig: { pairingCodeTTL?: number } }): Promise<{
+    async generatePairingCode(channel: {
+      id: string;
+      securityConfig: { pairingCodeTTL?: number };
+    }): Promise<{
       code: string;
       expiresAt: number;
     }> {
@@ -51,7 +54,7 @@ function createMockSecurityManager() {
       mockUserRepo.create({
         channelId: channel.id,
         channelUserId: `pending_${Date.now()}`,
-        displayName: 'Pending Pairing',
+        displayName: "Pending Pairing",
         allowed: false,
         pairingCode: code,
         pairingExpiresAt: expiresAt,
@@ -63,18 +66,18 @@ function createMockSecurityManager() {
     async verifyPairingCode(
       channel: { id: string },
       message: { userId: string; userName: string },
-      code: string
+      code: string,
     ): Promise<{ success: boolean; error?: string; user?: any }> {
       const codeOwner = mockUserRepo.findByPairingCode(channel.id, code);
 
       if (!codeOwner) {
-        return { success: false, error: 'Invalid pairing code.' };
+        return { success: false, error: "Invalid pairing code." };
       }
 
       // Check expiration
       if (codeOwner.pairingExpiresAt && Date.now() > codeOwner.pairingExpiresAt) {
         // Remove expired pending placeholders entirely
-        if (codeOwner.channelUserId.startsWith('pending_')) {
+        if (codeOwner.channelUserId.startsWith("pending_")) {
           mockUserRepo.delete(codeOwner.id);
         } else {
           // Clear expired code for real users
@@ -83,7 +86,7 @@ function createMockSecurityManager() {
             pairingExpiresAt: undefined,
           });
         }
-        return { success: false, error: 'Pairing code has expired. Please request a new one.' };
+        return { success: false, error: "Pairing code has expired. Please request a new one." };
       }
 
       // Check for existing user
@@ -98,7 +101,7 @@ function createMockSecurityManager() {
 
         // Clear the code from code owner if different
         if (codeOwner.id !== existingUser.id) {
-          if (codeOwner.channelUserId.startsWith('pending_')) {
+          if (codeOwner.channelUserId.startsWith("pending_")) {
             mockUserRepo.delete(codeOwner.id);
           } else {
             mockUserRepo.update(codeOwner.id, {
@@ -119,7 +122,7 @@ function createMockSecurityManager() {
       });
 
       // Remove pending placeholder
-      if (codeOwner.channelUserId.startsWith('pending_')) {
+      if (codeOwner.channelUserId.startsWith("pending_")) {
         mockUserRepo.delete(codeOwner.id);
       }
 
@@ -128,7 +131,7 @@ function createMockSecurityManager() {
   };
 }
 
-describe('SecurityManager pending user handling', () => {
+describe("SecurityManager pending user handling", () => {
   let security: ReturnType<typeof createMockSecurityManager>;
 
   beforeEach(() => {
@@ -136,25 +139,25 @@ describe('SecurityManager pending user handling', () => {
     security = createMockSecurityManager();
   });
 
-  describe('generatePairingCode', () => {
-    it('should clear expired pending before generating new code', async () => {
-      const channel = { id: 'channel-1', securityConfig: {} };
+  describe("generatePairingCode", () => {
+    it("should clear expired pending before generating new code", async () => {
+      const channel = { id: "channel-1", securityConfig: {} };
 
       await security.generatePairingCode(channel);
 
-      expect(mockUserRepo.deleteExpiredPending).toHaveBeenCalledWith('channel-1');
+      expect(mockUserRepo.deleteExpiredPending).toHaveBeenCalledWith("channel-1");
     });
 
-    it('should clear all pending (including valid) before generating new code', async () => {
-      const channel = { id: 'channel-1', securityConfig: {} };
+    it("should clear all pending (including valid) before generating new code", async () => {
+      const channel = { id: "channel-1", securityConfig: {} };
 
       await security.generatePairingCode(channel);
 
-      expect(mockUserRepo.deletePendingByChannel).toHaveBeenCalledWith('channel-1');
+      expect(mockUserRepo.deletePendingByChannel).toHaveBeenCalledWith("channel-1");
     });
 
-    it('should create pending user with new code', async () => {
-      const channel = { id: 'channel-1', securityConfig: { pairingCodeTTL: 300 } };
+    it("should create pending user with new code", async () => {
+      const channel = { id: "channel-1", securityConfig: { pairingCodeTTL: 300 } };
 
       const result = await security.generatePairingCode(channel);
 
@@ -163,8 +166,8 @@ describe('SecurityManager pending user handling', () => {
       expect(result.expiresAt).toBeGreaterThan(Date.now());
     });
 
-    it('should use default TTL if not provided', async () => {
-      const channel = { id: 'channel-1', securityConfig: {} };
+    it("should use default TTL if not provided", async () => {
+      const channel = { id: "channel-1", securityConfig: {} };
 
       const result = await security.generatePairingCode(channel);
 
@@ -175,8 +178,8 @@ describe('SecurityManager pending user handling', () => {
       expect(result.expiresAt).toBeLessThan(expectedMax);
     });
 
-    it('should use custom TTL if provided', async () => {
-      const channel = { id: 'channel-1', securityConfig: { pairingCodeTTL: 600 } };
+    it("should use custom TTL if provided", async () => {
+      const channel = { id: "channel-1", securityConfig: { pairingCodeTTL: 600 } };
 
       const result = await security.generatePairingCode(channel);
 
@@ -188,165 +191,165 @@ describe('SecurityManager pending user handling', () => {
     });
   });
 
-  describe('verifyPairingCode', () => {
-    it('should return error for invalid code', async () => {
+  describe("verifyPairingCode", () => {
+    it("should return error for invalid code", async () => {
       mockUserRepo.findByPairingCode.mockReturnValue(undefined);
 
       const result = await security.verifyPairingCode(
-        { id: 'channel-1' },
-        { userId: 'user-1', userName: 'User' },
-        'INVALID'
+        { id: "channel-1" },
+        { userId: "user-1", userName: "User" },
+        "INVALID",
       );
 
       expect(result.success).toBe(false);
-      expect(result.error).toBe('Invalid pairing code.');
+      expect(result.error).toBe("Invalid pairing code.");
     });
 
-    it('should delete pending placeholder on expiration', async () => {
+    it("should delete pending placeholder on expiration", async () => {
       const expiredPending = {
-        id: 'pending-id',
-        channelUserId: 'pending_12345',
+        id: "pending-id",
+        channelUserId: "pending_12345",
         pairingExpiresAt: Date.now() - 60000,
       };
       mockUserRepo.findByPairingCode.mockReturnValue(expiredPending);
 
       const result = await security.verifyPairingCode(
-        { id: 'channel-1' },
-        { userId: 'user-1', userName: 'User' },
-        'EXPIRED'
+        { id: "channel-1" },
+        { userId: "user-1", userName: "User" },
+        "EXPIRED",
       );
 
       expect(result.success).toBe(false);
-      expect(result.error).toBe('Pairing code has expired. Please request a new one.');
-      expect(mockUserRepo.delete).toHaveBeenCalledWith('pending-id');
+      expect(result.error).toBe("Pairing code has expired. Please request a new one.");
+      expect(mockUserRepo.delete).toHaveBeenCalledWith("pending-id");
       expect(mockUserRepo.update).not.toHaveBeenCalled();
     });
 
-    it('should clear code (not delete) for real users on expiration', async () => {
+    it("should clear code (not delete) for real users on expiration", async () => {
       const expiredRealUser = {
-        id: 'user-id',
-        channelUserId: 'real_user_123',
+        id: "user-id",
+        channelUserId: "real_user_123",
         pairingExpiresAt: Date.now() - 60000,
       };
       mockUserRepo.findByPairingCode.mockReturnValue(expiredRealUser);
 
       const result = await security.verifyPairingCode(
-        { id: 'channel-1' },
-        { userId: 'user-1', userName: 'User' },
-        'EXPIRED'
+        { id: "channel-1" },
+        { userId: "user-1", userName: "User" },
+        "EXPIRED",
       );
 
       expect(result.success).toBe(false);
       expect(mockUserRepo.delete).not.toHaveBeenCalled();
-      expect(mockUserRepo.update).toHaveBeenCalledWith('user-id', {
+      expect(mockUserRepo.update).toHaveBeenCalledWith("user-id", {
         pairingCode: undefined,
         pairingExpiresAt: undefined,
       });
     });
 
-    it('should delete pending placeholder when pairing existing user', async () => {
+    it("should delete pending placeholder when pairing existing user", async () => {
       const pendingPlaceholder = {
-        id: 'pending-id',
-        channelUserId: 'pending_12345',
+        id: "pending-id",
+        channelUserId: "pending_12345",
         pairingExpiresAt: Date.now() + 60000,
-        pairingCode: 'ABC123',
+        pairingCode: "ABC123",
       };
       const existingUser = {
-        id: 'existing-user-id',
-        channelUserId: 'user-1',
+        id: "existing-user-id",
+        channelUserId: "user-1",
         allowed: false,
       };
       mockUserRepo.findByPairingCode.mockReturnValue(pendingPlaceholder);
       mockUserRepo.findByChannelUserId.mockReturnValue(existingUser);
 
       const result = await security.verifyPairingCode(
-        { id: 'channel-1' },
-        { userId: 'user-1', userName: 'User' },
-        'ABC123'
+        { id: "channel-1" },
+        { userId: "user-1", userName: "User" },
+        "ABC123",
       );
 
       expect(result.success).toBe(true);
       // Pending placeholder should be deleted
-      expect(mockUserRepo.delete).toHaveBeenCalledWith('pending-id');
+      expect(mockUserRepo.delete).toHaveBeenCalledWith("pending-id");
       // Existing user should be updated
-      expect(mockUserRepo.update).toHaveBeenCalledWith('existing-user-id', {
+      expect(mockUserRepo.update).toHaveBeenCalledWith("existing-user-id", {
         allowed: true,
         pairingCode: undefined,
         pairingExpiresAt: undefined,
       });
     });
 
-    it('should clear code (not delete) when pairing existing user with code from real user', async () => {
+    it("should clear code (not delete) when pairing existing user with code from real user", async () => {
       const realCodeOwner = {
-        id: 'code-owner-id',
-        channelUserId: 'code_owner_user',
+        id: "code-owner-id",
+        channelUserId: "code_owner_user",
         pairingExpiresAt: Date.now() + 60000,
-        pairingCode: 'XYZ789',
+        pairingCode: "XYZ789",
       };
       const existingUser = {
-        id: 'existing-user-id',
-        channelUserId: 'user-1',
+        id: "existing-user-id",
+        channelUserId: "user-1",
         allowed: false,
       };
       mockUserRepo.findByPairingCode.mockReturnValue(realCodeOwner);
       mockUserRepo.findByChannelUserId.mockReturnValue(existingUser);
 
       const result = await security.verifyPairingCode(
-        { id: 'channel-1' },
-        { userId: 'user-1', userName: 'User' },
-        'XYZ789'
+        { id: "channel-1" },
+        { userId: "user-1", userName: "User" },
+        "XYZ789",
       );
 
       expect(result.success).toBe(true);
       // Real code owner should have code cleared, not deleted
       expect(mockUserRepo.delete).not.toHaveBeenCalled();
       // Code owner's code cleared
-      expect(mockUserRepo.update).toHaveBeenCalledWith('code-owner-id', {
+      expect(mockUserRepo.update).toHaveBeenCalledWith("code-owner-id", {
         pairingCode: undefined,
         pairingExpiresAt: undefined,
       });
     });
 
-    it('should delete pending placeholder when creating new user', async () => {
+    it("should delete pending placeholder when creating new user", async () => {
       const pendingPlaceholder = {
-        id: 'pending-id',
-        channelUserId: 'pending_12345',
+        id: "pending-id",
+        channelUserId: "pending_12345",
         pairingExpiresAt: Date.now() + 60000,
-        pairingCode: 'NEW123',
+        pairingCode: "NEW123",
       };
       mockUserRepo.findByPairingCode.mockReturnValue(pendingPlaceholder);
       mockUserRepo.findByChannelUserId.mockReturnValue(undefined);
       mockUserRepo.create.mockReturnValue({
-        id: 'new-user-id',
-        channelUserId: 'new-user-1',
+        id: "new-user-id",
+        channelUserId: "new-user-1",
         allowed: true,
       });
 
       const result = await security.verifyPairingCode(
-        { id: 'channel-1' },
-        { userId: 'new-user-1', userName: 'New User' },
-        'NEW123'
+        { id: "channel-1" },
+        { userId: "new-user-1", userName: "New User" },
+        "NEW123",
       );
 
       expect(result.success).toBe(true);
-      expect(mockUserRepo.delete).toHaveBeenCalledWith('pending-id');
+      expect(mockUserRepo.delete).toHaveBeenCalledWith("pending-id");
     });
 
-    it('should not delete or update code owner when same as existing user', async () => {
+    it("should not delete or update code owner when same as existing user", async () => {
       const sameUser = {
-        id: 'same-user-id',
-        channelUserId: 'user-1',
+        id: "same-user-id",
+        channelUserId: "user-1",
         pairingExpiresAt: Date.now() + 60000,
-        pairingCode: 'SAME123',
+        pairingCode: "SAME123",
         allowed: false,
       };
       mockUserRepo.findByPairingCode.mockReturnValue(sameUser);
       mockUserRepo.findByChannelUserId.mockReturnValue(sameUser);
 
       const result = await security.verifyPairingCode(
-        { id: 'channel-1' },
-        { userId: 'user-1', userName: 'User' },
-        'SAME123'
+        { id: "channel-1" },
+        { userId: "user-1", userName: "User" },
+        "SAME123",
       );
 
       expect(result.success).toBe(true);

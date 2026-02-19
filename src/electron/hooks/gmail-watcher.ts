@@ -8,10 +8,10 @@
  * See: https://gogcli.sh/
  */
 
-import { type ChildProcess, spawn } from 'child_process';
-import { HooksConfig, GmailHookRuntimeConfig } from './types';
-import { HooksSettingsManager } from './settings';
-import { runCommand, checkBinaryExists } from '../utils/process';
+import { type ChildProcess, spawn } from "child_process";
+import { HooksConfig, GmailHookRuntimeConfig } from "./types";
+import { HooksSettingsManager } from "./settings";
+import { runCommand, checkBinaryExists } from "../utils/process";
 
 const ADDRESS_IN_USE_RE = /address already in use|EADDRINUSE/i;
 
@@ -29,7 +29,7 @@ export interface GmailWatcherStartResult {
  * Check if gog binary is available
  */
 export async function isGogAvailable(): Promise<boolean> {
-  return checkBinaryExists('gog');
+  return checkBinaryExists("gog");
 }
 
 /**
@@ -43,36 +43,36 @@ export function resolveGmailRuntimeConfig(
 
   const hookToken = hooks.token?.trim();
   if (!hookToken) {
-    return { ok: false, error: 'hooks.token missing (needed for gmail hook)' };
+    return { ok: false, error: "hooks.token missing (needed for gmail hook)" };
   }
 
   const account = gmail?.account?.trim();
   if (!account) {
-    return { ok: false, error: 'gmail account required' };
+    return { ok: false, error: "gmail account required" };
   }
 
   const topic = gmail?.topic?.trim();
   if (!topic) {
-    return { ok: false, error: 'gmail topic required' };
+    return { ok: false, error: "gmail topic required" };
   }
 
   const pushToken = gmail?.pushToken?.trim();
   if (!pushToken) {
-    return { ok: false, error: 'gmail push token required' };
+    return { ok: false, error: "gmail push token required" };
   }
 
-  const subscription = gmail?.subscription || 'cowork-gmail-watch-push';
-  const label = gmail?.label || 'INBOX';
-  const hookUrl = gmail?.hookUrl || 'http://127.0.0.1:9877/hooks/gmail';
+  const subscription = gmail?.subscription || "cowork-gmail-watch-push";
+  const label = gmail?.label || "INBOX";
+  const hookUrl = gmail?.hookUrl || "http://127.0.0.1:9877/hooks/gmail";
   const includeBody = gmail?.includeBody ?? true;
   const maxBytes = gmail?.maxBytes || 20_000;
   const renewEveryMinutes = gmail?.renewEveryMinutes || 12 * 60;
 
-  const serveBind = gmail?.serve?.bind || '127.0.0.1';
+  const serveBind = gmail?.serve?.bind || "127.0.0.1";
   const servePort = gmail?.serve?.port || 8788;
-  const servePath = gmail?.serve?.path || '/gmail-pubsub';
+  const servePath = gmail?.serve?.path || "/gmail-pubsub";
 
-  const tailscaleMode = gmail?.tailscale?.mode || 'off';
+  const tailscaleMode = gmail?.tailscale?.mode || "off";
   const tailscalePath = gmail?.tailscale?.path || servePath;
   const tailscaleTarget = gmail?.tailscale?.target;
 
@@ -107,17 +107,17 @@ export function resolveGmailRuntimeConfig(
  * Build gog watch start arguments
  */
 function buildWatchStartArgs(
-  cfg: Pick<GmailHookRuntimeConfig, 'account' | 'label' | 'topic'>,
+  cfg: Pick<GmailHookRuntimeConfig, "account" | "label" | "topic">,
 ): string[] {
   return [
-    'gmail',
-    'watch',
-    'start',
-    '--account',
+    "gmail",
+    "watch",
+    "start",
+    "--account",
     cfg.account,
-    '--label',
+    "--label",
     cfg.label,
-    '--topic',
+    "--topic",
     cfg.topic,
   ];
 }
@@ -127,31 +127,31 @@ function buildWatchStartArgs(
  */
 function buildWatchServeArgs(cfg: GmailHookRuntimeConfig): string[] {
   const args = [
-    'gmail',
-    'watch',
-    'serve',
-    '--account',
+    "gmail",
+    "watch",
+    "serve",
+    "--account",
     cfg.account,
-    '--bind',
+    "--bind",
     cfg.serve.bind,
-    '--port',
+    "--port",
     String(cfg.serve.port),
-    '--path',
+    "--path",
     cfg.serve.path,
-    '--token',
+    "--token",
     cfg.pushToken,
-    '--hook-url',
+    "--hook-url",
     cfg.hookUrl,
-    '--hook-token',
+    "--hook-token",
     cfg.hookToken,
   ];
 
   if (cfg.includeBody) {
-    args.push('--include-body');
+    args.push("--include-body");
   }
 
   if (cfg.maxBytes > 0) {
-    args.push('--max-bytes', String(cfg.maxBytes));
+    args.push("--max-bytes", String(cfg.maxBytes));
   }
 
   return args;
@@ -161,15 +161,15 @@ function buildWatchServeArgs(cfg: GmailHookRuntimeConfig): string[] {
  * Start the Gmail watch (registers with Gmail API)
  */
 async function startGmailWatch(
-  cfg: Pick<GmailHookRuntimeConfig, 'account' | 'label' | 'topic'>,
+  cfg: Pick<GmailHookRuntimeConfig, "account" | "label" | "topic">,
 ): Promise<boolean> {
   const args = buildWatchStartArgs(cfg);
-  console.log(`[GmailWatcher] Starting watch: gog ${args.join(' ')}`);
+  console.log(`[GmailWatcher] Starting watch: gog ${args.join(" ")}`);
 
   try {
-    const result = await runCommand('gog', args, { timeoutMs: 120_000 });
+    const result = await runCommand("gog", args, { timeoutMs: 120_000 });
     if (result.code !== 0) {
-      const message = result.stderr || result.stdout || 'gog watch start failed';
+      const message = result.stderr || result.stdout || "gog watch start failed";
       console.error(`[GmailWatcher] Watch start failed: ${message}`);
       return false;
     }
@@ -186,21 +186,21 @@ async function startGmailWatch(
  */
 function spawnGogServe(cfg: GmailHookRuntimeConfig): ChildProcess {
   const args = buildWatchServeArgs(cfg);
-  console.log(`[GmailWatcher] Starting serve: gog ${args.join(' ')}`);
+  console.log(`[GmailWatcher] Starting serve: gog ${args.join(" ")}`);
 
   let addressInUse = false;
 
-  const child = spawn('gog', args, {
-    stdio: ['ignore', 'pipe', 'pipe'],
+  const child = spawn("gog", args, {
+    stdio: ["ignore", "pipe", "pipe"],
     detached: false,
   });
 
-  child.stdout?.on('data', (data: Buffer) => {
+  child.stdout?.on("data", (data: Buffer) => {
     const line = data.toString().trim();
     if (line) console.log(`[GmailWatcher] [gog] ${line}`);
   });
 
-  child.stderr?.on('data', (data: Buffer) => {
+  child.stderr?.on("data", (data: Buffer) => {
     const line = data.toString().trim();
     if (!line) return;
     if (ADDRESS_IN_USE_RE.test(line)) {
@@ -209,17 +209,17 @@ function spawnGogServe(cfg: GmailHookRuntimeConfig): ChildProcess {
     console.warn(`[GmailWatcher] [gog] ${line}`);
   });
 
-  child.on('error', (err) => {
+  child.on("error", (err) => {
     console.error(`[GmailWatcher] gog process error: ${String(err)}`);
   });
 
-  child.on('exit', (code, signal) => {
+  child.on("exit", (code, signal) => {
     if (shuttingDown) return;
 
     if (addressInUse) {
       console.warn(
-        '[GmailWatcher] gog serve failed to bind (address already in use); stopping restarts. ' +
-          'Another watcher is likely running.',
+        "[GmailWatcher] gog serve failed to bind (address already in use); stopping restarts. " +
+          "Another watcher is likely running.",
       );
       watcherProcess = null;
       return;
@@ -244,17 +244,17 @@ function spawnGogServe(cfg: GmailHookRuntimeConfig): ChildProcess {
 export async function startGmailWatcher(config: HooksConfig): Promise<GmailWatcherStartResult> {
   // Check if gmail hooks are configured
   if (!config.enabled) {
-    return { started: false, reason: 'hooks not enabled' };
+    return { started: false, reason: "hooks not enabled" };
   }
 
   if (!config.gmail?.account) {
-    return { started: false, reason: 'no gmail account configured' };
+    return { started: false, reason: "no gmail account configured" };
   }
 
   // Check if gog is available
   const gogAvailable = await isGogAvailable();
   if (!gogAvailable) {
-    return { started: false, reason: 'gog binary not found (install from gogcli.sh)' };
+    return { started: false, reason: "gog binary not found (install from gogcli.sh)" };
   }
 
   // Resolve the full runtime config
@@ -273,7 +273,9 @@ export async function startGmailWatcher(config: HooksConfig): Promise<GmailWatch
       return { started: true };
     }
     // Different account - stop the old watcher first
-    console.log(`[GmailWatcher] Switching from ${currentConfig.account} to ${runtimeConfig.account}`);
+    console.log(
+      `[GmailWatcher] Switching from ${currentConfig.account} to ${runtimeConfig.account}`,
+    );
     await stopGmailWatcher();
   }
 
@@ -282,7 +284,7 @@ export async function startGmailWatcher(config: HooksConfig): Promise<GmailWatch
   // Start the Gmail watch (register with Gmail API)
   const watchStarted = await startGmailWatch(runtimeConfig);
   if (!watchStarted) {
-    console.warn('[GmailWatcher] Gmail watch start failed, but continuing with serve');
+    console.warn("[GmailWatcher] Gmail watch start failed, but continuing with serve");
   }
 
   // Spawn the gog serve process
@@ -315,19 +317,19 @@ export async function stopGmailWatcher(): Promise<void> {
   }
 
   if (watcherProcess) {
-    console.log('[GmailWatcher] Stopping Gmail watcher');
-    watcherProcess.kill('SIGTERM');
+    console.log("[GmailWatcher] Stopping Gmail watcher");
+    watcherProcess.kill("SIGTERM");
 
     // Wait a bit for graceful shutdown
     await new Promise<void>((resolve) => {
       const timeout = setTimeout(() => {
         if (watcherProcess) {
-          watcherProcess.kill('SIGKILL');
+          watcherProcess.kill("SIGKILL");
         }
         resolve();
       }, 3000);
 
-      watcherProcess?.on('exit', () => {
+      watcherProcess?.on("exit", () => {
         clearTimeout(timeout);
         resolve();
       });
@@ -337,7 +339,7 @@ export async function stopGmailWatcher(): Promise<void> {
   }
 
   currentConfig = null;
-  console.log('[GmailWatcher] Gmail watcher stopped');
+  console.log("[GmailWatcher] Gmail watcher stopped");
 }
 
 /**

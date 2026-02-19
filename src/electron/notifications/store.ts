@@ -3,10 +3,10 @@
  * Uses atomic writes with temporary files for data safety
  */
 
-import fs from 'node:fs';
-import path from 'node:path';
-import type { AppNotification, NotificationStoreFile } from '../../shared/types';
-import { getUserDataDir } from '../utils/user-data-dir';
+import fs from "node:fs";
+import path from "node:path";
+import type { AppNotification, NotificationStoreFile } from "../../shared/types";
+import { getUserDataDir } from "../utils/user-data-dir";
 
 // Lazy-evaluated paths (app.getPath() is not available until app is ready)
 let _notificationDir: string | null = null;
@@ -14,23 +14,23 @@ let _notificationStorePath: string | null = null;
 
 export function getNotificationDir(): string {
   if (!_notificationDir) {
-    _notificationDir = path.join(getUserDataDir(), 'notifications');
+    _notificationDir = path.join(getUserDataDir(), "notifications");
   }
   return _notificationDir;
 }
 
 export function getNotificationStorePath(): string {
   if (!_notificationStorePath) {
-    _notificationStorePath = path.join(getNotificationDir(), 'notifications.json');
+    _notificationStorePath = path.join(getNotificationDir(), "notifications.json");
   }
   return _notificationStorePath;
 }
 
 // Legacy exports - these are getters that evaluate lazily
 // eslint-disable-next-line @typescript-eslint/naming-convention
-export const DEFAULT_NOTIFICATION_DIR = '' as string; // Placeholder, use getNotificationDir()
+export const DEFAULT_NOTIFICATION_DIR = "" as string; // Placeholder, use getNotificationDir()
 // eslint-disable-next-line @typescript-eslint/naming-convention
-export const DEFAULT_NOTIFICATION_STORE_PATH = '' as string; // Placeholder, use getNotificationStorePath()
+export const DEFAULT_NOTIFICATION_STORE_PATH = "" as string; // Placeholder, use getNotificationStorePath()
 
 // Maximum notifications to keep (to prevent unbounded growth)
 const MAX_NOTIFICATIONS = 100;
@@ -42,7 +42,7 @@ const MAX_NOTIFICATIONS = 100;
 export async function loadNotificationStore(storePath?: string): Promise<NotificationStoreFile> {
   const effectivePath = storePath || getNotificationStorePath();
   try {
-    const raw = await fs.promises.readFile(effectivePath, 'utf-8');
+    const raw = await fs.promises.readFile(effectivePath, "utf-8");
     const parsed = JSON.parse(raw) as Partial<NotificationStoreFile> | null;
     const notifications = Array.isArray(parsed?.notifications) ? parsed.notifications : [];
 
@@ -50,13 +50,13 @@ export async function loadNotificationStore(storePath?: string): Promise<Notific
     const validNotifications = notifications.filter((n): n is AppNotification => {
       return (
         n &&
-        typeof n === 'object' &&
-        typeof n.id === 'string' &&
-        typeof n.type === 'string' &&
-        typeof n.title === 'string' &&
-        typeof n.message === 'string' &&
-        typeof n.read === 'boolean' &&
-        typeof n.createdAt === 'number'
+        typeof n === "object" &&
+        typeof n.id === "string" &&
+        typeof n.type === "string" &&
+        typeof n.title === "string" &&
+        typeof n.message === "string" &&
+        typeof n.read === "boolean" &&
+        typeof n.createdAt === "number"
       );
     });
 
@@ -76,7 +76,7 @@ export async function loadNotificationStore(storePath?: string): Promise<Notific
 export function loadNotificationStoreSync(storePath?: string): NotificationStoreFile {
   const effectivePath = storePath || getNotificationStorePath();
   try {
-    const raw = fs.readFileSync(effectivePath, 'utf-8');
+    const raw = fs.readFileSync(effectivePath, "utf-8");
     const parsed = JSON.parse(raw) as Partial<NotificationStoreFile> | null;
     const notifications = Array.isArray(parsed?.notifications) ? parsed.notifications : [];
 
@@ -84,13 +84,13 @@ export function loadNotificationStoreSync(storePath?: string): NotificationStore
     const validNotifications = notifications.filter((n): n is AppNotification => {
       return (
         n &&
-        typeof n === 'object' &&
-        typeof n.id === 'string' &&
-        typeof n.type === 'string' &&
-        typeof n.title === 'string' &&
-        typeof n.message === 'string' &&
-        typeof n.read === 'boolean' &&
-        typeof n.createdAt === 'number'
+        typeof n === "object" &&
+        typeof n.id === "string" &&
+        typeof n.type === "string" &&
+        typeof n.title === "string" &&
+        typeof n.message === "string" &&
+        typeof n.read === "boolean" &&
+        typeof n.createdAt === "number"
       );
     });
 
@@ -109,7 +109,7 @@ export function loadNotificationStoreSync(storePath?: string): NotificationStore
  */
 export async function saveNotificationStore(
   store: NotificationStoreFile,
-  storePath?: string
+  storePath?: string,
 ): Promise<void> {
   const effectivePath = storePath || getNotificationStorePath();
   // Ensure directory exists
@@ -127,7 +127,7 @@ export async function saveNotificationStore(
 
   // Write to temp file
   const json = JSON.stringify(store, null, 2);
-  await fs.promises.writeFile(tmp, json, 'utf-8');
+  await fs.promises.writeFile(tmp, json, "utf-8");
 
   // Atomic rename
   await fs.promises.rename(tmp, effectivePath);
@@ -136,10 +136,7 @@ export async function saveNotificationStore(
 /**
  * Save notification store synchronously
  */
-export function saveNotificationStoreSync(
-  store: NotificationStoreFile,
-  storePath?: string
-): void {
+export function saveNotificationStoreSync(store: NotificationStoreFile, storePath?: string): void {
   const effectivePath = storePath || getNotificationStorePath();
   // Ensure directory exists
   fs.mkdirSync(path.dirname(effectivePath), { recursive: true });
@@ -156,7 +153,7 @@ export function saveNotificationStoreSync(
 
   // Write to temp file
   const json = JSON.stringify(store, null, 2);
-  fs.writeFileSync(tmp, json, 'utf-8');
+  fs.writeFileSync(tmp, json, "utf-8");
 
   // Atomic rename
   fs.renameSync(tmp, effectivePath);

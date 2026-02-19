@@ -1,8 +1,12 @@
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import { Workspace } from '../../../shared/types';
-import { AgentDaemon } from '../daemon';
-import { checkProjectAccess, getProjectIdFromWorkspaceRelPath, getWorkspaceRelativePosixPath } from '../../security/project-access';
+import * as fs from "fs/promises";
+import * as path from "path";
+import { Workspace } from "../../../shared/types";
+import { AgentDaemon } from "../daemon";
+import {
+  checkProjectAccess,
+  getProjectIdFromWorkspaceRelPath,
+  getWorkspaceRelativePosixPath,
+} from "../../security/project-access";
 
 /**
  * FolderOrganizer organizes files in folders
@@ -11,7 +15,7 @@ export class FolderOrganizer {
   constructor(
     private workspace: Workspace,
     private daemon: AgentDaemon,
-    private taskId: string
+    private taskId: string,
   ) {}
 
   /**
@@ -23,8 +27,8 @@ export class FolderOrganizer {
     const resolved = path.resolve(normalizedWorkspace, relativePath);
     const relative = path.relative(normalizedWorkspace, resolved);
 
-    if (relative.startsWith('..') || path.isAbsolute(relative)) {
-      throw new Error('Path is outside workspace boundary');
+    if (relative.startsWith("..") || path.isAbsolute(relative)) {
+      throw new Error("Path is outside workspace boundary");
     }
 
     return resolved;
@@ -37,9 +41,14 @@ export class FolderOrganizer {
     if (!projectId) return;
 
     const taskGetter = (this.daemon as any)?.getTask;
-    const task = typeof taskGetter === 'function' ? taskGetter.call(this.daemon, this.taskId) : null;
+    const task =
+      typeof taskGetter === "function" ? taskGetter.call(this.daemon, this.taskId) : null;
     const agentRoleId = task?.assignedAgentRoleId || null;
-    const res = await checkProjectAccess({ workspacePath: this.workspace.path, projectId, agentRoleId });
+    const res = await checkProjectAccess({
+      workspacePath: this.workspace.path,
+      projectId,
+      agentRoleId,
+    });
     if (!res.allowed) {
       throw new Error(res.reason || `Access denied for project "${projectId}"`);
     }
@@ -47,18 +56,18 @@ export class FolderOrganizer {
 
   async organize(
     relativePath: string,
-    strategy: 'by_type' | 'by_date' | 'custom',
-    rules?: any
+    strategy: "by_type" | "by_date" | "custom",
+    rules?: any,
   ): Promise<number> {
     const fullPath = this.validatePath(relativePath);
     await this.enforceProjectAccess(fullPath);
 
     switch (strategy) {
-      case 'by_type':
+      case "by_type":
         return await this.organizeByType(fullPath);
-      case 'by_date':
+      case "by_date":
         return await this.organizeByDate(fullPath);
-      case 'custom':
+      case "custom":
         return await this.organizeCustom(fullPath, rules);
       default:
         throw new Error(`Unknown strategy: ${strategy}`);
@@ -70,28 +79,28 @@ export class FolderOrganizer {
     let changes = 0;
 
     const typeMap: Record<string, string> = {
-      '.jpg': 'Images',
-      '.jpeg': 'Images',
-      '.png': 'Images',
-      '.gif': 'Images',
-      '.pdf': 'Documents',
-      '.doc': 'Documents',
-      '.docx': 'Documents',
-      '.pptx': 'Documents',
-      '.txt': 'Documents',
-      '.xlsx': 'Spreadsheets',
-      '.csv': 'Spreadsheets',
-      '.mp4': 'Videos',
-      '.mov': 'Videos',
-      '.mp3': 'Audio',
-      '.wav': 'Audio',
+      ".jpg": "Images",
+      ".jpeg": "Images",
+      ".png": "Images",
+      ".gif": "Images",
+      ".pdf": "Documents",
+      ".doc": "Documents",
+      ".docx": "Documents",
+      ".pptx": "Documents",
+      ".txt": "Documents",
+      ".xlsx": "Spreadsheets",
+      ".csv": "Spreadsheets",
+      ".mp4": "Videos",
+      ".mov": "Videos",
+      ".mp3": "Audio",
+      ".wav": "Audio",
     };
 
     for (const entry of entries) {
       if (!entry.isFile()) continue;
 
       const ext = path.extname(entry.name).toLowerCase();
-      const category = typeMap[ext] || 'Other';
+      const category = typeMap[ext] || "Other";
 
       const sourcePath = path.join(folderPath, entry.name);
       const targetDir = path.join(folderPath, category);
@@ -104,8 +113,8 @@ export class FolderOrganizer {
       await fs.rename(sourcePath, targetPath);
       changes++;
 
-      this.daemon.logEvent(this.taskId, 'file_modified', {
-        action: 'organize',
+      this.daemon.logEvent(this.taskId, "file_modified", {
+        action: "organize",
         from: entry.name,
         to: path.join(category, entry.name),
       });
@@ -125,7 +134,7 @@ export class FolderOrganizer {
       const stats = await fs.stat(sourcePath);
       const date = new Date(stats.mtime);
       const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, "0");
 
       const targetDir = path.join(folderPath, `${year}-${month}`);
       const targetPath = path.join(targetDir, entry.name);

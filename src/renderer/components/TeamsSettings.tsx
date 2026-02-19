@@ -1,7 +1,13 @@
-import { useState, useEffect, useCallback } from 'react';
-import { ChannelData, ChannelUserData, SecurityMode, ContextType, ContextPolicy } from '../../shared/types';
-import { PairingCodeDisplay } from './PairingCodeDisplay';
-import { ContextPolicySettings } from './ContextPolicySettings';
+import { useState, useEffect, useCallback } from "react";
+import {
+  ChannelData,
+  ChannelUserData,
+  SecurityMode,
+  ContextType,
+  ContextPolicy,
+} from "../../shared/types";
+import { PairingCodeDisplay } from "./PairingCodeDisplay";
+import { ContextPolicySettings } from "./ContextPolicySettings";
 
 interface TeamsSettingsProps {
   onStatusChange?: (connected: boolean) => void;
@@ -13,15 +19,19 @@ export function TeamsSettings({ onStatusChange }: TeamsSettingsProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<{ success: boolean; error?: string; botUsername?: string } | null>(null);
+  const [testResult, setTestResult] = useState<{
+    success: boolean;
+    error?: string;
+    botUsername?: string;
+  } | null>(null);
 
   // Form state
-  const [appId, setAppId] = useState('');
-  const [appPassword, setAppPassword] = useState('');
-  const [tenantId, setTenantId] = useState('');
-  const [webhookPort, setWebhookPort] = useState('3978');
-  const [channelName, setChannelName] = useState('Teams Bot');
-  const [securityMode, setSecurityMode] = useState<SecurityMode>('pairing');
+  const [appId, setAppId] = useState("");
+  const [appPassword, setAppPassword] = useState("");
+  const [tenantId, setTenantId] = useState("");
+  const [webhookPort, setWebhookPort] = useState("3978");
+  const [channelName, setChannelName] = useState("Teams Bot");
+  const [securityMode, setSecurityMode] = useState<SecurityMode>("pairing");
 
   // Pairing code state
   const [pairingCode, setPairingCode] = useState<string | null>(null);
@@ -29,20 +39,22 @@ export function TeamsSettings({ onStatusChange }: TeamsSettingsProps) {
   const [generatingCode, setGeneratingCode] = useState(false);
 
   // Context policy state
-  const [contextPolicies, setContextPolicies] = useState<Record<ContextType, ContextPolicy>>({} as Record<ContextType, ContextPolicy>);
+  const [contextPolicies, setContextPolicies] = useState<Record<ContextType, ContextPolicy>>(
+    {} as Record<ContextType, ContextPolicy>,
+  );
   const [savingPolicy, setSavingPolicy] = useState(false);
 
   const loadChannel = useCallback(async () => {
     try {
       setLoading(true);
       const channels = await window.electronAPI.getGatewayChannels();
-      const teamsChannel = channels.find((c: ChannelData) => c.type === 'teams');
+      const teamsChannel = channels.find((c: ChannelData) => c.type === "teams");
 
       if (teamsChannel) {
         setChannel(teamsChannel);
         setChannelName(teamsChannel.name);
         setSecurityMode(teamsChannel.securityMode);
-        onStatusChange?.(teamsChannel.status === 'connected');
+        onStatusChange?.(teamsChannel.status === "connected");
 
         // Load users for this channel
         const channelUsers = await window.electronAPI.getGatewayUsers(teamsChannel.id);
@@ -50,14 +62,17 @@ export function TeamsSettings({ onStatusChange }: TeamsSettingsProps) {
 
         // Load context policies
         const policies = await window.electronAPI.listContextPolicies(teamsChannel.id);
-        const policyMap: Record<ContextType, ContextPolicy> = {} as Record<ContextType, ContextPolicy>;
+        const policyMap: Record<ContextType, ContextPolicy> = {} as Record<
+          ContextType,
+          ContextPolicy
+        >;
         for (const policy of policies) {
           policyMap[policy.contextType as ContextType] = policy;
         }
         setContextPolicies(policyMap);
       }
     } catch (error) {
-      console.error('Failed to load Teams channel:', error);
+      console.error("Failed to load Teams channel:", error);
     } finally {
       setLoading(false);
     }
@@ -69,7 +84,7 @@ export function TeamsSettings({ onStatusChange }: TeamsSettingsProps) {
 
   useEffect(() => {
     const unsubscribe = window.electronAPI?.onGatewayUsersUpdated?.((data) => {
-      if (data?.channelType !== 'teams') return;
+      if (data?.channelType !== "teams") return;
       if (channel && data?.channelId && data.channelId !== channel.id) return;
       loadChannel();
     });
@@ -86,7 +101,7 @@ export function TeamsSettings({ onStatusChange }: TeamsSettingsProps) {
       setTestResult(null);
 
       await window.electronAPI.addGatewayChannel({
-        type: 'teams',
+        type: "teams",
         name: channelName,
         appId: appId.trim(),
         appPassword: appPassword.trim(),
@@ -95,9 +110,9 @@ export function TeamsSettings({ onStatusChange }: TeamsSettingsProps) {
         securityMode,
       });
 
-      setAppId('');
-      setAppPassword('');
-      setTenantId('');
+      setAppId("");
+      setAppPassword("");
+      setTenantId("");
       await loadChannel();
     } catch (error: any) {
       setTestResult({ success: false, error: error.message });
@@ -143,7 +158,7 @@ export function TeamsSettings({ onStatusChange }: TeamsSettingsProps) {
   const handleRemoveChannel = async () => {
     if (!channel) return;
 
-    if (!confirm('Are you sure you want to remove the Microsoft Teams channel?')) {
+    if (!confirm("Are you sure you want to remove the Microsoft Teams channel?")) {
       return;
     }
 
@@ -171,7 +186,7 @@ export function TeamsSettings({ onStatusChange }: TeamsSettingsProps) {
       setSecurityMode(mode);
       setChannel({ ...channel, securityMode: mode });
     } catch (error: any) {
-      console.error('Failed to update security mode:', error);
+      console.error("Failed to update security mode:", error);
     }
   };
 
@@ -180,12 +195,12 @@ export function TeamsSettings({ onStatusChange }: TeamsSettingsProps) {
 
     try {
       setGeneratingCode(true);
-      const code = await window.electronAPI.generateGatewayPairing(channel.id, '');
+      const code = await window.electronAPI.generateGatewayPairing(channel.id, "");
       setPairingCode(code);
       // Default TTL is 5 minutes (300 seconds)
       setPairingExpiresAt(Date.now() + 5 * 60 * 1000);
     } catch (error: any) {
-      console.error('Failed to generate pairing code:', error);
+      console.error("Failed to generate pairing code:", error);
     } finally {
       setGeneratingCode(false);
     }
@@ -200,12 +215,12 @@ export function TeamsSettings({ onStatusChange }: TeamsSettingsProps) {
         securityMode: updates.securityMode,
         toolRestrictions: updates.toolRestrictions,
       });
-      setContextPolicies(prev => ({
+      setContextPolicies((prev) => ({
         ...prev,
         [contextType]: updated,
       }));
     } catch (error: any) {
-      console.error('Failed to update context policy:', error);
+      console.error("Failed to update context policy:", error);
     } finally {
       setSavingPolicy(false);
     }
@@ -218,7 +233,7 @@ export function TeamsSettings({ onStatusChange }: TeamsSettingsProps) {
       await window.electronAPI.revokeGatewayAccess(channel.id, userId);
       await loadChannel();
     } catch (error: any) {
-      console.error('Failed to revoke access:', error);
+      console.error("Failed to revoke access:", error);
     }
   };
 
@@ -233,7 +248,8 @@ export function TeamsSettings({ onStatusChange }: TeamsSettingsProps) {
         <div className="settings-section">
           <h3>Connect Microsoft Teams Bot</h3>
           <p className="settings-description">
-            Create an Azure Bot resource, then enter the credentials here. A public webhook URL is required.
+            Create an Azure Bot resource, then enter the credentials here. A public webhook URL is
+            required.
           </p>
 
           <div className="settings-field">
@@ -298,9 +314,7 @@ export function TeamsSettings({ onStatusChange }: TeamsSettingsProps) {
               value={webhookPort}
               onChange={(e) => setWebhookPort(e.target.value)}
             />
-            <p className="settings-hint">
-              Local port for receiving Teams messages (default: 3978)
-            </p>
+            <p className="settings-hint">Local port for receiving Teams messages (default: 3978)</p>
           </div>
 
           <div className="settings-field">
@@ -315,14 +329,16 @@ export function TeamsSettings({ onStatusChange }: TeamsSettingsProps) {
               <option value="open">Open (Anyone can use)</option>
             </select>
             <p className="settings-hint">
-              {securityMode === 'pairing' && 'Users must enter a code generated in this app to use the bot'}
-              {securityMode === 'allowlist' && 'Only pre-approved Teams user IDs can use the bot'}
-              {securityMode === 'open' && 'Anyone who messages the bot can use it (not recommended)'}
+              {securityMode === "pairing" &&
+                "Users must enter a code generated in this app to use the bot"}
+              {securityMode === "allowlist" && "Only pre-approved Teams user IDs can use the bot"}
+              {securityMode === "open" &&
+                "Anyone who messages the bot can use it (not recommended)"}
             </p>
           </div>
 
           {testResult && (
-            <div className={`test-result ${testResult.success ? 'success' : 'error'}`}>
+            <div className={`test-result ${testResult.success ? "success" : "error"}`}>
               {testResult.success ? (
                 <>✓ Connected as {testResult.botUsername}</>
               ) : (
@@ -336,25 +352,48 @@ export function TeamsSettings({ onStatusChange }: TeamsSettingsProps) {
             onClick={handleAddChannel}
             disabled={saving || !appId.trim() || !appPassword.trim()}
           >
-            {saving ? 'Adding...' : 'Add Teams Bot'}
+            {saving ? "Adding..." : "Add Teams Bot"}
           </button>
         </div>
 
         <div className="settings-section">
           <h4>Setup Instructions</h4>
           <ol className="setup-instructions">
-            <li>Go to <a href="https://portal.azure.com/#create/Microsoft.AzureBot" target="_blank" rel="noopener noreferrer">Azure Portal - Create Bot</a></li>
+            <li>
+              Go to{" "}
+              <a
+                href="https://portal.azure.com/#create/Microsoft.AzureBot"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Azure Portal - Create Bot
+              </a>
+            </li>
             <li>Create a new Azure Bot resource with Multi-tenant or Single-tenant type</li>
-            <li>In the Bot resource, go to <strong>Configuration</strong> to find the Microsoft App ID</li>
-            <li>Click "Manage Password" to go to App Registration, then create a new client secret</li>
-            <li>In <strong>Channels</strong>, add Microsoft Teams as a channel</li>
-            <li>Set up ngrok or a tunnel to expose your local webhook:
+            <li>
+              In the Bot resource, go to <strong>Configuration</strong> to find the Microsoft App ID
+            </li>
+            <li>
+              Click "Manage Password" to go to App Registration, then create a new client secret
+            </li>
+            <li>
+              In <strong>Channels</strong>, add Microsoft Teams as a channel
+            </li>
+            <li>
+              Set up ngrok or a tunnel to expose your local webhook:
               <ul>
-                <li><code>ngrok http 3978</code></li>
-                <li>Set messaging endpoint to: <code>https://your-ngrok-url/api/messages</code></li>
+                <li>
+                  <code>ngrok http 3978</code>
+                </li>
+                <li>
+                  Set messaging endpoint to: <code>https://your-ngrok-url/api/messages</code>
+                </li>
               </ul>
             </li>
-            <li>In Azure Bot &gt; Configuration, set the Messaging endpoint to your public URL + <code>/api/messages</code></li>
+            <li>
+              In Azure Bot &gt; Configuration, set the Messaging endpoint to your public URL +{" "}
+              <code>/api/messages</code>
+            </li>
           </ol>
         </div>
 
@@ -364,9 +403,15 @@ export function TeamsSettings({ onStatusChange }: TeamsSettingsProps) {
             Ensure your Azure Bot has these Microsoft Graph permissions:
           </p>
           <ul className="permissions-list">
-            <li><code>User.Read</code> - Read user profile</li>
-            <li><code>ChannelMessage.Send</code> - Send messages in channels</li>
-            <li><code>Chat.ReadWrite</code> - Read and write chats</li>
+            <li>
+              <code>User.Read</code> - Read user profile
+            </li>
+            <li>
+              <code>ChannelMessage.Send</code> - Send messages in channels
+            </li>
+            <li>
+              <code>Chat.ReadWrite</code> - Read and write chats
+            </li>
           </ul>
         </div>
       </div>
@@ -384,44 +429,36 @@ export function TeamsSettings({ onStatusChange }: TeamsSettingsProps) {
               {channel.botUsername && <span className="bot-username">@{channel.botUsername}</span>}
             </h3>
             <div className={`channel-status ${channel.status}`}>
-              {channel.status === 'connected' && '● Connected'}
-              {channel.status === 'connecting' && '○ Connecting...'}
-              {channel.status === 'disconnected' && '○ Disconnected'}
-              {channel.status === 'error' && '● Error'}
+              {channel.status === "connected" && "● Connected"}
+              {channel.status === "connecting" && "○ Connecting..."}
+              {channel.status === "disconnected" && "○ Disconnected"}
+              {channel.status === "error" && "● Error"}
             </div>
           </div>
           <div className="channel-actions">
             <button
-              className={channel.enabled ? 'button-secondary' : 'button-primary'}
+              className={channel.enabled ? "button-secondary" : "button-primary"}
               onClick={handleToggleEnabled}
               disabled={saving}
             >
-              {channel.enabled ? 'Disable' : 'Enable'}
+              {channel.enabled ? "Disable" : "Enable"}
             </button>
             <button
               className="button-secondary"
               onClick={handleTestConnection}
               disabled={testing || !channel.enabled}
             >
-              {testing ? 'Testing...' : 'Test'}
+              {testing ? "Testing..." : "Test"}
             </button>
-            <button
-              className="button-danger"
-              onClick={handleRemoveChannel}
-              disabled={saving}
-            >
+            <button className="button-danger" onClick={handleRemoveChannel} disabled={saving}>
               Remove
             </button>
           </div>
         </div>
 
         {testResult && (
-          <div className={`test-result ${testResult.success ? 'success' : 'error'}`}>
-            {testResult.success ? (
-              <>✓ Connection successful</>
-            ) : (
-              <>✗ {testResult.error}</>
-            )}
+          <div className={`test-result ${testResult.success ? "success" : "error"}`}>
+            {testResult.success ? <>✓ Connection successful</> : <>✗ {testResult.error}</>}
           </div>
         )}
       </div>
@@ -439,7 +476,7 @@ export function TeamsSettings({ onStatusChange }: TeamsSettingsProps) {
         </select>
       </div>
 
-      {securityMode === 'pairing' && (
+      {securityMode === "pairing" && (
         <div className="settings-section">
           <h4>Generate Pairing Code</h4>
           <p className="settings-description">
@@ -458,7 +495,7 @@ export function TeamsSettings({ onStatusChange }: TeamsSettingsProps) {
               onClick={handleGeneratePairingCode}
               disabled={generatingCode}
             >
-              {generatingCode ? 'Generating...' : 'Generate Code'}
+              {generatingCode ? "Generating..." : "Generate Code"}
             </button>
           )}
         </div>
@@ -490,8 +527,8 @@ export function TeamsSettings({ onStatusChange }: TeamsSettingsProps) {
                 <div className="user-info">
                   <span className="user-name">{user.displayName}</span>
                   {user.username && <span className="user-username">@{user.username}</span>}
-                  <span className={`user-status ${user.allowed ? 'allowed' : 'pending'}`}>
-                    {user.allowed ? '✓ Allowed' : '○ Pending'}
+                  <span className={`user-status ${user.allowed ? "allowed" : "pending"}`}>
+                    {user.allowed ? "✓ Allowed" : "○ Pending"}
                   </span>
                 </div>
                 {user.allowed && (
@@ -514,14 +551,30 @@ export function TeamsSettings({ onStatusChange }: TeamsSettingsProps) {
           <p className="settings-description">
             Direct message the bot or mention it (@BotName) in a Teams channel to start a task.
           </p>
-          <div className="command-item"><code>/start</code> - Start the bot and get help</div>
-          <div className="command-item"><code>/help</code> - Show available commands</div>
-          <div className="command-item"><code>/workspaces</code> - List available workspaces</div>
-          <div className="command-item"><code>/workspace</code> - Select or show current workspace</div>
-          <div className="command-item"><code>/newtask</code> - Start a fresh task/conversation</div>
-          <div className="command-item"><code>/status</code> - Check bot status</div>
-          <div className="command-item"><code>/cancel</code> - Cancel current task</div>
-          <div className="command-item"><code>/pair</code> - Pair with a pairing code</div>
+          <div className="command-item">
+            <code>/start</code> - Start the bot and get help
+          </div>
+          <div className="command-item">
+            <code>/help</code> - Show available commands
+          </div>
+          <div className="command-item">
+            <code>/workspaces</code> - List available workspaces
+          </div>
+          <div className="command-item">
+            <code>/workspace</code> - Select or show current workspace
+          </div>
+          <div className="command-item">
+            <code>/newtask</code> - Start a fresh task/conversation
+          </div>
+          <div className="command-item">
+            <code>/status</code> - Check bot status
+          </div>
+          <div className="command-item">
+            <code>/cancel</code> - Cancel current task
+          </div>
+          <div className="command-item">
+            <code>/pair</code> - Pair with a pairing code
+          </div>
         </div>
       </div>
     </div>

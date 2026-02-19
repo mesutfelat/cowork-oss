@@ -9,12 +9,12 @@
  * - Filesystem restrictions via volume mounts
  */
 
-import { spawn, ChildProcess } from 'child_process';
-import * as path from 'path';
-import * as fs from 'fs';
-import * as os from 'os';
-import { Workspace } from '../../../shared/types';
-import { ISandbox, SandboxType, SandboxOptions, SandboxResult } from './sandbox-factory';
+import { spawn, ChildProcess } from "child_process";
+import * as path from "path";
+import * as fs from "fs";
+import * as os from "os";
+import { Workspace } from "../../../shared/types";
+import { ISandbox, SandboxType, SandboxOptions, SandboxResult } from "./sandbox-factory";
 
 /**
  * Docker sandbox configuration
@@ -27,7 +27,7 @@ export interface DockerSandboxConfig {
   /** Memory limit (e.g., "512m", "1g") */
   memoryLimit?: string;
   /** Network mode: 'none' for isolation, 'bridge' for network access */
-  networkMode?: 'none' | 'bridge';
+  networkMode?: "none" | "bridge";
   /** Additional environment variables */
   env?: Record<string, string>;
 }
@@ -36,10 +36,10 @@ export interface DockerSandboxConfig {
  * Default Docker configuration
  */
 const DEFAULT_DOCKER_CONFIG: Required<DockerSandboxConfig> = {
-  image: 'node:20-alpine',
+  image: "node:20-alpine",
   cpuLimit: 1,
-  memoryLimit: '512m',
-  networkMode: 'none',
+  memoryLimit: "512m",
+  networkMode: "none",
   env: {},
 };
 
@@ -47,20 +47,20 @@ const DEFAULT_DOCKER_CONFIG: Required<DockerSandboxConfig> = {
  * Default sandbox options
  */
 const DEFAULT_OPTIONS: Required<SandboxOptions> = {
-  cwd: '/workspace',
+  cwd: "/workspace",
   timeout: 5 * 60 * 1000, // 5 minutes
   maxOutputSize: 100 * 1024, // 100KB
   allowNetwork: false,
   allowedReadPaths: [],
   allowedWritePaths: [],
-  envPassthrough: ['LANG', 'TERM'],
+  envPassthrough: ["LANG", "TERM"],
 };
 
 /**
  * Docker container-based sandbox implementation
  */
 export class DockerSandbox implements ISandbox {
-  readonly type: SandboxType = 'docker';
+  readonly type: SandboxType = "docker";
   private workspace: Workspace;
   private config: Required<DockerSandboxConfig>;
   private initialized: boolean = false;
@@ -83,7 +83,7 @@ export class DockerSandbox implements ISandbox {
     // Verify Docker is available
     const available = await this.checkDockerAvailable();
     if (!available) {
-      throw new Error('Docker is not available. Please install and start Docker.');
+      throw new Error("Docker is not available. Please install and start Docker.");
     }
 
     // Pull image if not present (non-blocking, we'll catch errors on execute)
@@ -100,65 +100,65 @@ export class DockerSandbox implements ISandbox {
   async execute(
     command: string,
     args: string[] = [],
-    options: SandboxOptions = {}
+    options: SandboxOptions = {},
   ): Promise<SandboxResult> {
     if (!this.initialized) {
       return {
         exitCode: 1,
-        stdout: '',
-        stderr: 'Docker sandbox not initialized',
+        stdout: "",
+        stderr: "Docker sandbox not initialized",
         killed: false,
         timedOut: false,
-        error: 'Not initialized',
+        error: "Not initialized",
       };
     }
 
     const opts = { ...DEFAULT_OPTIONS, ...options };
     const dockerArgs = this.buildDockerArgs(opts);
-    const fullCommand = args.length > 0 ? `${command} ${args.join(' ')}` : command;
+    const fullCommand = args.length > 0 ? `${command} ${args.join(" ")}` : command;
 
     // Add the command to execute inside container
-    dockerArgs.push(this.config.image, '/bin/sh', '-c', fullCommand);
+    dockerArgs.push(this.config.image, "/bin/sh", "-c", fullCommand);
 
     return new Promise((resolve) => {
-      let stdout = '';
-      let stderr = '';
+      let stdout = "";
+      let stderr = "";
       let killed = false;
       let timedOut = false;
 
-      const proc = spawn('docker', dockerArgs, {
-        stdio: ['ignore', 'pipe', 'pipe'],
+      const proc = spawn("docker", dockerArgs, {
+        stdio: ["ignore", "pipe", "pipe"],
       });
 
       const timeoutHandle = setTimeout(() => {
         timedOut = true;
         killed = true;
-        proc.kill('SIGKILL');
+        proc.kill("SIGKILL");
         // Also try to stop any running container
         this.killContainer(proc.pid);
       }, opts.timeout);
 
-      proc.stdout?.on('data', (data: Buffer) => {
+      proc.stdout?.on("data", (data: Buffer) => {
         const chunk = data.toString();
         if (stdout.length + chunk.length <= opts.maxOutputSize) {
           stdout += chunk;
         } else if (stdout.length < opts.maxOutputSize) {
           stdout += chunk.slice(0, opts.maxOutputSize - stdout.length);
-          stdout += '\n[Output truncated]';
+          stdout += "\n[Output truncated]";
         }
       });
 
-      proc.stderr?.on('data', (data: Buffer) => {
+      proc.stderr?.on("data", (data: Buffer) => {
         const chunk = data.toString();
         if (stderr.length + chunk.length <= opts.maxOutputSize) {
           stderr += chunk;
         } else if (stderr.length < opts.maxOutputSize) {
           stderr += chunk.slice(0, opts.maxOutputSize - stderr.length);
-          stderr += '\n[Output truncated]';
+          stderr += "\n[Output truncated]";
         }
       });
 
-      proc.on('close', (code) => {
+      proc.on("close", (code) => {
         clearTimeout(timeoutHandle);
         resolve({
           exitCode: code ?? 1,
@@ -169,7 +169,7 @@ export class DockerSandbox implements ISandbox {
         });
       });
 
-      proc.on('error', (err) => {
+      proc.on("error", (err) => {
         clearTimeout(timeoutHandle);
         resolve({
           exitCode: 1,
@@ -186,25 +186,22 @@ export class DockerSandbox implements ISandbox {
   /**
    * Execute code in Docker container
    */
-  async executeCode(
-    code: string,
-    language: 'python' | 'javascript'
-  ): Promise<SandboxResult> {
-    const ext = language === 'python' ? '.py' : '.js';
+  async executeCode(code: string, language: "python" | "javascript"): Promise<SandboxResult> {
+    const ext = language === "python" ? ".py" : ".js";
     const tempFile = path.join(os.tmpdir(), `cowork_script_${Date.now()}${ext}`);
 
     try {
-      fs.writeFileSync(tempFile, code, 'utf8');
+      fs.writeFileSync(tempFile, code, "utf8");
 
       // Select appropriate image and interpreter
-      const interpreter = language === 'python' ? 'python3' : 'node';
-      const image = language === 'python' ? 'python:3.11-alpine' : this.config.image;
+      const interpreter = language === "python" ? "python3" : "node";
+      const image = language === "python" ? "python:3.11-alpine" : this.config.image;
 
       // Create a modified config for this execution
       const originalImage = this.config.image;
       this.config.image = image;
 
-      const result = await this.execute(interpreter, ['/tmp/script' + ext], {
+      const result = await this.execute(interpreter, ["/tmp/script" + ext], {
         timeout: 60 * 1000,
         allowNetwork: false,
         allowedReadPaths: [tempFile],
@@ -235,8 +232,8 @@ export class DockerSandbox implements ISandbox {
    */
   private async checkDockerAvailable(): Promise<boolean> {
     return new Promise((resolve) => {
-      const proc = spawn('docker', ['info'], {
-        stdio: ['ignore', 'pipe', 'pipe'],
+      const proc = spawn("docker", ["info"], {
+        stdio: ["ignore", "pipe", "pipe"],
       });
 
       const timeout = setTimeout(() => {
@@ -244,12 +241,12 @@ export class DockerSandbox implements ISandbox {
         resolve(false);
       }, 5000);
 
-      proc.on('close', (code) => {
+      proc.on("close", (code) => {
         clearTimeout(timeout);
         resolve(code === 0);
       });
 
-      proc.on('error', () => {
+      proc.on("error", () => {
         clearTimeout(timeout);
         resolve(false);
       });
@@ -268,16 +265,16 @@ export class DockerSandbox implements ISandbox {
 
     // Pull the image
     return new Promise((resolve, reject) => {
-      const proc = spawn('docker', ['pull', this.config.image], {
-        stdio: ['ignore', 'pipe', 'pipe'],
+      const proc = spawn("docker", ["pull", this.config.image], {
+        stdio: ["ignore", "pipe", "pipe"],
       });
 
       const timeout = setTimeout(() => {
         proc.kill();
-        reject(new Error('Docker pull timed out'));
+        reject(new Error("Docker pull timed out"));
       }, 120000); // 2 minute timeout for pull
 
-      proc.on('close', (code) => {
+      proc.on("close", (code) => {
         clearTimeout(timeout);
         if (code === 0) {
           resolve();
@@ -286,7 +283,7 @@ export class DockerSandbox implements ISandbox {
         }
       });
 
-      proc.on('error', (err) => {
+      proc.on("error", (err) => {
         clearTimeout(timeout);
         reject(err);
       });
@@ -298,15 +295,15 @@ export class DockerSandbox implements ISandbox {
    */
   private async imageExists(image: string): Promise<boolean> {
     return new Promise((resolve) => {
-      const proc = spawn('docker', ['image', 'inspect', image], {
-        stdio: ['ignore', 'pipe', 'pipe'],
+      const proc = spawn("docker", ["image", "inspect", image], {
+        stdio: ["ignore", "pipe", "pipe"],
       });
 
-      proc.on('close', (code) => {
+      proc.on("close", (code) => {
         resolve(code === 0);
       });
 
-      proc.on('error', () => {
+      proc.on("error", () => {
         resolve(false);
       });
     });
@@ -320,40 +317,40 @@ export class DockerSandbox implements ISandbox {
     const containerName = `cowork-sandbox-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     this.currentContainerName = containerName;
 
-    const args: string[] = ['run', '--rm', '--name', containerName];
+    const args: string[] = ["run", "--rm", "--name", containerName];
 
     // Resource limits
-    args.push('--cpus', this.config.cpuLimit.toString());
-    args.push('--memory', this.config.memoryLimit);
+    args.push("--cpus", this.config.cpuLimit.toString());
+    args.push("--memory", this.config.memoryLimit);
 
     // Prevent privilege escalation
-    args.push('--security-opt', 'no-new-privileges:true');
-    args.push('--cap-drop', 'ALL');
+    args.push("--security-opt", "no-new-privileges:true");
+    args.push("--cap-drop", "ALL");
 
     // Read-only root filesystem (except for specific mounts)
-    args.push('--read-only');
+    args.push("--read-only");
 
     // Add tmpfs for /tmp
-    args.push('--tmpfs', '/tmp:rw,noexec,nosuid,size=100m');
+    args.push("--tmpfs", "/tmp:rw,noexec,nosuid,size=100m");
 
     // Network isolation
-    const networkMode = options.allowNetwork ? 'bridge' : 'none';
-    args.push('--network', networkMode);
+    const networkMode = options.allowNetwork ? "bridge" : "none";
+    args.push("--network", networkMode);
 
     // Mount workspace (with Windows path conversion)
     const workspacePath = this.convertToDockerPath(this.workspace.path);
-    const writeMode = this.workspace.permissions.write ? 'rw' : 'ro';
-    args.push('-v', `${workspacePath}:/workspace:${writeMode}`);
+    const writeMode = this.workspace.permissions.write ? "rw" : "ro";
+    args.push("-v", `${workspacePath}:/workspace:${writeMode}`);
 
     // Set working directory
-    args.push('-w', options.cwd || '/workspace');
+    args.push("-w", options.cwd || "/workspace");
 
     // Mount additional allowed paths
     for (const readPath of options.allowedReadPaths || []) {
       if (fs.existsSync(readPath)) {
         const dockerPath = this.convertToDockerPath(readPath);
         const containerPath = this.getContainerMountPath(readPath);
-        args.push('-v', `${dockerPath}:${containerPath}:ro`);
+        args.push("-v", `${dockerPath}:${containerPath}:ro`);
       }
     }
 
@@ -361,26 +358,26 @@ export class DockerSandbox implements ISandbox {
       if (fs.existsSync(writePath)) {
         const dockerPath = this.convertToDockerPath(writePath);
         const containerPath = this.getContainerMountPath(writePath);
-        args.push('-v', `${dockerPath}:${containerPath}:rw`);
+        args.push("-v", `${dockerPath}:${containerPath}:rw`);
       }
     }
 
     // Environment variables
     for (const envKey of options.envPassthrough || []) {
       if (process.env[envKey]) {
-        args.push('-e', `${envKey}=${process.env[envKey]}`);
+        args.push("-e", `${envKey}=${process.env[envKey]}`);
       }
     }
 
     // Add custom environment
     for (const [key, value] of Object.entries(this.config.env)) {
-      args.push('-e', `${key}=${value}`);
+      args.push("-e", `${key}=${value}`);
     }
 
     // User mapping (run as current user to avoid permission issues)
     // Skip on Windows as Docker Desktop handles this differently
-    if (process.platform !== 'win32') {
-      args.push('--user', `${process.getuid?.() || 1000}:${process.getgid?.() || 1000}`);
+    if (process.platform !== "win32") {
+      args.push("--user", `${process.getuid?.() || 1000}:${process.getgid?.() || 1000}`);
     }
 
     return args;
@@ -391,13 +388,13 @@ export class DockerSandbox implements ISandbox {
    * Handles Windows path conversion for Docker Desktop
    */
   private convertToDockerPath(hostPath: string): string {
-    if (process.platform !== 'win32') {
+    if (process.platform !== "win32") {
       return hostPath;
     }
 
     // Windows: Convert C:\path\to\dir to /c/path/to/dir for Docker
     // Docker Desktop for Windows uses this format for volume mounts
-    const normalized = hostPath.replace(/\\/g, '/');
+    const normalized = hostPath.replace(/\\/g, "/");
 
     // Match drive letter pattern (e.g., C:/)
     const driveMatch = normalized.match(/^([a-zA-Z]):\//);
@@ -414,11 +411,15 @@ export class DockerSandbox implements ISandbox {
    */
   private getContainerMountPath(hostPath: string): string {
     // For temp directories, keep the path structure
-    if (hostPath.startsWith('/tmp') || hostPath.includes('\\Temp\\') || hostPath.includes('/temp/')) {
-      return hostPath.startsWith('/tmp') ? hostPath : '/tmp/mounted';
+    if (
+      hostPath.startsWith("/tmp") ||
+      hostPath.includes("\\Temp\\") ||
+      hostPath.includes("/temp/")
+    ) {
+      return hostPath.startsWith("/tmp") ? hostPath : "/tmp/mounted";
     }
     // For other paths, mount under /mnt
-    return `/mnt${hostPath.replace(/^[a-zA-Z]:/, '').replace(/\\/g, '/')}`;
+    return `/mnt${hostPath.replace(/^[a-zA-Z]:/, "").replace(/\\/g, "/")}`;
   }
 
   // Track current container name for cleanup
@@ -433,19 +434,19 @@ export class DockerSandbox implements ISandbox {
     }
 
     // Stop the specific container by name (more targeted than prune)
-    const stopProc = spawn('docker', ['stop', '-t', '2', this.currentContainerName], {
-      stdio: 'ignore',
+    const stopProc = spawn("docker", ["stop", "-t", "2", this.currentContainerName], {
+      stdio: "ignore",
     });
 
-    stopProc.on('close', () => {
+    stopProc.on("close", () => {
       // Container should auto-remove due to --rm, but force remove if stuck
-      spawn('docker', ['rm', '-f', this.currentContainerName!], {
-        stdio: 'ignore',
+      spawn("docker", ["rm", "-f", this.currentContainerName!], {
+        stdio: "ignore",
       });
       this.currentContainerName = undefined;
     });
 
-    stopProc.on('error', () => {
+    stopProc.on("error", () => {
       // Ignore errors - container may already be gone
       this.currentContainerName = undefined;
     });

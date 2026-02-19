@@ -1,8 +1,8 @@
-import { v4 as uuidv4 } from 'uuid';
-import { SecureSettingsRepository } from '../database/SecureSettingsRepository';
+import { v4 as uuidv4 } from "uuid";
+import { SecureSettingsRepository } from "../database/SecureSettingsRepository";
 
-type RelationshipLayer = 'identity' | 'preferences' | 'context' | 'history' | 'commitments';
-type RelationshipSource = 'conversation' | 'feedback' | 'task';
+type RelationshipLayer = "identity" | "preferences" | "context" | "history" | "commitments";
+type RelationshipSource = "conversation" | "feedback" | "task";
 
 export interface RelationshipMemoryItem {
   id: string;
@@ -13,7 +13,7 @@ export interface RelationshipMemoryItem {
   createdAt: number;
   updatedAt: number;
   lastTaskId?: string;
-  status?: 'open' | 'done';
+  status?: "open" | "done";
   dueAt?: number;
 }
 
@@ -24,7 +24,7 @@ interface RelationshipMemoryProfile {
 
 const MAX_ITEMS = 300;
 const MAX_TEXT_LENGTH = 220;
-const STORAGE_KEY = 'relationship-memory';
+const STORAGE_KEY = "relationship-memory";
 
 const EMPTY_PROFILE: RelationshipMemoryProfile = {
   items: [],
@@ -44,16 +44,18 @@ function clamp(value: number, min: number, max: number): number {
 export class RelationshipMemoryService {
   private static inMemoryProfile: RelationshipMemoryProfile = { ...EMPTY_PROFILE };
 
-  static listItems(params: {
-    layer?: RelationshipLayer;
-    includeDone?: boolean;
-    limit?: number;
-  } = {}): RelationshipMemoryItem[] {
+  static listItems(
+    params: {
+      layer?: RelationshipLayer;
+      includeDone?: boolean;
+      limit?: number;
+    } = {},
+  ): RelationshipMemoryItem[] {
     const profile = this.load();
     const limit = Math.max(1, params.limit ?? 80);
     return this.sort(profile.items)
       .filter((item) => !params.layer || item.layer === params.layer)
-      .filter((item) => params.includeDone === true || item.status !== 'done')
+      .filter((item) => params.includeDone === true || item.status !== "done")
       .slice(0, limit);
   }
 
@@ -62,28 +64,28 @@ export class RelationshipMemoryService {
     patch: {
       text?: string;
       confidence?: number;
-      status?: 'open' | 'done';
+      status?: "open" | "done";
       dueAt?: number | null;
-    }
+    },
   ): RelationshipMemoryItem | null {
     const profile = this.load();
     const item = profile.items.find((entry) => entry.id === id);
     if (!item) return null;
 
-    if (typeof patch.text === 'string') {
+    if (typeof patch.text === "string") {
       const nextText = this.normalizeText(patch.text);
-      if (!nextText) throw new Error('Item text is required');
+      if (!nextText) throw new Error("Item text is required");
       item.text = nextText;
     }
-    if (typeof patch.confidence === 'number') {
+    if (typeof patch.confidence === "number") {
       item.confidence = clamp(patch.confidence, 0, 1);
     }
-    if (patch.status === 'open' || patch.status === 'done') {
+    if (patch.status === "open" || patch.status === "done") {
       item.status = patch.status;
     }
     if (patch.dueAt === null) {
       delete item.dueAt;
-    } else if (typeof patch.dueAt === 'number' && Number.isFinite(patch.dueAt)) {
+    } else if (typeof patch.dueAt === "number" && Number.isFinite(patch.dueAt)) {
       item.dueAt = Math.floor(patch.dueAt);
     }
     item.updatedAt = Date.now();
@@ -101,65 +103,71 @@ export class RelationshipMemoryService {
   }
 
   static listOpenCommitments(limit = 20): RelationshipMemoryItem[] {
-    return this.listItems({ layer: 'commitments', includeDone: false, limit });
+    return this.listItems({ layer: "commitments", includeDone: false, limit });
   }
 
   static listDueSoonCommitments(windowHours = 72, nowMs = Date.now()): RelationshipMemoryItem[] {
     const cutoff = nowMs + Math.max(1, Math.floor(windowHours)) * 60 * 60 * 1000;
     return this.listOpenCommitments(200)
-      .filter((item) => typeof item.dueAt === 'number' && item.dueAt <= cutoff)
+      .filter((item) => typeof item.dueAt === "number" && item.dueAt <= cutoff)
       .sort((a, b) => Number(a.dueAt || 0) - Number(b.dueAt || 0));
   }
 
   static ingestUserMessage(message: string, taskId?: string): void {
-    const text = String(message || '').trim();
+    const text = String(message || "").trim();
     if (!text) return;
 
-    const candidates: Array<Omit<RelationshipMemoryItem, 'id' | 'createdAt' | 'updatedAt'>> = [];
+    const candidates: Array<Omit<RelationshipMemoryItem, "id" | "createdAt" | "updatedAt">> = [];
     const lower = text.toLowerCase();
 
     const nameMatch = text.match(/\b(?:my name is|call me|i am|i'm)\s+([a-z][a-z' -]{1,40})/i);
     if (nameMatch) {
       candidates.push({
-        layer: 'identity',
+        layer: "identity",
         text: `Preferred name: ${nameMatch[1].trim()}`,
         confidence: 0.9,
-        source: 'conversation',
+        source: "conversation",
         lastTaskId: taskId,
       });
     }
 
-    const preferenceMatch = text.match(/\b(?:i prefer|please always|please don't|i like|i dislike)\s+([^.!?\n]{3,120})/i);
+    const preferenceMatch = text.match(
+      /\b(?:i prefer|please always|please don't|i like|i dislike)\s+([^.!?\n]{3,120})/i,
+    );
     if (preferenceMatch) {
       candidates.push({
-        layer: 'preferences',
+        layer: "preferences",
         text: preferenceMatch[0].trim(),
         confidence: 0.78,
-        source: 'conversation',
+        source: "conversation",
         lastTaskId: taskId,
       });
     }
 
-    const contextMatch = text.match(/\b(?:i(?:'m| am) working on|for my team|for my company|we are building|this project is)\s+([^.!?\n]{3,150})/i);
+    const contextMatch = text.match(
+      /\b(?:i(?:'m| am) working on|for my team|for my company|we are building|this project is)\s+([^.!?\n]{3,150})/i,
+    );
     if (contextMatch) {
       candidates.push({
-        layer: 'context',
+        layer: "context",
         text: contextMatch[0].trim(),
         confidence: 0.75,
-        source: 'conversation',
+        source: "conversation",
         lastTaskId: taskId,
       });
     }
 
-    const commitmentMatch = text.match(/\b(?:remind me to|i need to|i must|please remember to)\s+([^.!?\n]{3,150})/i);
+    const commitmentMatch = text.match(
+      /\b(?:remind me to|i need to|i must|please remember to)\s+([^.!?\n]{3,150})/i,
+    );
     if (commitmentMatch) {
       const dueAt = this.parseDueAt(text, Date.now());
       candidates.push({
-        layer: 'commitments',
+        layer: "commitments",
         text: commitmentMatch[0].trim(),
         confidence: 0.82,
-        source: 'conversation',
-        status: 'open',
+        source: "conversation",
+        status: "open",
         dueAt,
         lastTaskId: taskId,
       });
@@ -171,46 +179,49 @@ export class RelationshipMemoryService {
   }
 
   static ingestUserFeedback(decision?: string, reason?: string, taskId?: string): void {
-    const feedback = String(reason || '').trim();
+    const feedback = String(reason || "").trim();
     if (!feedback) return;
 
     const lowered = feedback.toLowerCase();
     if (/\b(concise|shorter|brief|more detail|detailed|tone|format)\b/.test(lowered)) {
       this.upsert({
-        layer: 'preferences',
+        layer: "preferences",
         text: `Feedback preference: ${feedback}`.slice(0, MAX_TEXT_LENGTH),
         confidence: 0.86,
-        source: 'feedback',
+        source: "feedback",
         lastTaskId: taskId,
       });
     }
 
     if (decision && /\b(reject|deny|denied)\b/i.test(decision)) {
       this.upsert({
-        layer: 'history',
+        layer: "history",
         text: `Rejected approach: ${feedback}`.slice(0, MAX_TEXT_LENGTH),
         confidence: 0.72,
-        source: 'feedback',
+        source: "feedback",
         lastTaskId: taskId,
       });
     }
   }
 
   static recordTaskCompletion(title: string, resultSummary?: string, taskId?: string): void {
-    const normalizedTitle = String(title || '').trim();
+    const normalizedTitle = String(title || "").trim();
     if (!normalizedTitle) return;
 
-    const compactSummary = String(resultSummary || '').trim().replace(/\s+/g, ' ');
-    const excerpt = compactSummary.length > 90 ? `${compactSummary.slice(0, 90)}...` : compactSummary;
+    const compactSummary = String(resultSummary || "")
+      .trim()
+      .replace(/\s+/g, " ");
+    const excerpt =
+      compactSummary.length > 90 ? `${compactSummary.slice(0, 90)}...` : compactSummary;
     const text = excerpt
       ? `Completed task: ${normalizedTitle}. Outcome: ${excerpt}`
       : `Completed task: ${normalizedTitle}`;
 
     this.upsert({
-      layer: 'history',
+      layer: "history",
       text: text.slice(0, MAX_TEXT_LENGTH),
       confidence: 0.68,
-      source: 'task',
+      source: "task",
       lastTaskId: taskId,
     });
 
@@ -224,16 +235,14 @@ export class RelationshipMemoryService {
     const maxChars = Math.max(300, options.maxChars ?? 1200);
     const includeDueSoon = options.includeDueSoon !== false;
     const profile = this.load();
-    if (!profile.items.length) return '';
+    if (!profile.items.length) return "";
 
-    const lines: string[] = [
-      'RELATIONSHIP MEMORY (continuity context, not hard constraints):',
-    ];
+    const lines: string[] = ["RELATIONSHIP MEMORY (continuity context, not hard constraints):"];
 
     const appendLayer = (label: string, layer: RelationshipLayer, openOnly = false) => {
       const selected = this.sort(profile.items)
         .filter((item) => item.layer === layer)
-        .filter((item) => !openOnly || item.status !== 'done')
+        .filter((item) => !openOnly || item.status !== "done")
         .slice(0, maxPerLayer);
       if (!selected.length) return;
       lines.push(`${label}:`);
@@ -242,37 +251,41 @@ export class RelationshipMemoryService {
       }
     };
 
-    appendLayer('Identity', 'identity');
-    appendLayer('Preferences', 'preferences');
-    appendLayer('Current context', 'context');
-    appendLayer('Open commitments', 'commitments', true);
+    appendLayer("Identity", "identity");
+    appendLayer("Preferences", "preferences");
+    appendLayer("Current context", "context");
+    appendLayer("Open commitments", "commitments", true);
     if (includeDueSoon) {
       const dueSoon = this.listDueSoonCommitments(72).slice(0, maxPerLayer);
       if (dueSoon.length > 0) {
-        lines.push('Due soon reminders:');
+        lines.push("Due soon reminders:");
         for (const item of dueSoon) {
-          const dueText = item.dueAt ? new Date(item.dueAt).toISOString() : 'soon';
+          const dueText = item.dueAt ? new Date(item.dueAt).toISOString() : "soon";
           lines.push(`- ${item.text} (due: ${dueText})`);
         }
       }
     }
-    appendLayer('Recent history', 'history');
+    appendLayer("Recent history", "history");
 
-    let text = lines.join('\n');
+    let text = lines.join("\n");
     if (text.length > maxChars) {
       text = `${text.slice(0, maxChars - 16)}\n[... truncated]`;
     }
     return text;
   }
 
-  private static upsert(input: Omit<RelationshipMemoryItem, 'id' | 'createdAt' | 'updatedAt'>): void {
+  private static upsert(
+    input: Omit<RelationshipMemoryItem, "id" | "createdAt" | "updatedAt">,
+  ): void {
     const normalizedText = this.normalizeText(input.text);
     if (!normalizedText) return;
 
     const profile = this.load();
     const now = Date.now();
     const existing = profile.items.find(
-      (item) => item.layer === input.layer && this.normalizeForMatch(item.text) === this.normalizeForMatch(normalizedText)
+      (item) =>
+        item.layer === input.layer &&
+        this.normalizeForMatch(item.text) === this.normalizeForMatch(normalizedText),
     );
 
     if (existing) {
@@ -281,7 +294,7 @@ export class RelationshipMemoryService {
       existing.source = input.source;
       existing.lastTaskId = input.lastTaskId ?? existing.lastTaskId;
       existing.status = input.status ?? existing.status;
-      existing.dueAt = typeof input.dueAt === 'number' ? Math.floor(input.dueAt) : existing.dueAt;
+      existing.dueAt = typeof input.dueAt === "number" ? Math.floor(input.dueAt) : existing.dueAt;
       this.save(profile);
       return;
     }
@@ -296,7 +309,7 @@ export class RelationshipMemoryService {
       updatedAt: now,
       lastTaskId: input.lastTaskId,
       status: input.status,
-      dueAt: typeof input.dueAt === 'number' ? Math.floor(input.dueAt) : undefined,
+      dueAt: typeof input.dueAt === "number" ? Math.floor(input.dueAt) : undefined,
     });
 
     if (profile.items.length > MAX_ITEMS) {
@@ -312,10 +325,10 @@ export class RelationshipMemoryService {
 
     let changed = false;
     for (const item of profile.items) {
-      if (item.layer !== 'commitments' || item.status === 'done') continue;
-      const signal = this.normalizeForMatch(item.text).replace(/^remind me to\s+/, '');
+      if (item.layer !== "commitments" || item.status === "done") continue;
+      const signal = this.normalizeForMatch(item.text).replace(/^remind me to\s+/, "");
       if (signal && normalizedSummary.includes(signal.slice(0, Math.min(signal.length, 40)))) {
-        item.status = 'done';
+        item.status = "done";
         item.updatedAt = Date.now();
         changed = true;
       }
@@ -328,11 +341,13 @@ export class RelationshipMemoryService {
 
   private static sort(items: RelationshipMemoryItem[]): RelationshipMemoryItem[] {
     return [...items].sort((a, b) => {
-      const dueA = a.status === 'open' ? (a.dueAt ?? Number.MAX_SAFE_INTEGER) : Number.MAX_SAFE_INTEGER;
-      const dueB = b.status === 'open' ? (b.dueAt ?? Number.MAX_SAFE_INTEGER) : Number.MAX_SAFE_INTEGER;
+      const dueA =
+        a.status === "open" ? (a.dueAt ?? Number.MAX_SAFE_INTEGER) : Number.MAX_SAFE_INTEGER;
+      const dueB =
+        b.status === "open" ? (b.dueAt ?? Number.MAX_SAFE_INTEGER) : Number.MAX_SAFE_INTEGER;
       if (dueA !== dueB) return dueA - dueB;
-      if ((a.status === 'open') !== (b.status === 'open')) {
-        return a.status === 'open' ? -1 : 1;
+      if ((a.status === "open") !== (b.status === "open")) {
+        return a.status === "open" ? -1 : 1;
       }
       if (b.confidence !== a.confidence) return b.confidence - a.confidence;
       return b.updatedAt - a.updatedAt;
@@ -355,14 +370,19 @@ export class RelationshipMemoryService {
 
     const isoDateMatch = lower.match(/\b(20\d{2})-(\d{2})-(\d{2})\b/);
     if (isoDateMatch) {
-      const parsed = Date.parse(`${isoDateMatch[1]}-${isoDateMatch[2]}-${isoDateMatch[3]}T17:00:00`);
+      const parsed = Date.parse(
+        `${isoDateMatch[1]}-${isoDateMatch[2]}-${isoDateMatch[3]}T17:00:00`,
+      );
       if (Number.isFinite(parsed)) return parsed;
     }
     return undefined;
   }
 
   private static normalizeText(value: string): string {
-    return String(value || '').trim().replace(/\s+/g, ' ').slice(0, MAX_TEXT_LENGTH);
+    return String(value || "")
+      .trim()
+      .replace(/\s+/g, " ")
+      .slice(0, MAX_TEXT_LENGTH);
   }
 
   private static normalizeForMatch(value: string): string {
@@ -387,18 +407,24 @@ export class RelationshipMemoryService {
     return {
       items: Array.isArray(profile.items)
         ? profile.items
-            .filter((item) => !!item && typeof item.id === 'string' && typeof item.text === 'string')
+            .filter(
+              (item) => !!item && typeof item.id === "string" && typeof item.text === "string",
+            )
             .map((item) => ({
               id: item.id,
               layer: item.layer,
               text: this.normalizeText(item.text),
               confidence: clamp(Number(item.confidence ?? 0.65), 0, 1),
-              source: item.source === 'feedback' || item.source === 'task' ? item.source : 'conversation',
+              source:
+                item.source === "feedback" || item.source === "task" ? item.source : "conversation",
               createdAt: Number(item.createdAt || Date.now()),
               updatedAt: Number(item.updatedAt || Date.now()),
-              lastTaskId: typeof item.lastTaskId === 'string' ? item.lastTaskId : undefined,
-              status: item.status === 'done' ? 'done' : item.status === 'open' ? 'open' : undefined,
-              dueAt: typeof item.dueAt === 'number' && Number.isFinite(item.dueAt) ? Math.floor(item.dueAt) : undefined,
+              lastTaskId: typeof item.lastTaskId === "string" ? item.lastTaskId : undefined,
+              status: item.status === "done" ? "done" : item.status === "open" ? "open" : undefined,
+              dueAt:
+                typeof item.dueAt === "number" && Number.isFinite(item.dueAt)
+                  ? Math.floor(item.dueAt)
+                  : undefined,
             }))
         : [],
       updatedAt: Number(profile.updatedAt || 0),

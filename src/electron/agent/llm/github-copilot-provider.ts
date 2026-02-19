@@ -1,8 +1,8 @@
-import { LLMProvider, LLMProviderConfig, LLMRequest, LLMResponse } from './types';
-import { OpenAICompatibleProvider } from './openai-compatible-provider';
+import { LLMProvider, LLMProviderConfig, LLMRequest, LLMResponse } from "./types";
+import { OpenAICompatibleProvider } from "./openai-compatible-provider";
 
-const COPILOT_TOKEN_URL = 'https://api.github.com/copilot_internal/v2/token';
-const DEFAULT_COPILOT_BASE_URL = 'https://api.individual.githubcopilot.com';
+const COPILOT_TOKEN_URL = "https://api.github.com/copilot_internal/v2/token";
+const DEFAULT_COPILOT_BASE_URL = "https://api.individual.githubcopilot.com";
 
 type CopilotTokenCache = {
   token: string;
@@ -15,40 +15,40 @@ function isTokenValid(cache: CopilotTokenCache, now = Date.now()): boolean {
 }
 
 function parseCopilotTokenResponse(payload: any): { token: string; expiresAt: number } {
-  if (!payload || typeof payload !== 'object') {
-    throw new Error('Unexpected response from Copilot token endpoint');
+  if (!payload || typeof payload !== "object") {
+    throw new Error("Unexpected response from Copilot token endpoint");
   }
   const token = payload.token;
   const expiresAt = payload.expires_at;
-  if (typeof token !== 'string' || !token.trim()) {
-    throw new Error('Copilot token response missing token');
+  if (typeof token !== "string" || !token.trim()) {
+    throw new Error("Copilot token response missing token");
   }
 
-  if (typeof expiresAt === 'number' && Number.isFinite(expiresAt)) {
+  if (typeof expiresAt === "number" && Number.isFinite(expiresAt)) {
     return { token, expiresAt: expiresAt > 10_000_000_000 ? expiresAt : expiresAt * 1000 };
   }
 
-  if (typeof expiresAt === 'string' && expiresAt.trim()) {
+  if (typeof expiresAt === "string" && expiresAt.trim()) {
     const parsed = Number.parseInt(expiresAt, 10);
     if (!Number.isFinite(parsed)) {
-      throw new Error('Copilot token response has invalid expires_at');
+      throw new Error("Copilot token response has invalid expires_at");
     }
     return { token, expiresAt: parsed > 10_000_000_000 ? parsed : parsed * 1000 };
   }
 
-  throw new Error('Copilot token response missing expires_at');
+  throw new Error("Copilot token response missing expires_at");
 }
 
 function deriveCopilotBaseUrl(token: string): string {
   const match = token.match(/(?:^|;)\s*proxy-ep=([^;\s]+)/i);
   const proxyEp = match?.[1]?.trim();
   if (!proxyEp) return DEFAULT_COPILOT_BASE_URL;
-  const host = proxyEp.replace(/^https?:\/\//, '').replace(/^proxy\./i, 'api.');
+  const host = proxyEp.replace(/^https?:\/\//, "").replace(/^proxy\./i, "api.");
   return host ? `https://${host}` : DEFAULT_COPILOT_BASE_URL;
 }
 
 export class GitHubCopilotProvider implements LLMProvider {
-  readonly type = 'github-copilot' as const;
+  readonly type = "github-copilot" as const;
   private githubToken: string;
   private model: string;
   private static cache?: CopilotTokenCache;
@@ -56,10 +56,10 @@ export class GitHubCopilotProvider implements LLMProvider {
   constructor(config: LLMProviderConfig) {
     const token = config.providerApiKey;
     if (!token) {
-      throw new Error('GitHub token is required for Copilot. Configure it in Settings.');
+      throw new Error("GitHub token is required for Copilot. Configure it in Settings.");
     }
     this.githubToken = token;
-    this.model = config.model || 'gpt-4o';
+    this.model = config.model || "gpt-4o";
   }
 
   async createMessage(request: LLMRequest): Promise<LLMResponse> {
@@ -72,15 +72,15 @@ export class GitHubCopilotProvider implements LLMProvider {
       const client = await this.getClient(this.model);
       return await client.testConnection();
     } catch (error: any) {
-      return { success: false, error: error.message || 'Failed to connect to Copilot' };
+      return { success: false, error: error.message || "Failed to connect to Copilot" };
     }
   }
 
   private async getClient(model: string): Promise<OpenAICompatibleProvider> {
     const auth = await this.getCopilotAuth();
     return new OpenAICompatibleProvider({
-      type: 'github-copilot',
-      providerName: 'GitHub Copilot',
+      type: "github-copilot",
+      providerName: "GitHub Copilot",
       apiKey: auth.token,
       baseUrl: auth.baseUrl,
       defaultModel: model,
@@ -93,9 +93,9 @@ export class GitHubCopilotProvider implements LLMProvider {
     }
 
     const response = await fetch(COPILOT_TOKEN_URL, {
-      method: 'GET',
+      method: "GET",
       headers: {
-        Accept: 'application/json',
+        Accept: "application/json",
         Authorization: `Bearer ${this.githubToken}`,
       },
     });

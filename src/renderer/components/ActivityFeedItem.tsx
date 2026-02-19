@@ -1,5 +1,5 @@
-import { ActivityData, ActivityType, ActivityActorType } from '../../electron/preload';
-import { ThemeIcon } from './ThemeIcon';
+import { ActivityData, ActivityType, ActivityActorType } from "../../electron/preload";
+import { ThemeIcon } from "./ThemeIcon";
 import {
   AlertTriangleIcon,
   AtIcon,
@@ -15,7 +15,7 @@ import {
   SlidersIcon,
   TrashIcon,
   XIcon,
-} from './LineIcons';
+} from "./LineIcons";
 
 interface ActivityFeedItemProps {
   activity: ActivityData;
@@ -45,34 +45,34 @@ const ACTIVITY_ICONS: Record<ActivityType, React.ReactNode> = {
 };
 
 const ACTIVITY_COLORS: Record<ActivityType, string> = {
-  task_created: '#3b82f6',
-  task_started: '#22c55e',
-  task_completed: '#22c55e',
-  task_failed: '#ef4444',
-  task_paused: '#f59e0b',
-  task_resumed: '#22c55e',
-  comment: '#ec4899',
-  file_created: '#8b5cf6',
-  file_modified: '#f59e0b',
-  file_deleted: '#ef4444',
-  command_executed: '#06b6d4',
-  tool_used: '#6366f1',
-  mention: '#ec4899',
-  agent_assigned: '#6366f1',
-  error: '#ef4444',
-  info: '#3b82f6',
+  task_created: "#3b82f6",
+  task_started: "#22c55e",
+  task_completed: "#22c55e",
+  task_failed: "#ef4444",
+  task_paused: "#f59e0b",
+  task_resumed: "#22c55e",
+  comment: "#ec4899",
+  file_created: "#8b5cf6",
+  file_modified: "#f59e0b",
+  file_deleted: "#ef4444",
+  command_executed: "#06b6d4",
+  tool_used: "#6366f1",
+  mention: "#ec4899",
+  agent_assigned: "#6366f1",
+  error: "#ef4444",
+  info: "#3b82f6",
 };
 
 const ACTOR_LABELS: Record<ActivityActorType, string> = {
-  agent: 'Agent',
-  user: 'User',
-  system: 'System',
+  agent: "Agent",
+  user: "User",
+  system: "System",
 };
 
 function formatTimeAgo(timestamp: number): string {
   const seconds = Math.floor((Date.now() - timestamp) / 1000);
 
-  if (seconds < 60) return 'just now';
+  if (seconds < 60) return "just now";
   if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
   if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
   if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
@@ -98,7 +98,7 @@ export function ActivityFeedItem({
 
   return (
     <div
-      className={`activity-feed-item ${!activity.isRead ? 'unread' : ''} ${activity.isPinned ? 'pinned' : ''} ${compact ? 'compact' : ''}`}
+      className={`activity-feed-item ${!activity.isRead ? "unread" : ""} ${activity.isPinned ? "pinned" : ""} ${compact ? "compact" : ""}`}
       onClick={handleClick}
     >
       <div className="activity-icon" style={{ backgroundColor: color }}>
@@ -117,22 +117,27 @@ export function ActivityFeedItem({
 
         <div className="activity-meta">
           <span className="activity-actor">{ACTOR_LABELS[activity.actorType]}</span>
-          {activity.taskId && (
-            <span className="activity-task">Task</span>
-          )}
+          {activity.taskId && <span className="activity-task">Task</span>}
         </div>
       </div>
 
       <div className="activity-actions">
         <button
-          className={`activity-action-btn ${activity.isPinned ? 'active' : ''}`}
+          className={`activity-action-btn ${activity.isPinned ? "active" : ""}`}
           onClick={(e) => {
             e.stopPropagation();
             onPin(activity.id);
           }}
-          title={activity.isPinned ? 'Unpin' : 'Pin'}
+          title={activity.isPinned ? "Unpin" : "Pin"}
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill={activity.isPinned ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill={activity.isPinned ? "currentColor" : "none"}
+            stroke="currentColor"
+            strokeWidth="2"
+          >
             <path d="M12 2l3 6h6l-5 5 2 9-6-4-6 4 2-9-5-5h6l3-6z" />
           </svg>
         </button>
@@ -144,7 +149,14 @@ export function ActivityFeedItem({
           }}
           title="Delete"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
             <line x1="18" y1="6" x2="6" y2="18" />
             <line x1="6" y1="6" x2="18" y2="18" />
           </svg>

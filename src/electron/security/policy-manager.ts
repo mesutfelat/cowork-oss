@@ -22,8 +22,8 @@ import {
   ToolGroupName,
   TOOL_RISK_LEVELS,
   CONTEXT_TOOL_RESTRICTIONS,
-} from '../../shared/types';
-import { GuardrailSettings } from '../../shared/types';
+} from "../../shared/types";
+import { GuardrailSettings } from "../../shared/types";
 
 /**
  * Result of a policy check
@@ -40,17 +40,17 @@ export interface PolicyCheckResult {
  * Policy layers in precedence order
  */
 export type PolicyLayer =
-  | 'global_guardrails'
-  | 'workspace_permissions'
-  | 'context_restrictions'
-  | 'tool_specific';
+  | "global_guardrails"
+  | "workspace_permissions"
+  | "context_restrictions"
+  | "tool_specific";
 
 /**
  * Policy decision at each layer
  */
 export interface LayerDecision {
   layer: PolicyLayer;
-  decision: 'allow' | 'deny' | 'require_approval' | 'pass';
+  decision: "allow" | "deny" | "require_approval" | "pass";
   reason?: string;
 }
 
@@ -84,7 +84,7 @@ export class SecurityPolicyManager {
     // Check if tool was denied by any layer
     if (this.deniedTools.has(toolName)) {
       const decisions = this.layerDecisions.get(toolName) || [];
-      const denyDecision = decisions.find(d => d.decision === 'deny');
+      const denyDecision = decisions.find((d) => d.decision === "deny");
       return {
         allowed: false,
         reason: denyDecision?.reason || `Tool "${toolName}" is not permitted`,
@@ -95,7 +95,7 @@ export class SecurityPolicyManager {
     // Check if tool requires approval
     if (this.approvalRequiredTools.has(toolName)) {
       const decisions = this.layerDecisions.get(toolName) || [];
-      const approvalDecision = decisions.find(d => d.decision === 'require_approval');
+      const approvalDecision = decisions.find((d) => d.decision === "require_approval");
       return {
         allowed: true,
         requiresApproval: true,
@@ -104,7 +104,7 @@ export class SecurityPolicyManager {
     }
 
     // Tool-specific input validation for shell commands
-    if (toolName === 'run_command' && input?.command) {
+    if (toolName === "run_command" && input?.command) {
       const commandCheck = this.checkCommandPolicy(input.command);
       if (!commandCheck.allowed) {
         return commandCheck;
@@ -129,12 +129,12 @@ export class SecurityPolicyManager {
 
       for (const pattern of allBlockedPatterns) {
         try {
-          const regex = new RegExp(pattern, 'i');
+          const regex = new RegExp(pattern, "i");
           if (regex.test(command)) {
             return {
               allowed: false,
               reason: `Command blocked by security policy: matches pattern "${pattern}"`,
-              deniedBy: 'global_guardrails',
+              deniedBy: "global_guardrails",
             };
           }
         } catch {
@@ -160,7 +160,7 @@ export class SecurityPolicyManager {
     return {
       allowed: true,
       requiresApproval: true,
-      approvalReason: 'Shell commands require approval',
+      approvalReason: "Shell commands require approval",
     };
   }
 
@@ -223,7 +223,7 @@ export class SecurityPolicyManager {
       // Layer 1: Global Guardrails
       const guardrailDecision = this.evaluateGuardrailLayer(toolName);
       decisions.push(guardrailDecision);
-      if (guardrailDecision.decision === 'deny') {
+      if (guardrailDecision.decision === "deny") {
         this.deniedTools.add(toolName);
         this.layerDecisions.set(toolName, decisions);
         continue; // Monotonic: skip remaining layers
@@ -232,7 +232,7 @@ export class SecurityPolicyManager {
       // Layer 2: Workspace Permissions
       const workspaceDecision = this.evaluateWorkspaceLayer(toolName);
       decisions.push(workspaceDecision);
-      if (workspaceDecision.decision === 'deny') {
+      if (workspaceDecision.decision === "deny") {
         this.deniedTools.add(toolName);
         this.layerDecisions.set(toolName, decisions);
         continue; // Monotonic: skip remaining layers
@@ -242,12 +242,12 @@ export class SecurityPolicyManager {
       if (this.context.gatewayContext) {
         const contextDecision = this.evaluateContextLayer(toolName);
         decisions.push(contextDecision);
-        if (contextDecision.decision === 'deny') {
+        if (contextDecision.decision === "deny") {
           this.deniedTools.add(toolName);
           this.layerDecisions.set(toolName, decisions);
           continue; // Monotonic: skip remaining layers
         }
-        if (contextDecision.decision === 'require_approval') {
+        if (contextDecision.decision === "require_approval") {
           this.approvalRequiredTools.add(toolName);
         }
       }
@@ -255,9 +255,9 @@ export class SecurityPolicyManager {
       // Layer 4: Tool-Specific Rules
       const toolSpecificDecision = this.evaluateToolSpecificLayer(toolName);
       decisions.push(toolSpecificDecision);
-      if (toolSpecificDecision.decision === 'deny') {
+      if (toolSpecificDecision.decision === "deny") {
         this.deniedTools.add(toolName);
-      } else if (toolSpecificDecision.decision === 'require_approval') {
+      } else if (toolSpecificDecision.decision === "require_approval") {
         this.approvalRequiredTools.add(toolName);
       }
 
@@ -272,17 +272,17 @@ export class SecurityPolicyManager {
     const { guardrails } = this.context;
 
     // Network tools require network to be allowed in guardrails
-    if (SecurityPolicyManager.isToolInGroup(toolName, 'group:network')) {
+    if (SecurityPolicyManager.isToolInGroup(toolName, "group:network")) {
       if (guardrails.enforceAllowedDomains && guardrails.allowedDomains.length === 0) {
         return {
-          layer: 'global_guardrails',
-          decision: 'deny',
-          reason: 'Network tools blocked: no allowed domains configured',
+          layer: "global_guardrails",
+          decision: "deny",
+          reason: "Network tools blocked: no allowed domains configured",
         };
       }
     }
 
-    return { layer: 'global_guardrails', decision: 'pass' };
+    return { layer: "global_guardrails", decision: "pass" };
   }
 
   /**
@@ -293,67 +293,67 @@ export class SecurityPolicyManager {
     const permissions = workspace.permissions;
 
     // Check read permission
-    if (SecurityPolicyManager.isToolInGroup(toolName, 'group:read')) {
+    if (SecurityPolicyManager.isToolInGroup(toolName, "group:read")) {
       if (!permissions.read) {
         return {
-          layer: 'workspace_permissions',
-          decision: 'deny',
-          reason: 'Workspace does not have read permission',
+          layer: "workspace_permissions",
+          decision: "deny",
+          reason: "Workspace does not have read permission",
         };
       }
     }
 
     // Check write permission
-    if (SecurityPolicyManager.isToolInGroup(toolName, 'group:write')) {
+    if (SecurityPolicyManager.isToolInGroup(toolName, "group:write")) {
       if (!permissions.write) {
         return {
-          layer: 'workspace_permissions',
-          decision: 'deny',
-          reason: 'Workspace does not have write permission',
+          layer: "workspace_permissions",
+          decision: "deny",
+          reason: "Workspace does not have write permission",
         };
       }
     }
 
     // Check delete permission
-    if (toolName === 'delete_file') {
+    if (toolName === "delete_file") {
       if (!permissions.delete) {
         return {
-          layer: 'workspace_permissions',
-          decision: 'require_approval',
-          reason: 'File deletion requires approval (delete permission not granted)',
+          layer: "workspace_permissions",
+          decision: "require_approval",
+          reason: "File deletion requires approval (delete permission not granted)",
         };
       }
     }
 
     // Check shell permission
-    if (toolName === 'run_command') {
+    if (toolName === "run_command") {
       if (!permissions.shell) {
         return {
-          layer: 'workspace_permissions',
-          decision: 'deny',
-          reason: 'Workspace does not have shell permission',
+          layer: "workspace_permissions",
+          decision: "deny",
+          reason: "Workspace does not have shell permission",
         };
       }
       // Shell commands always require approval even with permission
       return {
-        layer: 'workspace_permissions',
-        decision: 'require_approval',
-        reason: 'Shell commands require approval',
+        layer: "workspace_permissions",
+        decision: "require_approval",
+        reason: "Shell commands require approval",
       };
     }
 
     // Check network permission
-    if (SecurityPolicyManager.isToolInGroup(toolName, 'group:network')) {
+    if (SecurityPolicyManager.isToolInGroup(toolName, "group:network")) {
       if (!permissions.network) {
         return {
-          layer: 'workspace_permissions',
-          decision: 'deny',
-          reason: 'Workspace does not have network permission',
+          layer: "workspace_permissions",
+          decision: "deny",
+          reason: "Workspace does not have network permission",
         };
       }
     }
 
-    return { layer: 'workspace_permissions', decision: 'pass' };
+    return { layer: "workspace_permissions", decision: "pass" };
   }
 
   /**
@@ -363,7 +363,7 @@ export class SecurityPolicyManager {
   private evaluateContextLayer(toolName: string): LayerDecision {
     const contextType = this.context.gatewayContext;
     if (!contextType) {
-      return { layer: 'context_restrictions', decision: 'pass' };
+      return { layer: "context_restrictions", decision: "pass" };
     }
 
     const restrictions = CONTEXT_TOOL_RESTRICTIONS[contextType];
@@ -371,8 +371,8 @@ export class SecurityPolicyManager {
     // Check if tool is explicitly denied
     if (restrictions.deniedTools.includes(toolName)) {
       return {
-        layer: 'context_restrictions',
-        decision: 'deny',
+        layer: "context_restrictions",
+        decision: "deny",
         reason: `Tool "${toolName}" is not allowed in ${contextType} context`,
       };
     }
@@ -381,8 +381,8 @@ export class SecurityPolicyManager {
     for (const groupName of restrictions.deniedGroups) {
       if (SecurityPolicyManager.isToolInGroup(toolName, groupName)) {
         return {
-          layer: 'context_restrictions',
-          decision: 'deny',
+          layer: "context_restrictions",
+          decision: "deny",
           reason: `Tool group "${groupName}" is not allowed in ${contextType} context`,
         };
       }
@@ -391,13 +391,13 @@ export class SecurityPolicyManager {
     // Check if tool requires approval in this context
     if (restrictions.requireApprovalFor.includes(toolName)) {
       return {
-        layer: 'context_restrictions',
-        decision: 'require_approval',
+        layer: "context_restrictions",
+        decision: "require_approval",
         reason: `Tool "${toolName}" requires approval in ${contextType} context`,
       };
     }
 
-    return { layer: 'context_restrictions', decision: 'pass' };
+    return { layer: "context_restrictions", decision: "pass" };
   }
 
   /**
@@ -406,15 +406,15 @@ export class SecurityPolicyManager {
   private evaluateToolSpecificLayer(toolName: string): LayerDecision {
     // Destructive tools always require approval
     const riskLevel = SecurityPolicyManager.getToolRiskLevel(toolName);
-    if (riskLevel === 'destructive') {
+    if (riskLevel === "destructive") {
       return {
-        layer: 'tool_specific',
-        decision: 'require_approval',
+        layer: "tool_specific",
+        decision: "require_approval",
         reason: `Destructive tool "${toolName}" requires approval`,
       };
     }
 
-    return { layer: 'tool_specific', decision: 'pass' };
+    return { layer: "tool_specific", decision: "pass" };
   }
 
   /**
@@ -444,23 +444,23 @@ export class SecurityPolicyManager {
  */
 function getDefaultBlockedPatterns(): string[] {
   return [
-    'sudo',
-    'rm\\s+-rf\\s+/',
-    'rm\\s+-rf\\s+~',
-    'rm\\s+-rf\\s+/\\*',
-    'rm\\s+-rf\\s+\\*',
-    'mkfs',
-    'dd\\s+if=',
-    ':\\(\\)\\{\\s*:\\|:\\&\\s*\\};:', // Fork bomb
-    'curl.*\\|.*bash',
-    'wget.*\\|.*bash',
-    'curl.*\\|.*sh',
-    'wget.*\\|.*sh',
-    'chmod\\s+777',
-    '>\\s*/dev/sd',
-    'mv\\s+/\\*',
-    'format\\s+c:',
-    'del\\s+/f\\s+/s\\s+/q',
+    "sudo",
+    "rm\\s+-rf\\s+/",
+    "rm\\s+-rf\\s+~",
+    "rm\\s+-rf\\s+/\\*",
+    "rm\\s+-rf\\s+\\*",
+    "mkfs",
+    "dd\\s+if=",
+    ":\\(\\)\\{\\s*:\\|:\\&\\s*\\};:", // Fork bomb
+    "curl.*\\|.*bash",
+    "wget.*\\|.*bash",
+    "curl.*\\|.*sh",
+    "wget.*\\|.*sh",
+    "chmod\\s+777",
+    ">\\s*/dev/sd",
+    "mv\\s+/\\*",
+    "format\\s+c:",
+    "del\\s+/f\\s+/s\\s+/q",
   ];
 }
 
@@ -470,12 +470,12 @@ function getDefaultBlockedPatterns(): string[] {
 function matchGlobPattern(command: string, pattern: string): boolean {
   // Convert glob pattern to regex
   const regexPattern = pattern
-    .replace(/[.+^${}()|[\]\\]/g, '\\$&') // Escape special chars except * and ?
-    .replace(/\*/g, '.*')
-    .replace(/\?/g, '.');
+    .replace(/[.+^${}()|[\]\\]/g, "\\$&") // Escape special chars except * and ?
+    .replace(/\*/g, ".*")
+    .replace(/\?/g, ".");
 
   try {
-    const regex = new RegExp(`^${regexPattern}$`, 'i');
+    const regex = new RegExp(`^${regexPattern}$`, "i");
     return regex.test(command);
   } catch {
     return false;
@@ -488,7 +488,7 @@ function matchGlobPattern(command: string, pattern: string): boolean {
 export function createPolicyManager(
   workspace: Workspace,
   guardrails: GuardrailSettings,
-  gatewayContext?: GatewayContextType
+  gatewayContext?: GatewayContextType,
 ): SecurityPolicyManager {
   return new SecurityPolicyManager({
     workspace,
@@ -504,21 +504,21 @@ export function createPolicyManager(
 export function isToolAllowedQuick(
   toolName: string,
   workspace: Workspace,
-  gatewayContext?: GatewayContextType
+  gatewayContext?: GatewayContextType,
 ): boolean {
   const permissions = workspace.permissions;
 
   // Check basic permissions
-  if (SecurityPolicyManager.isToolInGroup(toolName, 'group:read') && !permissions.read) {
+  if (SecurityPolicyManager.isToolInGroup(toolName, "group:read") && !permissions.read) {
     return false;
   }
-  if (SecurityPolicyManager.isToolInGroup(toolName, 'group:write') && !permissions.write) {
+  if (SecurityPolicyManager.isToolInGroup(toolName, "group:write") && !permissions.write) {
     return false;
   }
-  if (toolName === 'run_command' && !permissions.shell) {
+  if (toolName === "run_command" && !permissions.shell) {
     return false;
   }
-  if (SecurityPolicyManager.isToolInGroup(toolName, 'group:network') && !permissions.network) {
+  if (SecurityPolicyManager.isToolInGroup(toolName, "group:network") && !permissions.network) {
     return false;
   }
 

@@ -8,7 +8,7 @@
  * - Regenerate button
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from "react";
 
 interface PairingCodeDisplayProps {
   /** The pairing code to display */
@@ -27,10 +27,10 @@ interface PairingCodeDisplayProps {
  * Format seconds into MM:SS
  */
 function formatTime(seconds: number): string {
-  if (seconds <= 0) return '0:00';
+  if (seconds <= 0) return "0:00";
   const mins = Math.floor(seconds / 60);
   const secs = seconds % 60;
-  return `${mins}:${secs.toString().padStart(2, '0')}`;
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
 export function PairingCodeDisplay({
@@ -38,7 +38,7 @@ export function PairingCodeDisplay({
   expiresAt,
   onRegenerate,
   isRegenerating = false,
-  className = '',
+  className = "",
 }: PairingCodeDisplayProps) {
   const [copied, setCopied] = useState(false);
   const [secondsRemaining, setSecondsRemaining] = useState(0);
@@ -69,7 +69,7 @@ export function PairingCodeDisplay({
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      console.error('Failed to copy:', err);
+      console.error("Failed to copy:", err);
     }
   }, [code]);
 
@@ -80,7 +80,7 @@ export function PairingCodeDisplay({
     <div className={`pairing-code-display ${className}`}>
       {/* Code Display */}
       <div
-        className={`code-container ${isExpired ? 'expired' : ''} ${isExpiringSoon ? 'expiring-soon' : ''}`}
+        className={`code-container ${isExpired ? "expired" : ""} ${isExpiringSoon ? "expiring-soon" : ""}`}
       >
         <div className="code-value">{code}</div>
         <div className="code-actions">
@@ -88,13 +88,9 @@ export function PairingCodeDisplay({
             className="copy-button"
             onClick={handleCopy}
             disabled={isExpired}
-            title={copied ? 'Copied!' : 'Copy to clipboard'}
+            title={copied ? "Copied!" : "Copy to clipboard"}
           >
-            {copied ? (
-              <CheckIcon />
-            ) : (
-              <CopyIcon />
-            )}
+            {copied ? <CheckIcon /> : <CopyIcon />}
           </button>
         </div>
       </div>
@@ -104,18 +100,14 @@ export function PairingCodeDisplay({
         {isExpired ? (
           <span className="status-expired">Code expired</span>
         ) : (
-          <span className={`status-timer ${isExpiringSoon ? 'warning' : ''}`}>
+          <span className={`status-timer ${isExpiringSoon ? "warning" : ""}`}>
             Expires in {formatTime(secondsRemaining)}
           </span>
         )}
       </div>
 
       {/* Regenerate Button */}
-      <button
-        className="regenerate-button"
-        onClick={onRegenerate}
-        disabled={isRegenerating}
-      >
+      <button className="regenerate-button" onClick={onRegenerate} disabled={isRegenerating}>
         {isRegenerating ? (
           <>
             <SpinnerIcon />
@@ -124,7 +116,7 @@ export function PairingCodeDisplay({
         ) : (
           <>
             <RefreshIcon />
-            {isExpired ? 'Generate New Code' : 'Regenerate'}
+            {isExpired ? "Generate New Code" : "Regenerate"}
           </>
         )}
       </button>
@@ -132,8 +124,8 @@ export function PairingCodeDisplay({
       {/* Instructions */}
       <div className="pairing-instructions">
         <p>
-          Share this code with the user who wants to connect.
-          They should send this code as a message to pair their account.
+          Share this code with the user who wants to connect. They should send this code as a
+          message to pair their account.
         </p>
       </div>
 
@@ -279,7 +271,14 @@ export function PairingCodeDisplay({
 // Icon components
 function CopyIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
       <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
       <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
     </svg>
@@ -288,7 +287,14 @@ function CopyIcon() {
 
 function CheckIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
       <polyline points="20 6 9 17 4 12" />
     </svg>
   );
@@ -296,7 +302,14 @@ function CheckIcon() {
 
 function RefreshIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
       <path d="M23 4v6h-6" />
       <path d="M1 20v-6h6" />
       <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
@@ -306,7 +319,15 @@ function RefreshIcon() {
 
 function SpinnerIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="spin">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      className="spin"
+    >
       <path d="M21 12a9 9 0 11-6.219-8.56" />
       <style>{`
         .spin {

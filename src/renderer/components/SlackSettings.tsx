@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { ChannelData, ChannelUserData, SecurityMode } from '../../shared/types';
+import { useState, useEffect, useCallback } from "react";
+import { ChannelData, ChannelUserData, SecurityMode } from "../../shared/types";
 
 interface SlackSettingsProps {
   onStatusChange?: (connected: boolean) => void;
@@ -11,14 +11,18 @@ export function SlackSettings({ onStatusChange }: SlackSettingsProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<{ success: boolean; error?: string; botUsername?: string } | null>(null);
+  const [testResult, setTestResult] = useState<{
+    success: boolean;
+    error?: string;
+    botUsername?: string;
+  } | null>(null);
 
   // Form state
-  const [botToken, setBotToken] = useState('');
-  const [appToken, setAppToken] = useState('');
-  const [signingSecret, setSigningSecret] = useState('');
-  const [channelName, setChannelName] = useState('Slack Bot');
-  const [securityMode, setSecurityMode] = useState<SecurityMode>('pairing');
+  const [botToken, setBotToken] = useState("");
+  const [appToken, setAppToken] = useState("");
+  const [signingSecret, setSigningSecret] = useState("");
+  const [channelName, setChannelName] = useState("Slack Bot");
+  const [securityMode, setSecurityMode] = useState<SecurityMode>("pairing");
 
   // Pairing code state
   const [pairingCode, setPairingCode] = useState<string | null>(null);
@@ -27,20 +31,20 @@ export function SlackSettings({ onStatusChange }: SlackSettingsProps) {
     try {
       setLoading(true);
       const channels = await window.electronAPI.getGatewayChannels();
-      const slackChannel = channels.find((c: ChannelData) => c.type === 'slack');
+      const slackChannel = channels.find((c: ChannelData) => c.type === "slack");
 
       if (slackChannel) {
         setChannel(slackChannel);
         setChannelName(slackChannel.name);
         setSecurityMode(slackChannel.securityMode);
-        onStatusChange?.(slackChannel.status === 'connected');
+        onStatusChange?.(slackChannel.status === "connected");
 
         // Load users for this channel
         const channelUsers = await window.electronAPI.getGatewayUsers(slackChannel.id);
         setUsers(channelUsers);
       }
     } catch (error) {
-      console.error('Failed to load Slack channel:', error);
+      console.error("Failed to load Slack channel:", error);
     } finally {
       setLoading(false);
     }
@@ -52,7 +56,7 @@ export function SlackSettings({ onStatusChange }: SlackSettingsProps) {
 
   useEffect(() => {
     const unsubscribe = window.electronAPI?.onGatewayUsersUpdated?.((data) => {
-      if (data?.channelType !== 'slack') return;
+      if (data?.channelType !== "slack") return;
       if (channel && data?.channelId && data.channelId !== channel.id) return;
       loadChannel();
     });
@@ -69,7 +73,7 @@ export function SlackSettings({ onStatusChange }: SlackSettingsProps) {
       setTestResult(null);
 
       await window.electronAPI.addGatewayChannel({
-        type: 'slack',
+        type: "slack",
         name: channelName,
         botToken: botToken.trim(),
         appToken: appToken.trim(),
@@ -77,9 +81,9 @@ export function SlackSettings({ onStatusChange }: SlackSettingsProps) {
         securityMode,
       });
 
-      setBotToken('');
-      setAppToken('');
-      setSigningSecret('');
+      setBotToken("");
+      setAppToken("");
+      setSigningSecret("");
       await loadChannel();
     } catch (error: any) {
       setTestResult({ success: false, error: error.message });
@@ -125,7 +129,7 @@ export function SlackSettings({ onStatusChange }: SlackSettingsProps) {
   const handleRemoveChannel = async () => {
     if (!channel) return;
 
-    if (!confirm('Are you sure you want to remove the Slack channel?')) {
+    if (!confirm("Are you sure you want to remove the Slack channel?")) {
       return;
     }
 
@@ -153,7 +157,7 @@ export function SlackSettings({ onStatusChange }: SlackSettingsProps) {
       setSecurityMode(mode);
       setChannel({ ...channel, securityMode: mode });
     } catch (error: any) {
-      console.error('Failed to update security mode:', error);
+      console.error("Failed to update security mode:", error);
     }
   };
 
@@ -161,10 +165,10 @@ export function SlackSettings({ onStatusChange }: SlackSettingsProps) {
     if (!channel) return;
 
     try {
-      const code = await window.electronAPI.generateGatewayPairing(channel.id, '');
+      const code = await window.electronAPI.generateGatewayPairing(channel.id, "");
       setPairingCode(code);
     } catch (error: any) {
-      console.error('Failed to generate pairing code:', error);
+      console.error("Failed to generate pairing code:", error);
     }
   };
 
@@ -175,7 +179,7 @@ export function SlackSettings({ onStatusChange }: SlackSettingsProps) {
       await window.electronAPI.revokeGatewayAccess(channel.id, userId);
       await loadChannel();
     } catch (error: any) {
-      console.error('Failed to revoke access:', error);
+      console.error("Failed to revoke access:", error);
     }
   };
 
@@ -228,7 +232,8 @@ export function SlackSettings({ onStatusChange }: SlackSettingsProps) {
               onChange={(e) => setAppToken(e.target.value)}
             />
             <p className="settings-hint">
-              Required for Socket Mode. Found in Basic Information &gt; App-Level Tokens (starts with xapp-)
+              Required for Socket Mode. Found in Basic Information &gt; App-Level Tokens (starts
+              with xapp-)
             </p>
           </div>
 
@@ -258,14 +263,16 @@ export function SlackSettings({ onStatusChange }: SlackSettingsProps) {
               <option value="open">Open (Anyone can use)</option>
             </select>
             <p className="settings-hint">
-              {securityMode === 'pairing' && 'Users must enter a code generated in this app to use the bot'}
-              {securityMode === 'allowlist' && 'Only pre-approved Slack user IDs can use the bot'}
-              {securityMode === 'open' && 'Anyone who messages the bot can use it (not recommended)'}
+              {securityMode === "pairing" &&
+                "Users must enter a code generated in this app to use the bot"}
+              {securityMode === "allowlist" && "Only pre-approved Slack user IDs can use the bot"}
+              {securityMode === "open" &&
+                "Anyone who messages the bot can use it (not recommended)"}
             </p>
           </div>
 
           {testResult && (
-            <div className={`test-result ${testResult.success ? 'success' : 'error'}`}>
+            <div className={`test-result ${testResult.success ? "success" : "error"}`}>
               {testResult.success ? (
                 <>Connected as {testResult.botUsername}</>
               ) : (
@@ -279,31 +286,59 @@ export function SlackSettings({ onStatusChange }: SlackSettingsProps) {
             onClick={handleAddChannel}
             disabled={saving || !botToken.trim() || !appToken.trim()}
           >
-            {saving ? 'Adding...' : 'Add Slack Bot'}
+            {saving ? "Adding..." : "Add Slack Bot"}
           </button>
         </div>
 
         <div className="settings-section">
           <h4>Setup Instructions</h4>
           <ol className="setup-instructions">
-            <li>Go to <a href="https://api.slack.com/apps" target="_blank" rel="noopener noreferrer">Slack API Apps</a></li>
+            <li>
+              Go to{" "}
+              <a href="https://api.slack.com/apps" target="_blank" rel="noopener noreferrer">
+                Slack API Apps
+              </a>
+            </li>
             <li>Click "Create New App" and choose "From scratch"</li>
-            <li>In "Socket Mode", enable it and create an App-Level Token with <code>connections:write</code> scope</li>
-            <li>In "OAuth & Permissions", add these Bot Token Scopes:
+            <li>
+              In "Socket Mode", enable it and create an App-Level Token with{" "}
+              <code>connections:write</code> scope
+            </li>
+            <li>
+              In "OAuth & Permissions", add these Bot Token Scopes:
               <ul>
-                <li><code>app_mentions:read</code></li>
-                <li><code>chat:write</code></li>
-                <li><code>im:history</code></li>
-                <li><code>im:read</code></li>
-                <li><code>im:write</code></li>
-                <li><code>users:read</code></li>
-                <li><code>files:write</code></li>
+                <li>
+                  <code>app_mentions:read</code>
+                </li>
+                <li>
+                  <code>chat:write</code>
+                </li>
+                <li>
+                  <code>im:history</code>
+                </li>
+                <li>
+                  <code>im:read</code>
+                </li>
+                <li>
+                  <code>im:write</code>
+                </li>
+                <li>
+                  <code>users:read</code>
+                </li>
+                <li>
+                  <code>files:write</code>
+                </li>
               </ul>
             </li>
-            <li>In "Event Subscriptions", enable events and subscribe to:
+            <li>
+              In "Event Subscriptions", enable events and subscribe to:
               <ul>
-                <li><code>app_mention</code></li>
-                <li><code>message.im</code></li>
+                <li>
+                  <code>app_mention</code>
+                </li>
+                <li>
+                  <code>message.im</code>
+                </li>
               </ul>
             </li>
             <li>Install the app to your workspace</li>
@@ -325,44 +360,36 @@ export function SlackSettings({ onStatusChange }: SlackSettingsProps) {
               {channel.botUsername && <span className="bot-username">@{channel.botUsername}</span>}
             </h3>
             <div className={`channel-status ${channel.status}`}>
-              {channel.status === 'connected' && 'Connected'}
-              {channel.status === 'connecting' && 'Connecting...'}
-              {channel.status === 'disconnected' && 'Disconnected'}
-              {channel.status === 'error' && 'Error'}
+              {channel.status === "connected" && "Connected"}
+              {channel.status === "connecting" && "Connecting..."}
+              {channel.status === "disconnected" && "Disconnected"}
+              {channel.status === "error" && "Error"}
             </div>
           </div>
           <div className="channel-actions">
             <button
-              className={channel.enabled ? 'button-secondary' : 'button-primary'}
+              className={channel.enabled ? "button-secondary" : "button-primary"}
               onClick={handleToggleEnabled}
               disabled={saving}
             >
-              {channel.enabled ? 'Disable' : 'Enable'}
+              {channel.enabled ? "Disable" : "Enable"}
             </button>
             <button
               className="button-secondary"
               onClick={handleTestConnection}
               disabled={testing || !channel.enabled}
             >
-              {testing ? 'Testing...' : 'Test'}
+              {testing ? "Testing..." : "Test"}
             </button>
-            <button
-              className="button-danger"
-              onClick={handleRemoveChannel}
-              disabled={saving}
-            >
+            <button className="button-danger" onClick={handleRemoveChannel} disabled={saving}>
               Remove
             </button>
           </div>
         </div>
 
         {testResult && (
-          <div className={`test-result ${testResult.success ? 'success' : 'error'}`}>
-            {testResult.success ? (
-              <>Connection successful</>
-            ) : (
-              <>{testResult.error}</>
-            )}
+          <div className={`test-result ${testResult.success ? "success" : "error"}`}>
+            {testResult.success ? <>Connection successful</> : <>{testResult.error}</>}
           </div>
         )}
       </div>
@@ -380,16 +407,13 @@ export function SlackSettings({ onStatusChange }: SlackSettingsProps) {
         </select>
       </div>
 
-      {securityMode === 'pairing' && (
+      {securityMode === "pairing" && (
         <div className="settings-section">
           <h4>Generate Pairing Code</h4>
           <p className="settings-description">
             Generate a one-time code for a user to enter in Slack to gain access.
           </p>
-          <button
-            className="button-secondary"
-            onClick={handleGeneratePairingCode}
-          >
+          <button className="button-secondary" onClick={handleGeneratePairingCode}>
             Generate Code
           </button>
           {pairingCode && (
@@ -414,8 +438,8 @@ export function SlackSettings({ onStatusChange }: SlackSettingsProps) {
                 <div className="user-info">
                   <span className="user-name">{user.displayName}</span>
                   {user.username && <span className="user-username">@{user.username}</span>}
-                  <span className={`user-status ${user.allowed ? 'allowed' : 'pending'}`}>
-                    {user.allowed ? 'Allowed' : 'Pending'}
+                  <span className={`user-status ${user.allowed ? "allowed" : "pending"}`}>
+                    {user.allowed ? "Allowed" : "Pending"}
                   </span>
                 </div>
                 {user.allowed && (
@@ -438,14 +462,30 @@ export function SlackSettings({ onStatusChange }: SlackSettingsProps) {
           <p className="settings-description">
             Direct message the bot or mention it (@BotName) in a channel to start a task.
           </p>
-          <div className="command-item"><code>/start</code> - Start the bot and get help</div>
-          <div className="command-item"><code>/help</code> - Show available commands</div>
-          <div className="command-item"><code>/workspaces</code> - List available workspaces</div>
-          <div className="command-item"><code>/workspace</code> - Select or show current workspace</div>
-          <div className="command-item"><code>/newtask</code> - Start a fresh task/conversation</div>
-          <div className="command-item"><code>/status</code> - Check bot status</div>
-          <div className="command-item"><code>/cancel</code> - Cancel current task</div>
-          <div className="command-item"><code>/pair</code> - Pair with a pairing code</div>
+          <div className="command-item">
+            <code>/start</code> - Start the bot and get help
+          </div>
+          <div className="command-item">
+            <code>/help</code> - Show available commands
+          </div>
+          <div className="command-item">
+            <code>/workspaces</code> - List available workspaces
+          </div>
+          <div className="command-item">
+            <code>/workspace</code> - Select or show current workspace
+          </div>
+          <div className="command-item">
+            <code>/newtask</code> - Start a fresh task/conversation
+          </div>
+          <div className="command-item">
+            <code>/status</code> - Check bot status
+          </div>
+          <div className="command-item">
+            <code>/cancel</code> - Cancel current task
+          </div>
+          <div className="command-item">
+            <code>/pair</code> - Pair with a pairing code
+          </div>
         </div>
       </div>
     </div>

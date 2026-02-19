@@ -1,7 +1,7 @@
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import ExcelJS from 'exceljs';
-import { Workspace } from '../../../shared/types';
+import * as fs from "fs/promises";
+import * as path from "path";
+import ExcelJS from "exceljs";
+import { Workspace } from "../../../shared/types";
 
 export interface SheetData {
   name: string;
@@ -30,23 +30,23 @@ export class SpreadsheetBuilder {
   async create(
     outputPath: string,
     sheets: SheetData[],
-    options: SpreadsheetOptions = {}
+    options: SpreadsheetOptions = {},
   ): Promise<void> {
     if (sheets.length === 0) {
-      throw new Error('At least one sheet is required');
+      throw new Error("At least one sheet is required");
     }
 
     const ext = path.extname(outputPath).toLowerCase();
 
     // If CSV is explicitly requested, use CSV format
-    if (ext === '.csv') {
+    if (ext === ".csv") {
       await this.createCSV(outputPath, sheets[0]);
       return;
     }
 
     // Create Excel workbook
     const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'CoWork OS';
+    workbook.creator = "CoWork OS";
     workbook.created = new Date();
 
     for (const sheetData of sheets) {
@@ -60,9 +60,9 @@ export class SpreadsheetBuilder {
         // formulas are commonly provided as strings like "=SUM(A1:A2)". ExcelJS
         // requires formulas to be passed as objects: { formula: "SUM(A1:A2)" }.
         const normalizedRowData = rowData.map((cell) => {
-          if (typeof cell !== 'string') return cell;
+          if (typeof cell !== "string") return cell;
           const trimmed = cell.trim();
-          if (trimmed.startsWith('=') && trimmed.length > 1) {
+          if (trimmed.startsWith("=") && trimmed.length > 1) {
             return { formula: trimmed.slice(1) };
           }
           return cell;
@@ -74,9 +74,9 @@ export class SpreadsheetBuilder {
         if (rowIndex === 0 && sheetData.hasHeader !== false) {
           row.font = { bold: true };
           row.fill = {
-            type: 'pattern',
-            pattern: 'solid',
-            fgColor: { argb: 'FFE0E0E0' }
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FFE0E0E0" },
           };
         }
       }
@@ -89,9 +89,9 @@ export class SpreadsheetBuilder {
         });
       } else if (options.autoFitColumns !== false) {
         // Auto-fit columns based on content
-        worksheet.columns.forEach(column => {
+        worksheet.columns.forEach((column) => {
           let maxLength = 10;
-          column.eachCell?.({ includeEmpty: true }, cell => {
+          column.eachCell?.({ includeEmpty: true }, (cell) => {
             const cellValue = cell.value;
             const length = cellValue ? String(cellValue).length : 0;
             if (length > maxLength) {
@@ -108,13 +108,13 @@ export class SpreadsheetBuilder {
         const lastRow = sheetData.data.length;
         worksheet.autoFilter = {
           from: { row: 1, column: 1 },
-          to: { row: lastRow, column: lastColumn }
+          to: { row: lastRow, column: lastColumn },
         };
       }
 
       // Freeze header row
       if (options.freezeHeader !== false && sheetData.data.length > 0) {
-        worksheet.views = [{ state: 'frozen', ySplit: 1 }];
+        worksheet.views = [{ state: "frozen", ySplit: 1 }];
       }
     }
 
@@ -127,21 +127,21 @@ export class SpreadsheetBuilder {
    */
   private async createCSV(outputPath: string, sheet: SheetData): Promise<void> {
     const csv = sheet.data
-      .map(row =>
+      .map((row) =>
         row
-          .map(cell => {
-            const str = String(cell ?? '');
+          .map((cell) => {
+            const str = String(cell ?? "");
             // Escape quotes and wrap in quotes if contains comma, quote, or newline
-            if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+            if (str.includes(",") || str.includes('"') || str.includes("\n")) {
               return `"${str.replace(/"/g, '""')}"`;
             }
             return str;
           })
-          .join(',')
+          .join(","),
       )
-      .join('\n');
+      .join("\n");
 
-    await fs.writeFile(outputPath, csv, 'utf-8');
+    await fs.writeFile(outputPath, csv, "utf-8");
   }
 
   /**
@@ -153,7 +153,7 @@ export class SpreadsheetBuilder {
 
     const sheets: SheetData[] = [];
 
-    workbook.eachSheet(worksheet => {
+    workbook.eachSheet((worksheet) => {
       const data: any[][] = [];
       worksheet.eachRow((row, rowNumber) => {
         const rowData: any[] = [];
@@ -170,7 +170,7 @@ export class SpreadsheetBuilder {
       sheets.push({
         name: worksheet.name,
         data,
-        hasHeader: true
+        hasHeader: true,
       });
     });
 

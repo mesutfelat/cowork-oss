@@ -6,17 +6,17 @@
  */
 
 // Types
-export * from './types';
+export * from "./types";
 
 // Settings Manager
-export { HooksSettingsManager, generateHookToken } from './settings';
+export { HooksSettingsManager, generateHookToken } from "./settings";
 
 // Hook Mappings
-export { resolveHookMappings, applyHookMappings, normalizeHooksPath } from './mappings';
+export { resolveHookMappings, applyHookMappings, normalizeHooksPath } from "./mappings";
 
 // Webhook Server
-export { HooksServer, resolveHooksConfig } from './server';
-export type { HooksServerConfig, HooksServerHandlers } from './server';
+export { HooksServer, resolveHooksConfig } from "./server";
+export type { HooksServerConfig, HooksServerHandlers } from "./server";
 
 // Gmail Watcher
 export {
@@ -26,5 +26,5 @@ export {
   isGogAvailable,
   resolveGmailRuntimeConfig,
   getGmailRuntimeConfig,
-} from './gmail-watcher';
-export type { GmailWatcherStartResult } from './gmail-watcher';
+} from "./gmail-watcher";
+export type { GmailWatcherStartResult } from "./gmail-watcher";

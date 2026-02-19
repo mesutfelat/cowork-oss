@@ -1,11 +1,19 @@
-import { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import { FileViewerResult } from '../../electron/preload';
-import { useAgentContext } from '../hooks/useAgentContext';
-import { ThemeIcon } from './ThemeIcon';
-import { AlertTriangleIcon, CodeIcon, FileIcon, FileTextIcon, GlobeIcon, ImageIcon, PresentationIcon } from './LineIcons';
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { FileViewerResult } from "../../electron/preload";
+import { useAgentContext } from "../hooks/useAgentContext";
+import { ThemeIcon } from "./ThemeIcon";
+import {
+  AlertTriangleIcon,
+  CodeIcon,
+  FileIcon,
+  FileTextIcon,
+  GlobeIcon,
+  ImageIcon,
+  PresentationIcon,
+} from "./LineIcons";
 
 interface FileViewerProps {
   filePath: string;
@@ -15,7 +23,7 @@ interface FileViewerProps {
 
 export function FileViewer({ filePath, workspacePath, onClose }: FileViewerProps) {
   const [loading, setLoading] = useState(true);
-  const [fileData, setFileData] = useState<FileViewerResult['data'] | null>(null);
+  const [fileData, setFileData] = useState<FileViewerResult["data"] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const agentContext = useAgentContext();
 
@@ -29,10 +37,10 @@ export function FileViewer({ filePath, workspacePath, onClose }: FileViewerProps
         if (result.success && result.data) {
           setFileData(result.data);
         } else {
-          setError(result.error || 'Failed to load file');
+          setError(result.error || "Failed to load file");
         }
       } catch (err: any) {
-        setError(err.message || 'Failed to load file');
+        setError(err.message || "Failed to load file");
       } finally {
         setLoading(false);
       }
@@ -43,12 +51,12 @@ export function FileViewer({ filePath, workspacePath, onClose }: FileViewerProps
   // Handle Escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (e.key === "Escape") {
         onClose();
       }
     };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
 
   // Open in external app
@@ -56,7 +64,7 @@ export function FileViewer({ filePath, workspacePath, onClose }: FileViewerProps
     try {
       await window.electronAPI.openFile(filePath, workspacePath);
     } catch (err) {
-      console.error('Failed to open file externally:', err);
+      console.error("Failed to open file externally:", err);
     }
   };
 
@@ -70,16 +78,26 @@ export function FileViewer({ filePath, workspacePath, onClose }: FileViewerProps
   // Get file icon based on type
   const getFileIcon = (type?: string): React.ReactNode => {
     switch (type) {
-      case 'markdown': return <ThemeIcon emoji="📝" icon={<FileTextIcon size={16} />} />;
-      case 'code': return <ThemeIcon emoji="💻" icon={<CodeIcon size={16} />} />;
-      case 'text': return <ThemeIcon emoji="📄" icon={<FileIcon size={16} />} />;
-      case 'docx': return <ThemeIcon emoji="📘" icon={<FileTextIcon size={16} />} />;
-      case 'pdf': return <ThemeIcon emoji="📕" icon={<FileTextIcon size={16} />} />;
-      case 'image': return <ThemeIcon emoji="🖼️" icon={<ImageIcon size={16} />} />;
-      case 'pptx': return <ThemeIcon emoji="📊" icon={<PresentationIcon size={16} />} />;
-      case 'xlsx': return <ThemeIcon emoji="📊" icon={<FileTextIcon size={16} />} />;
-      case 'html': return <ThemeIcon emoji="🌐" icon={<GlobeIcon size={16} />} />;
-      default: return <ThemeIcon emoji="📁" icon={<FileIcon size={16} />} />;
+      case "markdown":
+        return <ThemeIcon emoji="📝" icon={<FileTextIcon size={16} />} />;
+      case "code":
+        return <ThemeIcon emoji="💻" icon={<CodeIcon size={16} />} />;
+      case "text":
+        return <ThemeIcon emoji="📄" icon={<FileIcon size={16} />} />;
+      case "docx":
+        return <ThemeIcon emoji="📘" icon={<FileTextIcon size={16} />} />;
+      case "pdf":
+        return <ThemeIcon emoji="📕" icon={<FileTextIcon size={16} />} />;
+      case "image":
+        return <ThemeIcon emoji="🖼️" icon={<ImageIcon size={16} />} />;
+      case "pptx":
+        return <ThemeIcon emoji="📊" icon={<PresentationIcon size={16} />} />;
+      case "xlsx":
+        return <ThemeIcon emoji="📊" icon={<FileTextIcon size={16} />} />;
+      case "html":
+        return <ThemeIcon emoji="🌐" icon={<GlobeIcon size={16} />} />;
+      default:
+        return <ThemeIcon emoji="📁" icon={<FileIcon size={16} />} />;
     }
   };
 
@@ -88,60 +106,54 @@ export function FileViewer({ filePath, workspacePath, onClose }: FileViewerProps
     if (!fileData) return null;
 
     switch (fileData.fileType) {
-      case 'markdown':
+      case "markdown":
         return (
           <div className="file-viewer-markdown markdown-content">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {fileData.content || ''}
-            </ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{fileData.content || ""}</ReactMarkdown>
           </div>
         );
 
-      case 'code':
-      case 'text':
-        return (
-          <pre className="file-viewer-code">
-            {fileData.content}
-          </pre>
-        );
+      case "code":
+      case "text":
+        return <pre className="file-viewer-code">{fileData.content}</pre>;
 
-      case 'docx':
+      case "docx":
         return (
           <div
             className="file-viewer-docx"
-            dangerouslySetInnerHTML={{ __html: fileData.htmlContent || '' }}
+            dangerouslySetInnerHTML={{ __html: fileData.htmlContent || "" }}
           />
         );
 
-      case 'html':
+      case "html":
         return (
           <iframe
             className="file-viewer-html"
-            srcDoc={fileData.htmlContent || ''}
+            srcDoc={fileData.htmlContent || ""}
             sandbox="allow-same-origin"
             title={fileData.fileName}
           />
         );
 
-      case 'pdf':
+      case "pdf":
         return (
           <div className="file-viewer-pdf">
             <pre className="file-viewer-code">{fileData.content}</pre>
           </div>
         );
 
-      case 'image':
+      case "image":
         return (
           <div className="file-viewer-image-container">
             <img
-              src={fileData.content || ''}
+              src={fileData.content || ""}
               alt={fileData.fileName}
               className="file-viewer-image"
             />
           </div>
         );
 
-      case 'pptx':
+      case "pptx":
         return (
           <div className="file-viewer-placeholder">
             <span className="file-viewer-placeholder-icon">
@@ -154,18 +166,18 @@ export function FileViewer({ filePath, workspacePath, onClose }: FileViewerProps
           </div>
         );
 
-      case 'xlsx': {
+      case "xlsx": {
         // Parse tab-separated content produced by the backend:
         // Sheets separated by "\n\n", each starting with "## Sheet: <name>"
-        const sheets = (fileData.content || '').split('\n\n').map((block) => {
-          const lines = block.split('\n');
-          let name = 'Sheet';
+        const sheets = (fileData.content || "").split("\n\n").map((block) => {
+          const lines = block.split("\n");
+          let name = "Sheet";
           let dataLines = lines;
-          if (lines[0]?.startsWith('## Sheet: ')) {
-            name = lines[0].replace('## Sheet: ', '');
+          if (lines[0]?.startsWith("## Sheet: ")) {
+            name = lines[0].replace("## Sheet: ", "");
             dataLines = lines.slice(1);
           }
-          const rows = dataLines.map((line) => line.split('\t'));
+          const rows = dataLines.map((line) => line.split("\t"));
           return { name, rows };
         });
 
@@ -173,9 +185,7 @@ export function FileViewer({ filePath, workspacePath, onClose }: FileViewerProps
           <div className="file-viewer-xlsx">
             {sheets.map((sheet, si) => (
               <div key={si} className="file-viewer-xlsx-sheet">
-                {sheets.length > 1 && (
-                  <h3 className="file-viewer-xlsx-sheet-name">{sheet.name}</h3>
-                )}
+                {sheets.length > 1 && <h3 className="file-viewer-xlsx-sheet-name">{sheet.name}</h3>}
                 <div className="file-viewer-xlsx-scroll">
                   <table className="file-viewer-xlsx-table">
                     {sheet.rows.length > 0 && (
@@ -226,10 +236,10 @@ export function FileViewer({ filePath, workspacePath, onClose }: FileViewerProps
         <div className="file-viewer-header">
           <div className="file-viewer-title">
             <span className="file-viewer-icon">{getFileIcon(fileData?.fileType)}</span>
-            <span className="file-viewer-filename">{fileData?.fileName || filePath.split('/').pop()}</span>
-            {fileData && (
-              <span className="file-viewer-size">{formatSize(fileData.size)}</span>
-            )}
+            <span className="file-viewer-filename">
+              {fileData?.fileName || filePath.split("/").pop()}
+            </span>
+            {fileData && <span className="file-viewer-size">{formatSize(fileData.size)}</span>}
           </div>
           <div className="file-viewer-actions">
             <button
@@ -238,8 +248,8 @@ export function FileViewer({ filePath, workspacePath, onClose }: FileViewerProps
               title="Open in external app"
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                <path d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5z"/>
-                <path d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0v-5z"/>
+                <path d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5z" />
+                <path d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0v-5z" />
               </svg>
             </button>
             <button
@@ -248,7 +258,7 @@ export function FileViewer({ filePath, workspacePath, onClose }: FileViewerProps
               title="Close (Esc)"
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
+                <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z" />
               </svg>
             </button>
           </div>
@@ -258,7 +268,7 @@ export function FileViewer({ filePath, workspacePath, onClose }: FileViewerProps
           {loading && (
             <div className="file-viewer-loading">
               <div className="file-viewer-spinner"></div>
-              <span>{agentContext.getUiCopy('fileLoading')}</span>
+              <span>{agentContext.getUiCopy("fileLoading")}</span>
             </div>
           )}
 
@@ -278,6 +288,6 @@ export function FileViewer({ filePath, workspacePath, onClose }: FileViewerProps
         </div>
       </div>
     </div>,
-    document.body
+    document.body,
   );
 }

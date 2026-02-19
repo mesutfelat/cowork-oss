@@ -1,8 +1,8 @@
-import * as fs from 'fs';
-import * as path from 'path';
-import { Workspace } from '../../../shared/types';
-import { AgentDaemon } from '../daemon';
-import { LLMTool } from '../llm/types';
+import * as fs from "fs";
+import * as path from "path";
+import { Workspace } from "../../../shared/types";
+import { AgentDaemon } from "../daemon";
+import { LLMTool } from "../llm/types";
 
 /**
  * GlobTools provides fast pattern-based file search
@@ -12,7 +12,7 @@ export class GlobTools {
   constructor(
     private workspace: Workspace,
     private daemon: AgentDaemon,
-    private taskId: string
+    private taskId: string,
   ) {}
 
   /**
@@ -28,30 +28,30 @@ export class GlobTools {
   static getToolDefinitions(): LLMTool[] {
     return [
       {
-        name: 'glob',
+        name: "glob",
         description:
           'Fast file pattern matching tool. Use glob patterns like "**/*.ts" or "src/**/*.tsx" to find files. ' +
-          'Returns matching file paths sorted by modification time (newest first). ' +
-          'PREFERRED over search_files when you know the file pattern you want.',
+          "Returns matching file paths sorted by modification time (newest first). " +
+          "PREFERRED over search_files when you know the file pattern you want.",
         input_schema: {
-          type: 'object',
+          type: "object",
           properties: {
             pattern: {
-              type: 'string',
+              type: "string",
               description:
                 'Glob pattern to match files (e.g., "**/*.ts", "src/**/*.test.ts", "*.{js,jsx,ts,tsx}")',
             },
             path: {
-              type: 'string',
+              type: "string",
               description:
-                'Directory to search in (relative to workspace unless absolute path is allowed). Defaults to workspace root if not specified.',
+                "Directory to search in (relative to workspace unless absolute path is allowed). Defaults to workspace root if not specified.",
             },
             maxResults: {
-              type: 'number',
-              description: 'Maximum number of results to return (default: 100)',
+              type: "number",
+              description: "Maximum number of results to return (default: 100)",
             },
           },
-          required: ['pattern'],
+          required: ["pattern"],
         },
       },
     ];
@@ -60,11 +60,7 @@ export class GlobTools {
   /**
    * Execute glob pattern search
    */
-  async glob(input: {
-    pattern: string;
-    path?: string;
-    maxResults?: number;
-  }): Promise<{
+  async glob(input: { pattern: string; path?: string; maxResults?: number }): Promise<{
     success: boolean;
     pattern: string;
     matches: Array<{ path: string; size: number; modified: string }>;
@@ -74,25 +70,25 @@ export class GlobTools {
   }> {
     const { pattern, path: searchPath, maxResults = 100 } = input;
 
-    this.daemon.logEvent(this.taskId, 'log', {
-      message: `Glob search: ${pattern}${searchPath ? ` in ${searchPath}` : ''}`,
+    this.daemon.logEvent(this.taskId, "log", {
+      message: `Glob search: ${pattern}${searchPath ? ` in ${searchPath}` : ""}`,
     });
 
     try {
       const normalizedWorkspace = path.resolve(this.workspace.path);
       const basePath = searchPath
-        ? (path.isAbsolute(searchPath)
-            ? path.normalize(searchPath)
-            : path.resolve(normalizedWorkspace, searchPath))
+        ? path.isAbsolute(searchPath)
+          ? path.normalize(searchPath)
+          : path.resolve(normalizedWorkspace, searchPath)
         : normalizedWorkspace;
 
       const isInsideWorkspace = this.isWithinWorkspace(basePath, normalizedWorkspace);
       if (!isInsideWorkspace && !this.isPathAllowedOutsideWorkspace(basePath)) {
-        throw new Error('Search path must be within workspace');
+        throw new Error("Search path must be within workspace");
       }
 
       if (!fs.existsSync(basePath)) {
-        throw new Error(`Path does not exist: ${searchPath || '.'}`);
+        throw new Error(`Path does not exist: ${searchPath || "."}`);
       }
 
       // Parse the glob pattern
@@ -112,8 +108,8 @@ export class GlobTools {
         modified: new Date(m.mtime).toISOString(),
       }));
 
-      this.daemon.logEvent(this.taskId, 'tool_result', {
-        tool: 'glob',
+      this.daemon.logEvent(this.taskId, "tool_result", {
+        tool: "glob",
         result: {
           pattern,
           matchCount: results.length,
@@ -131,8 +127,8 @@ export class GlobTools {
         truncated,
       };
     } catch (error: any) {
-      this.daemon.logEvent(this.taskId, 'tool_result', {
-        tool: 'glob',
+      this.daemon.logEvent(this.taskId, "tool_result", {
+        tool: "glob",
         error: error.message,
       });
 
@@ -149,7 +145,7 @@ export class GlobTools {
 
   private isWithinWorkspace(basePath: string, workspacePath: string): boolean {
     const relative = path.relative(workspacePath, basePath);
-    return !relative.startsWith('..') && !path.isAbsolute(relative);
+    return !relative.startsWith("..") && !path.isAbsolute(relative);
   }
 
   private isPathAllowedOutsideWorkspace(basePath: string): boolean {
@@ -162,10 +158,12 @@ export class GlobTools {
     }
 
     const normalizedPath = path.normalize(basePath);
-    return allowedPaths.some(allowed => {
+    return allowedPaths.some((allowed) => {
       const normalizedAllowed = path.normalize(allowed);
-      return normalizedPath === normalizedAllowed ||
-        normalizedPath.startsWith(normalizedAllowed + path.sep);
+      return (
+        normalizedPath === normalizedAllowed ||
+        normalizedPath.startsWith(normalizedAllowed + path.sep)
+      );
     });
   }
 
@@ -175,7 +173,7 @@ export class GlobTools {
   private async findMatches(
     basePath: string,
     pattern: string,
-    maxResults: number
+    maxResults: number,
   ): Promise<{
     matches: Array<{ path: string; size: number; mtime: number }>;
     scanTruncated: boolean;
@@ -216,7 +214,7 @@ export class GlobTools {
       maxDirectoriesScanned: number;
       scanTruncated: boolean;
     },
-    depth: number = 0
+    depth: number = 0,
   ): Promise<void> {
     if (scanState.scanTruncated) return;
 
@@ -232,21 +230,21 @@ export class GlobTools {
     // Skip common non-code directories
     const dirName = path.basename(currentPath);
     const skipDirs = [
-      'node_modules',
-      '.git',
-      '.svn',
-      '.hg',
-      'dist',
-      'build',
-      'coverage',
-      '.next',
-      '.nuxt',
-      '__pycache__',
-      '.pytest_cache',
-      'venv',
-      '.venv',
-      'env',
-      '.env',
+      "node_modules",
+      ".git",
+      ".svn",
+      ".hg",
+      "dist",
+      "build",
+      "coverage",
+      ".next",
+      ".nuxt",
+      "__pycache__",
+      ".pytest_cache",
+      "venv",
+      ".venv",
+      "env",
+      ".env",
     ];
 
     if (depth > 0 && skipDirs.includes(dirName)) {
@@ -263,7 +261,15 @@ export class GlobTools {
         const relativePath = path.relative(basePath, fullPath);
 
         if (entry.isDirectory()) {
-          await this.walkDirectory(fullPath, basePath, regex, matches, maxMatchBuffer, scanState, depth + 1);
+          await this.walkDirectory(
+            fullPath,
+            basePath,
+            regex,
+            matches,
+            maxMatchBuffer,
+            scanState,
+            depth + 1,
+          );
         } else if (entry.isFile()) {
           scanState.filesScanned += 1;
           if (scanState.filesScanned > scanState.maxFilesScanned) {
@@ -314,30 +320,30 @@ export class GlobTools {
     // Convert each pattern to regex
     const regexParts = expandedPatterns.map((p) => {
       // Use a placeholder so "*" replacement doesn't accidentally rewrite the globstar expansion.
-      const GLOBSTAR = '__COWORK_GLOBSTAR__';
-      const GLOBSTAR_SLASH = '__COWORK_GLOBSTAR_SLASH__';
+      const GLOBSTAR = "__COWORK_GLOBSTAR__";
+      const GLOBSTAR_SLASH = "__COWORK_GLOBSTAR_SLASH__";
       let regex = p
         // Escape special regex characters (except glob chars * and ?)
-        .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+        .replace(/[.+^${}()|[\]\\]/g, "\\$&")
         // **/ matches zero or more path segments (including none)
         .replace(/\*\*\//g, GLOBSTAR_SLASH)
         // ** matches any path (including /) - must be before single * replacement
         .replace(/\*\*/g, GLOBSTAR)
         // * matches anything except /
-        .replace(/\*/g, '[^/]*')
+        .replace(/\*/g, "[^/]*")
         // ? matches single character except /
-        .replace(/\?/g, '[^/]')
+        .replace(/\?/g, "[^/]")
         // Expand globstar placeholder after single-star replacement
-        .replace(new RegExp(GLOBSTAR_SLASH, 'g'), '(?:.*/)?')
-        .replace(new RegExp(GLOBSTAR, 'g'), '.*');
+        .replace(new RegExp(GLOBSTAR_SLASH, "g"), "(?:.*/)?")
+        .replace(new RegExp(GLOBSTAR, "g"), ".*");
 
       return regex;
     });
 
     // Combine patterns with OR
-    const combined = regexParts.length > 1 ? `(${regexParts.join('|')})` : regexParts[0];
+    const combined = regexParts.length > 1 ? `(${regexParts.join("|")})` : regexParts[0];
 
-    return new RegExp(`^${combined}$`, 'i');
+    return new RegExp(`^${combined}$`, "i");
   }
 
   /**
@@ -351,7 +357,7 @@ export class GlobTools {
     }
 
     const [fullMatch, options] = braceMatch;
-    const optionList = options.split(',');
+    const optionList = options.split(",");
     const results: string[] = [];
 
     for (const option of optionList) {

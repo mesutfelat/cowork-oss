@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
-import { VoiceState } from '../../shared/types';
+import { useState, useEffect } from "react";
+import { VoiceState } from "../../shared/types";
 
 interface VoiceIndicatorProps {
   /** Whether voice mode is enabled */
   enabled?: boolean;
   /** Position of the indicator */
-  position?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
+  position?: "bottom-right" | "bottom-left" | "top-right" | "top-left";
   /** Whether to show even when inactive */
   showWhenInactive?: boolean;
   /** Click handler */
@@ -14,7 +14,7 @@ interface VoiceIndicatorProps {
 
 export function VoiceIndicator({
   enabled = false,
-  position = 'bottom-right',
+  position = "bottom-right",
   showWhenInactive = false,
   onClick,
 }: VoiceIndicatorProps) {
@@ -31,7 +31,7 @@ export function VoiceIndicator({
 
     // Subscribe to voice events
     const unsubscribe = window.electronAPI.onVoiceEvent((event) => {
-      if (event.type === 'voice:state-changed') {
+      if (event.type === "voice:state-changed") {
         setVoiceState(event.data as VoiceState);
       }
     });
@@ -50,26 +50,31 @@ export function VoiceIndicator({
   }
 
   // Don't render if inactive and not showing when inactive
-  if (!voiceState.isActive && !voiceState.isSpeaking && !voiceState.isListening && !showWhenInactive) {
+  if (
+    !voiceState.isActive &&
+    !voiceState.isSpeaking &&
+    !voiceState.isListening &&
+    !showWhenInactive
+  ) {
     return null;
   }
 
   const getStatusText = () => {
-    if (!enabled) return 'Voice Disabled';
-    if (voiceState.isSpeaking) return 'Speaking';
-    if (voiceState.isListening) return 'Listening';
-    if (voiceState.isProcessing) return 'Processing';
-    if (voiceState.isActive) return 'Voice Ready';
-    return 'Voice Inactive';
+    if (!enabled) return "Voice Disabled";
+    if (voiceState.isSpeaking) return "Speaking";
+    if (voiceState.isListening) return "Listening";
+    if (voiceState.isProcessing) return "Processing";
+    if (voiceState.isActive) return "Voice Ready";
+    return "Voice Inactive";
   };
 
   const getStatusClass = () => {
-    if (!enabled) return 'disabled';
-    if (voiceState.isSpeaking) return 'speaking';
-    if (voiceState.isListening) return 'listening';
-    if (voiceState.isProcessing) return 'processing';
-    if (voiceState.isActive) return 'active';
-    return 'inactive';
+    if (!enabled) return "disabled";
+    if (voiceState.isSpeaking) return "speaking";
+    if (voiceState.isListening) return "listening";
+    if (voiceState.isProcessing) return "processing";
+    if (voiceState.isActive) return "active";
+    return "inactive";
   };
 
   return (
@@ -80,7 +85,7 @@ export function VoiceIndicator({
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
+        if (e.key === "Enter" || e.key === " ") {
           onClick?.();
         }
       }}
@@ -105,9 +110,7 @@ export function VoiceIndicator({
 
       {/* Partial transcript preview */}
       {voiceState.partialTranscript && (
-        <div className="voice-indicator-transcript">
-          {voiceState.partialTranscript}
-        </div>
+        <div className="voice-indicator-transcript">{voiceState.partialTranscript}</div>
       )}
     </div>
   );
@@ -220,7 +223,7 @@ export function VoiceIndicatorMini({
     if (!enabled) return;
 
     const unsubscribe = window.electronAPI.onVoiceEvent((event) => {
-      if (event.type === 'voice:state-changed') {
+      if (event.type === "voice:state-changed") {
         setVoiceState(event.data as VoiceState);
       }
     });
@@ -235,11 +238,11 @@ export function VoiceIndicatorMini({
   if (!enabled) return null;
 
   const getStatusClass = () => {
-    if (voiceState.isSpeaking) return 'speaking';
-    if (voiceState.isListening) return 'listening';
-    if (voiceState.isProcessing) return 'processing';
-    if (voiceState.isActive) return 'active';
-    return 'inactive';
+    if (voiceState.isSpeaking) return "speaking";
+    if (voiceState.isListening) return "listening";
+    if (voiceState.isProcessing) return "processing";
+    if (voiceState.isActive) return "active";
+    return "inactive";
   };
 
   return (
@@ -255,12 +258,26 @@ export function VoiceIndicatorMini({
           <line x1="18" y1="7" x2="18" y2="17" stroke="currentColor" strokeWidth="2" />
         </svg>
       ) : voiceState.isListening ? (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
           <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
           <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
         </svg>
       ) : (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
           <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" opacity="0.5" />
           <path d="M19 10v2a7 7 0 0 1-14 0v-2" opacity="0.5" />
         </svg>

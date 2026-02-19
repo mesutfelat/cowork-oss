@@ -5,8 +5,8 @@
  * Handles capture, compression, search, and context injection.
  */
 
-import { EventEmitter } from 'events';
-import type { DatabaseManager } from '../database/schema';
+import { EventEmitter } from "events";
+import type { DatabaseManager } from "../database/schema";
 import {
   MemoryRepository,
   MemoryEmbeddingRepository,
@@ -18,12 +18,16 @@ import {
   MemoryTimelineEntry,
   MemoryType,
   MemoryStats,
-} from '../database/repositories';
-import { LLMProviderFactory } from '../agent/llm';
-import { estimateTokens } from '../agent/context-manager';
-import { InputSanitizer } from '../agent/security';
-import { cosineSimilarity, createLocalEmbedding, tokenizeForLocalEmbedding } from './local-embedding';
-import { MarkdownMemoryIndexService } from './MarkdownMemoryIndexService';
+} from "../database/repositories";
+import { LLMProviderFactory } from "../agent/llm";
+import { estimateTokens } from "../agent/context-manager";
+import { InputSanitizer } from "../agent/security";
+import {
+  cosineSimilarity,
+  createLocalEmbedding,
+  tokenizeForLocalEmbedding,
+} from "./local-embedding";
+import { MarkdownMemoryIndexService } from "./MarkdownMemoryIndexService";
 
 // Privacy patterns to exclude - matches common sensitive data patterns
 const SENSITIVE_PATTERNS = [
@@ -102,14 +106,18 @@ export class MemoryService {
     // Start periodic cleanup
     this.cleanupIntervalHandle = setInterval(() => this.runCleanup(), CLEANUP_INTERVAL_MS);
 
-    console.log('[MemoryService] Initialized');
+    console.log("[MemoryService] Initialized");
   }
 
   /**
    * Sync workspace markdown index (kit notes, docs, etc.)
    * This is optional; failures should not impact the core memory system.
    */
-  static async syncWorkspaceMarkdown(workspaceId: string, workspacePath: string, force = false): Promise<void> {
+  static async syncWorkspaceMarkdown(
+    workspaceId: string,
+    workspacePath: string,
+    force = false,
+  ): Promise<void> {
     this.ensureInitialized();
     if (!this.markdownIndex) return;
     await this.markdownIndex.syncWorkspace(workspaceId, workspacePath, force);
@@ -123,7 +131,7 @@ export class MemoryService {
     workspaceId: string,
     workspacePath: string,
     query: string,
-    limit = 10
+    limit = 10,
   ): MemorySearchResult[] {
     this.ensureInitialized();
     if (!this.markdownIndex) return [];
@@ -137,7 +145,7 @@ export class MemoryService {
   static getRecentWorkspaceMarkdownSnippets(
     workspaceId: string,
     workspacePath: string,
-    limit = 3
+    limit = 3,
   ): MemorySearchResult[] {
     this.ensureInitialized();
     if (!this.markdownIndex) return [];
@@ -152,10 +160,10 @@ export class MemoryService {
    * Subscribe to memory events
    */
   static onMemoryChanged(
-    callback: (data: { type: string; workspaceId: string }) => void
+    callback: (data: { type: string; workspaceId: string }) => void,
   ): () => void {
-    memoryEvents.on('memoryChanged', callback);
-    return () => memoryEvents.off('memoryChanged', callback);
+    memoryEvents.on("memoryChanged", callback);
+    return () => memoryEvents.off("memoryChanged", callback);
   }
 
   /**
@@ -166,7 +174,7 @@ export class MemoryService {
     taskId: string | undefined,
     type: MemoryType,
     content: string,
-    isPrivate = false
+    isPrivate = false,
   ): Promise<Memory | null> {
     this.ensureInitialized();
 
@@ -177,7 +185,7 @@ export class MemoryService {
     }
 
     // Check privacy mode
-    if (settings.privacyMode === 'disabled') {
+    if (settings.privacyMode === "disabled") {
       return null;
     }
 
@@ -188,14 +196,14 @@ export class MemoryService {
 
     // Check for sensitive content
     const containsSensitive = this.containsSensitiveData(content);
-    const finalIsPrivate = isPrivate || containsSensitive || settings.privacyMode === 'strict';
+    const finalIsPrivate = isPrivate || containsSensitive || settings.privacyMode === "strict";
 
     // Estimate tokens
     const tokens = estimateTokens(content);
 
     // Truncate very long content
     const truncatedContent =
-      content.length > 10000 ? content.slice(0, 10000) + '\n[... truncated]' : content;
+      content.length > 10000 ? content.slice(0, 10000) + "\n[... truncated]" : content;
 
     // Create memory
     const memory = this.memoryRepo.create({
@@ -226,7 +234,7 @@ export class MemoryService {
     }
 
     // Emit event
-    memoryEvents.emit('memoryChanged', { type: 'created', workspaceId });
+    memoryEvents.emit("memoryChanged", { type: "created", workspaceId });
 
     // Enforce per-workspace storage cap (best-effort).
     this.enforceStorageLimit(workspaceId, settings.maxStorageMb);
@@ -331,7 +339,7 @@ export class MemoryService {
             relevanceScore: hybrid,
             createdAt: mem.createdAt,
             taskId: mem.taskId,
-            source: 'db' as const,
+            source: "db" as const,
           },
           score: hybrid,
         });
@@ -347,7 +355,7 @@ export class MemoryService {
   private static mergeLexicalOnly(
     local: MemorySearchResult[],
     imported: MemorySearchResult[],
-    limit: number
+    limit: number,
   ): MemorySearchResult[] {
     const seen = new Set<string>();
     const out: MemorySearchResult[] = [];
@@ -375,7 +383,10 @@ export class MemoryService {
       const map = new Map<string, { updatedAt: number; embedding: Float32Array }>();
       for (const row of embeddings) {
         if (Array.isArray(row.embedding) && row.embedding.length > 0) {
-          map.set(row.memoryId, { updatedAt: row.updatedAt, embedding: Float32Array.from(row.embedding) });
+          map.set(row.memoryId, {
+            updatedAt: row.updatedAt,
+            embedding: Float32Array.from(row.embedding),
+          });
         }
       }
       this.memoryEmbeddingsByWorkspace.set(workspaceId, map);
@@ -390,7 +401,7 @@ export class MemoryService {
     workspaceId: string,
     memoryId: string,
     embedding: number[],
-    updatedAt: number
+    updatedAt: number,
   ): void {
     let ws = this.memoryEmbeddingsByWorkspace.get(workspaceId);
     if (!ws) {
@@ -437,9 +448,9 @@ export class MemoryService {
   }
 
   private static normalizeForEmbedding(summary: string | undefined, content: string): string {
-    let text = (summary || content || '').trim();
+    let text = (summary || content || "").trim();
     // Strip ChatGPT import tag to reduce noise in semantic space.
-    text = text.replace(/^\[Imported from ChatGPT[^\]]*\]\s*/i, '');
+    text = text.replace(/^\[Imported from ChatGPT[^\]]*\]\s*/i, "");
     // Keep a bounded prefix for speed and to avoid pathological inputs.
     if (text.length > 12000) text = text.slice(0, 12000);
     return text;
@@ -542,7 +553,7 @@ export class MemoryService {
 
     const settings = this.settingsRepo.getOrCreate(workspaceId);
     if (!settings.enabled) {
-      return '';
+      return "";
     }
 
     // Get recent memories (summaries preferred)
@@ -567,15 +578,15 @@ export class MemoryService {
     }
 
     if (recentMemories.length === 0 && relevantMemories.length === 0) {
-      return '';
+      return "";
     }
 
-    const parts: string[] = ['<memory_context>'];
-    parts.push('The following memories from previous sessions may be relevant:');
+    const parts: string[] = ["<memory_context>"];
+    parts.push("The following memories from previous sessions may be relevant:");
 
     // Add recent memories (summaries only for token efficiency)
     if (recentMemories.length > 0) {
-      parts.push('\n## Recent Activity');
+      parts.push("\n## Recent Activity");
       for (const memory of recentMemories) {
         const rawText = memory.summary || this.truncate(memory.content, 150);
         // Sanitize memory content to prevent injection via stored memories
@@ -587,7 +598,7 @@ export class MemoryService {
 
     // Add relevant memories (hybrid semantic + lexical)
     if (relevantMemories.length > 0) {
-      parts.push('\n## Relevant to Current Task (Hybrid Recall)');
+      parts.push("\n## Relevant to Current Task (Hybrid Recall)");
       for (const result of relevantMemories) {
         const date = new Date(result.createdAt).toLocaleDateString();
         // Sanitize memory content to prevent injection via stored memories
@@ -596,9 +607,9 @@ export class MemoryService {
       }
     }
 
-    parts.push('</memory_context>');
+    parts.push("</memory_context>");
 
-    return parts.join('\n');
+    return parts.join("\n");
   }
 
   /**
@@ -614,11 +625,11 @@ export class MemoryService {
    */
   static updateSettings(
     workspaceId: string,
-    updates: Partial<Omit<MemorySettings, 'workspaceId'>>
+    updates: Partial<Omit<MemorySettings, "workspaceId">>,
   ): void {
     this.ensureInitialized();
     this.settingsRepo.update(workspaceId, updates);
-    memoryEvents.emit('memoryChanged', { type: 'settingsUpdated', workspaceId });
+    memoryEvents.emit("memoryChanged", { type: "settingsUpdated", workspaceId });
   }
 
   /**
@@ -661,7 +672,7 @@ export class MemoryService {
     this.memoryEmbeddingsByWorkspace.delete(workspaceId);
     this.embeddingsLoadedForWorkspace.delete(workspaceId);
     this.embeddingBackfillInProgress.delete(workspaceId);
-    memoryEvents.emit('memoryChanged', { type: 'importedDeleted', workspaceId });
+    memoryEvents.emit("memoryChanged", { type: "importedDeleted", workspaceId });
     return deleted;
   }
 
@@ -685,7 +696,7 @@ export class MemoryService {
     this.memoryEmbeddingsByWorkspace.delete(workspaceId);
     this.embeddingsLoadedForWorkspace.delete(workspaceId);
     this.embeddingBackfillInProgress.delete(workspaceId);
-    memoryEvents.emit('memoryChanged', { type: 'cleared', workspaceId });
+    memoryEvents.emit("memoryChanged", { type: "cleared", workspaceId });
   }
 
   /**
@@ -713,7 +724,7 @@ export class MemoryService {
         setTimeout(() => this.processCompressionQueue(), 1000);
       }
     } catch (error) {
-      console.error('[MemoryService] Compression queue error:', error);
+      console.error("[MemoryService] Compression queue error:", error);
     } finally {
       this.compressionInProgress = false;
     }
@@ -743,16 +754,16 @@ export class MemoryService {
         settings.xai?.model,
         settings.kimi?.model,
         settings.customProviders,
-        settings.bedrock?.model
+        settings.bedrock?.model,
       );
 
       const response = await provider.createMessage({
         model: modelId,
         maxTokens: 100,
-        system: 'You are a helpful assistant that summarizes text concisely.',
+        system: "You are a helpful assistant that summarizes text concisely.",
         messages: [
           {
-            role: 'user',
+            role: "user",
             content: `Summarize this observation in 1-2 sentences (max 50 words). Focus on the key insight, decision, or action taken. Be concise and factual.
 
 Observation:
@@ -764,9 +775,9 @@ Summary:`,
       });
 
       // Extract summary from response
-      let summary = '';
+      let summary = "";
       for (const content of response.content) {
-        if (content.type === 'text') {
+        if (content.type === "text") {
           summary += content.text;
         }
       }
@@ -782,7 +793,7 @@ Summary:`,
       }
     } catch (error) {
       // Log but don't fail - compression is optional enhancement
-      console.warn('[MemoryService] Compression failed for memory:', memoryId, error);
+      console.warn("[MemoryService] Compression failed for memory:", memoryId, error);
     }
   }
 
@@ -804,13 +815,15 @@ Summary:`,
 
         const deleted = this.memoryRepo.deleteOlderThan(workspaceId, cutoff);
         if (deleted > 0) {
-          console.log(`[MemoryService] Cleaned up ${deleted} old memories for workspace ${workspaceId}`);
+          console.log(
+            `[MemoryService] Cleaned up ${deleted} old memories for workspace ${workspaceId}`,
+          );
         }
 
         this.enforceStorageLimit(workspaceId, settings.maxStorageMb);
       }
     } catch (error) {
-      console.error('[MemoryService] Cleanup failed:', error);
+      console.error("[MemoryService] Cleanup failed:", error);
     }
   }
 
@@ -841,7 +854,7 @@ Summary:`,
       const deleted = this.memoryRepo.deleteByIds(workspaceId, idsToDelete);
       if (deleted > 0) {
         this.embeddingRepo.deleteByMemoryIds(idsToDelete);
-        memoryEvents.emit('memoryChanged', { type: 'pruned', workspaceId });
+        memoryEvents.emit("memoryChanged", { type: "pruned", workspaceId });
       } else {
         break;
       }
@@ -856,26 +869,104 @@ Summary:`,
   private static extractSearchTerms(prompt: string): string {
     // Remove common words and extract meaningful terms
     const stopWords = new Set([
-      'a', 'an', 'the', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
-      'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could',
-      'should', 'may', 'might', 'can', 'must', 'shall', 'to', 'of', 'in',
-      'for', 'on', 'with', 'at', 'by', 'from', 'up', 'about', 'into',
-      'over', 'after', 'beneath', 'under', 'above', 'and', 'or', 'but',
-      'if', 'then', 'else', 'when', 'where', 'why', 'how', 'all', 'each',
-      'every', 'both', 'few', 'more', 'most', 'other', 'some', 'such',
-      'no', 'nor', 'not', 'only', 'own', 'same', 'so', 'than', 'too',
-      'very', 'just', 'also', 'now', 'please', 'help', 'me', 'i', 'my',
-      'want', 'need', 'like', 'make', 'create', 'add', 'update', 'fix',
+      "a",
+      "an",
+      "the",
+      "is",
+      "are",
+      "was",
+      "were",
+      "be",
+      "been",
+      "being",
+      "have",
+      "has",
+      "had",
+      "do",
+      "does",
+      "did",
+      "will",
+      "would",
+      "could",
+      "should",
+      "may",
+      "might",
+      "can",
+      "must",
+      "shall",
+      "to",
+      "of",
+      "in",
+      "for",
+      "on",
+      "with",
+      "at",
+      "by",
+      "from",
+      "up",
+      "about",
+      "into",
+      "over",
+      "after",
+      "beneath",
+      "under",
+      "above",
+      "and",
+      "or",
+      "but",
+      "if",
+      "then",
+      "else",
+      "when",
+      "where",
+      "why",
+      "how",
+      "all",
+      "each",
+      "every",
+      "both",
+      "few",
+      "more",
+      "most",
+      "other",
+      "some",
+      "such",
+      "no",
+      "nor",
+      "not",
+      "only",
+      "own",
+      "same",
+      "so",
+      "than",
+      "too",
+      "very",
+      "just",
+      "also",
+      "now",
+      "please",
+      "help",
+      "me",
+      "i",
+      "my",
+      "want",
+      "need",
+      "like",
+      "make",
+      "create",
+      "add",
+      "update",
+      "fix",
     ]);
 
     const words = prompt
       .toLowerCase()
-      .replace(/[^\w\s]/g, ' ')
+      .replace(/[^\w\s]/g, " ")
       .split(/\s+/)
       .filter((word) => word.length > 2 && !stopWords.has(word));
 
     // Take first 5 meaningful words for search
-    return words.slice(0, 5).join(' OR ');
+    return words.slice(0, 5).join(" OR ");
   }
 
   /**
@@ -888,7 +979,7 @@ Summary:`,
 
     for (const pattern of settings.excludedPatterns) {
       try {
-        const regex = new RegExp(pattern, 'i');
+        const regex = new RegExp(pattern, "i");
         if (regex.test(content)) {
           return true;
         }
@@ -917,7 +1008,7 @@ Summary:`,
    */
   private static truncate(text: string, maxLength: number): string {
     if (text.length <= maxLength) return text;
-    return text.slice(0, maxLength - 3) + '...';
+    return text.slice(0, maxLength - 3) + "...";
   }
 
   /**
@@ -925,7 +1016,7 @@ Summary:`,
    */
   private static ensureInitialized(): void {
     if (!this.initialized) {
-      throw new Error('[MemoryService] Not initialized. Call MemoryService.initialize() first.');
+      throw new Error("[MemoryService] Not initialized. Call MemoryService.initialize() first.");
     }
   }
 
@@ -946,6 +1037,6 @@ Summary:`,
     this.embeddingsLoadedForWorkspace.clear();
     this.embeddingBackfillInProgress.clear();
     this.initialized = false;
-    console.log('[MemoryService] Shutdown complete');
+    console.log("[MemoryService] Shutdown complete");
   }
 }

@@ -1,9 +1,9 @@
-import fs from 'fs';
-import path from 'path';
-import type Database from 'better-sqlite3';
-import type { AgentDaemon } from '../agent/daemon';
-import { AgentRoleRepository } from './AgentRoleRepository';
-import { TaskRepository, WorkspaceRepository } from '../database/repositories';
+import fs from "fs";
+import path from "path";
+import type Database from "better-sqlite3";
+import type { AgentDaemon } from "../agent/daemon";
+import { AgentRoleRepository } from "./AgentRoleRepository";
+import { TaskRepository, WorkspaceRepository } from "../database/repositories";
 
 type FeedbackEntry = {
   agent: string;
@@ -29,12 +29,12 @@ type WorkspaceState = {
   flushTimer: ReturnType<typeof setTimeout> | null;
 };
 
-const KIT_DIRNAME = '.cowork';
-const FEEDBACK_DIR = path.join(KIT_DIRNAME, 'feedback');
-const MISTAKES_PATH = path.join(KIT_DIRNAME, 'MISTAKES.md');
+const KIT_DIRNAME = ".cowork";
+const FEEDBACK_DIR = path.join(KIT_DIRNAME, "feedback");
+const MISTAKES_PATH = path.join(KIT_DIRNAME, "MISTAKES.md");
 
-const AUTO_MISTAKES_START = '<!-- cowork:auto:mistakes:start -->';
-const AUTO_MISTAKES_END = '<!-- cowork:auto:mistakes:end -->';
+const AUTO_MISTAKES_START = "<!-- cowork:auto:mistakes:start -->";
+const AUTO_MISTAKES_END = "<!-- cowork:auto:mistakes:end -->";
 
 const FLUSH_DEBOUNCE_MS = 12_000;
 const STARTUP_REBUILD_LIMIT = 2500;
@@ -42,11 +42,11 @@ const REBUILD_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 const PATTERN_WINDOW_MS = 90 * 24 * 60 * 60 * 1000;
 
 function sanitizeInline(text: string): string {
-  const cleaned = String(text || '')
-    .replace(/[\r\n\t]+/g, ' ')
-    .replace(/\s+/g, ' ')
+  const cleaned = String(text || "")
+    .replace(/[\r\n\t]+/g, " ")
+    .replace(/\s+/g, " ")
     .trim();
-  return cleaned.length > 220 ? cleaned.slice(0, 217) + '...' : cleaned;
+  return cleaned.length > 220 ? cleaned.slice(0, 217) + "..." : cleaned;
 }
 
 function computeIsoWeek(date: Date): { year: number; week: number } {
@@ -61,7 +61,7 @@ function computeIsoWeek(date: Date): { year: number; week: number } {
 }
 
 function upsertMarkedSection(markdown: string, bodyLines: string[]): string {
-  const body = bodyLines.join('\n').trimEnd();
+  const body = bodyLines.join("\n").trimEnd();
   const replacement = `${AUTO_MISTAKES_START}\n${body}\n${AUTO_MISTAKES_END}`;
 
   const startIdx = markdown.indexOf(AUTO_MISTAKES_START);
@@ -70,37 +70,37 @@ function upsertMarkedSection(markdown: string, bodyLines: string[]): string {
   if (startIdx >= 0 && endIdx > startIdx) {
     const before = markdown.slice(0, startIdx).trimEnd();
     const after = markdown.slice(endIdx + AUTO_MISTAKES_END.length).trimStart();
-    return `${before}\n${replacement}\n\n${after}`.trimEnd() + '\n';
+    return `${before}\n${replacement}\n\n${after}`.trimEnd() + "\n";
   }
 
-  const heading = '## Patterns';
+  const heading = "## Patterns";
   const headingIdx = markdown.indexOf(heading);
   if (headingIdx >= 0) {
     const insertAt = headingIdx + heading.length;
     const before = markdown.slice(0, insertAt).trimEnd();
     const after = markdown.slice(insertAt).trimStart();
-    return `${before}\n\n${replacement}\n\n${after}`.trimEnd() + '\n';
+    return `${before}\n\n${replacement}\n\n${after}`.trimEnd() + "\n";
   }
 
-  return `${markdown.trimEnd()}\n\n${heading}\n\n${replacement}\n`.trimEnd() + '\n';
+  return `${markdown.trimEnd()}\n\n${heading}\n\n${replacement}\n`.trimEnd() + "\n";
 }
 
 function defaultMistakesTemplate(): string {
   return [
-    '# Mistakes / Preferences',
-    '',
-    'This file is workspace-local and can be auto-updated by the system.',
-    'Use it to capture rejection reasons and durable preference patterns.',
-    '',
-    '## Patterns',
+    "# Mistakes / Preferences",
+    "",
+    "This file is workspace-local and can be auto-updated by the system.",
+    "Use it to capture rejection reasons and durable preference patterns.",
+    "",
+    "## Patterns",
     AUTO_MISTAKES_START,
-    '- (none)',
+    "- (none)",
     AUTO_MISTAKES_END,
-    '',
-    '## Notes',
-    '- ',
-    '',
-  ].join('\n');
+    "",
+    "## Notes",
+    "- ",
+    "",
+  ].join("\n");
 }
 
 export class FeedbackService {
@@ -119,9 +119,9 @@ export class FeedbackService {
   async start(agentDaemon: AgentDaemon): Promise<void> {
     this.agentDaemon = agentDaemon;
 
-    agentDaemon.on('user_feedback', (evt: any) => {
+    agentDaemon.on("user_feedback", (evt: any) => {
       try {
-        const taskId = typeof evt?.taskId === 'string' ? evt.taskId : '';
+        const taskId = typeof evt?.taskId === "string" ? evt.taskId : "";
         if (!taskId) return;
         this.ingestFeedbackEvent(taskId, evt, Date.now(), { queueWeekly: true });
       } catch {
@@ -134,7 +134,7 @@ export class FeedbackService {
       await this.rebuildFromRecentFeedbackEvents();
       await this.flushAll();
     } catch (error) {
-      console.warn('[Feedback] Startup rebuild failed:', error);
+      console.warn("[Feedback] Startup rebuild failed:", error);
     }
   }
 
@@ -147,8 +147,8 @@ export class FeedbackService {
   }
 
   private formatAgentName(agentRoleId: string | null): string {
-    if (!agentRoleId) return 'Main';
-    if (agentRoleId === 'main') return 'Main';
+    if (!agentRoleId) return "Main";
+    if (agentRoleId === "main") return "Main";
     const role = this.agentRoleRepo.findById(agentRoleId);
     return role?.displayName || role?.name || agentRoleId.slice(0, 8);
   }
@@ -166,13 +166,13 @@ export class FeedbackService {
     taskId: string,
     payload: any,
     timestampMs: number,
-    opts?: { queueWeekly?: boolean }
+    opts?: { queueWeekly?: boolean },
   ): void {
     const task = this.taskRepo.findById(taskId);
     if (!task) return;
 
     const gatewayContext = task.agentConfig?.gatewayContext;
-    if (gatewayContext === 'group' || gatewayContext === 'public') {
+    if (gatewayContext === "group" || gatewayContext === "public") {
       return;
     }
 
@@ -183,21 +183,28 @@ export class FeedbackService {
     if (!workspace?.path) return;
     if (!this.ensureKitDirExists(workspace.path)) return;
 
-    const decision = typeof payload?.decision === 'string' ? payload.decision.trim() : '';
-    const reason = typeof payload?.reason === 'string' ? payload.reason.trim() : '';
-    const channel = typeof payload?.channel === 'string' ? payload.channel : (typeof payload?.channelType === 'string' ? payload.channelType : '');
-    const userId = typeof payload?.userId === 'string' ? payload.userId : '';
-    const userName = typeof payload?.userName === 'string' ? payload.userName : '';
+    const decision = typeof payload?.decision === "string" ? payload.decision.trim() : "";
+    const reason = typeof payload?.reason === "string" ? payload.reason.trim() : "";
+    const channel =
+      typeof payload?.channel === "string"
+        ? payload.channel
+        : typeof payload?.channelType === "string"
+          ? payload.channelType
+          : "";
+    const userId = typeof payload?.userId === "string" ? payload.userId : "";
+    const userName = typeof payload?.userName === "string" ? payload.userName : "";
     const agentRoleId =
-      typeof payload?.agentRoleId === 'string'
+      typeof payload?.agentRoleId === "string"
         ? payload.agentRoleId
-        : (task.assignedAgentRoleId ? task.assignedAgentRoleId : null);
+        : task.assignedAgentRoleId
+          ? task.assignedAgentRoleId
+          : null;
     const agentName = this.formatAgentName(agentRoleId);
 
     const state = this.getWorkspaceState(workspaceId);
 
     // Pattern capture (institutional learning): only store reason-bearing negative feedback.
-    if ((decision === 'rejected' || decision === 'edit') && reason) {
+    if ((decision === "rejected" || decision === "edit") && reason) {
       const patternDisplay = sanitizeInline(`${agentName}: ${reason}`);
       const key = patternDisplay.toLowerCase();
       const existing = state.patterns.get(key);
@@ -212,7 +219,7 @@ export class FeedbackService {
     if (opts?.queueWeekly) {
       const entry: FeedbackEntry = {
         agent: agentName,
-        decision: decision || 'unknown',
+        decision: decision || "unknown",
         ...(reason ? { reason: sanitizeInline(reason) } : {}),
         date: new Date(timestampMs).toISOString(),
         taskId,
@@ -265,7 +272,7 @@ export class FeedbackService {
         for (const entry of pending) {
           const dt = new Date(entry.date);
           const { year, week } = computeIsoWeek(dt);
-          const fileName = `feedback-${year}-W${String(week).padStart(2, '0')}.json`;
+          const fileName = `feedback-${year}-W${String(week).padStart(2, "0")}.json`;
           const absPath = path.join(dirAbs, fileName);
           const key = absPath;
           const existing = groups.get(key);
@@ -280,9 +287,9 @@ export class FeedbackService {
           let current: any = { entries: [] as FeedbackEntry[] };
           if (fs.existsSync(group.absPath)) {
             try {
-              const raw = fs.readFileSync(group.absPath, 'utf8');
+              const raw = fs.readFileSync(group.absPath, "utf8");
               const parsed = JSON.parse(raw);
-              if (parsed && typeof parsed === 'object' && Array.isArray(parsed.entries)) {
+              if (parsed && typeof parsed === "object" && Array.isArray(parsed.entries)) {
                 current = parsed;
               }
             } catch {
@@ -290,22 +297,22 @@ export class FeedbackService {
             }
           }
           current.entries = [...current.entries, ...group.entries].slice(-2000);
-          fs.writeFileSync(group.absPath, JSON.stringify(current, null, 2) + '\n', 'utf8');
+          fs.writeFileSync(group.absPath, JSON.stringify(current, null, 2) + "\n", "utf8");
         }
       } catch (error) {
-        console.warn('[Feedback] Failed to write weekly feedback log:', error);
+        console.warn("[Feedback] Failed to write weekly feedback log:", error);
       }
     }
 
     // === Mistakes / preferences ===
     try {
       const absPath = path.join(workspace.path, MISTAKES_PATH);
-      let current = '';
+      let current = "";
       if (fs.existsSync(absPath)) {
         try {
-          current = fs.readFileSync(absPath, 'utf8');
+          current = fs.readFileSync(absPath, "utf8");
         } catch {
-          current = '';
+          current = "";
         }
       } else {
         current = defaultMistakesTemplate();
@@ -328,16 +335,16 @@ export class FeedbackService {
           return a.display.localeCompare(b.display);
         })
         .slice(0, 50)
-        .map((p) => `- ${p.display}${p.count > 1 ? ` (${p.count}x)` : ''}`);
+        .map((p) => `- ${p.display}${p.count > 1 ? ` (${p.count}x)` : ""}`);
 
-      const next = upsertMarkedSection(current, patterns.length > 0 ? patterns : ['- (none)']);
+      const next = upsertMarkedSection(current, patterns.length > 0 ? patterns : ["- (none)"]);
       if (next !== current) {
-        const tmpPath = absPath + '.tmp';
-        fs.writeFileSync(tmpPath, next, 'utf8');
+        const tmpPath = absPath + ".tmp";
+        fs.writeFileSync(tmpPath, next, "utf8");
         fs.renameSync(tmpPath, absPath);
       }
     } catch (error) {
-      console.warn('[Feedback] Failed to write MISTAKES.md:', error);
+      console.warn("[Feedback] Failed to write MISTAKES.md:", error);
     }
   }
 
@@ -351,7 +358,11 @@ export class FeedbackService {
       LIMIT ?
     `);
 
-    const rows = stmt.all(sinceMs, STARTUP_REBUILD_LIMIT) as Array<{ taskId: string; timestamp: number; payload: string }>;
+    const rows = stmt.all(sinceMs, STARTUP_REBUILD_LIMIT) as Array<{
+      taskId: string;
+      timestamp: number;
+      payload: string;
+    }>;
     for (const row of rows) {
       const payload = row?.payload;
       if (!payload) continue;
@@ -365,4 +376,3 @@ export class FeedbackService {
     }
   }
 }
-

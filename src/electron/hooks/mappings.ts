@@ -4,8 +4,8 @@
  * Resolves and applies hook mappings to incoming webhook requests.
  */
 
-import path from 'path';
-import { pathToFileURL } from 'url';
+import path from "path";
+import { pathToFileURL } from "url";
 import {
   HooksConfig,
   HookMappingConfig,
@@ -17,17 +17,17 @@ import {
   HookMessageChannel,
   HOOK_PRESET_MAPPINGS,
   DEFAULT_HOOKS_PATH,
-} from './types';
-import { getUserDataDir } from '../utils/user-data-dir';
+} from "./types";
+import { getUserDataDir } from "../utils/user-data-dir";
 
 const transformCache = new Map<string, HookTransformFn>();
 
 type HookTransformResult = Partial<{
-  kind: HookAction['kind'];
+  kind: HookAction["kind"];
   text: string;
-  mode: 'now' | 'next-heartbeat';
+  mode: "now" | "next-heartbeat";
   message: string;
-  wakeMode: 'now' | 'next-heartbeat';
+  wakeMode: "now" | "next-heartbeat";
   name: string;
   sessionKey: string;
   deliver: boolean;
@@ -48,9 +48,9 @@ type HookTransformFn = (
  */
 export function normalizeHooksPath(raw?: string): string {
   const base = raw?.trim() || DEFAULT_HOOKS_PATH;
-  if (base === '/') return DEFAULT_HOOKS_PATH;
-  const withSlash = base.startsWith('/') ? base : `/${base}`;
-  return withSlash.replace(/\/+$/, '');
+  if (base === "/") return DEFAULT_HOOKS_PATH;
+  const withSlash = base.startsWith("/") ? base : `/${base}`;
+  return withSlash.replace(/\/+$/, "");
 }
 
 /**
@@ -74,7 +74,7 @@ export function resolveHookMappings(hooks?: HooksConfig): HookMappingResolved[] 
     const presetMappings = HOOK_PRESET_MAPPINGS[preset];
     if (!presetMappings) continue;
 
-    if (preset === 'gmail' && typeof gmailAllowUnsafe === 'boolean') {
+    if (preset === "gmail" && typeof gmailAllowUnsafe === "boolean") {
       mappings.push(
         ...presetMappings.map((mapping) => ({
           ...mapping,
@@ -83,7 +83,7 @@ export function resolveHookMappings(hooks?: HooksConfig): HookMappingResolved[] 
       );
       continue;
     }
-    if (preset === 'resend' && typeof resendAllowUnsafe === 'boolean') {
+    if (preset === "resend" && typeof resendAllowUnsafe === "boolean") {
       mappings.push(
         ...presetMappings.map((mapping) => ({
           ...mapping,
@@ -150,8 +150,8 @@ function normalizeHookMapping(
   const matchPath = normalizeMatchPath(mapping.match?.path);
   const matchSource = mapping.match?.source?.trim();
   const matchType = mapping.match?.type?.trim();
-  const action = mapping.action ?? 'agent';
-  const wakeMode = mapping.wakeMode ?? 'now';
+  const action = mapping.action ?? "agent";
+  const wakeMode = mapping.wakeMode ?? "now";
   const transform = mapping.transform
     ? {
         modulePath: resolvePath(transformsDir, mapping.transform.module),
@@ -189,11 +189,11 @@ function mappingMatches(mapping: HookMappingResolved, ctx: HookMappingContext): 
     if (mapping.matchPath !== normalizeMatchPath(ctx.path)) return false;
   }
   if (mapping.matchSource) {
-    const source = typeof ctx.payload.source === 'string' ? ctx.payload.source : undefined;
+    const source = typeof ctx.payload.source === "string" ? ctx.payload.source : undefined;
     if (!source || source !== mapping.matchSource) return false;
   }
   if (mapping.matchType) {
-    const eventType = typeof ctx.payload.type === 'string' ? ctx.payload.type : undefined;
+    const eventType = typeof ctx.payload.type === "string" ? ctx.payload.type : undefined;
     if (!eventType || eventType !== mapping.matchType) return false;
   }
   return true;
@@ -206,26 +206,26 @@ function buildActionFromMapping(
   mapping: HookMappingResolved,
   ctx: HookMappingContext,
 ): HookMappingResult {
-  if (mapping.action === 'wake') {
-    const text = renderTemplate(mapping.textTemplate ?? '', ctx);
+  if (mapping.action === "wake") {
+    const text = renderTemplate(mapping.textTemplate ?? "", ctx);
     return {
       ok: true,
       action: {
-        kind: 'wake',
+        kind: "wake",
         text,
-        mode: mapping.wakeMode ?? 'now',
+        mode: mapping.wakeMode ?? "now",
       },
     };
   }
 
-  const message = renderTemplate(mapping.messageTemplate ?? '', ctx);
+  const message = renderTemplate(mapping.messageTemplate ?? "", ctx);
   return {
     ok: true,
     action: {
-      kind: 'agent',
+      kind: "agent",
       message,
       name: renderOptional(mapping.name, ctx),
-      wakeMode: mapping.wakeMode ?? 'now',
+      wakeMode: mapping.wakeMode ?? "now",
       sessionKey: renderOptional(mapping.sessionKey, ctx),
       deliver: mapping.deliver,
       allowUnsafeExternalContent: mapping.allowUnsafeExternalContent,
@@ -244,36 +244,36 @@ function buildActionFromMapping(
 function mergeAction(
   base: HookAction,
   override: HookTransformResult,
-  defaultAction: 'wake' | 'agent',
+  defaultAction: "wake" | "agent",
 ): HookMappingResult {
   if (!override) {
     return validateAction(base);
   }
 
-  const kind = (override.kind ?? base.kind ?? defaultAction) as 'wake' | 'agent';
+  const kind = (override.kind ?? base.kind ?? defaultAction) as "wake" | "agent";
 
-  if (kind === 'wake') {
-    const baseWake = base.kind === 'wake' ? base : undefined;
-    const text = typeof override.text === 'string' ? override.text : (baseWake?.text ?? '');
-    const mode = override.mode === 'next-heartbeat' ? 'next-heartbeat' : (baseWake?.mode ?? 'now');
-    return validateAction({ kind: 'wake', text, mode });
+  if (kind === "wake") {
+    const baseWake = base.kind === "wake" ? base : undefined;
+    const text = typeof override.text === "string" ? override.text : (baseWake?.text ?? "");
+    const mode = override.mode === "next-heartbeat" ? "next-heartbeat" : (baseWake?.mode ?? "now");
+    return validateAction({ kind: "wake", text, mode });
   }
 
-  const baseAgent = base.kind === 'agent' ? base : undefined;
+  const baseAgent = base.kind === "agent" ? base : undefined;
   const message =
-    typeof override.message === 'string' ? override.message : (baseAgent?.message ?? '');
+    typeof override.message === "string" ? override.message : (baseAgent?.message ?? "");
   const wakeMode =
-    override.wakeMode === 'next-heartbeat' ? 'next-heartbeat' : (baseAgent?.wakeMode ?? 'now');
+    override.wakeMode === "next-heartbeat" ? "next-heartbeat" : (baseAgent?.wakeMode ?? "now");
 
   return validateAction({
-    kind: 'agent',
+    kind: "agent",
     message,
     wakeMode,
     name: override.name ?? baseAgent?.name,
     sessionKey: override.sessionKey ?? baseAgent?.sessionKey,
-    deliver: typeof override.deliver === 'boolean' ? override.deliver : baseAgent?.deliver,
+    deliver: typeof override.deliver === "boolean" ? override.deliver : baseAgent?.deliver,
     allowUnsafeExternalContent:
-      typeof override.allowUnsafeExternalContent === 'boolean'
+      typeof override.allowUnsafeExternalContent === "boolean"
         ? override.allowUnsafeExternalContent
         : baseAgent?.allowUnsafeExternalContent,
     channel: override.channel ?? baseAgent?.channel,
@@ -288,15 +288,15 @@ function mergeAction(
  * Validate that an action has required fields
  */
 function validateAction(action: HookAction): HookMappingResult {
-  if (action.kind === 'wake') {
+  if (action.kind === "wake") {
     if (!action.text?.trim()) {
-      return { ok: false, error: 'hook mapping requires text' };
+      return { ok: false, error: "hook mapping requires text" };
     }
     return { ok: true, action };
   }
 
   if (!action.message?.trim()) {
-    return { ok: false, error: 'hook mapping requires message' };
+    return { ok: false, error: "hook mapping requires message" };
   }
   return { ok: true, action };
 }
@@ -320,8 +320,8 @@ async function loadTransform(transform: HookMappingTransformResolved): Promise<H
  */
 function resolveTransformFn(mod: Record<string, unknown>, exportName?: string): HookTransformFn {
   const candidate = exportName ? mod[exportName] : (mod.default ?? mod.transform);
-  if (typeof candidate !== 'function') {
-    throw new Error('hook transform module must export a function');
+  if (typeof candidate !== "function") {
+    throw new Error("hook transform module must export a function");
   }
   return candidate as HookTransformFn;
 }
@@ -342,7 +342,7 @@ function normalizeMatchPath(raw?: string): string | undefined {
   if (!raw) return undefined;
   const trimmed = raw.trim();
   if (!trimmed) return undefined;
-  return trimmed.replace(/^\/+/, '').replace(/\/+$/, '');
+  return trimmed.replace(/^\/+/, "").replace(/\/+$/, "");
 }
 
 /**
@@ -358,12 +358,12 @@ function renderOptional(value: string | undefined, ctx: HookMappingContext): str
  * Render a template with context values
  */
 function renderTemplate(template: string, ctx: HookMappingContext): string {
-  if (!template) return '';
+  if (!template) return "";
   return template.replace(/\{\{\s*([^}]+)\s*\}\}/g, (_, expr: string) => {
     const value = resolveTemplateExpr(expr.trim(), ctx);
-    if (value === undefined || value === null) return '';
-    if (typeof value === 'string') return value;
-    if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+    if (value === undefined || value === null) return "";
+    if (typeof value === "string") return value;
+    if (typeof value === "number" || typeof value === "boolean") return String(value);
     return JSON.stringify(value);
   });
 }
@@ -372,19 +372,19 @@ function renderTemplate(template: string, ctx: HookMappingContext): string {
  * Resolve a template expression
  */
 function resolveTemplateExpr(expr: string, ctx: HookMappingContext): unknown {
-  if (expr === 'path') return ctx.path;
-  if (expr === 'now') return new Date().toISOString();
-  if (expr.startsWith('headers.')) {
-    return getByPath(ctx.headers, expr.slice('headers.'.length));
+  if (expr === "path") return ctx.path;
+  if (expr === "now") return new Date().toISOString();
+  if (expr.startsWith("headers.")) {
+    return getByPath(ctx.headers, expr.slice("headers.".length));
   }
-  if (expr.startsWith('query.')) {
+  if (expr.startsWith("query.")) {
     return getByPath(
       Object.fromEntries(ctx.url.searchParams.entries()),
-      expr.slice('query.'.length),
+      expr.slice("query.".length),
     );
   }
-  if (expr.startsWith('payload.')) {
-    return getByPath(ctx.payload, expr.slice('payload.'.length));
+  if (expr.startsWith("payload.")) {
+    return getByPath(ctx.payload, expr.slice("payload.".length));
   }
   return getByPath(ctx.payload, expr);
 }
@@ -408,12 +408,12 @@ function getByPath(input: Record<string, unknown>, pathExpr: string): unknown {
   let current: unknown = input;
   for (const part of parts) {
     if (current === null || current === undefined) return undefined;
-    if (typeof part === 'number') {
+    if (typeof part === "number") {
       if (!Array.isArray(current)) return undefined;
       current = current[part] as unknown;
       continue;
     }
-    if (typeof current !== 'object') return undefined;
+    if (typeof current !== "object") return undefined;
     current = (current as Record<string, unknown>)[part];
   }
   return current;

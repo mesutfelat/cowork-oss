@@ -1,12 +1,12 @@
-import { Workspace } from '../../../shared/types';
-import { AgentDaemon } from '../daemon';
+import { Workspace } from "../../../shared/types";
+import { AgentDaemon } from "../daemon";
 import {
   SearchProviderFactory,
   SearchQuery,
   SearchResponse,
   SearchType,
   SearchProviderType,
-} from '../search';
+} from "../search";
 
 /**
  * SearchTools implements web search operations for the agent
@@ -15,7 +15,7 @@ export class SearchTools {
   constructor(
     private workspace: Workspace,
     private daemon: AgentDaemon,
-    private taskId: string
+    private taskId: string,
   ) {}
 
   /**
@@ -33,24 +33,25 @@ export class SearchTools {
     searchType?: SearchType;
     maxResults?: number;
     provider?: SearchProviderType;
-    dateRange?: 'day' | 'week' | 'month' | 'year';
+    dateRange?: "day" | "week" | "month" | "year";
     region?: string;
   }): Promise<SearchResponse> {
     // Check if any provider is configured
     if (!SearchProviderFactory.isAnyProviderConfigured()) {
       // Return a helpful response instead of throwing an error
       // This allows the LLM to inform the user gracefully
-      const errorMessage = 'Web search is not configured. To enable web search, please configure a search provider in Settings > Web Search. Supported providers: Tavily, Brave Search, SerpAPI, or Google Custom Search.';
-      this.daemon.logEvent(this.taskId, 'log', {
-        message: 'Web search is not available - no search provider configured',
+      const errorMessage =
+        "Web search is not configured. To enable web search, please configure a search provider in Settings > Web Search. Supported providers: Tavily, Brave Search, SerpAPI, or Google Custom Search.";
+      this.daemon.logEvent(this.taskId, "log", {
+        message: "Web search is not available - no search provider configured",
       });
       return {
         success: false,
         error: errorMessage,
         query: input.query,
-        searchType: input.searchType || 'web',
+        searchType: input.searchType || "web",
         results: [],
-        provider: 'none',
+        provider: "none",
         metadata: {
           error: errorMessage,
           notConfigured: true,
@@ -62,21 +63,22 @@ export class SearchTools {
     if (!settings.primaryProvider && !input.provider) {
       // This shouldn't happen after the loadSettings auto-detection fix,
       // but keep as a safety net
-      this.daemon.logEvent(this.taskId, 'log', {
-        message: 'Web search provider not selected - auto-selecting...',
+      this.daemon.logEvent(this.taskId, "log", {
+        message: "Web search provider not selected - auto-selecting...",
       });
       // Clear cache and reload to trigger auto-detection
       SearchProviderFactory.clearCache();
       const reloadedSettings = SearchProviderFactory.loadSettings();
       if (!reloadedSettings.primaryProvider) {
-        const errorMessage = 'No search provider is selected. Please configure one in Settings > Web Search.';
+        const errorMessage =
+          "No search provider is selected. Please configure one in Settings > Web Search.";
         return {
           success: false,
           error: errorMessage,
           query: input.query,
-          searchType: input.searchType || 'web',
+          searchType: input.searchType || "web",
           results: [],
-          provider: 'none',
+          provider: "none",
           metadata: {
             error: errorMessage,
             notConfigured: true,
@@ -87,15 +89,15 @@ export class SearchTools {
 
     const searchQuery: SearchQuery = {
       query: input.query,
-      searchType: input.searchType || 'web',
+      searchType: input.searchType || "web",
       maxResults: Math.min(input.maxResults || 10, 20), // Cap at 20 results
       dateRange: input.dateRange,
       region: input.region,
       provider: input.provider,
     };
 
-    const providerName = input.provider || settings.primaryProvider || 'unknown';
-    this.daemon.logEvent(this.taskId, 'log', {
+    const providerName = input.provider || settings.primaryProvider || "unknown";
+    this.daemon.logEvent(this.taskId, "log", {
       message: `Searching ${searchQuery.searchType}: "${input.query}" via ${providerName}`,
     });
 
@@ -103,8 +105,8 @@ export class SearchTools {
     try {
       const response = await SearchProviderFactory.searchWithFallback(searchQuery);
 
-      this.daemon.logEvent(this.taskId, 'tool_result', {
-        tool: 'web_search',
+      this.daemon.logEvent(this.taskId, "tool_result", {
+        tool: "web_search",
         result: {
           query: input.query,
           searchType: searchQuery.searchType,
@@ -118,9 +120,9 @@ export class SearchTools {
         success: true,
       };
     } catch (error: any) {
-      const message = error?.message || 'Web search failed';
-      this.daemon.logEvent(this.taskId, 'tool_result', {
-        tool: 'web_search',
+      const message = error?.message || "Web search failed";
+      this.daemon.logEvent(this.taskId, "tool_result", {
+        tool: "web_search",
         error: message,
       });
 
@@ -128,9 +130,11 @@ export class SearchTools {
         success: false,
         error: message,
         query: input.query,
-        searchType: input.searchType || 'web',
+        searchType: input.searchType || "web",
         results: [],
-        provider: (input.provider || settings.primaryProvider || 'none') as SearchProviderType | 'none',
+        provider: (input.provider || settings.primaryProvider || "none") as
+          | SearchProviderType
+          | "none",
         metadata: {
           error: message,
         },

@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { CustomSkill, SkillParameter } from '../../shared/types';
+import { useState, useEffect } from "react";
+import { CustomSkill, SkillParameter } from "../../shared/types";
 
 interface SkillsSettingsProps {
   onSkillSelect?: (skill: CustomSkill) => void;
@@ -24,8 +24,8 @@ export function SkillsSettings({ onSkillSelect }: SkillsSettingsProps) {
       setSkills(loadedSkills);
       setError(null);
     } catch (err) {
-      setError('Failed to load skills');
-      console.error('Failed to load skills:', err);
+      setError("Failed to load skills");
+      console.error("Failed to load skills:", err);
     } finally {
       setLoading(false);
     }
@@ -37,7 +37,7 @@ export function SkillsSettings({ onSkillSelect }: SkillsSettingsProps) {
       setSkills(reloadedSkills);
       setError(null);
     } catch (err) {
-      setError('Failed to reload skills');
+      setError("Failed to reload skills");
     }
   };
 
@@ -46,13 +46,13 @@ export function SkillsSettings({ onSkillSelect }: SkillsSettingsProps) {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this skill?')) return;
+    if (!confirm("Are you sure you want to delete this skill?")) return;
 
     try {
       await window.electronAPI.deleteCustomSkill(id);
-      setSkills(prev => prev.filter(s => s.id !== id));
+      setSkills((prev) => prev.filter((s) => s.id !== id));
     } catch (err) {
-      setError('Failed to delete skill');
+      setError("Failed to delete skill");
     }
   };
 
@@ -63,12 +63,12 @@ export function SkillsSettings({ onSkillSelect }: SkillsSettingsProps) {
 
   const handleCreate = () => {
     setEditingSkill({
-      id: '',
-      name: '',
-      description: '',
-      icon: '⚡',
-      prompt: '',
-      category: '',
+      id: "",
+      name: "",
+      description: "",
+      icon: "⚡",
+      prompt: "",
+      category: "",
       enabled: true,
       parameters: [],
     });
@@ -81,16 +81,16 @@ export function SkillsSettings({ onSkillSelect }: SkillsSettingsProps) {
     try {
       if (isCreating) {
         const created = await window.electronAPI.createCustomSkill(editingSkill);
-        setSkills(prev => [...prev, created]);
+        setSkills((prev) => [...prev, created]);
       } else {
         const updated = await window.electronAPI.updateCustomSkill(editingSkill.id, editingSkill);
-        setSkills(prev => prev.map(s => s.id === updated.id ? updated : s));
+        setSkills((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
       }
       setEditingSkill(null);
       setIsCreating(false);
       setError(null);
     } catch (err: any) {
-      setError(err.message || 'Failed to save skill');
+      setError(err.message || "Failed to save skill");
     }
   };
 
@@ -100,12 +100,15 @@ export function SkillsSettings({ onSkillSelect }: SkillsSettingsProps) {
   };
 
   // Group skills by category
-  const groupedSkills = skills.reduce((acc, skill) => {
-    const category = skill.category || 'Uncategorized';
-    if (!acc[category]) acc[category] = [];
-    acc[category].push(skill);
-    return acc;
-  }, {} as Record<string, CustomSkill[]>);
+  const groupedSkills = skills.reduce(
+    (acc, skill) => {
+      const category = skill.category || "Uncategorized";
+      if (!acc[category]) acc[category] = [];
+      acc[category].push(skill);
+      return acc;
+    },
+    {} as Record<string, CustomSkill[]>,
+  );
 
   if (loading) {
     return <div className="settings-loading">Loading skills...</div>;
@@ -132,20 +135,41 @@ export function SkillsSettings({ onSkillSelect }: SkillsSettingsProps) {
           <h3>Custom Skills</h3>
           <div className="settings-section-actions">
             <button className="btn-secondary btn-sm" onClick={handleOpenFolder}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
                 <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
               </svg>
               Open Folder
             </button>
             <button className="btn-secondary btn-sm" onClick={handleReload}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
                 <path d="M23 4v6h-6M1 20v-6h6" />
                 <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
               </svg>
               Reload
             </button>
             <button className="btn-primary btn-sm" onClick={handleCreate}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
                 <line x1="12" y1="5" x2="12" y2="19" />
                 <line x1="5" y1="12" x2="19" y2="12" />
               </svg>
@@ -154,19 +178,20 @@ export function SkillsSettings({ onSkillSelect }: SkillsSettingsProps) {
           </div>
         </div>
         <p className="settings-description">
-          Create custom prompt templates for things we do often. Skills are stored as JSON files
-          and can be shared or version controlled.
+          Create custom prompt templates for things we do often. Skills are stored as JSON files and
+          can be shared or version controlled.
         </p>
       </div>
 
-      {error && (
-        <div className="settings-error">{error}</div>
-      )}
+      {error && <div className="settings-error">{error}</div>}
 
       {skills.length === 0 ? (
         <div className="skills-empty">
           <p>No custom skills found.</p>
-          <p>Click "New Skill" to create your first skill, or "Open Folder" to add skill JSON files manually.</p>
+          <p>
+            Click "New Skill" to create your first skill, or "Open Folder" to add skill JSON files
+            manually.
+          </p>
         </div>
       ) : (
         <div className="skills-list">
@@ -174,30 +199,38 @@ export function SkillsSettings({ onSkillSelect }: SkillsSettingsProps) {
             <div key={category} className="skills-category">
               <h4 className="skills-category-title">{category}</h4>
               <div className="skills-grid">
-                {categorySkills.map(skill => (
-                  <div key={skill.id} className={`skill-card ${skill.type === 'guideline' ? 'skill-card-guideline' : ''}`}>
+                {categorySkills.map((skill) => (
+                  <div
+                    key={skill.id}
+                    className={`skill-card ${skill.type === "guideline" ? "skill-card-guideline" : ""}`}
+                  >
                     <div className="skill-card-header">
                       <span className="skill-icon">{skill.icon}</span>
                       <div className="skill-info">
                         <span className="skill-name">
                           {skill.name}
-                          {skill.type === 'guideline' && (
+                          {skill.type === "guideline" && (
                             <span className="skill-type-badge">Behavior</span>
                           )}
                         </span>
                         <span className="skill-description">{skill.description}</span>
                       </div>
-                      {skill.type === 'guideline' && (
+                      {skill.type === "guideline" && (
                         <label className="skill-toggle">
                           <input
                             type="checkbox"
                             checked={skill.enabled !== false}
                             onChange={async (e) => {
                               try {
-                                const updated = await window.electronAPI.updateCustomSkill(skill.id, { enabled: e.target.checked });
-                                setSkills(prev => prev.map(s => s.id === updated.id ? updated : s));
+                                const updated = await window.electronAPI.updateCustomSkill(
+                                  skill.id,
+                                  { enabled: e.target.checked },
+                                );
+                                setSkills((prev) =>
+                                  prev.map((s) => (s.id === updated.id ? updated : s)),
+                                );
                               } catch (err) {
-                                console.error('Failed to toggle skill:', err);
+                                console.error("Failed to toggle skill:", err);
                               }
                             }}
                           />
@@ -206,24 +239,15 @@ export function SkillsSettings({ onSkillSelect }: SkillsSettingsProps) {
                       )}
                     </div>
                     <div className="skill-card-actions">
-                      {onSkillSelect && skill.type !== 'guideline' && (
-                        <button
-                          className="btn-primary btn-xs"
-                          onClick={() => onSkillSelect(skill)}
-                        >
+                      {onSkillSelect && skill.type !== "guideline" && (
+                        <button className="btn-primary btn-xs" onClick={() => onSkillSelect(skill)}>
                           Use
                         </button>
                       )}
-                      <button
-                        className="btn-secondary btn-xs"
-                        onClick={() => handleEdit(skill)}
-                      >
+                      <button className="btn-secondary btn-xs" onClick={() => handleEdit(skill)}>
                         Edit
                       </button>
-                      <button
-                        className="btn-danger btn-xs"
-                        onClick={() => handleDelete(skill.id)}
-                      >
+                      <button className="btn-danger btn-xs" onClick={() => handleDelete(skill.id)}>
                         Delete
                       </button>
                     </div>
@@ -255,9 +279,9 @@ function SkillEditor({ skill, isCreating, onChange, onSave, onCancel, error }: S
 
   const addParameter = () => {
     const newParam: SkillParameter = {
-      name: '',
-      type: 'string',
-      description: '',
+      name: "",
+      type: "string",
+      description: "",
       required: false,
     };
     onChange({ ...skill, parameters: [...(skill.parameters || []), newParam] });
@@ -278,7 +302,7 @@ function SkillEditor({ skill, isCreating, onChange, onSave, onCancel, error }: S
   return (
     <div className="skill-editor">
       <div className="settings-section">
-        <h3>{isCreating ? 'Create New Skill' : 'Edit Skill'}</h3>
+        <h3>{isCreating ? "Create New Skill" : "Edit Skill"}</h3>
       </div>
 
       {error && <div className="settings-error">{error}</div>}
@@ -290,7 +314,7 @@ function SkillEditor({ skill, isCreating, onChange, onSave, onCancel, error }: S
             <input
               type="text"
               value={skill.icon}
-              onChange={e => updateField('icon', e.target.value)}
+              onChange={(e) => updateField("icon", e.target.value)}
               placeholder="⚡"
               maxLength={2}
             />
@@ -300,7 +324,7 @@ function SkillEditor({ skill, isCreating, onChange, onSave, onCancel, error }: S
             <input
               type="text"
               value={skill.name}
-              onChange={e => updateField('name', e.target.value)}
+              onChange={(e) => updateField("name", e.target.value)}
               placeholder="My Custom Skill"
             />
           </div>
@@ -311,8 +335,8 @@ function SkillEditor({ skill, isCreating, onChange, onSave, onCancel, error }: S
             <label>Category</label>
             <input
               type="text"
-              value={skill.category || ''}
-              onChange={e => updateField('category', e.target.value)}
+              value={skill.category || ""}
+              onChange={(e) => updateField("category", e.target.value)}
               placeholder="Development, Documentation, etc."
             />
           </div>
@@ -323,7 +347,7 @@ function SkillEditor({ skill, isCreating, onChange, onSave, onCancel, error }: S
           <input
             type="text"
             value={skill.description}
-            onChange={e => updateField('description', e.target.value)}
+            onChange={(e) => updateField("description", e.target.value)}
             placeholder="What does this skill do?"
           />
         </div>
@@ -332,12 +356,12 @@ function SkillEditor({ skill, isCreating, onChange, onSave, onCancel, error }: S
           <label>Prompt Template *</label>
           <textarea
             value={skill.prompt}
-            onChange={e => updateField('prompt', e.target.value)}
+            onChange={(e) => updateField("prompt", e.target.value)}
             placeholder="Enter the prompt template. Use {{parameterName}} for placeholders."
             rows={8}
           />
           <p className="form-hint">
-            Use {'{{parameterName}}'} syntax to insert parameter values into the prompt.
+            Use {"{{parameterName}}"} syntax to insert parameter values into the prompt.
           </p>
         </div>
 
@@ -350,7 +374,9 @@ function SkillEditor({ skill, isCreating, onChange, onSave, onCancel, error }: S
           </div>
 
           {(skill.parameters || []).length === 0 ? (
-            <p className="form-hint">No parameters defined. Add parameters to make your skill configurable.</p>
+            <p className="form-hint">
+              No parameters defined. Add parameters to make your skill configurable.
+            </p>
           ) : (
             <div className="parameters-list">
               {(skill.parameters || []).map((param, index) => (
@@ -361,7 +387,7 @@ function SkillEditor({ skill, isCreating, onChange, onSave, onCancel, error }: S
                       <input
                         type="text"
                         value={param.name}
-                        onChange={e => updateParameter(index, { name: e.target.value })}
+                        onChange={(e) => updateParameter(index, { name: e.target.value })}
                         placeholder="paramName"
                       />
                     </div>
@@ -369,7 +395,9 @@ function SkillEditor({ skill, isCreating, onChange, onSave, onCancel, error }: S
                       <label>Type</label>
                       <select
                         value={param.type}
-                        onChange={e => updateParameter(index, { type: e.target.value as SkillParameter['type'] })}
+                        onChange={(e) =>
+                          updateParameter(index, { type: e.target.value as SkillParameter["type"] })
+                        }
                       >
                         <option value="string">String</option>
                         <option value="number">Number</option>
@@ -382,13 +410,10 @@ function SkillEditor({ skill, isCreating, onChange, onSave, onCancel, error }: S
                       <input
                         type="checkbox"
                         checked={param.required || false}
-                        onChange={e => updateParameter(index, { required: e.target.checked })}
+                        onChange={(e) => updateParameter(index, { required: e.target.checked })}
                       />
                     </div>
-                    <button
-                      className="btn-danger btn-xs"
-                      onClick={() => removeParameter(index)}
-                    >
+                    <button className="btn-danger btn-xs" onClick={() => removeParameter(index)}>
                       Remove
                     </button>
                   </div>
@@ -398,7 +423,7 @@ function SkillEditor({ skill, isCreating, onChange, onSave, onCancel, error }: S
                       <input
                         type="text"
                         value={param.description}
-                        onChange={e => updateParameter(index, { description: e.target.value })}
+                        onChange={(e) => updateParameter(index, { description: e.target.value })}
                         placeholder="What is this parameter for?"
                       />
                     </div>
@@ -406,22 +431,27 @@ function SkillEditor({ skill, isCreating, onChange, onSave, onCancel, error }: S
                       <label>Default</label>
                       <input
                         type="text"
-                        value={String(param.default || '')}
-                        onChange={e => updateParameter(index, { default: e.target.value })}
+                        value={String(param.default || "")}
+                        onChange={(e) => updateParameter(index, { default: e.target.value })}
                         placeholder="Default value"
                       />
                     </div>
                   </div>
-                  {param.type === 'select' && (
+                  {param.type === "select" && (
                     <div className="parameter-row">
                       <div className="form-group form-group-flex">
                         <label>Options (comma-separated)</label>
                         <input
                           type="text"
-                          value={(param.options || []).join(', ')}
-                          onChange={e => updateParameter(index, {
-                            options: e.target.value.split(',').map(s => s.trim()).filter(Boolean)
-                          })}
+                          value={(param.options || []).join(", ")}
+                          onChange={(e) =>
+                            updateParameter(index, {
+                              options: e.target.value
+                                .split(",")
+                                .map((s) => s.trim())
+                                .filter(Boolean),
+                            })
+                          }
                           placeholder="option1, option2, option3"
                         />
                       </div>
@@ -443,7 +473,7 @@ function SkillEditor({ skill, isCreating, onChange, onSave, onCancel, error }: S
           onClick={onSave}
           disabled={!skill.name || !skill.description || !skill.prompt}
         >
-          {isCreating ? 'Create Skill' : 'Save Changes'}
+          {isCreating ? "Create Skill" : "Save Changes"}
         </button>
       </div>
     </div>

@@ -1,14 +1,14 @@
-import { execFile as execFileCallback } from 'child_process';
-import { promisify } from 'util';
+import { execFile as execFileCallback } from "child_process";
+import { promisify } from "util";
 
 const execFile = promisify(execFileCallback);
 
 const OCR_TIMEOUT_MS = 12_000;
 const MAX_IMAGE_OCR_SIZE = 8 * 1024 * 1024;
 const MAX_IMAGE_OCR_TEXT_LENGTH = 8_000;
-const TESSERACT_LANGUAGE_DEFAULT = 'eng';
+const TESSERACT_LANGUAGE_DEFAULT = "eng";
 const OCR_BINARY_CHECK_TTL_MS = 5 * 60 * 1000;
-const OCR_SUPPORTED_IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.bmp', '.gif', '.webp']);
+const OCR_SUPPORTED_IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp"]);
 
 let ocrBinaryChecked = false;
 let isOcrBinaryAvailable = false;
@@ -16,13 +16,13 @@ let ocrBinaryCheckedAt = 0;
 
 const sanitizeOcrOutput = (text: string): string => {
   const normalized = text
-    .replace(/\r\n/g, '\n')
-    .replace(/\u0000/g, '')
-    .replace(/\u00a0/g, ' ')
+    .replace(/\r\n/g, "\n")
+    .replace(/\u0000/g, "")
+    .replace(/\u00a0/g, " ")
     .trim();
 
-  if (!normalized) return '';
-  return normalized.replace(/\n{4,}/g, '\n\n');
+  if (!normalized) return "";
+  return normalized.replace(/\n{4,}/g, "\n\n");
 };
 
 const isTesseractInstalled = async (): Promise<boolean> => {
@@ -38,7 +38,7 @@ const isTesseractInstalled = async (): Promise<boolean> => {
   ocrBinaryChecked = true;
   ocrBinaryCheckedAt = now;
   try {
-    await execFile('tesseract', ['--version']);
+    await execFile("tesseract", ["--version"]);
     isOcrBinaryAvailable = true;
     return true;
   } catch {
@@ -49,18 +49,22 @@ const isTesseractInstalled = async (): Promise<boolean> => {
 
 const resolveImageOcrChars = (rawMaxChars: number | undefined): number =>
   Math.min(
-    typeof rawMaxChars === 'number' && Number.isFinite(rawMaxChars) && rawMaxChars > 0
+    typeof rawMaxChars === "number" && Number.isFinite(rawMaxChars) && rawMaxChars > 0
       ? Math.floor(rawMaxChars)
       : MAX_IMAGE_OCR_TEXT_LENGTH,
-    MAX_IMAGE_OCR_TEXT_LENGTH
+    MAX_IMAGE_OCR_TEXT_LENGTH,
   );
 
-const shouldRunImageOcr = (options: { enableImageOcr?: boolean; extension: string; fileSizeBytes: number }): boolean => {
+const shouldRunImageOcr = (options: {
+  enableImageOcr?: boolean;
+  extension: string;
+  fileSizeBytes: number;
+}): boolean => {
   const normalizedExtension = options.extension.toLowerCase();
   return Boolean(
     options.enableImageOcr &&
-      OCR_SUPPORTED_IMAGE_EXTENSIONS.has(normalizedExtension) &&
-      options.fileSizeBytes <= MAX_IMAGE_OCR_SIZE
+    OCR_SUPPORTED_IMAGE_EXTENSIONS.has(normalizedExtension) &&
+    options.fileSizeBytes <= MAX_IMAGE_OCR_SIZE,
   );
 };
 
@@ -72,16 +76,16 @@ const runOcrFromImagePath = async (imagePath: string, maxChars: number): Promise
 
   try {
     const { stdout } = await execFile(
-      'tesseract',
-      [imagePath, 'stdout', '-l', TESSERACT_LANGUAGE_DEFAULT],
+      "tesseract",
+      [imagePath, "stdout", "-l", TESSERACT_LANGUAGE_DEFAULT],
       {
         timeout: OCR_TIMEOUT_MS,
         maxBuffer: 16 * 1024 * 1024,
-        encoding: 'utf8',
-      }
+        encoding: "utf8",
+      },
     );
 
-    const cleaned = sanitizeOcrOutput(stdout || '');
+    const cleaned = sanitizeOcrOutput(stdout || "");
     if (!cleaned) return null;
     if (cleaned.length <= maxChars) {
       return cleaned;

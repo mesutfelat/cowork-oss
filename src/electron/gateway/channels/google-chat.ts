@@ -9,11 +9,11 @@
  * Message sending: Google Chat REST API
  */
 
-import * as http from 'http';
-import * as https from 'https';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as crypto from 'crypto';
+import * as http from "http";
+import * as https from "https";
+import * as fs from "fs";
+import * as path from "path";
+import * as crypto from "crypto";
 import {
   ChannelAdapter,
   ChannelStatus,
@@ -25,13 +25,13 @@ import {
   ChannelInfo,
   GoogleChatConfig,
   MessageAttachment,
-} from './types';
+} from "./types";
 
 /**
  * Google Chat event types
  */
 interface GoogleChatEvent {
-  type: 'MESSAGE' | 'ADDED_TO_SPACE' | 'REMOVED_FROM_SPACE' | 'CARD_CLICKED';
+  type: "MESSAGE" | "ADDED_TO_SPACE" | "REMOVED_FROM_SPACE" | "CARD_CLICKED";
   eventTime: string;
   token?: string;
   message?: GoogleChatMessage;
@@ -59,13 +59,13 @@ interface GoogleChatUser {
   displayName: string;
   avatarUrl?: string;
   email?: string;
-  type: 'HUMAN' | 'BOT';
+  type: "HUMAN" | "BOT";
   domainId?: string;
 }
 
 interface GoogleChatSpace {
   name: string;
-  type: 'ROOM' | 'DM' | 'SPACE';
+  type: "ROOM" | "DM" | "SPACE";
   displayName?: string;
   spaceThreadingState?: string;
   singleUserBotDm?: boolean;
@@ -77,7 +77,7 @@ interface GoogleChatAttachment {
   contentType: string;
   thumbnailUri?: string;
   downloadUri?: string;
-  source: 'DRIVE_FILE' | 'UPLOADED_CONTENT';
+  source: "DRIVE_FILE" | "UPLOADED_CONTENT";
 }
 
 interface GoogleChatAction {
@@ -151,62 +151,68 @@ class GoogleAuthManager {
     const jwt = this.createJWT();
     const token = await this.exchangeJWTForToken(jwt);
     this.accessToken = token.access_token;
-    this.tokenExpiry = Date.now() + (token.expires_in * 1000);
+    this.tokenExpiry = Date.now() + token.expires_in * 1000;
     return this.accessToken;
   }
 
   private createJWT(): string {
     const header = {
-      alg: 'RS256',
-      typ: 'JWT',
+      alg: "RS256",
+      typ: "JWT",
     };
 
     const now = Math.floor(Date.now() / 1000);
     const payload = {
       iss: this.credentials.client_email,
-      scope: 'https://www.googleapis.com/auth/chat.bot',
-      aud: 'https://oauth2.googleapis.com/token',
+      scope: "https://www.googleapis.com/auth/chat.bot",
+      aud: "https://oauth2.googleapis.com/token",
       iat: now,
       exp: now + 3600,
     };
 
-    const encodedHeader = Buffer.from(JSON.stringify(header)).toString('base64url');
-    const encodedPayload = Buffer.from(JSON.stringify(payload)).toString('base64url');
+    const encodedHeader = Buffer.from(JSON.stringify(header)).toString("base64url");
+    const encodedPayload = Buffer.from(JSON.stringify(payload)).toString("base64url");
     const signatureInput = `${encodedHeader}.${encodedPayload}`;
 
-    const sign = crypto.createSign('RSA-SHA256');
+    const sign = crypto.createSign("RSA-SHA256");
     sign.update(signatureInput);
-    const signature = sign.sign(this.credentials.private_key, 'base64url');
+    const signature = sign.sign(this.credentials.private_key, "base64url");
 
     return `${signatureInput}.${signature}`;
   }
 
-  private async exchangeJWTForToken(jwt: string): Promise<{ access_token: string; expires_in: number }> {
+  private async exchangeJWTForToken(
+    jwt: string,
+  ): Promise<{ access_token: string; expires_in: number }> {
     return new Promise((resolve, reject) => {
       const postData = new URLSearchParams({
-        grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+        grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
         assertion: jwt,
       }).toString();
 
       const options = {
-        hostname: 'oauth2.googleapis.com',
+        hostname: "oauth2.googleapis.com",
         port: 443,
-        path: '/token',
-        method: 'POST',
+        path: "/token",
+        method: "POST",
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Content-Length': Buffer.byteLength(postData),
+          "Content-Type": "application/x-www-form-urlencoded",
+          "Content-Length": Buffer.byteLength(postData),
         },
       };
 
       const req = https.request(options, (res) => {
-        let data = '';
-        res.on('data', (chunk) => { data += chunk; });
-        res.on('end', () => {
+        let data = "";
+        res.on("data", (chunk) => {
+          data += chunk;
+        });
+        res.on("end", () => {
           try {
             const parsed = JSON.parse(data);
             if (parsed.error) {
-              reject(new Error(`Token exchange failed: ${parsed.error_description || parsed.error}`));
+              reject(
+                new Error(`Token exchange failed: ${parsed.error_description || parsed.error}`),
+              );
             } else {
               resolve(parsed);
             }
@@ -216,7 +222,7 @@ class GoogleAuthManager {
         });
       });
 
-      req.on('error', reject);
+      req.on("error", reject);
       req.write(postData);
       req.end();
     });
@@ -224,11 +230,11 @@ class GoogleAuthManager {
 }
 
 export class GoogleChatAdapter implements ChannelAdapter {
-  readonly type = 'googlechat' as const;
+  readonly type = "googlechat" as const;
 
   private server: http.Server | null = null;
   private authManager: GoogleAuthManager | null = null;
-  private _status: ChannelStatus = 'disconnected';
+  private _status: ChannelStatus = "disconnected";
   private _botUsername?: string;
   private messageHandlers: MessageHandler[] = [];
   private errorHandlers: ErrorHandler[] = [];
@@ -255,11 +261,11 @@ export class GoogleChatAdapter implements ChannelAdapter {
    * Connect to Google Chat via webhook server
    */
   async connect(): Promise<void> {
-    if (this._status === 'connected' || this._status === 'connecting') {
+    if (this._status === "connected" || this._status === "connecting") {
       return;
     }
 
-    this.setStatus('connecting');
+    this.setStatus("connecting");
 
     try {
       // Load service account credentials
@@ -270,17 +276,19 @@ export class GoogleChatAdapter implements ChannelAdapter {
       await this.authManager.getAccessToken();
 
       // Set bot info from config
-      this._botUsername = this.config.displayName || 'Google Chat Bot';
+      this._botUsername = this.config.displayName || "Google Chat Bot";
 
       // Start the HTTP server for receiving webhooks
       await this.startWebhookServer();
 
-      console.log(`Google Chat bot "${this._botUsername}" is connected on port ${this.config.webhookPort || 3979}`);
-      this.setStatus('connected');
+      console.log(
+        `Google Chat bot "${this._botUsername}" is connected on port ${this.config.webhookPort || 3979}`,
+      );
+      this.setStatus("connected");
       this.reconnectAttempts = 0;
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
-      this.setStatus('error', err);
+      this.setStatus("error", err);
       this.scheduleReconnect();
       throw err;
     }
@@ -289,7 +297,11 @@ export class GoogleChatAdapter implements ChannelAdapter {
   /**
    * Load service account credentials
    */
-  private async loadCredentials(): Promise<{ client_email: string; private_key: string; project_id: string }> {
+  private async loadCredentials(): Promise<{
+    client_email: string;
+    private_key: string;
+    project_id: string;
+  }> {
     // Check for inline credentials first
     if (this.config.serviceAccountKey) {
       return this.config.serviceAccountKey;
@@ -301,7 +313,7 @@ export class GoogleChatAdapter implements ChannelAdapter {
       if (!fs.existsSync(keyPath)) {
         throw new Error(`Service account key file not found: ${keyPath}`);
       }
-      const keyContent = fs.readFileSync(keyPath, 'utf-8');
+      const keyContent = fs.readFileSync(keyPath, "utf-8");
       const key = JSON.parse(keyContent);
       return {
         client_email: key.client_email,
@@ -313,7 +325,7 @@ export class GoogleChatAdapter implements ChannelAdapter {
     // Check for GOOGLE_APPLICATION_CREDENTIALS environment variable
     const envPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
     if (envPath && fs.existsSync(envPath)) {
-      const keyContent = fs.readFileSync(envPath, 'utf-8');
+      const keyContent = fs.readFileSync(envPath, "utf-8");
       const key = JSON.parse(keyContent);
       return {
         client_email: key.client_email,
@@ -322,7 +334,9 @@ export class GoogleChatAdapter implements ChannelAdapter {
       };
     }
 
-    throw new Error('Google Chat credentials not configured. Provide serviceAccountKey or serviceAccountKeyPath.');
+    throw new Error(
+      "Google Chat credentials not configured. Provide serviceAccountKey or serviceAccountKeyPath.",
+    );
   }
 
   /**
@@ -330,38 +344,40 @@ export class GoogleChatAdapter implements ChannelAdapter {
    */
   private async startWebhookServer(): Promise<void> {
     const port = this.config.webhookPort || 3979;
-    const webhookPath = this.config.webhookPath || '/googlechat/webhook';
+    const webhookPath = this.config.webhookPath || "/googlechat/webhook";
 
     return new Promise((resolve, reject) => {
       this.server = http.createServer(async (req, res) => {
-        if (req.method === 'POST' && req.url === webhookPath) {
-          let body = '';
-          req.on('data', chunk => {
+        if (req.method === "POST" && req.url === webhookPath) {
+          let body = "";
+          req.on("data", (chunk) => {
             body += chunk.toString();
           });
-          req.on('end', async () => {
+          req.on("end", async () => {
             try {
               await this.processIncomingEvent(req, res, body);
             } catch (error) {
-              console.error('Error processing Google Chat event:', error);
+              console.error("Error processing Google Chat event:", error);
               res.writeHead(500);
-              res.end(JSON.stringify({ error: 'Internal Server Error' }));
+              res.end(JSON.stringify({ error: "Internal Server Error" }));
             }
           });
-        } else if (req.method === 'GET' && req.url === '/health') {
+        } else if (req.method === "GET" && req.url === "/health") {
           // Health check endpoint
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ status: 'ok', bot: this._botUsername }));
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ status: "ok", bot: this._botUsername }));
         } else {
           res.writeHead(404);
-          res.end('Not Found');
+          res.end("Not Found");
         }
       });
 
-      this.server.on('error', (error: NodeJS.ErrnoException) => {
-        if (error.code === 'EADDRINUSE') {
-          reject(new Error(`Port ${port} is already in use. Please choose a different webhook port.`));
-        } else if (error.code === 'EACCES') {
+      this.server.on("error", (error: NodeJS.ErrnoException) => {
+        if (error.code === "EADDRINUSE") {
+          reject(
+            new Error(`Port ${port} is already in use. Please choose a different webhook port.`),
+          );
+        } else if (error.code === "EACCES") {
           reject(new Error(`Permission denied to use port ${port}. Try a port above 1024.`));
         } else {
           reject(error);
@@ -381,50 +397,52 @@ export class GoogleChatAdapter implements ChannelAdapter {
   private async processIncomingEvent(
     req: http.IncomingMessage,
     res: http.ServerResponse,
-    body: string
+    body: string,
   ): Promise<void> {
     try {
       const event: GoogleChatEvent = JSON.parse(body);
 
       // Handle different event types
       switch (event.type) {
-        case 'MESSAGE':
+        case "MESSAGE":
           await this.handleMessage(event);
           // Respond with empty JSON to acknowledge
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end('{}');
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end("{}");
           break;
 
-        case 'ADDED_TO_SPACE':
+        case "ADDED_TO_SPACE":
           console.log(`Bot added to space: ${event.space?.displayName || event.space?.name}`);
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({
-            text: `Hello! I'm ${this._botUsername}. How can I help you today?`,
-          }));
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(
+            JSON.stringify({
+              text: `Hello! I'm ${this._botUsername}. How can I help you today?`,
+            }),
+          );
           break;
 
-        case 'REMOVED_FROM_SPACE':
+        case "REMOVED_FROM_SPACE":
           console.log(`Bot removed from space: ${event.space?.displayName || event.space?.name}`);
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end('{}');
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end("{}");
           break;
 
-        case 'CARD_CLICKED':
+        case "CARD_CLICKED":
           // Handle interactive card clicks
           console.log(`Card clicked: ${event.action?.actionMethodName}`);
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end('{}');
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end("{}");
           break;
 
         default:
           console.log(`Unhandled Google Chat event type: ${event.type}`);
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end('{}');
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end("{}");
       }
     } catch (error) {
-      console.error('Error parsing Google Chat event:', error);
+      console.error("Error parsing Google Chat event:", error);
       res.writeHead(400);
-      res.end(JSON.stringify({ error: 'Bad Request' }));
+      res.end(JSON.stringify({ error: "Bad Request" }));
     }
   }
 
@@ -438,12 +456,12 @@ export class GoogleChatAdapter implements ChannelAdapter {
     }
 
     // Skip bot's own messages
-    if (message.sender?.type === 'BOT') {
+    if (message.sender?.type === "BOT") {
       return;
     }
 
     // Extract message ID from name (format: spaces/{space}/messages/{message})
-    const messageId = message.name.split('/').pop() || message.name;
+    const messageId = message.name.split("/").pop() || message.name;
 
     // Deduplication check
     if (this.config.deduplicationEnabled !== false && this.deduplicationCache.has(messageId)) {
@@ -453,12 +471,12 @@ export class GoogleChatAdapter implements ChannelAdapter {
     this.deduplicationCache.add(messageId);
 
     // Get message text (use argumentText for @mentions, otherwise use text)
-    let text = message.argumentText?.trim() || message.text?.trim() || '';
+    let text = message.argumentText?.trim() || message.text?.trim() || "";
     const hasMedia = Array.isArray(message.attachment) && message.attachment.length > 0;
 
     // Allow attachment-only messages
     if (!text && hasMedia) {
-      text = '<attachment>';
+      text = "<attachment>";
     }
     if (!text) return;
 
@@ -468,15 +486,15 @@ export class GoogleChatAdapter implements ChannelAdapter {
     const spaceId = message.space.name;
 
     // Get user info
-    const userName = message.sender?.displayName || 'Unknown User';
-    const userId = message.sender?.name || '';
+    const userName = message.sender?.displayName || "Unknown User";
+    const userId = message.sender?.name || "";
 
-    const isGroup = message.space.type !== 'DM';
+    const isGroup = message.space.type !== "DM";
 
     // Map to IncomingMessage format
     const incomingMessage: IncomingMessage = {
       messageId: messageId,
-      channel: 'googlechat',
+      channel: "googlechat",
       userId: userId,
       userName: userName,
       chatId: spaceId,
@@ -492,30 +510,30 @@ export class GoogleChatAdapter implements ChannelAdapter {
     await this.handleIncomingMessage(incomingMessage);
   }
 
-  private getAttachmentTypeFromMime(mimeType?: string): MessageAttachment['type'] {
-    const mime = (mimeType || '').toLowerCase();
-    if (mime.startsWith('image/')) return 'image';
-    if (mime.startsWith('audio/')) return 'audio';
-    if (mime.startsWith('video/')) return 'video';
-    if (mime.startsWith('application/')) return 'document';
-    return 'file';
+  private getAttachmentTypeFromMime(mimeType?: string): MessageAttachment["type"] {
+    const mime = (mimeType || "").toLowerCase();
+    if (mime.startsWith("image/")) return "image";
+    if (mime.startsWith("audio/")) return "audio";
+    if (mime.startsWith("video/")) return "video";
+    if (mime.startsWith("application/")) return "document";
+    return "file";
   }
 
-  private getAttachmentTypeFromFilename(fileName?: string): MessageAttachment['type'] {
-    const lower = (fileName || '').toLowerCase();
-    if (lower.match(/\.(png|jpe?g|gif|webp|bmp|tiff?)$/)) return 'image';
-    if (lower.match(/\.(mp3|wav|ogg|m4a|aac|flac)$/)) return 'audio';
-    if (lower.match(/\.(mp4|mov|mkv|webm|avi)$/)) return 'video';
-    if (lower.match(/\.(pdf|docx?|xlsx?|pptx?|txt|md|rtf|csv)$/)) return 'document';
-    return 'file';
+  private getAttachmentTypeFromFilename(fileName?: string): MessageAttachment["type"] {
+    const lower = (fileName || "").toLowerCase();
+    if (lower.match(/\.(png|jpe?g|gif|webp|bmp|tiff?)$/)) return "image";
+    if (lower.match(/\.(mp3|wav|ogg|m4a|aac|flac)$/)) return "audio";
+    if (lower.match(/\.(mp4|mov|mkv|webm|avi)$/)) return "video";
+    if (lower.match(/\.(pdf|docx?|xlsx?|pptx?|txt|md|rtf|csv)$/)) return "document";
+    return "file";
   }
 
   private async downloadToBuffer(
     url: string,
     accessToken: string,
-    maxBytes = 25 * 1024 * 1024
+    maxBytes = 25 * 1024 * 1024,
   ): Promise<{ data: Buffer; mimeType?: string } | null> {
-    if (!url.startsWith('https://') && !url.startsWith('http://')) return null;
+    if (!url.startsWith("https://") && !url.startsWith("http://")) return null;
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 30_000);
@@ -523,12 +541,12 @@ export class GoogleChatAdapter implements ChannelAdapter {
       const res = await fetch(url, {
         signal: controller.signal,
         headers: {
-          'Authorization': `Bearer ${accessToken}`,
+          Authorization: `Bearer ${accessToken}`,
         },
       });
       if (!res.ok) return null;
 
-      const contentLength = res.headers.get('content-length');
+      const contentLength = res.headers.get("content-length");
       if (contentLength) {
         const len = Number(contentLength);
         if (!isNaN(len) && len > maxBytes) return null;
@@ -538,7 +556,7 @@ export class GoogleChatAdapter implements ChannelAdapter {
       const buf = Buffer.from(arrayBuffer);
       if (buf.length > maxBytes) return null;
 
-      return { data: buf, mimeType: res.headers.get('content-type') || undefined };
+      return { data: buf, mimeType: res.headers.get("content-type") || undefined };
     } catch {
       return null;
     } finally {
@@ -550,15 +568,27 @@ export class GoogleChatAdapter implements ChannelAdapter {
     const raw = Array.isArray(message.attachment) ? message.attachment : [];
     if (raw.length === 0) return [];
 
-    const accessToken = this.authManager ? await this.authManager.getAccessToken().catch(() => null) : null;
+    const accessToken = this.authManager
+      ? await this.authManager.getAccessToken().catch(() => null)
+      : null;
     const out: MessageAttachment[] = [];
 
     for (const att of raw) {
-      const fileName = typeof att?.contentName === 'string' && att.contentName.trim().length > 0 ? att.contentName.trim() : undefined;
-      const mimeType = typeof att?.contentType === 'string' && att.contentType.trim().length > 0 ? att.contentType.trim() : undefined;
+      const fileName =
+        typeof att?.contentName === "string" && att.contentName.trim().length > 0
+          ? att.contentName.trim()
+          : undefined;
+      const mimeType =
+        typeof att?.contentType === "string" && att.contentType.trim().length > 0
+          ? att.contentType.trim()
+          : undefined;
       const url =
-        (typeof att?.downloadUri === 'string' && att.downloadUri.trim().length > 0 ? att.downloadUri.trim() : undefined) ||
-        (typeof att?.thumbnailUri === 'string' && att.thumbnailUri.trim().length > 0 ? att.thumbnailUri.trim() : undefined);
+        (typeof att?.downloadUri === "string" && att.downloadUri.trim().length > 0
+          ? att.downloadUri.trim()
+          : undefined) ||
+        (typeof att?.thumbnailUri === "string" && att.thumbnailUri.trim().length > 0
+          ? att.thumbnailUri.trim()
+          : undefined);
 
       const baseType = this.getAttachmentTypeFromMime(mimeType);
       const type = fileName ? this.getAttachmentTypeFromFilename(fileName) : baseType;
@@ -602,7 +632,9 @@ export class GoogleChatAdapter implements ChannelAdapter {
     const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000);
     this.reconnectAttempts++;
 
-    console.log(`Google Chat: Scheduling reconnection attempt ${this.reconnectAttempts} in ${delay}ms`);
+    console.log(
+      `Google Chat: Scheduling reconnection attempt ${this.reconnectAttempts} in ${delay}ms`,
+    );
 
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
@@ -612,7 +644,7 @@ export class GoogleChatAdapter implements ChannelAdapter {
       try {
         await this.connect();
       } catch (error) {
-        console.error('Google Chat reconnection failed:', error);
+        console.error("Google Chat reconnection failed:", error);
       }
     }, delay);
   }
@@ -636,15 +668,15 @@ export class GoogleChatAdapter implements ChannelAdapter {
     this.deduplicationCache.destroy();
     this.authManager = null;
     this._botUsername = undefined;
-    this.setStatus('disconnected');
+    this.setStatus("disconnected");
   }
 
   /**
    * Send a message to a Google Chat space
    */
   async sendMessage(message: OutgoingMessage): Promise<string> {
-    if (!this.authManager || this._status !== 'connected') {
-      throw new Error('Google Chat bot is not connected');
+    if (!this.authManager || this._status !== "connected") {
+      throw new Error("Google Chat bot is not connected");
     }
 
     const accessToken = await this.authManager.getAccessToken();
@@ -664,11 +696,11 @@ export class GoogleChatAdapter implements ChannelAdapter {
     const apiUrl = `https://chat.googleapis.com/v1/${message.chatId}/messages`;
 
     try {
-      const response = await this.makeApiRequest('POST', apiUrl, accessToken, payload);
-      return (response.name as string) || '';
+      const response = await this.makeApiRequest("POST", apiUrl, accessToken, payload);
+      return (response.name as string) || "";
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error('Error sending Google Chat message:', errorMessage);
+      console.error("Error sending Google Chat message:", errorMessage);
       throw error;
     }
   }
@@ -680,7 +712,7 @@ export class GoogleChatAdapter implements ChannelAdapter {
     method: string,
     url: string,
     accessToken: string,
-    body?: Record<string, unknown>
+    body?: Record<string, unknown>,
   ): Promise<Record<string, unknown>> {
     return new Promise((resolve, reject) => {
       const urlObj = new URL(url);
@@ -692,19 +724,22 @@ export class GoogleChatAdapter implements ChannelAdapter {
         path: urlObj.pathname + urlObj.search,
         method: method,
         headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
         },
       };
 
       if (postData) {
-        (options.headers as Record<string, string | number>)['Content-Length'] = Buffer.byteLength(postData);
+        (options.headers as Record<string, string | number>)["Content-Length"] =
+          Buffer.byteLength(postData);
       }
 
       const req = https.request(options, (res) => {
-        let data = '';
-        res.on('data', (chunk) => { data += chunk; });
-        res.on('end', () => {
+        let data = "";
+        res.on("data", (chunk) => {
+          data += chunk;
+        });
+        res.on("end", () => {
           try {
             const parsed = JSON.parse(data);
             if (res.statusCode && res.statusCode >= 400) {
@@ -722,7 +757,7 @@ export class GoogleChatAdapter implements ChannelAdapter {
         });
       });
 
-      req.on('error', reject);
+      req.on("error", reject);
       if (postData) {
         req.write(postData);
       }
@@ -734,36 +769,36 @@ export class GoogleChatAdapter implements ChannelAdapter {
    * Edit an existing message
    */
   async editMessage(chatId: string, messageId: string, text: string): Promise<void> {
-    if (!this.authManager || this._status !== 'connected') {
-      throw new Error('Google Chat bot is not connected');
+    if (!this.authManager || this._status !== "connected") {
+      throw new Error("Google Chat bot is not connected");
     }
 
     const accessToken = await this.authManager.getAccessToken();
 
     // Build the message name (format: spaces/{space}/messages/{message})
-    const messageName = messageId.includes('/') ? messageId : `${chatId}/messages/${messageId}`;
+    const messageName = messageId.includes("/") ? messageId : `${chatId}/messages/${messageId}`;
     const apiUrl = `https://chat.googleapis.com/v1/${messageName}?updateMask=text`;
 
     const payload = { text };
 
-    await this.makeApiRequest('PATCH', apiUrl, accessToken, payload);
+    await this.makeApiRequest("PATCH", apiUrl, accessToken, payload);
   }
 
   /**
    * Delete a message
    */
   async deleteMessage(chatId: string, messageId: string): Promise<void> {
-    if (!this.authManager || this._status !== 'connected') {
-      throw new Error('Google Chat bot is not connected');
+    if (!this.authManager || this._status !== "connected") {
+      throw new Error("Google Chat bot is not connected");
     }
 
     const accessToken = await this.authManager.getAccessToken();
 
     // Build the message name
-    const messageName = messageId.includes('/') ? messageId : `${chatId}/messages/${messageId}`;
+    const messageName = messageId.includes("/") ? messageId : `${chatId}/messages/${messageId}`;
     const apiUrl = `https://chat.googleapis.com/v1/${messageName}`;
 
-    await this.makeApiRequest('DELETE', apiUrl, accessToken);
+    await this.makeApiRequest("DELETE", apiUrl, accessToken);
   }
 
   /**
@@ -809,7 +844,7 @@ export class GoogleChatAdapter implements ChannelAdapter {
    */
   async getInfo(): Promise<ChannelInfo> {
     return {
-      type: 'googlechat',
+      type: "googlechat",
       status: this._status,
       botUsername: this._botUsername,
       botDisplayName: this._botUsername,
@@ -823,10 +858,10 @@ export class GoogleChatAdapter implements ChannelAdapter {
       try {
         await handler(message);
       } catch (error) {
-        console.error('Error in message handler:', error);
+        console.error("Error in message handler:", error);
         this.handleError(
           error instanceof Error ? error : new Error(String(error)),
-          'messageHandler'
+          "messageHandler",
         );
       }
     }
@@ -837,7 +872,7 @@ export class GoogleChatAdapter implements ChannelAdapter {
       try {
         handler(error, context);
       } catch (e) {
-        console.error('Error in error handler:', e);
+        console.error("Error in error handler:", e);
       }
     }
   }
@@ -848,7 +883,7 @@ export class GoogleChatAdapter implements ChannelAdapter {
       try {
         handler(status, error);
       } catch (e) {
-        console.error('Error in status handler:', e);
+        console.error("Error in status handler:", e);
       }
     }
   }
@@ -859,8 +894,14 @@ export class GoogleChatAdapter implements ChannelAdapter {
  */
 export function createGoogleChatAdapter(config: GoogleChatConfig): GoogleChatAdapter {
   // At least one credential source must be provided
-  if (!config.serviceAccountKey && !config.serviceAccountKeyPath && !process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-    throw new Error('Google Chat requires service account credentials (serviceAccountKey, serviceAccountKeyPath, or GOOGLE_APPLICATION_CREDENTIALS)');
+  if (
+    !config.serviceAccountKey &&
+    !config.serviceAccountKeyPath &&
+    !process.env.GOOGLE_APPLICATION_CREDENTIALS
+  ) {
+    throw new Error(
+      "Google Chat requires service account credentials (serviceAccountKey, serviceAccountKeyPath, or GOOGLE_APPLICATION_CREDENTIALS)",
+    );
   }
   return new GoogleChatAdapter(config);
 }

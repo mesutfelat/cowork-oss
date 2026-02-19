@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 
 interface VersionInfo {
   version: string;
@@ -16,11 +16,11 @@ interface UpdateInfo {
   releaseNotes?: string;
   releaseUrl?: string;
   publishedAt?: string;
-  updateMode: 'git' | 'npm' | 'electron-updater';
+  updateMode: "git" | "npm" | "electron-updater";
 }
 
 interface UpdateProgress {
-  phase: 'checking' | 'downloading' | 'extracting' | 'installing' | 'complete' | 'error';
+  phase: "checking" | "downloading" | "extracting" | "installing" | "complete" | "error";
   percent?: number;
   message: string;
 }
@@ -41,7 +41,7 @@ export function UpdateSettings() {
     // Subscribe to update events
     const unsubProgress = window.electronAPI.onUpdateProgress((prog) => {
       setProgress(prog);
-      if (prog.phase === 'error') {
+      if (prog.phase === "error") {
         setError(prog.message);
         setUpdating(false);
       }
@@ -120,15 +120,9 @@ export function UpdateSettings() {
       <div className="settings-section">
         <h3>Current Version</h3>
         <div className="version-info">
-          <div className="version-number">
-            v{versionInfo?.version || 'Unknown'}
-          </div>
-          {versionInfo?.isDev && (
-            <span className="version-badge dev">Development Mode</span>
-          )}
-          {versionInfo?.isNpmGlobal && (
-            <span className="version-badge npm">Installed via npm</span>
-          )}
+          <div className="version-number">v{versionInfo?.version || "Unknown"}</div>
+          {versionInfo?.isDev && <span className="version-badge dev">Development Mode</span>}
+          {versionInfo?.isNpmGlobal && <span className="version-badge npm">Installed via npm</span>}
           {versionInfo?.isGitRepo && (
             <div className="git-info">
               <span className="git-branch">{versionInfo.gitBranch}</span>
@@ -144,10 +138,10 @@ export function UpdateSettings() {
         <h3>Check for Updates</h3>
         <p className="settings-description">
           {versionInfo?.isNpmGlobal
-            ? 'Updates will be installed via npm.'
+            ? "Updates will be installed via npm."
             : versionInfo?.isGitRepo
-            ? 'Updates will be pulled from GitHub and rebuilt automatically.'
-            : 'Updates will be downloaded and installed automatically.'}
+              ? "Updates will be pulled from GitHub and rebuilt automatically."
+              : "Updates will be downloaded and installed automatically."}
         </p>
 
         <div className="update-actions">
@@ -156,16 +150,23 @@ export function UpdateSettings() {
             onClick={handleCheckForUpdates}
             disabled={checking || updating}
           >
-            {checking ? 'Checking...' : 'Check for Updates'}
+            {checking ? "Checking..." : "Check for Updates"}
           </button>
         </div>
 
         {updateInfo && (
-          <div className={`update-status ${updateInfo.available ? 'available' : 'up-to-date'}`}>
+          <div className={`update-status ${updateInfo.available ? "available" : "up-to-date"}`}>
             {updateInfo.available ? (
               <>
                 <div className="update-header">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
                     <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
                   </svg>
                   <span>Update Available!</span>
@@ -184,8 +185,8 @@ export function UpdateSettings() {
                   <div className="release-notes">
                     <h4>Release Notes</h4>
                     <div className="release-notes-content">
-                      {updateInfo.releaseNotes.split('\n').slice(0, 10).join('\n')}
-                      {updateInfo.releaseNotes.split('\n').length > 10 && '...'}
+                      {updateInfo.releaseNotes.split("\n").slice(0, 10).join("\n")}
+                      {updateInfo.releaseNotes.split("\n").length > 10 && "..."}
                     </div>
                   </div>
                 )}
@@ -200,15 +201,26 @@ export function UpdateSettings() {
                   </a>
                 )}
                 <div className="update-mode">
-                  Update method: <strong>{
-                    updateInfo.updateMode === 'npm' ? 'npm update' :
-                    updateInfo.updateMode === 'git' ? 'Git Pull + Rebuild' : 'Auto-download'
-                  }</strong>
+                  Update method:{" "}
+                  <strong>
+                    {updateInfo.updateMode === "npm"
+                      ? "npm update"
+                      : updateInfo.updateMode === "git"
+                        ? "Git Pull + Rebuild"
+                        : "Auto-download"}
+                  </strong>
                 </div>
               </>
             ) : (
               <div className="update-header up-to-date">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
                   <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
                   <path d="M22 4L12 14.01l-3-3" />
                 </svg>
@@ -223,10 +235,7 @@ export function UpdateSettings() {
             <div className="progress-message">{progress.message}</div>
             {progress.percent !== undefined && (
               <div className="progress-bar">
-                <div
-                  className="progress-fill"
-                  style={{ width: `${progress.percent}%` }}
-                />
+                <div className="progress-fill" style={{ width: `${progress.percent}%` }} />
               </div>
             )}
           </div>
@@ -234,7 +243,14 @@ export function UpdateSettings() {
 
         {error && (
           <div className="update-error">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
               <circle cx="12" cy="12" r="10" />
               <line x1="15" y1="9" x2="9" y2="15" />
               <line x1="9" y1="9" x2="15" y2="15" />
@@ -250,18 +266,15 @@ export function UpdateSettings() {
             disabled={updating}
           >
             {versionInfo?.isNpmGlobal
-              ? 'Update Now (npm install)'
+              ? "Update Now (npm install)"
               : versionInfo?.isGitRepo
-              ? 'Update Now (Git Pull + Rebuild)'
-              : 'Download & Install Update'}
+                ? "Update Now (Git Pull + Rebuild)"
+                : "Download & Install Update"}
           </button>
         )}
 
         {updateReady && (
-          <button
-            className="button-primary update-button restart"
-            onClick={handleInstallUpdate}
-          >
+          <button className="button-primary update-button restart" onClick={handleInstallUpdate}>
             Restart to Apply Update
           </button>
         )}
@@ -270,25 +283,22 @@ export function UpdateSettings() {
       <div className="settings-section">
         <h3>Manual Update</h3>
         <p className="settings-description">
-          You can also manually update by running {versionInfo?.isNpmGlobal ? 'this command' : 'these commands'} in the terminal:
+          You can also manually update by running{" "}
+          {versionInfo?.isNpmGlobal ? "this command" : "these commands"} in the terminal:
         </p>
         <div className="manual-update-commands">
           {versionInfo?.isNpmGlobal ? (
-            <code>
-              npm update -g cowork-os
-            </code>
+            <code>npm update -g cowork-os</code>
           ) : (
             <code>
-              git fetch origin{'\n'}
-              git pull origin main{'\n'}
-              npm install{'\n'}
+              git fetch origin{"\n"}
+              git pull origin main{"\n"}
+              npm install{"\n"}
               npm run build
             </code>
           )}
         </div>
-        <p className="settings-hint">
-          After updating, restart the application to apply changes.
-        </p>
+        <p className="settings-hint">After updating, restart the application to apply changes.</p>
       </div>
     </div>
   );

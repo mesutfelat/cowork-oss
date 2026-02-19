@@ -8,20 +8,20 @@
  * Audio playback must be handled by the renderer process.
  */
 
-import { EventEmitter } from 'events';
+import { EventEmitter } from "events";
 import {
   VoiceSettings,
   VoiceState,
   ElevenLabsVoice,
   DEFAULT_VOICE_SETTINGS,
-} from '../../shared/types';
+} from "../../shared/types";
 
 // ElevenLabs API configuration
-const ELEVENLABS_API_BASE = 'https://api.elevenlabs.io/v1';
-const OPENAI_API_BASE = 'https://api.openai.com/v1';
+const ELEVENLABS_API_BASE = "https://api.elevenlabs.io/v1";
+const OPENAI_API_BASE = "https://api.openai.com/v1";
 
 // Default ElevenLabs voice (Rachel - conversational)
-const DEFAULT_ELEVENLABS_VOICE_ID = '21m00Tcm4TlvDq8ikWAM';
+const DEFAULT_ELEVENLABS_VOICE_ID = "21m00Tcm4TlvDq8ikWAM";
 
 export interface VoiceServiceOptions {
   settings?: Partial<VoiceSettings>;
@@ -44,7 +44,7 @@ export class VoiceService extends EventEmitter {
     };
 
     if (options.onStateChange) {
-      this.on('stateChange', options.onStateChange);
+      this.on("stateChange", options.onStateChange);
     }
   }
 
@@ -52,9 +52,9 @@ export class VoiceService extends EventEmitter {
    * Initialize the voice service
    */
   async initialize(): Promise<void> {
-    console.log('[VoiceService] Initializing...');
+    console.log("[VoiceService] Initializing...");
     this.updateState({ isActive: this.settings.enabled });
-    console.log('[VoiceService] Initialized with settings:', {
+    console.log("[VoiceService] Initialized with settings:", {
       enabled: this.settings.enabled,
       ttsProvider: this.settings.ttsProvider,
       sttProvider: this.settings.sttProvider,
@@ -67,7 +67,7 @@ export class VoiceService extends EventEmitter {
   updateSettings(settings: Partial<VoiceSettings>): void {
     this.settings = { ...this.settings, ...settings };
     this.updateState({ isActive: this.settings.enabled });
-    this.emit('settingsChange', this.settings);
+    this.emit("settingsChange", this.settings);
   }
 
   /**
@@ -92,14 +92,14 @@ export class VoiceService extends EventEmitter {
     const { sttProvider, openaiApiKey, azureApiKey, azureEndpoint } = this.settings;
 
     switch (sttProvider) {
-      case 'openai':
+      case "openai":
         return !!openaiApiKey;
-      case 'azure':
+      case "azure":
         return !!(azureApiKey && azureEndpoint);
-      case 'elevenlabs':
+      case "elevenlabs":
         // ElevenLabs uses OpenAI or Azure for STT
         return !!openaiApiKey || !!(azureApiKey && azureEndpoint);
-      case 'local':
+      case "local":
         return false; // Not available in main process
       default:
         return false;
@@ -112,7 +112,7 @@ export class VoiceService extends EventEmitter {
    */
   async speak(text: string): Promise<Buffer | null> {
     if (!this.settings.enabled) {
-      console.log('[VoiceService] Voice mode disabled, skipping TTS');
+      console.log("[VoiceService] Voice mode disabled, skipping TTS");
       return null;
     }
 
@@ -120,28 +120,33 @@ export class VoiceService extends EventEmitter {
       return null;
     }
 
-    console.log('[VoiceService] Generating TTS:', text.substring(0, 100) + (text.length > 100 ? '...' : ''));
+    console.log(
+      "[VoiceService] Generating TTS:",
+      text.substring(0, 100) + (text.length > 100 ? "..." : ""),
+    );
 
     try {
       // Clear any previous error
       this.updateState({ isSpeaking: true, isProcessing: true, error: undefined });
-      this.emit('speakingStart', text);
+      this.emit("speakingStart", text);
 
       let audioBuffer: ArrayBuffer;
 
       switch (this.settings.ttsProvider) {
-        case 'elevenlabs':
+        case "elevenlabs":
           audioBuffer = await this.elevenLabsTTS(text);
           break;
-        case 'openai':
+        case "openai":
           audioBuffer = await this.openaiTTS(text);
           break;
-        case 'azure':
+        case "azure":
           audioBuffer = await this.azureTTS(text);
           break;
-        case 'local':
+        case "local":
           // Local TTS requires browser APIs - not available in main process
-          throw new Error('Local TTS is not available in the main process. Please use ElevenLabs, OpenAI, or Azure.');
+          throw new Error(
+            "Local TTS is not available in the main process. Please use ElevenLabs, OpenAI, or Azure.",
+          );
         default:
           throw new Error(`Unknown TTS provider: ${this.settings.ttsProvider}`);
       }
@@ -151,9 +156,9 @@ export class VoiceService extends EventEmitter {
       // Return audio data as Buffer for renderer to play
       return Buffer.from(audioBuffer);
     } catch (error) {
-      console.error('[VoiceService] TTS error:', error);
+      console.error("[VoiceService] TTS error:", error);
       this.updateState({ error: (error as Error).message, isSpeaking: false, isProcessing: false });
-      this.emit('error', error);
+      this.emit("error", error);
       throw error;
     }
   }
@@ -163,7 +168,7 @@ export class VoiceService extends EventEmitter {
    */
   finishSpeaking(): void {
     this.updateState({ isSpeaking: false });
-    this.emit('speakingEnd');
+    this.emit("speakingEnd");
   }
 
   /**
@@ -171,7 +176,7 @@ export class VoiceService extends EventEmitter {
    */
   stopSpeaking(): void {
     this.updateState({ isSpeaking: false });
-    this.emit('speakingEnd');
+    this.emit("speakingEnd");
   }
 
   /**
@@ -183,10 +188,10 @@ export class VoiceService extends EventEmitter {
    */
   async transcribe(audioData: Buffer, options?: { force?: boolean }): Promise<string> {
     if (!this.settings.enabled && !options?.force) {
-      throw new Error('Voice mode is disabled');
+      throw new Error("Voice mode is disabled");
     }
 
-    console.log('[VoiceService] Transcribing audio...');
+    console.log("[VoiceService] Transcribing audio...");
     // Clear any previous error
     this.updateState({ isProcessing: true, error: undefined });
 
@@ -194,35 +199,39 @@ export class VoiceService extends EventEmitter {
       let transcript: string;
 
       switch (this.settings.sttProvider) {
-        case 'openai':
+        case "openai":
           transcript = await this.openaiSTT(audioData);
           break;
-        case 'azure':
+        case "azure":
           transcript = await this.azureSTT(audioData);
           break;
-        case 'local':
+        case "local":
           // Local STT requires browser APIs - not available in main process
-          throw new Error('Local STT is not available in the main process. Please use OpenAI Whisper or Azure.');
-        case 'elevenlabs':
+          throw new Error(
+            "Local STT is not available in the main process. Please use OpenAI Whisper or Azure.",
+          );
+        case "elevenlabs":
           // ElevenLabs doesn't have an STT API - redirect to OpenAI if key available
           if (this.settings.openaiApiKey) {
             transcript = await this.openaiSTT(audioData);
           } else if (this.settings.azureEndpoint && this.settings.azureApiKey) {
             transcript = await this.azureSTT(audioData);
           } else {
-            throw new Error('ElevenLabs does not provide speech-to-text. Please use OpenAI Whisper, Azure, or configure an API key.');
+            throw new Error(
+              "ElevenLabs does not provide speech-to-text. Please use OpenAI Whisper, Azure, or configure an API key.",
+            );
           }
           break;
         default:
           throw new Error(`Unknown STT provider: ${this.settings.sttProvider}`);
       }
 
-      this.emit('transcript', transcript);
+      this.emit("transcript", transcript);
       return transcript;
     } catch (error) {
-      console.error('[VoiceService] STT error:', error);
+      console.error("[VoiceService] STT error:", error);
       this.updateState({ error: (error as Error).message });
-      this.emit('error', error);
+      this.emit("error", error);
       throw error;
     } finally {
       this.updateState({ isProcessing: false });
@@ -235,12 +244,12 @@ export class VoiceService extends EventEmitter {
   async getElevenLabsVoices(): Promise<ElevenLabsVoice[]> {
     const apiKey = this.settings.elevenLabsApiKey;
     if (!apiKey) {
-      throw new Error('ElevenLabs API key not configured');
+      throw new Error("ElevenLabs API key not configured");
     }
 
     const response = await fetch(`${ELEVENLABS_API_BASE}/voices`, {
       headers: {
-        'xi-api-key': apiKey,
+        "xi-api-key": apiKey,
       },
     });
 
@@ -249,14 +258,18 @@ export class VoiceService extends EventEmitter {
       throw new Error(`Failed to fetch voices: ${error}`);
     }
 
-    const data = await response.json() as { voices?: ElevenLabsVoice[] };
+    const data = (await response.json()) as { voices?: ElevenLabsVoice[] };
     return data.voices || [];
   }
 
   /**
    * Test ElevenLabs connection
    */
-  async testElevenLabsConnection(): Promise<{ success: boolean; voiceCount?: number; error?: string }> {
+  async testElevenLabsConnection(): Promise<{
+    success: boolean;
+    voiceCount?: number;
+    error?: string;
+  }> {
     try {
       const voices = await this.getElevenLabsVoices();
       return { success: true, voiceCount: voices.length };
@@ -271,21 +284,21 @@ export class VoiceService extends EventEmitter {
   async testOpenAIConnection(): Promise<{ success: boolean; error?: string }> {
     const apiKey = this.settings.openaiApiKey;
     if (!apiKey) {
-      return { success: false, error: 'OpenAI API key not configured' };
+      return { success: false, error: "OpenAI API key not configured" };
     }
 
     try {
       // Test with a minimal TTS request
       const response = await fetch(`${OPENAI_API_BASE}/audio/speech`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: 'tts-1',
-          input: 'Test',
-          voice: 'alloy',
+          model: "tts-1",
+          input: "Test",
+          voice: "alloy",
         }),
       });
 
@@ -309,29 +322,29 @@ export class VoiceService extends EventEmitter {
     const deploymentName = this.settings.azureTtsDeploymentName;
 
     if (!endpoint) {
-      return { success: false, error: 'Azure OpenAI endpoint not configured' };
+      return { success: false, error: "Azure OpenAI endpoint not configured" };
     }
     if (!apiKey) {
-      return { success: false, error: 'Azure OpenAI API key not configured' };
+      return { success: false, error: "Azure OpenAI API key not configured" };
     }
     if (!deploymentName) {
-      return { success: false, error: 'Azure OpenAI TTS deployment name not configured' };
+      return { success: false, error: "Azure OpenAI TTS deployment name not configured" };
     }
 
     try {
-      const apiVersion = this.settings.azureApiVersion || '2024-02-15-preview';
+      const apiVersion = this.settings.azureApiVersion || "2024-02-15-preview";
       const url = `${endpoint}/openai/deployments/${deploymentName}/audio/speech?api-version=${apiVersion}`;
 
       const response = await fetch(url, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'api-key': apiKey,
-          'Content-Type': 'application/json',
+          "api-key": apiKey,
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           model: deploymentName,
-          input: 'Test',
-          voice: 'alloy',
+          input: "Test",
+          voice: "alloy",
         }),
       });
 
@@ -358,7 +371,7 @@ export class VoiceService extends EventEmitter {
 
   private updateState(partial: Partial<VoiceState>): void {
     this.state = { ...this.state, ...partial };
-    this.emit('stateChange', this.state);
+    this.emit("stateChange", this.state);
   }
 
   /**
@@ -367,21 +380,21 @@ export class VoiceService extends EventEmitter {
   private async elevenLabsTTS(text: string): Promise<ArrayBuffer> {
     const apiKey = this.settings.elevenLabsApiKey;
     if (!apiKey) {
-      throw new Error('ElevenLabs API key not configured');
+      throw new Error("ElevenLabs API key not configured");
     }
 
     const voiceId = this.settings.elevenLabsVoiceId || DEFAULT_ELEVENLABS_VOICE_ID;
 
     const response = await fetch(`${ELEVENLABS_API_BASE}/text-to-speech/${voiceId}`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Accept': 'audio/mpeg',
-        'xi-api-key': apiKey,
-        'Content-Type': 'application/json',
+        Accept: "audio/mpeg",
+        "xi-api-key": apiKey,
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
         text,
-        model_id: 'eleven_monolingual_v1',
+        model_id: "eleven_monolingual_v1",
         voice_settings: {
           stability: 0.5,
           similarity_boost: 0.75,
@@ -405,19 +418,19 @@ export class VoiceService extends EventEmitter {
   private async openaiTTS(text: string): Promise<ArrayBuffer> {
     const apiKey = this.settings.openaiApiKey;
     if (!apiKey) {
-      throw new Error('OpenAI API key not configured');
+      throw new Error("OpenAI API key not configured");
     }
 
-    const voice = this.settings.openaiVoice || 'nova';
+    const voice = this.settings.openaiVoice || "nova";
 
     const response = await fetch(`${OPENAI_API_BASE}/audio/speech`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: 'tts-1',
+        model: "tts-1",
         input: text,
         voice,
         speed: this.settings.speechRate,
@@ -438,23 +451,27 @@ export class VoiceService extends EventEmitter {
   private async openaiSTT(audioData: Buffer): Promise<string> {
     const apiKey = this.settings.openaiApiKey;
     if (!apiKey) {
-      throw new Error('OpenAI API key not configured');
+      throw new Error("OpenAI API key not configured");
     }
 
     // Create a Blob-like object for Node.js fetch
     // Convert Buffer to Uint8Array for BlobPart compatibility
-    const uint8Array = new Uint8Array(audioData.buffer as ArrayBuffer, audioData.byteOffset, audioData.byteLength);
-    const blob = new Blob([uint8Array], { type: 'audio/webm' });
+    const uint8Array = new Uint8Array(
+      audioData.buffer as ArrayBuffer,
+      audioData.byteOffset,
+      audioData.byteLength,
+    );
+    const blob = new Blob([uint8Array], { type: "audio/webm" });
 
     const formData = new FormData();
-    formData.append('file', blob, 'audio.webm');
-    formData.append('model', 'whisper-1');
-    formData.append('language', this.settings.language.split('-')[0]); // e.g., 'en' from 'en-US'
+    formData.append("file", blob, "audio.webm");
+    formData.append("model", "whisper-1");
+    formData.append("language", this.settings.language.split("-")[0]); // e.g., 'en' from 'en-US'
 
     const response = await fetch(`${OPENAI_API_BASE}/audio/transcriptions`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        Authorization: `Bearer ${apiKey}`,
       },
       body: formData,
     });
@@ -464,7 +481,7 @@ export class VoiceService extends EventEmitter {
       throw new Error(`OpenAI STT failed: ${errorText}`);
     }
 
-    const data = await response.json() as { text: string };
+    const data = (await response.json()) as { text: string };
     return data.text;
   }
 
@@ -477,24 +494,24 @@ export class VoiceService extends EventEmitter {
     const deploymentName = this.settings.azureTtsDeploymentName;
 
     if (!endpoint) {
-      throw new Error('Azure OpenAI endpoint not configured');
+      throw new Error("Azure OpenAI endpoint not configured");
     }
     if (!apiKey) {
-      throw new Error('Azure OpenAI API key not configured');
+      throw new Error("Azure OpenAI API key not configured");
     }
     if (!deploymentName) {
-      throw new Error('Azure OpenAI TTS deployment name not configured');
+      throw new Error("Azure OpenAI TTS deployment name not configured");
     }
 
-    const voice = this.settings.azureVoice || 'nova';
-    const apiVersion = this.settings.azureApiVersion || '2024-02-15-preview';
+    const voice = this.settings.azureVoice || "nova";
+    const apiVersion = this.settings.azureApiVersion || "2024-02-15-preview";
     const url = `${endpoint}/openai/deployments/${deploymentName}/audio/speech?api-version=${apiVersion}`;
 
     const response = await fetch(url, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'api-key': apiKey,
-        'Content-Type': 'application/json',
+        "api-key": apiKey,
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
         model: deploymentName,
@@ -521,30 +538,34 @@ export class VoiceService extends EventEmitter {
     const deploymentName = this.settings.azureSttDeploymentName;
 
     if (!endpoint) {
-      throw new Error('Azure OpenAI endpoint not configured');
+      throw new Error("Azure OpenAI endpoint not configured");
     }
     if (!apiKey) {
-      throw new Error('Azure OpenAI API key not configured');
+      throw new Error("Azure OpenAI API key not configured");
     }
     if (!deploymentName) {
-      throw new Error('Azure OpenAI STT deployment name not configured');
+      throw new Error("Azure OpenAI STT deployment name not configured");
     }
 
-    const apiVersion = this.settings.azureApiVersion || '2024-02-15-preview';
+    const apiVersion = this.settings.azureApiVersion || "2024-02-15-preview";
     const url = `${endpoint}/openai/deployments/${deploymentName}/audio/transcriptions?api-version=${apiVersion}`;
 
     // Create a Blob-like object for Node.js fetch
-    const uint8Array = new Uint8Array(audioData.buffer as ArrayBuffer, audioData.byteOffset, audioData.byteLength);
-    const blob = new Blob([uint8Array], { type: 'audio/webm' });
+    const uint8Array = new Uint8Array(
+      audioData.buffer as ArrayBuffer,
+      audioData.byteOffset,
+      audioData.byteLength,
+    );
+    const blob = new Blob([uint8Array], { type: "audio/webm" });
 
     const formData = new FormData();
-    formData.append('file', blob, 'audio.webm');
-    formData.append('language', this.settings.language.split('-')[0]);
+    formData.append("file", blob, "audio.webm");
+    formData.append("language", this.settings.language.split("-")[0]);
 
     const response = await fetch(url, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'api-key': apiKey,
+        "api-key": apiKey,
       },
       body: formData,
     });
@@ -554,7 +575,7 @@ export class VoiceService extends EventEmitter {
       throw new Error(`Azure OpenAI STT failed: ${errorText}`);
     }
 
-    const data = await response.json() as { text: string };
+    const data = (await response.json()) as { text: string };
     return data.text;
   }
 }

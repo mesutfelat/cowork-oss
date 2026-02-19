@@ -1,11 +1,11 @@
-import { useTranslation } from 'react-i18next';
-import { ThemeMode, AccentColor, VisualTheme, UiDensity, ACCENT_COLORS } from '../../shared/types';
+import { useTranslation } from "react-i18next";
+import { ThemeMode, AccentColor, VisualTheme, UiDensity, ACCENT_COLORS } from "../../shared/types";
 import {
   SUPPORTED_LANGUAGES,
   LANGUAGE_NAMES,
   changeLanguage,
   type SupportedLanguage,
-} from '../i18n';
+} from "../i18n";
 
 interface AppearanceSettingsProps {
   themeMode: ThemeMode;
@@ -33,16 +33,16 @@ export function AppearanceSettings({
   onboardingCompletedAt,
 }: AppearanceSettingsProps) {
   const { t, i18n } = useTranslation();
-  const currentLanguage = (i18n.language?.split('-')[0] || 'en') as SupportedLanguage;
-  const isModernVisualTheme = visualTheme === 'warm' || visualTheme === 'oblivion';
+  const currentLanguage = (i18n.language?.split("-")[0] || "en") as SupportedLanguage;
+  const isModernVisualTheme = visualTheme === "warm" || visualTheme === "oblivion";
   const formatCompletedDate = (isoString?: string) => {
     if (!isoString) return null;
     try {
       const date = new Date(isoString);
       return date.toLocaleDateString(undefined, {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
+        year: "numeric",
+        month: "long",
+        day: "numeric",
       });
     } catch {
       return null;
@@ -58,15 +58,20 @@ export function AppearanceSettings({
           Re-run the initial setup wizard to configure your AI provider and messaging channels.
           {onboardingCompletedAt && (
             <span className="onboarding-completed-info">
-              {' '}Completed on {formatCompletedDate(onboardingCompletedAt)}.
+              {" "}
+              Completed on {formatCompletedDate(onboardingCompletedAt)}.
             </span>
           )}
         </p>
-        <button
-          className="button-secondary show-onboarding-btn"
-          onClick={onShowOnboarding}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <button className="button-secondary show-onboarding-btn" onClick={onShowOnboarding}>
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
             <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
           </svg>
           Show Setup Wizard
@@ -75,9 +80,7 @@ export function AppearanceSettings({
 
       <div className="settings-section">
         <h3>Appearance</h3>
-        <p className="settings-description">
-          Customize the look and feel of the application
-        </p>
+        <p className="settings-description">Customize the look and feel of the application</p>
       </div>
 
       {/* Visual Style */}
@@ -85,8 +88,8 @@ export function AppearanceSettings({
         <h4>Visual style</h4>
         <div className="theme-switcher">
           <button
-            className={`theme-option ${visualTheme === 'terminal' ? 'selected' : ''}`}
-            onClick={() => onVisualThemeChange('terminal')}
+            className={`theme-option ${visualTheme === "terminal" ? "selected" : ""}`}
+            onClick={() => onVisualThemeChange("terminal")}
           >
             <div className="theme-option-preview terminal">
               <div className="theme-option-preview-line code-line" />
@@ -97,8 +100,8 @@ export function AppearanceSettings({
           </button>
 
           <button
-            className={`theme-option ${isModernVisualTheme ? 'selected' : ''}`}
-            onClick={() => onVisualThemeChange('warm')}
+            className={`theme-option ${isModernVisualTheme ? "selected" : ""}`}
+            onClick={() => onVisualThemeChange("warm")}
           >
             <div className="theme-option-preview warm">
               <div className="theme-option-preview-line ui-line" />
@@ -114,14 +117,25 @@ export function AppearanceSettings({
       <div className="appearance-section">
         <h4>Interface density</h4>
         <p className="settings-description">
-          Focused mode hides advanced controls for a cleaner experience. Full mode shows all controls.
+          Focused mode hides advanced controls for a cleaner experience. Full mode shows all
+          controls.
         </p>
         <div className="theme-switcher">
           <button
-            className={`theme-option ${uiDensity === 'focused' ? 'selected' : ''}`}
-            onClick={() => onUiDensityChange('focused')}
+            className={`theme-option ${uiDensity === "focused" ? "selected" : ""}`}
+            onClick={() => onUiDensityChange("focused")}
           >
-            <svg className="theme-option-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              className="theme-option-icon"
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <rect x="4" y="5" width="16" height="14" rx="2" />
               <line x1="4" y1="12" x2="20" y2="12" />
             </svg>
@@ -129,10 +143,20 @@ export function AppearanceSettings({
           </button>
 
           <button
-            className={`theme-option ${uiDensity === 'full' ? 'selected' : ''}`}
-            onClick={() => onUiDensityChange('full')}
+            className={`theme-option ${uiDensity === "full" ? "selected" : ""}`}
+            onClick={() => onUiDensityChange("full")}
           >
-            <svg className="theme-option-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              className="theme-option-icon"
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <rect x="4" y="4" width="16" height="16" rx="2" />
               <line x1="4" y1="9" x2="20" y2="9" />
               <line x1="4" y1="14" x2="20" y2="14" />
@@ -148,10 +172,20 @@ export function AppearanceSettings({
         <h4>Color mode</h4>
         <div className="theme-switcher">
           <button
-            className={`theme-option ${themeMode === 'light' ? 'selected' : ''}`}
-            onClick={() => onThemeChange('light')}
+            className={`theme-option ${themeMode === "light" ? "selected" : ""}`}
+            onClick={() => onThemeChange("light")}
           >
-            <svg className="theme-option-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              className="theme-option-icon"
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <circle cx="12" cy="12" r="5" />
               <line x1="12" y1="1" x2="12" y2="3" />
               <line x1="12" y1="21" x2="12" y2="23" />
@@ -171,10 +205,20 @@ export function AppearanceSettings({
           </button>
 
           <button
-            className={`theme-option ${themeMode === 'dark' ? 'selected' : ''}`}
-            onClick={() => onThemeChange('dark')}
+            className={`theme-option ${themeMode === "dark" ? "selected" : ""}`}
+            onClick={() => onThemeChange("dark")}
           >
-            <svg className="theme-option-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              className="theme-option-icon"
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
             </svg>
             <div className="theme-option-preview dark">
@@ -186,16 +230,28 @@ export function AppearanceSettings({
           </button>
 
           <button
-            className={`theme-option ${themeMode === 'system' ? 'selected' : ''}`}
-            onClick={() => onThemeChange('system')}
+            className={`theme-option ${themeMode === "system" ? "selected" : ""}`}
+            onClick={() => onThemeChange("system")}
           >
-            <svg className="theme-option-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              className="theme-option-icon"
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
               <line x1="8" y1="21" x2="16" y2="21" />
               <line x1="12" y1="17" x2="12" y2="21" />
             </svg>
             <div className="theme-option-preview system" />
-            <span className="theme-option-label">System <span className="theme-option-sublabel">(Auto)</span></span>
+            <span className="theme-option-label">
+              System <span className="theme-option-sublabel">(Auto)</span>
+            </span>
           </button>
         </div>
       </div>
@@ -207,14 +263,24 @@ export function AppearanceSettings({
           {ACCENT_COLORS.map((color) => (
             <button
               key={color.id}
-              className={`color-swatch-btn ${accentColor === color.id ? 'selected' : ''}`}
+              className={`color-swatch-btn ${accentColor === color.id ? "selected" : ""}`}
               onClick={() => onAccentChange(color.id)}
               aria-label={color.label}
               aria-pressed={accentColor === color.id}
             >
               <div className={`color-swatch ${color.id}`}>
                 {accentColor === color.id && (
-                  <svg className="color-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <svg
+                    className="color-check"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#fff"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
                 )}
@@ -229,13 +295,13 @@ export function AppearanceSettings({
 
       {/* Language */}
       <div className="appearance-section">
-        <h4>{t('settings.language.title')}</h4>
-        <p className="settings-description">{t('settings.language.description')}</p>
+        <h4>{t("settings.language.title")}</h4>
+        <p className="settings-description">{t("settings.language.description")}</p>
         <div className="theme-switcher">
           {SUPPORTED_LANGUAGES.map((lang) => (
             <button
               key={lang}
-              className={`theme-option ${currentLanguage === lang ? 'selected' : ''}`}
+              className={`theme-option ${currentLanguage === lang ? "selected" : ""}`}
               onClick={() => changeLanguage(lang)}
             >
               <span className="theme-option-label">{LANGUAGE_NAMES[lang]}</span>

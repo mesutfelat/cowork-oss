@@ -1,13 +1,13 @@
-import { Workspace } from '../../../shared/types';
-import { AgentDaemon } from '../daemon';
-import { VoiceSettingsManager } from '../../voice/voice-settings-manager';
-import { GuardrailManager } from '../../guardrails/guardrail-manager';
+import { Workspace } from "../../../shared/types";
+import { AgentDaemon } from "../daemon";
+import { VoiceSettingsManager } from "../../voice/voice-settings-manager";
+import { GuardrailManager } from "../../guardrails/guardrail-manager";
 
-const ELEVENLABS_API_BASE = 'https://api.elevenlabs.io/v1';
+const ELEVENLABS_API_BASE = "https://api.elevenlabs.io/v1";
 const E164_REGEX = /^\+[1-9]\d{1,14}$/;
-const REDACTED_VALUE = '[REDACTED]';
+const REDACTED_VALUE = "[REDACTED]";
 
-type VoiceCallAction = 'list_agents' | 'list_phone_numbers' | 'initiate_call';
+type VoiceCallAction = "list_agents" | "list_phone_numbers" | "initiate_call";
 
 export interface VoiceCallActionInput {
   action: VoiceCallAction;
@@ -34,7 +34,7 @@ export class VoiceCallTools {
   constructor(
     private workspace: Workspace,
     private daemon: AgentDaemon,
-    private taskId: string
+    private taskId: string,
   ) {}
 
   setWorkspace(workspace: Workspace): void {
@@ -47,22 +47,24 @@ export class VoiceCallTools {
    */
   private static isSensitiveKey(key: string): boolean {
     const k = key.toLowerCase();
-    if (k.includes('password') || k.includes('passwd')) return true;
-    if (k.includes('secret')) return true;
-    if (k.includes('authorization')) return true;
-    if (k.includes('cookie')) return true;
-    if (k.includes('api_key') || k.includes('api-key') || k.includes('apikey')) return true;
-    if (k === 'token' || k.endsWith('_token') || k.endsWith('-token') || k.endsWith('token')) return true;
-    if (k.includes('private_key') || k.includes('private-key') || k.endsWith('privatekey')) return true;
+    if (k.includes("password") || k.includes("passwd")) return true;
+    if (k.includes("secret")) return true;
+    if (k.includes("authorization")) return true;
+    if (k.includes("cookie")) return true;
+    if (k.includes("api_key") || k.includes("api-key") || k.includes("apikey")) return true;
+    if (k === "token" || k.endsWith("_token") || k.endsWith("-token") || k.endsWith("token"))
+      return true;
+    if (k.includes("private_key") || k.includes("private-key") || k.endsWith("privatekey"))
+      return true;
     return false;
   }
 
   private redactSensitive(value: unknown, depth = 0, seen = new WeakSet<object>()): unknown {
-    if (depth > 12) return '[TRUNCATED]';
+    if (depth > 12) return "[TRUNCATED]";
     if (value === null || value === undefined) return value;
-    if (typeof value !== 'object') return value;
+    if (typeof value !== "object") return value;
 
-    if (seen.has(value as object)) return '[CIRCULAR]';
+    if (seen.has(value as object)) return "[CIRCULAR]";
     seen.add(value as object);
 
     if (Array.isArray(value)) {
@@ -80,11 +82,11 @@ export class VoiceCallTools {
 
   private getApiKey(): string {
     const settings = VoiceSettingsManager.loadSettings();
-    const key = (settings.elevenLabsAgentsApiKey || settings.elevenLabsApiKey || '').trim();
+    const key = (settings.elevenLabsAgentsApiKey || settings.elevenLabsApiKey || "").trim();
     if (!key) {
       throw new Error(
-        'ElevenLabs API key not configured. ' +
-          'Set it in Settings > Voice > Phone Calls (Agents API Key) or in the ElevenLabs TTS configuration.'
+        "ElevenLabs API key not configured. " +
+          "Set it in Settings > Voice > Phone Calls (Agents API Key) or in the ElevenLabs TTS configuration.",
       );
     }
     return key;
@@ -94,28 +96,30 @@ export class VoiceCallTools {
     if (GuardrailManager.isDomainAllowed(url)) return;
     const settings = GuardrailManager.loadSettings();
     const allowedDomainsStr =
-      settings.allowedDomains.length > 0 ? settings.allowedDomains.join(', ') : '(none configured)';
+      settings.allowedDomains.length > 0 ? settings.allowedDomains.join(", ") : "(none configured)";
     throw new Error(
       `Domain not allowed: "${url}"\n` +
         `Allowed domains: ${allowedDomainsStr}\n` +
-        `You can modify allowed domains in Settings > Guardrails.`
+        `You can modify allowed domains in Settings > Guardrails.`,
     );
   }
 
   private async requestApproval(summary: string, details: Record<string, unknown>): Promise<void> {
     const approved = await this.daemon.requestApproval(
       this.taskId,
-      'external_service',
+      "external_service",
       summary,
-      details
+      details,
     );
 
     if (!approved) {
-      throw new Error('User denied phone call');
+      throw new Error("User denied phone call");
     }
   }
 
-  private buildConversationInitiationClientData(input: VoiceCallActionInput): Record<string, unknown> | undefined {
+  private buildConversationInitiationClientData(
+    input: VoiceCallActionInput,
+  ): Record<string, unknown> | undefined {
     if (input.conversation_initiation_client_data) {
       return input.conversation_initiation_client_data;
     }
@@ -129,7 +133,7 @@ export class VoiceCallTools {
     if (!hasAny) return undefined;
 
     const out: Record<string, unknown> = {
-      type: 'conversation_initiation_client_data',
+      type: "conversation_initiation_client_data",
     };
 
     if (input.dynamic_variables && Object.keys(input.dynamic_variables).length > 0) {
@@ -141,13 +145,16 @@ export class VoiceCallTools {
       : {};
 
     if (input.prompt) {
-      override.agent = typeof override.agent === 'object' && override.agent ? override.agent : {};
-      override.agent.prompt = typeof override.agent.prompt === 'object' && override.agent.prompt ? override.agent.prompt : {};
+      override.agent = typeof override.agent === "object" && override.agent ? override.agent : {};
+      override.agent.prompt =
+        typeof override.agent.prompt === "object" && override.agent.prompt
+          ? override.agent.prompt
+          : {};
       override.agent.prompt.prompt = input.prompt;
     }
 
     if (input.first_message) {
-      override.agent = typeof override.agent === 'object' && override.agent ? override.agent : {};
+      override.agent = typeof override.agent === "object" && override.agent ? override.agent : {};
       override.agent.first_message = input.first_message;
     }
 
@@ -159,7 +166,7 @@ export class VoiceCallTools {
   }
 
   private async elevenLabsRequest(params: {
-    method: 'GET' | 'POST';
+    method: "GET" | "POST";
     path: string;
     query?: Record<string, string | number | boolean | undefined>;
     body?: Record<string, unknown>;
@@ -177,8 +184,8 @@ export class VoiceCallTools {
     const response = await fetch(url.toString(), {
       method: params.method,
       headers: {
-        'xi-api-key': apiKey,
-        ...(params.method === 'POST' ? { 'Content-Type': 'application/json' } : {}),
+        "xi-api-key": apiKey,
+        ...(params.method === "POST" ? { "Content-Type": "application/json" } : {}),
       },
       body: params.body ? JSON.stringify(params.body) : undefined,
     });
@@ -193,7 +200,9 @@ export class VoiceCallTools {
       } catch {
         // Keep raw text
       }
-      throw new Error(`ElevenLabs request failed (${response.status} ${response.statusText}): ${message}`);
+      throw new Error(
+        `ElevenLabs request failed (${response.status} ${response.statusText}): ${message}`,
+      );
     }
 
     if (!raw) return {};
@@ -215,10 +224,10 @@ export class VoiceCallTools {
     let result: any;
 
     switch (action) {
-      case 'list_agents': {
+      case "list_agents": {
         result = await this.elevenLabsRequest({
-          method: 'GET',
-          path: '/convai/agents',
+          method: "GET",
+          path: "/convai/agents",
           query: {
             cursor: input.cursor,
             page_size: input.page_size,
@@ -227,10 +236,10 @@ export class VoiceCallTools {
         });
         break;
       }
-      case 'list_phone_numbers': {
+      case "list_phone_numbers": {
         result = await this.elevenLabsRequest({
-          method: 'GET',
-          path: '/convai/phone-numbers',
+          method: "GET",
+          path: "/convai/phone-numbers",
           query: {
             cursor: input.cursor,
             page_size: input.page_size,
@@ -239,35 +248,39 @@ export class VoiceCallTools {
         });
         break;
       }
-      case 'initiate_call': {
-        const toNumber = (input.to_number || '').trim();
+      case "initiate_call": {
+        const toNumber = (input.to_number || "").trim();
         if (!toNumber) {
-          throw new Error('Missing to_number for initiate_call');
+          throw new Error("Missing to_number for initiate_call");
         }
         if (!E164_REGEX.test(toNumber)) {
           throw new Error(
-            `Invalid to_number: "${toNumber}". Use E.164 format (example: "+15555550123").`
+            `Invalid to_number: "${toNumber}". Use E.164 format (example: "+15555550123").`,
           );
         }
 
-        const agentId = (input.agent_id || settings.elevenLabsAgentId || '').trim();
-        const agentPhoneNumberId = (input.agent_phone_number_id || settings.elevenLabsAgentPhoneNumberId || '').trim();
+        const agentId = (input.agent_id || settings.elevenLabsAgentId || "").trim();
+        const agentPhoneNumberId = (
+          input.agent_phone_number_id ||
+          settings.elevenLabsAgentPhoneNumberId ||
+          ""
+        ).trim();
 
         if (!agentId) {
           throw new Error(
-            'Missing agent_id. Set a default Agent ID in Settings > Voice > Phone Calls, or pass agent_id in the tool call.'
+            "Missing agent_id. Set a default Agent ID in Settings > Voice > Phone Calls, or pass agent_id in the tool call.",
           );
         }
         if (!agentPhoneNumberId) {
           throw new Error(
-            'Missing agent_phone_number_id. Set a default Outbound Phone Number ID in Settings > Voice > Phone Calls, or pass agent_phone_number_id in the tool call.'
+            "Missing agent_phone_number_id. Set a default Outbound Phone Number ID in Settings > Voice > Phone Calls, or pass agent_phone_number_id in the tool call.",
           );
         }
 
         const initiationClientData = this.buildConversationInitiationClientData(input);
 
         await this.requestApproval(`Place an outbound phone call to ${toNumber}`, {
-          action: 'initiate_call',
+          action: "initiate_call",
           to_number: toNumber,
           agent_id: agentId,
           agent_phone_number_id: agentPhoneNumberId,
@@ -275,13 +288,15 @@ export class VoiceCallTools {
         });
 
         result = await this.elevenLabsRequest({
-          method: 'POST',
-          path: '/convai/twilio/outbound-call',
+          method: "POST",
+          path: "/convai/twilio/outbound-call",
           body: {
             agent_id: agentId,
             agent_phone_number_id: agentPhoneNumberId,
             to_number: toNumber,
-            ...(initiationClientData ? { conversation_initiation_client_data: initiationClientData } : {}),
+            ...(initiationClientData
+              ? { conversation_initiation_client_data: initiationClientData }
+              : {}),
           },
         });
         break;
@@ -290,8 +305,8 @@ export class VoiceCallTools {
         throw new Error(`Unsupported action: ${action}`);
     }
 
-    this.daemon.logEvent(this.taskId, 'tool_result', {
-      tool: 'voice_call',
+    this.daemon.logEvent(this.taskId, "tool_result", {
+      tool: "voice_call",
       action,
       hasData: !!result,
     });

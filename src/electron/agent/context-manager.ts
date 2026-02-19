@@ -1,5 +1,5 @@
-import { LLMMessage, LLMContent, LLMToolResult } from './llm';
-import { estimateImageTokens } from './llm/image-utils';
+import { LLMMessage, LLMContent, LLMToolResult } from "./llm";
+import { estimateImageTokens } from "./llm/image-utils";
 
 /**
  * Context Manager handles conversation history to prevent "input too long" errors
@@ -8,19 +8,19 @@ import { estimateImageTokens } from './llm/image-utils';
 
 // Approximate token limits for different models
 const MODEL_LIMITS: Record<string, number> = {
-  'opus-4-5': 200000,
-  'sonnet-4-5': 200000,
-  'haiku-4-5': 200000,
-  'sonnet-4': 200000,
-  'sonnet-3-5': 200000,
-  'haiku-3-5': 200000,
+  "opus-4-5": 200000,
+  "sonnet-4-5": 200000,
+  "haiku-4-5": 200000,
+  "sonnet-4": 200000,
+  "sonnet-3-5": 200000,
+  "haiku-3-5": 200000,
   // Common OpenAI model ids (conservative; underestimating is safer than overrunning).
-  'gpt-4o': 128000,
-  'gpt-4o-mini': 128000,
-  'gpt-4.1': 128000,
-  'gpt-4.1-mini': 128000,
-  'gpt-4-turbo': 128000,
-  'gpt-3.5-turbo': 16000,
+  "gpt-4o": 128000,
+  "gpt-4o-mini": 128000,
+  "gpt-4.1": 128000,
+  "gpt-4.1-mini": 128000,
+  "gpt-4-turbo": 128000,
+  "gpt-3.5-turbo": 16000,
   default: 100000,
 };
 
@@ -29,7 +29,12 @@ function inferModelLimit(modelKey: string): number | null {
   if (!key) return null;
 
   // Anthropic raw ids: e.g. "claude-3-5-sonnet-latest"
-  if (key.startsWith('claude-') || key.includes('sonnet') || key.includes('opus') || key.includes('haiku')) {
+  if (
+    key.startsWith("claude-") ||
+    key.includes("sonnet") ||
+    key.includes("opus") ||
+    key.includes("haiku")
+  ) {
     return 200000;
   }
 
@@ -57,22 +62,22 @@ const MAX_TOOL_RESULT_CHARS = MAX_TOOL_RESULT_TOKENS * 4;
 // Messages that begin with one of these tags are treated as "pinned" and should
 // survive compaction. (They are system-generated context blocks, not normal chat turns.)
 const PINNED_MESSAGE_TAG_PREFIXES = [
-  '<cowork_memory_recall>',
-  '<cowork_compaction_summary>',
-  '<cowork_shared_context>',
+  "<cowork_memory_recall>",
+  "<cowork_compaction_summary>",
+  "<cowork_shared_context>",
 ] as const;
 
 function messageTextForPinnedCheck(message: LLMMessage): string {
-  if (typeof message.content === 'string') return message.content;
-  if (!Array.isArray(message.content)) return '';
+  if (typeof message.content === "string") return message.content;
+  if (!Array.isArray(message.content)) return "";
 
   // Prefer the first text block if present.
   for (const block of message.content as any[]) {
-    if (block && block.type === 'text' && typeof block.text === 'string') {
+    if (block && block.type === "text" && typeof block.text === "string") {
       return block.text;
     }
   }
-  return '';
+  return "";
 }
 
 function isPinnedMessage(message: LLMMessage): boolean {
@@ -94,19 +99,19 @@ export function estimateTokens(text: string): number {
  * Estimate tokens for a message
  */
 export function estimateMessageTokens(message: LLMMessage): number {
-  if (typeof message.content === 'string') {
+  if (typeof message.content === "string") {
     return estimateTokens(message.content) + 10; // Add overhead for role, etc.
   }
 
   let tokens = 10; // Base overhead
   for (const content of message.content) {
-    if (content.type === 'text') {
+    if (content.type === "text") {
       tokens += estimateTokens(content.text);
-    } else if (content.type === 'tool_use') {
+    } else if (content.type === "tool_use") {
       tokens += estimateTokens(content.name) + estimateTokens(JSON.stringify(content.input));
-    } else if (content.type === 'tool_result') {
+    } else if (content.type === "tool_result") {
       tokens += estimateTokens(content.content);
-    } else if (content.type === 'image') {
+    } else if (content.type === "image") {
       tokens += estimateImageTokens(content);
     }
   }
@@ -132,7 +137,7 @@ export function truncateToTokens(text: string, maxTokens: number): string {
   if (text.length <= maxChars) return text;
 
   const truncated = text.slice(0, maxChars - 100);
-  return truncated + '\n\n[... content truncated due to length ...]';
+  return truncated + "\n\n[... content truncated due to length ...]";
 }
 
 /**
@@ -165,7 +170,7 @@ export function truncateToolResult(result: string): string {
     }
 
     // If it's an object with content field (like file content), truncate the content
-    if (parsed.content && typeof parsed.content === 'string') {
+    if (parsed.content && typeof parsed.content === "string") {
       parsed.content = truncateToTokens(parsed.content, MAX_TOOL_RESULT_TOKENS / 2);
       return JSON.stringify(parsed, null, 2);
     }
@@ -175,7 +180,7 @@ export function truncateToolResult(result: string): string {
   return truncateToTokens(result, MAX_TOOL_RESULT_TOKENS);
 }
 
-export type CompactionKind = 'none' | 'tool_truncation_only' | 'message_removal';
+export type CompactionKind = "none" | "tool_truncation_only" | "message_removal";
 
 export type CompactionMeta = {
   availableTokens: number;
@@ -206,7 +211,7 @@ export class ContextManager {
   private modelKey: string;
   private maxTokens: number;
 
-  constructor(modelKey: string = 'default') {
+  constructor(modelKey: string = "default") {
     this.modelKey = modelKey;
     this.maxTokens = MODEL_LIMITS[modelKey] || inferModelLimit(modelKey) || MODEL_LIMITS.default;
   }
@@ -228,7 +233,7 @@ export class ContextManager {
   /**
    * Estimate how many output tokens remain for a request, given current input.
    */
-  estimateMaxOutputTokens(messages: LLMMessage[], systemPrompt: string = ''): number {
+  estimateMaxOutputTokens(messages: LLMMessage[], systemPrompt: string = ""): number {
     const inputTokens = estimateTotalTokens(messages, systemPrompt);
     return Math.max(1, this.maxTokens - inputTokens);
   }
@@ -237,16 +242,13 @@ export class ContextManager {
    * Compact messages to fit within token limit
    * Preserves recent messages and summarizes older ones
    */
-  compactMessages(
-    messages: LLMMessage[],
-    systemPromptTokens: number = 0
-  ): LLMMessage[] {
+  compactMessages(messages: LLMMessage[], systemPromptTokens: number = 0): LLMMessage[] {
     return this.compactMessagesWithMeta(messages, systemPromptTokens).messages;
   }
 
   compactMessagesWithMeta(
     messages: LLMMessage[],
-    systemPromptTokens: number = 0
+    systemPromptTokens: number = 0,
   ): CompactionResult {
     const availableTokens = this.getAvailableTokens(systemPromptTokens);
     let currentTokens = estimateTotalTokens(messages);
@@ -260,7 +262,7 @@ export class ContextManager {
           originalTokens: currentTokens,
           truncatedToolResults: { didTruncate: false, count: 0, tokensAfter: currentTokens },
           removedMessages: { didRemove: false, count: 0, tokensAfter: currentTokens, messages: [] },
-          kind: 'none',
+          kind: "none",
         },
       };
     }
@@ -284,7 +286,7 @@ export class ContextManager {
             tokensAfter: currentTokens,
           },
           removedMessages: { didRemove: false, count: 0, tokensAfter: currentTokens, messages: [] },
-          kind: 'tool_truncation_only',
+          kind: "tool_truncation_only",
         },
       };
     }
@@ -310,7 +312,7 @@ export class ContextManager {
           tokensAfter: currentTokens,
           messages: removed.removedMessages,
         },
-        kind: removed.removedMessages.length > 0 ? 'message_removal' : 'tool_truncation_only',
+        kind: removed.removedMessages.length > 0 ? "message_removal" : "tool_truncation_only",
       },
     };
   }
@@ -318,29 +320,32 @@ export class ContextManager {
   /**
    * Truncate large tool results in messages
    */
-  private truncateLargeResultsWithMeta(messages: LLMMessage[]): { messages: LLMMessage[]; count: number } {
+  private truncateLargeResultsWithMeta(messages: LLMMessage[]): {
+    messages: LLMMessage[];
+    count: number;
+  } {
     let truncatedCount = 0;
-    const out = messages.map(msg => {
-      if (typeof msg.content === 'string') return msg;
+    const out = messages.map((msg) => {
+      if (typeof msg.content === "string") return msg;
 
       // Check if this message has tool results
-      const hasToolResults = msg.content.some(c => c.type === 'tool_result');
+      const hasToolResults = msg.content.some((c) => c.type === "tool_result");
       if (!hasToolResults) return msg;
 
       // Truncate tool results
-      const newContent = msg.content.map(content => {
-        if (content.type === 'tool_result') {
+      const newContent = msg.content.map((content) => {
+        if (content.type === "tool_result") {
           const next = truncateToolResult(content.content);
           if (next !== content.content) truncatedCount += 1;
           return {
-            type: 'tool_result' as const,
+            type: "tool_result" as const,
             tool_use_id: content.tool_use_id,
             content: next,
             ...(content.is_error ? { is_error: content.is_error } : {}),
           };
         }
         return content;
-      }) as LLMMessage['content'];
+      }) as LLMMessage["content"];
 
       return { ...msg, content: newContent };
     });
@@ -352,7 +357,7 @@ export class ContextManager {
    */
   private removeOlderMessagesWithMeta(
     messages: LLMMessage[],
-    targetTokens: number
+    targetTokens: number,
   ): { messages: LLMMessage[]; removedMessages: LLMMessage[] } {
     if (messages.length <= 2) return { messages, removedMessages: [] };
 
@@ -404,7 +409,7 @@ export class ContextManager {
   wouldExceedLimit(
     currentMessages: LLMMessage[],
     newMessage: LLMMessage,
-    systemPromptTokens: number = 0
+    systemPromptTokens: number = 0,
   ): boolean {
     const currentTokens = estimateTotalTokens(currentMessages);
     const newTokens = estimateMessageTokens(newMessage);

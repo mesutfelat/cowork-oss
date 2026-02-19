@@ -4,17 +4,17 @@
  * Settings are stored encrypted in the database using SecureSettingsRepository.
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
-import { SecureSettingsRepository } from '../../database/SecureSettingsRepository';
-import { getUserDataDir } from '../../utils/user-data-dir';
+import * as fs from "fs";
+import * as path from "path";
+import { SecureSettingsRepository } from "../../database/SecureSettingsRepository";
+import { getUserDataDir } from "../../utils/user-data-dir";
 
 /**
  * Tool category configuration
  */
 export interface ToolCategoryConfig {
   enabled: boolean;
-  priority: 'high' | 'normal' | 'low';
+  priority: "high" | "normal" | "low";
   description?: string;
 }
 
@@ -23,10 +23,10 @@ export interface ToolCategoryConfig {
  */
 export interface ToolOverride {
   enabled: boolean;
-  priority?: 'high' | 'normal' | 'low';
+  priority?: "high" | "normal" | "low";
 }
 
-export type RunCommandApprovalMode = 'per_command' | 'single_bundle';
+export type RunCommandApprovalMode = "per_command" | "single_bundle";
 
 /**
  * Built-in tools settings structure
@@ -63,141 +63,141 @@ const DEFAULT_SETTINGS: BuiltinToolsSettings = {
   categories: {
     code: {
       enabled: true,
-      priority: 'high',
-      description: 'Code tools (glob, grep, edit) - preferred for code navigation and editing',
+      priority: "high",
+      description: "Code tools (glob, grep, edit) - preferred for code navigation and editing",
     },
     webfetch: {
       enabled: true,
-      priority: 'high',
-      description: 'Lightweight web fetching (preferred for reading web content)',
+      priority: "high",
+      description: "Lightweight web fetching (preferred for reading web content)",
     },
     browser: {
       enabled: true,
-      priority: 'normal',
-      description: 'Browser automation tools (navigate, click, screenshot, etc.)',
+      priority: "normal",
+      description: "Browser automation tools (navigate, click, screenshot, etc.)",
     },
     search: {
       enabled: true,
-      priority: 'normal',
-      description: 'Web search tools (Brave, Tavily, etc.)',
+      priority: "normal",
+      description: "Web search tools (Brave, Tavily, etc.)",
     },
     system: {
       enabled: true,
-      priority: 'normal',
-      description: 'System tools (clipboard, screenshot, open apps, etc.)',
+      priority: "normal",
+      description: "System tools (clipboard, screenshot, open apps, etc.)",
     },
     file: {
       enabled: true,
-      priority: 'normal',
-      description: 'File operations (read, write, copy, delete, etc.)',
+      priority: "normal",
+      description: "File operations (read, write, copy, delete, etc.)",
     },
     skill: {
       enabled: true,
-      priority: 'normal',
-      description: 'Document creation skills (spreadsheets, documents, presentations)',
+      priority: "normal",
+      description: "Document creation skills (spreadsheets, documents, presentations)",
     },
     shell: {
       enabled: true,
-      priority: 'normal',
-      description: 'Shell command execution (requires workspace permission)',
+      priority: "normal",
+      description: "Shell command execution (requires workspace permission)",
     },
     image: {
       enabled: true,
-      priority: 'normal',
-      description: 'AI image generation (requires Gemini API)',
+      priority: "normal",
+      description: "AI image generation (requires Gemini API)",
     },
   },
   toolOverrides: {},
   toolTimeouts: {},
   toolAutoApprove: {},
-  runCommandApprovalMode: 'per_command',
-  version: '1.0.0',
+  runCommandApprovalMode: "per_command",
+  version: "1.0.0",
 };
 
 /**
  * Tool category mapping
  */
-const TOOL_CATEGORIES: Record<string, keyof BuiltinToolsSettings['categories']> = {
+const TOOL_CATEGORIES: Record<string, keyof BuiltinToolsSettings["categories"]> = {
   // Code tools (high priority)
-  glob: 'code',
-  grep: 'code',
-  edit_file: 'code',
-  monty_run: 'code',
-  monty_list_transforms: 'code',
-  monty_run_transform: 'code',
-  monty_transform_file: 'code',
-  extract_json: 'code',
+  glob: "code",
+  grep: "code",
+  edit_file: "code",
+  monty_run: "code",
+  monty_list_transforms: "code",
+  monty_run_transform: "code",
+  monty_transform_file: "code",
+  extract_json: "code",
   // Web fetch tools (high priority)
-  web_fetch: 'webfetch',
-  notion_action: 'webfetch',
-  box_action: 'webfetch',
-  onedrive_action: 'webfetch',
-  google_drive_action: 'webfetch',
-  gmail_action: 'webfetch',
-  email_imap_unread: 'webfetch',
-  calendar_action: 'webfetch',
-  apple_calendar_action: 'webfetch',
-  dropbox_action: 'webfetch',
-  sharepoint_action: 'webfetch',
-  voice_call: 'webfetch',
+  web_fetch: "webfetch",
+  notion_action: "webfetch",
+  box_action: "webfetch",
+  onedrive_action: "webfetch",
+  google_drive_action: "webfetch",
+  gmail_action: "webfetch",
+  email_imap_unread: "webfetch",
+  calendar_action: "webfetch",
+  apple_calendar_action: "webfetch",
+  dropbox_action: "webfetch",
+  sharepoint_action: "webfetch",
+  voice_call: "webfetch",
   // Browser tools
-  browser_navigate: 'browser',
-  browser_screenshot: 'browser',
-  browser_get_content: 'browser',
-  browser_click: 'browser',
-  browser_fill: 'browser',
-  browser_type: 'browser',
-  browser_press: 'browser',
-  browser_wait: 'browser',
-  browser_scroll: 'browser',
-  browser_select: 'browser',
-  browser_get_text: 'browser',
-  browser_evaluate: 'browser',
-  browser_back: 'browser',
-  browser_forward: 'browser',
-  browser_reload: 'browser',
-  browser_save_pdf: 'browser',
-  browser_close: 'browser',
+  browser_navigate: "browser",
+  browser_screenshot: "browser",
+  browser_get_content: "browser",
+  browser_click: "browser",
+  browser_fill: "browser",
+  browser_type: "browser",
+  browser_press: "browser",
+  browser_wait: "browser",
+  browser_scroll: "browser",
+  browser_select: "browser",
+  browser_get_text: "browser",
+  browser_evaluate: "browser",
+  browser_back: "browser",
+  browser_forward: "browser",
+  browser_reload: "browser",
+  browser_save_pdf: "browser",
+  browser_close: "browser",
   // Search tools
-  web_search: 'search',
+  web_search: "search",
   // System tools
-  system_info: 'system',
-  read_clipboard: 'system',
-  write_clipboard: 'system',
-  take_screenshot: 'system',
-  open_application: 'system',
-  open_url: 'system',
-  open_path: 'system',
-  show_in_folder: 'system',
-  get_env: 'system',
-  get_app_paths: 'system',
-  run_applescript: 'system',
+  system_info: "system",
+  read_clipboard: "system",
+  write_clipboard: "system",
+  take_screenshot: "system",
+  open_application: "system",
+  open_url: "system",
+  open_path: "system",
+  show_in_folder: "system",
+  get_env: "system",
+  get_app_paths: "system",
+  run_applescript: "system",
   // File tools
-  read_file: 'file',
-  read_files: 'file',
-  write_file: 'file',
-  copy_file: 'file',
-  list_directory: 'file',
-  list_directory_with_sizes: 'file',
-  get_file_info: 'file',
-  rename_file: 'file',
-  delete_file: 'file',
-  create_directory: 'file',
-  search_files: 'file',
+  read_file: "file",
+  read_files: "file",
+  write_file: "file",
+  copy_file: "file",
+  list_directory: "file",
+  list_directory_with_sizes: "file",
+  get_file_info: "file",
+  rename_file: "file",
+  delete_file: "file",
+  create_directory: "file",
+  search_files: "file",
   // Skill tools
-  create_spreadsheet: 'skill',
-  create_document: 'skill',
-  edit_document: 'skill',
-  create_presentation: 'skill',
-  organize_folder: 'skill',
+  create_spreadsheet: "skill",
+  create_document: "skill",
+  edit_document: "skill",
+  create_presentation: "skill",
+  organize_folder: "skill",
   // Shell tools
-  run_command: 'shell',
-  x_action: 'shell',
+  run_command: "shell",
+  x_action: "shell",
   // Image tools
-  generate_image: 'image',
+  generate_image: "image",
 };
 
-const LEGACY_SETTINGS_FILE = 'builtin-tools-settings.json';
+const LEGACY_SETTINGS_FILE = "builtin-tools-settings.json";
 
 export class BuiltinToolsSettingsManager {
   private static legacySettingsPath: string | null = null;
@@ -228,7 +228,7 @@ export class BuiltinToolsSettingsManager {
 
       const repository = SecureSettingsRepository.getInstance();
 
-      if (repository.exists('builtintools')) {
+      if (repository.exists("builtintools")) {
         this.migrationCompleted = true;
         return;
       }
@@ -239,32 +239,34 @@ export class BuiltinToolsSettingsManager {
         return;
       }
 
-      console.log('[BuiltinToolsSettings] Migrating settings from legacy JSON file to encrypted database...');
+      console.log(
+        "[BuiltinToolsSettings] Migrating settings from legacy JSON file to encrypted database...",
+      );
 
       // Create backup before migration
-      const backupPath = legacyPath + '.migration-backup';
+      const backupPath = legacyPath + ".migration-backup";
       fs.copyFileSync(legacyPath, backupPath);
 
       try {
-        const data = fs.readFileSync(legacyPath, 'utf-8');
+        const data = fs.readFileSync(legacyPath, "utf-8");
         const settings = JSON.parse(data) as BuiltinToolsSettings;
         const merged = this.mergeWithDefaults(settings);
 
-        repository.save('builtintools', merged);
-        console.log('[BuiltinToolsSettings] Settings migrated to encrypted database');
+        repository.save("builtintools", merged);
+        console.log("[BuiltinToolsSettings] Settings migrated to encrypted database");
 
         // Migration successful - delete backup and original
         fs.unlinkSync(backupPath);
         fs.unlinkSync(legacyPath);
-        console.log('[BuiltinToolsSettings] Migration complete, cleaned up legacy files');
+        console.log("[BuiltinToolsSettings] Migration complete, cleaned up legacy files");
 
         this.migrationCompleted = true;
       } catch (migrationError) {
-        console.error('[BuiltinToolsSettings] Migration failed, backup preserved at:', backupPath);
+        console.error("[BuiltinToolsSettings] Migration failed, backup preserved at:", backupPath);
         throw migrationError;
       }
     } catch (error) {
-      console.error('[BuiltinToolsSettings] Migration failed:', error);
+      console.error("[BuiltinToolsSettings] Migration failed:", error);
     }
   }
 
@@ -282,14 +284,14 @@ export class BuiltinToolsSettingsManager {
     try {
       if (SecureSettingsRepository.isInitialized()) {
         const repository = SecureSettingsRepository.getInstance();
-        const stored = repository.load<BuiltinToolsSettings>('builtintools');
+        const stored = repository.load<BuiltinToolsSettings>("builtintools");
         if (stored) {
           this.cachedSettings = this.mergeWithDefaults(stored);
           return this.cachedSettings;
         }
       }
     } catch (error) {
-      console.error('[BuiltinToolsSettings] Error loading settings:', error);
+      console.error("[BuiltinToolsSettings] Error loading settings:", error);
     }
 
     // Deep clone to prevent mutation of DEFAULT_SETTINGS
@@ -304,15 +306,15 @@ export class BuiltinToolsSettingsManager {
   static saveSettings(settings: BuiltinToolsSettings): void {
     try {
       if (!SecureSettingsRepository.isInitialized()) {
-        throw new Error('SecureSettingsRepository not initialized');
+        throw new Error("SecureSettingsRepository not initialized");
       }
 
       const repository = SecureSettingsRepository.getInstance();
-      repository.save('builtintools', settings);
+      repository.save("builtintools", settings);
       this.cachedSettings = settings;
-      console.log('[BuiltinToolsSettings] Settings saved to encrypted database');
+      console.log("[BuiltinToolsSettings] Settings saved to encrypted database");
     } catch (error) {
-      console.error('[BuiltinToolsSettings] Error saving settings:', error);
+      console.error("[BuiltinToolsSettings] Error saving settings:", error);
       throw error;
     }
   }
@@ -331,7 +333,8 @@ export class BuiltinToolsSettingsManager {
       toolOverrides: settings.toolOverrides || {},
       toolTimeouts: settings.toolTimeouts || {},
       toolAutoApprove: settings.toolAutoApprove || {},
-      runCommandApprovalMode: settings.runCommandApprovalMode === 'single_bundle' ? 'single_bundle' : 'per_command',
+      runCommandApprovalMode:
+        settings.runCommandApprovalMode === "single_bundle" ? "single_bundle" : "per_command",
       version: settings.version || defaults.version,
     };
   }
@@ -360,7 +363,7 @@ export class BuiltinToolsSettingsManager {
   /**
    * Get tool priority
    */
-  static getToolPriority(toolName: string): 'high' | 'normal' | 'low' {
+  static getToolPriority(toolName: string): "high" | "normal" | "low" {
     const settings = this.loadSettings();
 
     // Check individual override first
@@ -374,7 +377,7 @@ export class BuiltinToolsSettingsManager {
       return settings.categories[category].priority;
     }
 
-    return 'normal';
+    return "normal";
   }
 
   /**
@@ -390,7 +393,7 @@ export class BuiltinToolsSettingsManager {
   static getToolTimeoutMs(toolName: string): number | null {
     const settings = this.loadSettings();
     const timeout = settings.toolTimeouts?.[toolName];
-    if (typeof timeout !== 'number' || !Number.isFinite(timeout) || timeout <= 0) {
+    if (typeof timeout !== "number" || !Number.isFinite(timeout) || timeout <= 0) {
       return null;
     }
     return Math.round(timeout);
@@ -409,9 +412,7 @@ export class BuiltinToolsSettingsManager {
    */
   static getRunCommandApprovalMode(): RunCommandApprovalMode {
     const settings = this.loadSettings();
-    return settings.runCommandApprovalMode === 'single_bundle'
-      ? 'single_bundle'
-      : 'per_command';
+    return settings.runCommandApprovalMode === "single_bundle" ? "single_bundle" : "per_command";
   }
 
   /**
@@ -431,7 +432,10 @@ export class BuiltinToolsSettingsManager {
   /**
    * Enable/disable a category
    */
-  static setCategoryEnabled(category: keyof BuiltinToolsSettings['categories'], enabled: boolean): void {
+  static setCategoryEnabled(
+    category: keyof BuiltinToolsSettings["categories"],
+    enabled: boolean,
+  ): void {
     const settings = this.loadSettings();
     if (settings.categories[category]) {
       settings.categories[category].enabled = enabled;
@@ -443,8 +447,8 @@ export class BuiltinToolsSettingsManager {
    * Set category priority
    */
   static setCategoryPriority(
-    category: keyof BuiltinToolsSettings['categories'],
-    priority: 'high' | 'normal' | 'low'
+    category: keyof BuiltinToolsSettings["categories"],
+    priority: "high" | "normal" | "low",
   ): void {
     const settings = this.loadSettings();
     if (settings.categories[category]) {

@@ -6,8 +6,8 @@
  * - Tool restrictions per context
  */
 
-import { useState } from 'react';
-import { ContextType, SecurityMode, ContextPolicy } from '../../shared/types';
+import { useState } from "react";
+import { ContextType, SecurityMode, ContextPolicy } from "../../shared/types";
 
 interface ContextPolicySettingsProps {
   /** Channel ID for the policies */
@@ -22,7 +22,7 @@ interface ContextPolicySettingsProps {
   /** Callback when policy changes */
   onPolicyChange: (
     contextType: ContextType,
-    updates: { securityMode?: SecurityMode; toolRestrictions?: string[] }
+    updates: { securityMode?: SecurityMode; toolRestrictions?: string[] },
   ) => void;
   /** Whether changes are being saved */
   isSaving?: boolean;
@@ -31,46 +31,46 @@ interface ContextPolicySettingsProps {
 // Tool groups that can be restricted
 const TOOL_GROUPS = [
   {
-    id: 'group:memory',
-    name: 'Memory Tools',
-    description: 'Clipboard read/write access',
+    id: "group:memory",
+    name: "Memory Tools",
+    description: "Clipboard read/write access",
     defaultDeniedInGroup: true,
   },
   {
-    id: 'group:system',
-    name: 'System Tools',
-    description: 'Screenshot, app launch, system info',
+    id: "group:system",
+    name: "System Tools",
+    description: "Screenshot, app launch, system info",
     defaultDeniedInGroup: false,
   },
   {
-    id: 'group:network',
-    name: 'Network Tools',
-    description: 'Browser and web access',
+    id: "group:network",
+    name: "Network Tools",
+    description: "Browser and web access",
     defaultDeniedInGroup: false,
   },
   {
-    id: 'group:destructive',
-    name: 'Destructive Tools',
-    description: 'File deletion and shell commands',
+    id: "group:destructive",
+    name: "Destructive Tools",
+    description: "File deletion and shell commands",
     defaultDeniedInGroup: false,
   },
 ];
 
 const SECURITY_MODES: { value: SecurityMode; label: string; description: string }[] = [
   {
-    value: 'pairing',
-    label: 'Pairing (Recommended)',
-    description: 'Users must enter a pairing code to connect',
+    value: "pairing",
+    label: "Pairing (Recommended)",
+    description: "Users must enter a pairing code to connect",
   },
   {
-    value: 'allowlist',
-    label: 'Allowlist',
-    description: 'Only pre-approved users can interact',
+    value: "allowlist",
+    label: "Allowlist",
+    description: "Only pre-approved users can interact",
   },
   {
-    value: 'open',
-    label: 'Open',
-    description: 'Anyone can interact (use with caution)',
+    value: "open",
+    label: "Open",
+    description: "Anyone can interact (use with caution)",
   },
 ];
 
@@ -81,11 +81,11 @@ export function ContextPolicySettings({
   onPolicyChange,
   isSaving = false,
 }: ContextPolicySettingsProps) {
-  const [activeTab, setActiveTab] = useState<ContextType>('dm');
+  const [activeTab, setActiveTab] = useState<ContextType>("dm");
 
   // Get policy for current tab
-  const currentPolicy = activeTab === 'dm' ? policies.dm : policies.group;
-  const securityMode = currentPolicy?.securityMode || 'pairing';
+  const currentPolicy = activeTab === "dm" ? policies.dm : policies.group;
+  const securityMode = currentPolicy?.securityMode || "pairing";
   const toolRestrictions = currentPolicy?.toolRestrictions || [];
 
   const handleSecurityModeChange = (mode: SecurityMode) => {
@@ -100,9 +100,14 @@ export function ContextPolicySettings({
   };
 
   // Check if this channel type supports groups
-  const supportsGroups = ['telegram', 'discord', 'slack', 'signal', 'matrix', 'mattermost'].includes(
-    channelType
-  );
+  const supportsGroups = [
+    "telegram",
+    "discord",
+    "slack",
+    "signal",
+    "matrix",
+    "mattermost",
+  ].includes(channelType);
 
   return (
     <div className="context-policy-settings">
@@ -110,15 +115,15 @@ export function ContextPolicySettings({
       {supportsGroups && (
         <div className="context-tabs">
           <button
-            className={`tab ${activeTab === 'dm' ? 'active' : ''}`}
-            onClick={() => setActiveTab('dm')}
+            className={`tab ${activeTab === "dm" ? "active" : ""}`}
+            onClick={() => setActiveTab("dm")}
           >
             <DMIcon />
             Direct Messages
           </button>
           <button
-            className={`tab ${activeTab === 'group' ? 'active' : ''}`}
-            onClick={() => setActiveTab('group')}
+            className={`tab ${activeTab === "group" ? "active" : ""}`}
+            onClick={() => setActiveTab("group")}
           >
             <GroupIcon />
             Group Chats
@@ -130,13 +135,14 @@ export function ContextPolicySettings({
       <div className="settings-section">
         <h4>Security Mode</h4>
         <p className="section-description">
-          How users are authorized to interact in {activeTab === 'dm' ? 'direct messages' : 'group chats'}
+          How users are authorized to interact in{" "}
+          {activeTab === "dm" ? "direct messages" : "group chats"}
         </p>
         <div className="security-mode-options">
           {SECURITY_MODES.map((mode) => (
             <label
               key={mode.value}
-              className={`mode-option ${securityMode === mode.value ? 'selected' : ''}`}
+              className={`mode-option ${securityMode === mode.value ? "selected" : ""}`}
             >
               <input
                 type="radio"
@@ -155,7 +161,7 @@ export function ContextPolicySettings({
           ))}
         </div>
 
-        {securityMode === 'open' && (
+        {securityMode === "open" && (
           <div className="warning-banner">
             <WarningIcon />
             <span>
@@ -174,13 +180,10 @@ export function ContextPolicySettings({
         <div className="tool-restrictions">
           {TOOL_GROUPS.map((group) => {
             const isDenied = toolRestrictions.includes(group.id);
-            const isDefaultDenied = activeTab === 'group' && group.defaultDeniedInGroup;
+            const isDefaultDenied = activeTab === "group" && group.defaultDeniedInGroup;
 
             return (
-              <label
-                key={group.id}
-                className={`tool-option ${isDenied ? 'denied' : 'allowed'}`}
-              >
+              <label key={group.id} className={`tool-option ${isDenied ? "denied" : "allowed"}`}>
                 <div className="tool-toggle">
                   <input
                     type="checkbox"
@@ -218,13 +221,19 @@ export function ContextPolicySettings({
             <tbody>
               <tr>
                 <td>Security Mode</td>
-                <td>{policies.dm?.securityMode || 'pairing'}</td>
-                <td>{policies.group?.securityMode || 'pairing'}</td>
+                <td>{policies.dm?.securityMode || "pairing"}</td>
+                <td>{policies.group?.securityMode || "pairing"}</td>
               </tr>
               <tr>
                 <td>Memory Tools</td>
-                <td>{policies.dm?.toolRestrictions?.includes('group:memory') ? 'Denied' : 'Allowed'}</td>
-                <td>{policies.group?.toolRestrictions?.includes('group:memory') ? 'Denied' : 'Allowed'}</td>
+                <td>
+                  {policies.dm?.toolRestrictions?.includes("group:memory") ? "Denied" : "Allowed"}
+                </td>
+                <td>
+                  {policies.group?.toolRestrictions?.includes("group:memory")
+                    ? "Denied"
+                    : "Allowed"}
+                </td>
               </tr>
             </tbody>
           </table>
@@ -484,7 +493,14 @@ export function ContextPolicySettings({
 // Icon components
 function DMIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
       <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
       <circle cx="12" cy="7" r="4" />
     </svg>
@@ -493,7 +509,14 @@ function DMIcon() {
 
 function GroupIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
       <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
       <circle cx="9" cy="7" r="4" />
       <path d="M23 21v-2a4 4 0 00-3-3.87" />
@@ -504,7 +527,14 @@ function GroupIcon() {
 
 function CheckIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
       <polyline points="20 6 9 17 4 12" />
     </svg>
   );
@@ -512,7 +542,14 @@ function CheckIcon() {
 
 function WarningIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
       <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
       <line x1="12" y1="9" x2="12" y2="13" />
       <line x1="12" y1="17" x2="12.01" y2="17" />

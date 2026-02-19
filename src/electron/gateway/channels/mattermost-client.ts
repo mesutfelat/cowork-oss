@@ -16,10 +16,10 @@
  * - Personal access token (generated in Account Settings > Security)
  */
 
-import { EventEmitter } from 'events';
-import * as https from 'https';
-import * as http from 'http';
-import WebSocket from 'ws';
+import { EventEmitter } from "events";
+import * as https from "https";
+import * as http from "http";
+import WebSocket from "ws";
 
 /**
  * Mattermost message types
@@ -71,7 +71,7 @@ export interface MattermostUser {
 export interface MattermostChannel {
   id: string;
   team_id: string;
-  type: 'O' | 'P' | 'D' | 'G'; // Open, Private, Direct, Group
+  type: "O" | "P" | "D" | "G"; // Open, Private, Direct, Group
   display_name: string;
   name: string;
   header: string;
@@ -141,7 +141,7 @@ export class MattermostClient extends EventEmitter {
     // Parse and construct URLs
     const url = new URL(options.serverUrl);
     this.baseUrl = `${url.protocol}//${url.host}`;
-    const wsProtocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsProtocol = url.protocol === "https:" ? "wss:" : "ws:";
     this.wsUrl = `${wsProtocol}//${url.host}/api/v4/websocket`;
   }
 
@@ -150,7 +150,7 @@ export class MattermostClient extends EventEmitter {
    */
   async checkConnection(): Promise<{ success: boolean; userId?: string; error?: string }> {
     try {
-      const user = await this.apiRequest<MattermostUser>('GET', '/api/v4/users/me');
+      const user = await this.apiRequest<MattermostUser>("GET", "/api/v4/users/me");
       return { success: true, userId: user.id };
     } catch (error) {
       return {
@@ -164,14 +164,14 @@ export class MattermostClient extends EventEmitter {
    * Get the current user info
    */
   async getCurrentUser(): Promise<MattermostUser> {
-    return this.apiRequest<MattermostUser>('GET', '/api/v4/users/me');
+    return this.apiRequest<MattermostUser>("GET", "/api/v4/users/me");
   }
 
   /**
    * Get user by ID
    */
   async getUser(userId: string): Promise<MattermostUser> {
-    return this.apiRequest<MattermostUser>('GET', `/api/v4/users/${userId}`);
+    return this.apiRequest<MattermostUser>("GET", `/api/v4/users/${userId}`);
   }
 
   /**
@@ -197,31 +197,31 @@ export class MattermostClient extends EventEmitter {
         },
       });
 
-      this.ws.on('open', () => {
+      this.ws.on("open", () => {
         this.connected = true;
         this.startPing();
-        this.emit('connected');
+        this.emit("connected");
         resolve();
       });
 
-      this.ws.on('message', (data: Buffer) => {
+      this.ws.on("message", (data: Buffer) => {
         this.handleWebSocketMessage(data.toString());
       });
 
-      this.ws.on('error', (error: Error) => {
+      this.ws.on("error", (error: Error) => {
         if (this.options.verbose) {
-          console.error('Mattermost WebSocket error:', error);
+          console.error("Mattermost WebSocket error:", error);
         }
-        this.emit('error', error);
+        this.emit("error", error);
         if (!this.connected) {
           reject(error);
         }
       });
 
-      this.ws.on('close', () => {
+      this.ws.on("close", () => {
         this.connected = false;
         this.stopPing();
-        this.emit('disconnected');
+        this.emit("disconnected");
         this.scheduleReconnect();
       });
     });
@@ -234,7 +234,7 @@ export class MattermostClient extends EventEmitter {
     try {
       const event: MattermostWebSocketEvent = JSON.parse(data);
 
-      if (event.event === 'posted' && event.data.post) {
+      if (event.event === "posted" && event.data.post) {
         const post: MattermostPost = JSON.parse(event.data.post);
 
         // Skip own messages
@@ -242,12 +242,12 @@ export class MattermostClient extends EventEmitter {
           return;
         }
 
-        const channelType = event.data.channel_type || 'O';
-        this.emit('post', post, channelType);
+        const channelType = event.data.channel_type || "O";
+        this.emit("post", post, channelType);
       }
     } catch (error) {
       if (this.options.verbose) {
-        console.error('Failed to parse Mattermost WebSocket message:', error);
+        console.error("Failed to parse Mattermost WebSocket message:", error);
       }
     }
   }
@@ -286,7 +286,7 @@ export class MattermostClient extends EventEmitter {
       try {
         await this.startReceiving();
       } catch (error) {
-        console.error('Mattermost reconnection failed:', error);
+        console.error("Mattermost reconnection failed:", error);
         this.scheduleReconnect();
       }
     }, 5000);
@@ -309,7 +309,7 @@ export class MattermostClient extends EventEmitter {
     }
 
     this.connected = false;
-    this.emit('disconnected');
+    this.emit("disconnected");
   }
 
   /**
@@ -321,7 +321,7 @@ export class MattermostClient extends EventEmitter {
     options?: {
       rootId?: string;
       fileIds?: string[];
-    }
+    },
   ): Promise<MattermostPost> {
     const body: Record<string, unknown> = {
       channel_id: channelId,
@@ -336,14 +336,14 @@ export class MattermostClient extends EventEmitter {
       body.file_ids = options.fileIds;
     }
 
-    return this.apiRequest<MattermostPost>('POST', '/api/v4/posts', body);
+    return this.apiRequest<MattermostPost>("POST", "/api/v4/posts", body);
   }
 
   /**
    * Update a message
    */
   async updateMessage(postId: string, message: string): Promise<MattermostPost> {
-    return this.apiRequest<MattermostPost>('PUT', `/api/v4/posts/${postId}`, {
+    return this.apiRequest<MattermostPost>("PUT", `/api/v4/posts/${postId}`, {
       id: postId,
       message,
     });
@@ -353,14 +353,14 @@ export class MattermostClient extends EventEmitter {
    * Delete a message
    */
   async deleteMessage(postId: string): Promise<void> {
-    await this.apiRequest('DELETE', `/api/v4/posts/${postId}`);
+    await this.apiRequest("DELETE", `/api/v4/posts/${postId}`);
   }
 
   /**
    * Add a reaction to a post
    */
   async addReaction(postId: string, emojiName: string): Promise<void> {
-    await this.apiRequest('POST', '/api/v4/reactions', {
+    await this.apiRequest("POST", "/api/v4/reactions", {
       user_id: this.currentUserId,
       post_id: postId,
       emoji_name: emojiName,
@@ -372,8 +372,8 @@ export class MattermostClient extends EventEmitter {
    */
   async removeReaction(postId: string, emojiName: string): Promise<void> {
     await this.apiRequest(
-      'DELETE',
-      `/api/v4/users/${this.currentUserId}/posts/${postId}/reactions/${emojiName}`
+      "DELETE",
+      `/api/v4/users/${this.currentUserId}/posts/${postId}/reactions/${emojiName}`,
     );
   }
 
@@ -381,14 +381,14 @@ export class MattermostClient extends EventEmitter {
    * Get channel by ID
    */
   async getChannel(channelId: string): Promise<MattermostChannel> {
-    return this.apiRequest<MattermostChannel>('GET', `/api/v4/channels/${channelId}`);
+    return this.apiRequest<MattermostChannel>("GET", `/api/v4/channels/${channelId}`);
   }
 
   /**
    * Get direct message channel with a user (creates if doesn't exist)
    */
   async getDirectChannel(userId: string): Promise<MattermostChannel> {
-    return this.apiRequest<MattermostChannel>('POST', '/api/v4/channels/direct', [
+    return this.apiRequest<MattermostChannel>("POST", "/api/v4/channels/direct", [
       this.currentUserId,
       userId,
     ]);
@@ -400,21 +400,21 @@ export class MattermostClient extends EventEmitter {
   async uploadFile(
     channelId: string,
     filePath: string,
-    fileName: string
+    fileName: string,
   ): Promise<{ file_infos: MattermostFile[] }> {
-    const fs = await import('fs');
-    const path = await import('path');
-    const FormData = (await import('form-data')).default;
+    const fs = await import("fs");
+    const path = await import("path");
+    const FormData = (await import("form-data")).default;
 
     const form = new FormData();
-    form.append('channel_id', channelId);
-    form.append('files', fs.createReadStream(filePath), {
+    form.append("channel_id", channelId);
+    form.append("files", fs.createReadStream(filePath), {
       filename: fileName || path.basename(filePath),
     });
 
     return new Promise((resolve, reject) => {
       const url = new URL(`${this.baseUrl}/api/v4/files`);
-      const isHttps = url.protocol === 'https:';
+      const isHttps = url.protocol === "https:";
       const httpModule = isHttps ? https : http;
 
       const req = httpModule.request(
@@ -422,26 +422,26 @@ export class MattermostClient extends EventEmitter {
           hostname: url.hostname,
           port: url.port || (isHttps ? 443 : 80),
           path: url.pathname,
-          method: 'POST',
+          method: "POST",
           headers: {
             ...form.getHeaders(),
             Authorization: `Bearer ${this.options.token}`,
           },
         },
         (res) => {
-          let data = '';
-          res.on('data', (chunk) => (data += chunk));
-          res.on('end', () => {
+          let data = "";
+          res.on("data", (chunk) => (data += chunk));
+          res.on("end", () => {
             if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
               resolve(JSON.parse(data));
             } else {
               reject(new Error(`Upload failed: ${res.statusCode} ${data}`));
             }
           });
-        }
+        },
       );
 
-      req.on('error', reject);
+      req.on("error", reject);
       form.pipe(req);
     });
   }
@@ -456,14 +456,10 @@ export class MattermostClient extends EventEmitter {
   /**
    * Make an API request
    */
-  private apiRequest<T>(
-    method: string,
-    path: string,
-    body?: unknown
-  ): Promise<T> {
+  private apiRequest<T>(method: string, path: string, body?: unknown): Promise<T> {
     return new Promise((resolve, reject) => {
       const url = new URL(`${this.baseUrl}${path}`);
-      const isHttps = url.protocol === 'https:';
+      const isHttps = url.protocol === "https:";
       const httpModule = isHttps ? https : http;
 
       const options: https.RequestOptions = {
@@ -473,14 +469,14 @@ export class MattermostClient extends EventEmitter {
         method,
         headers: {
           Authorization: `Bearer ${this.options.token}`,
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
       };
 
       const req = httpModule.request(options, (res) => {
-        let data = '';
-        res.on('data', (chunk) => (data += chunk));
-        res.on('end', () => {
+        let data = "";
+        res.on("data", (chunk) => (data += chunk));
+        res.on("end", () => {
           if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
             try {
               resolve(data ? JSON.parse(data) : ({} as T));
@@ -500,7 +496,7 @@ export class MattermostClient extends EventEmitter {
         });
       });
 
-      req.on('error', reject);
+      req.on("error", reject);
 
       if (body) {
         req.write(JSON.stringify(body));

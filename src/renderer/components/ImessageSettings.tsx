@@ -1,12 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
-import { ChannelData, ChannelUserData, SecurityMode } from '../../shared/types';
+import { useState, useEffect, useCallback } from "react";
+import { ChannelData, ChannelUserData, SecurityMode } from "../../shared/types";
 
 interface ImessageSettingsProps {
   onStatusChange?: (connected: boolean) => void;
 }
 
-type DmPolicy = 'open' | 'allowlist' | 'pairing' | 'disabled';
-type GroupPolicy = 'open' | 'allowlist' | 'disabled';
+type DmPolicy = "open" | "allowlist" | "pairing" | "disabled";
+type GroupPolicy = "open" | "allowlist" | "disabled";
 
 export function ImessageSettings({ onStatusChange }: ImessageSettingsProps) {
   const [channel, setChannel] = useState<ChannelData | null>(null);
@@ -17,13 +17,13 @@ export function ImessageSettings({ onStatusChange }: ImessageSettingsProps) {
   const [testResult, setTestResult] = useState<{ success: boolean; error?: string } | null>(null);
 
   // Form state
-  const [channelName, setChannelName] = useState('iMessage');
-  const [securityMode, setSecurityMode] = useState<SecurityMode>('pairing');
-  const [cliPath, setCliPath] = useState('');
-  const [dbPath, setDbPath] = useState('');
-  const [allowedContacts, setAllowedContacts] = useState('');
-  const [dmPolicy, setDmPolicy] = useState<DmPolicy>('pairing');
-  const [groupPolicy, setGroupPolicy] = useState<GroupPolicy>('allowlist');
+  const [channelName, setChannelName] = useState("iMessage");
+  const [securityMode, setSecurityMode] = useState<SecurityMode>("pairing");
+  const [cliPath, setCliPath] = useState("");
+  const [dbPath, setDbPath] = useState("");
+  const [allowedContacts, setAllowedContacts] = useState("");
+  const [dmPolicy, setDmPolicy] = useState<DmPolicy>("pairing");
+  const [groupPolicy, setGroupPolicy] = useState<GroupPolicy>("allowlist");
   const [ambientMode, setAmbientMode] = useState(false);
   const [silentUnauthorized, setSilentUnauthorized] = useState(false);
   const [captureSelfMessages, setCaptureSelfMessages] = useState(false);
@@ -38,22 +38,22 @@ export function ImessageSettings({ onStatusChange }: ImessageSettingsProps) {
     try {
       setLoading(true);
       const channels = await window.electronAPI.getGatewayChannels();
-      const imessageChannel = channels.find((c: ChannelData) => c.type === 'imessage');
+      const imessageChannel = channels.find((c: ChannelData) => c.type === "imessage");
 
       if (imessageChannel) {
         setChannel(imessageChannel);
         setChannelName(imessageChannel.name);
         setSecurityMode(imessageChannel.securityMode);
-        onStatusChange?.(imessageChannel.status === 'connected');
+        onStatusChange?.(imessageChannel.status === "connected");
 
         // Load config settings
         if (imessageChannel.config) {
-          setCliPath(imessageChannel.config.cliPath as string || '');
-          setDbPath(imessageChannel.config.dbPath as string || '');
-          setDmPolicy(imessageChannel.config.dmPolicy as DmPolicy || 'pairing');
-          setGroupPolicy(imessageChannel.config.groupPolicy as GroupPolicy || 'allowlist');
-          const contacts = imessageChannel.config.allowedContacts as string[] || [];
-          setAllowedContacts(contacts.join(', '));
+          setCliPath((imessageChannel.config.cliPath as string) || "");
+          setDbPath((imessageChannel.config.dbPath as string) || "");
+          setDmPolicy((imessageChannel.config.dmPolicy as DmPolicy) || "pairing");
+          setGroupPolicy((imessageChannel.config.groupPolicy as GroupPolicy) || "allowlist");
+          const contacts = (imessageChannel.config.allowedContacts as string[]) || [];
+          setAllowedContacts(contacts.join(", "));
           setAmbientMode(Boolean(imessageChannel.config.ambientMode));
           setSilentUnauthorized(Boolean(imessageChannel.config.silentUnauthorized));
           setCaptureSelfMessages(Boolean(imessageChannel.config.captureSelfMessages));
@@ -64,7 +64,7 @@ export function ImessageSettings({ onStatusChange }: ImessageSettingsProps) {
         setUsers(channelUsers);
       }
     } catch (error) {
-      console.error('Failed to load iMessage channel:', error);
+      console.error("Failed to load iMessage channel:", error);
     } finally {
       setLoading(false);
     }
@@ -73,14 +73,14 @@ export function ImessageSettings({ onStatusChange }: ImessageSettingsProps) {
   useEffect(() => {
     // Check platform
     const platform = navigator.platform.toLowerCase();
-    setIsMacOS(platform.includes('mac'));
+    setIsMacOS(platform.includes("mac"));
 
     loadChannel();
   }, [loadChannel]);
 
   useEffect(() => {
     const unsubscribe = window.electronAPI?.onGatewayUsersUpdated?.((data) => {
-      if (data?.channelType !== 'imessage') return;
+      if (data?.channelType !== "imessage") return;
       if (channel && data?.channelId && data.channelId !== channel.id) return;
       loadChannel();
     });
@@ -95,7 +95,7 @@ export function ImessageSettings({ onStatusChange }: ImessageSettingsProps) {
       setTestResult(null);
 
       await window.electronAPI.addGatewayChannel({
-        type: 'imessage',
+        type: "imessage",
         name: channelName,
         securityMode,
         cliPath: cliPath || undefined,
@@ -103,8 +103,8 @@ export function ImessageSettings({ onStatusChange }: ImessageSettingsProps) {
         dmPolicy,
         groupPolicy,
         allowedContacts: allowedContacts
-          .split(',')
-          .map(c => c.trim())
+          .split(",")
+          .map((c) => c.trim())
           .filter(Boolean),
         ambientMode,
         silentUnauthorized,
@@ -156,7 +156,7 @@ export function ImessageSettings({ onStatusChange }: ImessageSettingsProps) {
   const handleRemoveChannel = async () => {
     if (!channel) return;
 
-    if (!confirm('Are you sure you want to remove the iMessage channel?')) {
+    if (!confirm("Are you sure you want to remove the iMessage channel?")) {
       return;
     }
 
@@ -184,7 +184,7 @@ export function ImessageSettings({ onStatusChange }: ImessageSettingsProps) {
       setSecurityMode(mode);
       setChannel({ ...channel, securityMode: mode });
     } catch (error: any) {
-      console.error('Failed to update security mode:', error);
+      console.error("Failed to update security mode:", error);
     }
   };
 
@@ -198,7 +198,7 @@ export function ImessageSettings({ onStatusChange }: ImessageSettingsProps) {
       });
       setChannel({ ...channel, config: { ...channel.config, ...next } });
     } catch (error: any) {
-      console.error('Failed to update iMessage config:', error);
+      console.error("Failed to update iMessage config:", error);
     }
   };
 
@@ -206,10 +206,10 @@ export function ImessageSettings({ onStatusChange }: ImessageSettingsProps) {
     if (!channel) return;
 
     try {
-      const code = await window.electronAPI.generateGatewayPairing(channel.id, '');
+      const code = await window.electronAPI.generateGatewayPairing(channel.id, "");
       setPairingCode(code);
     } catch (error: any) {
-      console.error('Failed to generate pairing code:', error);
+      console.error("Failed to generate pairing code:", error);
     }
   };
 
@@ -220,7 +220,7 @@ export function ImessageSettings({ onStatusChange }: ImessageSettingsProps) {
       await window.electronAPI.revokeGatewayAccess(channel.id, userId);
       await loadChannel();
     } catch (error: any) {
-      console.error('Failed to revoke access:', error);
+      console.error("Failed to revoke access:", error);
     }
   };
 
@@ -229,9 +229,7 @@ export function ImessageSettings({ onStatusChange }: ImessageSettingsProps) {
       <div className="imessage-settings">
         <div className="settings-section">
           <h3>iMessage</h3>
-          <div className="settings-warning">
-            iMessage integration is only available on macOS.
-          </div>
+          <div className="settings-warning">iMessage integration is only available on macOS.</div>
         </div>
       </div>
     );
@@ -248,27 +246,38 @@ export function ImessageSettings({ onStatusChange }: ImessageSettingsProps) {
         <div className="settings-section">
           <h3>Connect iMessage</h3>
           <p className="settings-description">
-            Connect iMessage to receive and send messages. Requires the imsg CLI tool and macOS permissions.
+            Connect iMessage to receive and send messages. Requires the imsg CLI tool and macOS
+            permissions.
           </p>
 
           <div className="settings-callout info">
             <strong>Setup Instructions:</strong>
-            <ol style={{ margin: '8px 0 0 0', paddingLeft: '20px' }}>
-              <li style={{ marginBottom: '8px' }}>
-                <strong>Install imsg CLI:</strong><br />
-                <code style={{ display: 'inline-block', marginTop: '4px' }}>brew install steipete/tap/imsg</code>
+            <ol style={{ margin: "8px 0 0 0", paddingLeft: "20px" }}>
+              <li style={{ marginBottom: "8px" }}>
+                <strong>Install imsg CLI:</strong>
+                <br />
+                <code style={{ display: "inline-block", marginTop: "4px" }}>
+                  brew install steipete/tap/imsg
+                </code>
               </li>
-              <li style={{ marginBottom: '8px' }}>
-                <strong>Grant Full Disk Access:</strong><br />
-                <span style={{ fontSize: '13px' }}>
-                  imsg needs Full Disk Access to read the Messages database.<br />
-                  Open <strong>System Settings → Privacy & Security → Full Disk Access</strong><br />
-                  Enable access for your <strong>Terminal</strong> application (or CoWork OS if running as app)
+              <li style={{ marginBottom: "8px" }}>
+                <strong>Grant Full Disk Access:</strong>
+                <br />
+                <span style={{ fontSize: "13px" }}>
+                  imsg needs Full Disk Access to read the Messages database.
+                  <br />
+                  Open <strong>System Settings → Privacy & Security → Full Disk Access</strong>
+                  <br />
+                  Enable access for your <strong>Terminal</strong> application (or CoWork OS if
+                  running as app)
                 </span>
               </li>
-              <li style={{ marginBottom: '8px' }}>
-                <strong>Sign into Messages:</strong><br />
-                <span style={{ fontSize: '13px' }}>Open the Messages app and sign in with your Apple ID</span>
+              <li style={{ marginBottom: "8px" }}>
+                <strong>Sign into Messages:</strong>
+                <br />
+                <span style={{ fontSize: "13px" }}>
+                  Open the Messages app and sign in with your Apple ID
+                </span>
               </li>
             </ol>
           </div>
@@ -295,9 +304,7 @@ export function ImessageSettings({ onStatusChange }: ImessageSettingsProps) {
               <option value="allowlist">Allowlist (specific contacts only)</option>
               <option value="pairing">Pairing (require code to connect)</option>
             </select>
-            <p className="settings-hint">
-              Controls who can interact with your bot via iMessage
-            </p>
+            <p className="settings-hint">Controls who can interact with your bot via iMessage</p>
           </div>
 
           <div className="settings-field">
@@ -312,9 +319,7 @@ export function ImessageSettings({ onStatusChange }: ImessageSettingsProps) {
               <option value="pairing">Pairing (default)</option>
               <option value="disabled">Disabled</option>
             </select>
-            <p className="settings-hint">
-              How to handle direct messages
-            </p>
+            <p className="settings-hint">How to handle direct messages</p>
           </div>
 
           <div className="settings-field">
@@ -328,12 +333,12 @@ export function ImessageSettings({ onStatusChange }: ImessageSettingsProps) {
               <option value="allowlist">Allowlist (default)</option>
               <option value="disabled">Disabled</option>
             </select>
-            <p className="settings-hint">
-              How to handle group messages
-            </p>
+            <p className="settings-hint">How to handle group messages</p>
           </div>
 
-          {(securityMode === 'allowlist' || dmPolicy === 'allowlist' || groupPolicy === 'allowlist') && (
+          {(securityMode === "allowlist" ||
+            dmPolicy === "allowlist" ||
+            groupPolicy === "allowlist") && (
             <div className="settings-field">
               <label>Allowed Contacts</label>
               <input
@@ -358,9 +363,7 @@ export function ImessageSettings({ onStatusChange }: ImessageSettingsProps) {
               value={cliPath}
               onChange={(e) => setCliPath(e.target.value)}
             />
-            <p className="settings-hint">
-              Path to the imsg CLI. Leave empty to use default.
-            </p>
+            <p className="settings-hint">Path to the imsg CLI. Leave empty to use default.</p>
           </div>
 
           <div className="settings-field">
@@ -387,7 +390,8 @@ export function ImessageSettings({ onStatusChange }: ImessageSettingsProps) {
               <span>Ambient Mode (Log-Only)</span>
             </label>
             <p className="settings-hint">
-              When enabled, iMessage messages are ingested into the local log but only commands (messages starting with "/") are processed.
+              When enabled, iMessage messages are ingested into the local log but only commands
+              (messages starting with "/") are processed.
             </p>
           </div>
 
@@ -401,7 +405,8 @@ export function ImessageSettings({ onStatusChange }: ImessageSettingsProps) {
               <span>Capture Self Messages</span>
             </label>
             <p className="settings-hint">
-              Ingest messages sent by the local Messages account into the log (as outgoing_user) for better follow-up extraction.
+              Ingest messages sent by the local Messages account into the log (as outgoing_user) for
+              better follow-up extraction.
             </p>
           </div>
 
@@ -415,13 +420,14 @@ export function ImessageSettings({ onStatusChange }: ImessageSettingsProps) {
               <span>Silent Unauthorized</span>
             </label>
             <p className="settings-hint">
-              Do not send "pairing required" or "unauthorized" replies (useful for ambient ingestion).
+              Do not send "pairing required" or "unauthorized" replies (useful for ambient
+              ingestion).
             </p>
           </div>
 
           {testResult && (
-            <div className={`settings-callout ${testResult.success ? 'success' : 'error'}`}>
-              {testResult.success ? 'Connection successful!' : testResult.error}
+            <div className={`settings-callout ${testResult.success ? "success" : "error"}`}>
+              {testResult.success ? "Connection successful!" : testResult.error}
             </div>
           )}
 
@@ -430,7 +436,7 @@ export function ImessageSettings({ onStatusChange }: ImessageSettingsProps) {
             onClick={handleAddChannel}
             disabled={saving || !channelName.trim()}
           >
-            {saving ? 'Connecting...' : 'Connect iMessage'}
+            {saving ? "Connecting..." : "Connect iMessage"}
           </button>
         </div>
       </div>
@@ -442,17 +448,19 @@ export function ImessageSettings({ onStatusChange }: ImessageSettingsProps) {
     <div className="imessage-settings">
       <div className="settings-section">
         <h3>iMessage</h3>
-        <p className="settings-description">
-          Manage your iMessage connection and access settings.
-        </p>
+        <p className="settings-description">Manage your iMessage connection and access settings.</p>
 
         <div className="settings-status">
           <div className="status-row">
             <span className="status-label">Status:</span>
             <span className={`status-value status-${channel.status}`}>
-              {channel.status === 'connected' ? 'Connected' :
-               channel.status === 'connecting' ? 'Connecting...' :
-               channel.status === 'error' ? 'Error' : 'Disconnected'}
+              {channel.status === "connected"
+                ? "Connected"
+                : channel.status === "connecting"
+                  ? "Connecting..."
+                  : channel.status === "error"
+                    ? "Error"
+                    : "Disconnected"}
             </span>
           </div>
           {channel.botUsername && (
@@ -465,11 +473,11 @@ export function ImessageSettings({ onStatusChange }: ImessageSettingsProps) {
 
         <div className="settings-actions">
           <button
-            className={`settings-button ${channel.enabled ? 'danger' : 'primary'}`}
+            className={`settings-button ${channel.enabled ? "danger" : "primary"}`}
             onClick={handleToggleEnabled}
             disabled={saving}
           >
-            {saving ? 'Updating...' : channel.enabled ? 'Disable' : 'Enable'}
+            {saving ? "Updating..." : channel.enabled ? "Disable" : "Enable"}
           </button>
 
           <button
@@ -477,7 +485,7 @@ export function ImessageSettings({ onStatusChange }: ImessageSettingsProps) {
             onClick={handleTestConnection}
             disabled={testing || !channel.enabled}
           >
-            {testing ? 'Testing...' : 'Test Connection'}
+            {testing ? "Testing..." : "Test Connection"}
           </button>
 
           <button
@@ -490,8 +498,8 @@ export function ImessageSettings({ onStatusChange }: ImessageSettingsProps) {
         </div>
 
         {testResult && (
-          <div className={`settings-callout ${testResult.success ? 'success' : 'error'}`}>
-            {testResult.success ? 'Connection test successful!' : testResult.error}
+          <div className={`settings-callout ${testResult.success ? "success" : "error"}`}>
+            {testResult.success ? "Connection test successful!" : testResult.error}
           </div>
         )}
       </div>
@@ -512,7 +520,7 @@ export function ImessageSettings({ onStatusChange }: ImessageSettingsProps) {
           </select>
         </div>
 
-        {securityMode === 'pairing' && (
+        {securityMode === "pairing" && (
           <div className="settings-field">
             <label>Pairing Code</label>
             {pairingCode ? (
@@ -523,10 +531,7 @@ export function ImessageSettings({ onStatusChange }: ImessageSettingsProps) {
                 </p>
               </div>
             ) : (
-              <button
-                className="settings-button"
-                onClick={handleGeneratePairingCode}
-              >
+              <button className="settings-button" onClick={handleGeneratePairingCode}>
                 Generate Pairing Code
               </button>
             )}
@@ -550,7 +555,8 @@ export function ImessageSettings({ onStatusChange }: ImessageSettingsProps) {
             <span>Ambient Mode (Log-Only)</span>
           </label>
           <p className="settings-hint">
-            Ingest messages into the local log, but only process explicit commands (messages starting with "/").
+            Ingest messages into the local log, but only process explicit commands (messages
+            starting with "/").
           </p>
         </div>
 
@@ -567,7 +573,8 @@ export function ImessageSettings({ onStatusChange }: ImessageSettingsProps) {
             <span>Capture Self Messages</span>
           </label>
           <p className="settings-hint">
-            Ingest messages sent by the local Messages account (direction=outgoing_user). These are log-only to avoid loops.
+            Ingest messages sent by the local Messages account (direction=outgoing_user). These are
+            log-only to avoid loops.
           </p>
         </div>
 
@@ -583,9 +590,7 @@ export function ImessageSettings({ onStatusChange }: ImessageSettingsProps) {
             />
             <span>Silent Unauthorized</span>
           </label>
-          <p className="settings-hint">
-            Do not send "pairing required" / "unauthorized" replies.
-          </p>
+          <p className="settings-hint">Do not send "pairing required" / "unauthorized" replies.</p>
         </div>
       </div>
 

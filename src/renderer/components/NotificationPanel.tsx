@@ -1,11 +1,18 @@
-import { useState, useEffect, useRef } from 'react';
-import { ThemeIcon } from './ThemeIcon';
-import { AlertTriangleIcon, CheckIcon, ClockIcon, InfoIcon, XIcon } from './LineIcons';
+import { useState, useEffect, useRef } from "react";
+import { ThemeIcon } from "./ThemeIcon";
+import { AlertTriangleIcon, CheckIcon, ClockIcon, InfoIcon, XIcon } from "./LineIcons";
 
 // Define types inline for the renderer
 interface AppNotification {
   id: string;
-  type: 'task_completed' | 'task_failed' | 'scheduled_task' | 'input_required' | 'info' | 'warning' | 'error';
+  type:
+    | "task_completed"
+    | "task_failed"
+    | "scheduled_task"
+    | "input_required"
+    | "info"
+    | "warning"
+    | "error";
   title: string;
   message: string;
   read: boolean;
@@ -16,7 +23,7 @@ interface AppNotification {
 }
 
 interface NotificationEvent {
-  type: 'added' | 'updated' | 'removed' | 'cleared';
+  type: "added" | "updated" | "removed" | "cleared";
   notification?: AppNotification;
   notifications?: AppNotification[];
 }
@@ -27,113 +34,113 @@ interface NotificationPanelProps {
 
 const styles: Record<string, React.CSSProperties> = {
   container: {
-    position: 'relative',
+    position: "relative",
     zIndex: 9999,
-    overflow: 'visible',
+    overflow: "visible",
   },
   bellButton: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '32px',
-    height: '32px',
-    borderRadius: '6px',
-    backgroundColor: 'transparent',
-    border: 'none',
-    cursor: 'pointer',
-    transition: 'all 0.15s ease',
-    position: 'relative' as const,
-    overflow: 'visible',
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: "32px",
+    height: "32px",
+    borderRadius: "6px",
+    backgroundColor: "transparent",
+    border: "none",
+    cursor: "pointer",
+    transition: "all 0.15s ease",
+    position: "relative" as const,
+    overflow: "visible",
   },
   bellButtonHover: {
-    color: '#3b82f6',
+    color: "#3b82f6",
   },
   badge: {
-    position: 'absolute' as const,
-    top: '-4px',
-    right: '-4px',
-    minWidth: '16px',
-    height: '16px',
-    borderRadius: '8px',
-    backgroundColor: '#ef4444',
-    color: 'white',
-    fontSize: '9px',
+    position: "absolute" as const,
+    top: "-4px",
+    right: "-4px",
+    minWidth: "16px",
+    height: "16px",
+    borderRadius: "8px",
+    backgroundColor: "#ef4444",
+    color: "white",
+    fontSize: "9px",
     fontWeight: 700,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '0 4px',
-    border: 'none',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "0 4px",
+    border: "none",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
   },
   panel: {
-    position: 'absolute' as const,
-    top: 'calc(100% + 8px)',
+    position: "absolute" as const,
+    top: "calc(100% + 8px)",
     right: 0,
-    width: '360px',
-    maxHeight: '480px',
-    backgroundColor: 'var(--color-bg-elevated)',
-    borderRadius: '12px',
-    border: '1px solid var(--color-border)',
-    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.25)',
-    overflow: 'hidden',
+    width: "360px",
+    maxHeight: "480px",
+    backgroundColor: "var(--color-bg-elevated)",
+    borderRadius: "12px",
+    border: "1px solid var(--color-border)",
+    boxShadow: "0 8px 32px rgba(0, 0, 0, 0.25)",
+    overflow: "hidden",
     zIndex: 10000,
   },
   header: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '12px 16px',
-    borderBottom: '1px solid var(--color-border)',
-    backgroundColor: 'var(--color-bg-secondary)',
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: "12px 16px",
+    borderBottom: "1px solid var(--color-border)",
+    backgroundColor: "var(--color-bg-secondary)",
   },
   headerTitle: {
     margin: 0,
-    fontSize: '14px',
+    fontSize: "14px",
     fontWeight: 600,
-    color: 'var(--color-text)',
+    color: "var(--color-text)",
   },
   headerActions: {
-    display: 'flex',
-    gap: '8px',
+    display: "flex",
+    gap: "8px",
   },
   headerBtn: {
-    padding: '4px 8px',
-    fontSize: '12px',
-    color: 'var(--color-text-secondary)',
-    backgroundColor: 'transparent',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    transition: 'all 0.15s ease',
+    padding: "4px 8px",
+    fontSize: "12px",
+    color: "var(--color-text-secondary)",
+    backgroundColor: "transparent",
+    border: "none",
+    borderRadius: "4px",
+    cursor: "pointer",
+    transition: "all 0.15s ease",
   },
   list: {
-    maxHeight: '400px',
-    overflowY: 'auto' as const,
-    backgroundColor: 'var(--color-bg-elevated)',
+    maxHeight: "400px",
+    overflowY: "auto" as const,
+    backgroundColor: "var(--color-bg-elevated)",
   },
   notificationItem: {
-    display: 'flex',
-    alignItems: 'flex-start',
-    gap: '12px',
-    padding: '12px 16px',
-    borderBottom: '1px solid var(--color-border-subtle)',
-    cursor: 'pointer',
-    transition: 'background-color 0.15s ease',
-    backgroundColor: 'var(--color-bg-elevated)',
+    display: "flex",
+    alignItems: "flex-start",
+    gap: "12px",
+    padding: "12px 16px",
+    borderBottom: "1px solid var(--color-border-subtle)",
+    cursor: "pointer",
+    transition: "background-color 0.15s ease",
+    backgroundColor: "var(--color-bg-elevated)",
   },
   notificationItemUnread: {
-    backgroundColor: 'var(--color-bg-secondary)',
+    backgroundColor: "var(--color-bg-secondary)",
   },
   notificationIcon: {
-    width: '32px',
-    height: '32px',
-    borderRadius: '8px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: "32px",
+    height: "32px",
+    borderRadius: "8px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
     flexShrink: 0,
-    fontSize: '16px',
+    fontSize: "16px",
   },
   notificationContent: {
     flex: 1,
@@ -141,61 +148,61 @@ const styles: Record<string, React.CSSProperties> = {
   },
   notificationTitle: {
     margin: 0,
-    fontSize: '13px',
+    fontSize: "13px",
     fontWeight: 500,
-    color: 'var(--color-text)',
-    whiteSpace: 'nowrap' as const,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
+    color: "var(--color-text)",
+    whiteSpace: "nowrap" as const,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
   },
   notificationMessage: {
-    margin: '4px 0 0',
-    fontSize: '12px',
-    color: 'var(--color-text-secondary)',
-    display: '-webkit-box',
+    margin: "4px 0 0",
+    fontSize: "12px",
+    color: "var(--color-text-secondary)",
+    display: "-webkit-box",
     WebkitLineClamp: 2,
-    WebkitBoxOrient: 'vertical' as const,
-    overflow: 'hidden',
+    WebkitBoxOrient: "vertical" as const,
+    overflow: "hidden",
   },
   notificationTime: {
-    fontSize: '11px',
-    color: 'var(--color-text-muted)',
-    marginTop: '4px',
+    fontSize: "11px",
+    color: "var(--color-text-muted)",
+    marginTop: "4px",
   },
   notificationActions: {
-    display: 'flex',
-    gap: '4px',
+    display: "flex",
+    gap: "4px",
     flexShrink: 0,
   },
   deleteBtn: {
-    padding: '4px',
-    backgroundColor: 'transparent',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    color: 'var(--color-text-muted)',
+    padding: "4px",
+    backgroundColor: "transparent",
+    border: "none",
+    borderRadius: "4px",
+    cursor: "pointer",
+    color: "var(--color-text-muted)",
     opacity: 0,
-    transition: 'all 0.15s ease',
+    transition: "all 0.15s ease",
   },
   emptyState: {
-    padding: '48px 24px',
-    textAlign: 'center' as const,
-    color: 'var(--color-text-secondary)',
-    backgroundColor: 'var(--color-bg-elevated)',
+    padding: "48px 24px",
+    textAlign: "center" as const,
+    color: "var(--color-text-secondary)",
+    backgroundColor: "var(--color-bg-elevated)",
   },
   emptyIcon: {
-    fontSize: '32px',
-    marginBottom: '12px',
+    fontSize: "32px",
+    marginBottom: "12px",
     opacity: 0.6,
-    color: 'var(--color-text-muted)',
+    color: "var(--color-text-muted)",
   },
   emptyText: {
     margin: 0,
-    fontSize: '13px',
+    fontSize: "13px",
   },
 };
 
-const BellIcon = ({ color = '#6b7280' }: { color?: string }) => (
+const BellIcon = ({ color = "#6b7280" }: { color?: string }) => (
   <svg
     width="18"
     height="18"
@@ -205,7 +212,7 @@ const BellIcon = ({ color = '#6b7280' }: { color?: string }) => (
     strokeWidth="2"
     strokeLinecap="round"
     strokeLinejoin="round"
-    style={{ display: 'block', flexShrink: 0 }}
+    style={{ display: "block", flexShrink: 0 }}
   >
     <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
     <path d="M13.73 21a2 2 0 0 1-3.46 0" />
@@ -214,24 +221,60 @@ const BellIcon = ({ color = '#6b7280' }: { color?: string }) => (
 
 const Icons = {
   bell: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
       <path d="M13.73 21a2 2 0 0 1-3.46 0" />
     </svg>
   ),
   check: (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <polyline points="20 6 9 17 4 12" />
     </svg>
   ),
   trash: (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <polyline points="3 6 5 6 21 6" />
       <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
     </svg>
   ),
   close: (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <line x1="18" y1="6" x2="6" y2="18" />
       <line x1="6" y1="6" x2="18" y2="18" />
     </svg>
@@ -239,13 +282,41 @@ const Icons = {
 };
 
 const typeIcons: Record<string, { icon: React.ReactNode; bg: string; color: string }> = {
-  task_completed: { icon: <ThemeIcon emoji="✅" icon={<CheckIcon size={14} />} />, bg: 'rgba(34, 197, 94, 0.15)', color: 'rgb(34, 197, 94)' },
-  task_failed: { icon: <ThemeIcon emoji="❌" icon={<XIcon size={14} />} />, bg: 'rgba(239, 68, 68, 0.15)', color: 'rgb(239, 68, 68)' },
-  scheduled_task: { icon: <ThemeIcon emoji="⏰" icon={<ClockIcon size={14} />} />, bg: 'var(--color-accent-glass)', color: 'var(--color-accent)' },
-  input_required: { icon: <ThemeIcon emoji="📝" icon={<InfoIcon size={14} />} />, bg: 'rgba(245, 158, 11, 0.15)', color: 'rgb(245, 158, 11)' },
-  info: { icon: <ThemeIcon emoji="ℹ️" icon={<InfoIcon size={14} />} />, bg: 'rgba(59, 130, 246, 0.15)', color: 'rgb(59, 130, 246)' },
-  warning: { icon: <ThemeIcon emoji="⚠️" icon={<AlertTriangleIcon size={14} />} />, bg: 'rgba(245, 158, 11, 0.15)', color: 'rgb(245, 158, 11)' },
-  error: { icon: <ThemeIcon emoji="🚨" icon={<AlertTriangleIcon size={14} />} />, bg: 'rgba(239, 68, 68, 0.15)', color: 'rgb(239, 68, 68)' },
+  task_completed: {
+    icon: <ThemeIcon emoji="✅" icon={<CheckIcon size={14} />} />,
+    bg: "rgba(34, 197, 94, 0.15)",
+    color: "rgb(34, 197, 94)",
+  },
+  task_failed: {
+    icon: <ThemeIcon emoji="❌" icon={<XIcon size={14} />} />,
+    bg: "rgba(239, 68, 68, 0.15)",
+    color: "rgb(239, 68, 68)",
+  },
+  scheduled_task: {
+    icon: <ThemeIcon emoji="⏰" icon={<ClockIcon size={14} />} />,
+    bg: "var(--color-accent-glass)",
+    color: "var(--color-accent)",
+  },
+  input_required: {
+    icon: <ThemeIcon emoji="📝" icon={<InfoIcon size={14} />} />,
+    bg: "rgba(245, 158, 11, 0.15)",
+    color: "rgb(245, 158, 11)",
+  },
+  info: {
+    icon: <ThemeIcon emoji="ℹ️" icon={<InfoIcon size={14} />} />,
+    bg: "rgba(59, 130, 246, 0.15)",
+    color: "rgb(59, 130, 246)",
+  },
+  warning: {
+    icon: <ThemeIcon emoji="⚠️" icon={<AlertTriangleIcon size={14} />} />,
+    bg: "rgba(245, 158, 11, 0.15)",
+    color: "rgb(245, 158, 11)",
+  },
+  error: {
+    icon: <ThemeIcon emoji="🚨" icon={<AlertTriangleIcon size={14} />} />,
+    bg: "rgba(239, 68, 68, 0.15)",
+    color: "rgb(239, 68, 68)",
+  },
 };
 
 function formatRelativeTime(timestamp: number): string {
@@ -256,7 +327,7 @@ function formatRelativeTime(timestamp: number): string {
   const hours = Math.floor(minutes / 60);
   const days = Math.floor(hours / 24);
 
-  if (seconds < 60) return 'Just now';
+  if (seconds < 60) return "Just now";
   if (minutes < 60) return `${minutes}m ago`;
   if (hours < 24) return `${hours}h ago`;
   if (days < 7) return `${days}d ago`;
@@ -264,7 +335,7 @@ function formatRelativeTime(timestamp: number): string {
 }
 
 function stripLeadingEmoji(text: string): string {
-  return text.replace(/^[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}][\uFE0F\uFE0E]?\s*/u, '');
+  return text.replace(/^[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}][\uFE0F\uFE0E]?\s*/u, "");
 }
 
 export function NotificationPanel({ onNotificationClick }: NotificationPanelProps) {
@@ -284,7 +355,7 @@ export function NotificationPanel({ onNotificationClick }: NotificationPanelProp
         const count = await window.electronAPI.getUnreadNotificationCount();
         setUnreadCount(count);
       } catch (error) {
-        console.error('Failed to load notifications:', error);
+        console.error("Failed to load notifications:", error);
       }
     };
     loadNotifications();
@@ -293,23 +364,23 @@ export function NotificationPanel({ onNotificationClick }: NotificationPanelProp
   // Subscribe to notification events
   useEffect(() => {
     const unsubscribe = window.electronAPI.onNotificationEvent((event: NotificationEvent) => {
-      if (event.type === 'added' && event.notification) {
+      if (event.type === "added" && event.notification) {
         setNotifications((prev) => [event.notification!, ...prev]);
         setUnreadCount((prev) => prev + 1);
-      } else if (event.type === 'updated') {
+      } else if (event.type === "updated") {
         if (event.notification) {
           setNotifications((prev) =>
-            prev.map((n) => (n.id === event.notification!.id ? event.notification! : n))
+            prev.map((n) => (n.id === event.notification!.id ? event.notification! : n)),
           );
         } else if (event.notifications) {
           setNotifications(event.notifications);
         }
         // Recalculate unread count
         window.electronAPI.getUnreadNotificationCount().then(setUnreadCount);
-      } else if (event.type === 'removed' && event.notification) {
+      } else if (event.type === "removed" && event.notification) {
         setNotifications((prev) => prev.filter((n) => n.id !== event.notification!.id));
         window.electronAPI.getUnreadNotificationCount().then(setUnreadCount);
-      } else if (event.type === 'cleared') {
+      } else if (event.type === "cleared") {
         setNotifications([]);
         setUnreadCount(0);
       }
@@ -325,16 +396,16 @@ export function NotificationPanel({ onNotificationClick }: NotificationPanelProp
       }
     };
     if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener("mousedown", handleClickOutside);
     }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isOpen]);
 
   const handleMarkAllRead = async () => {
     try {
       await window.electronAPI.markAllNotificationsRead();
     } catch (error) {
-      console.error('Failed to mark all as read:', error);
+      console.error("Failed to mark all as read:", error);
     }
   };
 
@@ -342,7 +413,7 @@ export function NotificationPanel({ onNotificationClick }: NotificationPanelProp
     try {
       await window.electronAPI.deleteAllNotifications();
     } catch (error) {
-      console.error('Failed to delete all:', error);
+      console.error("Failed to delete all:", error);
     }
   };
 
@@ -351,7 +422,7 @@ export function NotificationPanel({ onNotificationClick }: NotificationPanelProp
       try {
         await window.electronAPI.markNotificationRead(notification.id);
       } catch (error) {
-        console.error('Failed to mark as read:', error);
+        console.error("Failed to mark as read:", error);
       }
     }
     // Close the panel
@@ -367,7 +438,7 @@ export function NotificationPanel({ onNotificationClick }: NotificationPanelProp
     try {
       await window.electronAPI.deleteNotification(id);
     } catch (error) {
-      console.error('Failed to delete notification:', error);
+      console.error("Failed to delete notification:", error);
     }
   };
 
@@ -380,17 +451,9 @@ export function NotificationPanel({ onNotificationClick }: NotificationPanelProp
         onMouseLeave={() => setIsHoveringButton(false)}
         title="Notifications"
       >
-        <BellIcon
-          color={
-            isHoveringButton
-              ? '#3b82f6'
-              : unreadCount > 0
-              ? '#3b82f6'
-              : '#6b7280'
-          }
-        />
+        <BellIcon color={isHoveringButton ? "#3b82f6" : unreadCount > 0 ? "#3b82f6" : "#6b7280"} />
         {unreadCount > 0 && (
-          <span style={styles.badge}>{unreadCount > 99 ? '99+' : unreadCount}</span>
+          <span style={styles.badge}>{unreadCount > 99 ? "99+" : unreadCount}</span>
         )}
       </button>
 
@@ -409,11 +472,7 @@ export function NotificationPanel({ onNotificationClick }: NotificationPanelProp
                 </button>
               )}
               {notifications.length > 0 && (
-                <button
-                  style={styles.headerBtn}
-                  onClick={handleDeleteAll}
-                  title="Clear all"
-                >
+                <button style={styles.headerBtn} onClick={handleDeleteAll} title="Clear all">
                   {Icons.trash} Clear all
                 </button>
               )}
@@ -439,10 +498,10 @@ export function NotificationPanel({ onNotificationClick }: NotificationPanelProp
                       ...styles.notificationItem,
                       ...(!notification.read ? styles.notificationItemUnread : {}),
                       backgroundColor: isHovered
-                        ? 'var(--color-bg-tertiary)'
+                        ? "var(--color-bg-tertiary)"
                         : !notification.read
-                        ? 'var(--color-bg-secondary)'
-                        : 'var(--color-bg-elevated)',
+                          ? "var(--color-bg-secondary)"
+                          : "var(--color-bg-elevated)",
                     }}
                     onClick={() => handleNotificationClick(notification)}
                     onMouseEnter={() => setHoveredId(notification.id)}

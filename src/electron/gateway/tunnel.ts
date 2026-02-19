@@ -14,21 +14,21 @@
  *   await tunnel.stop();
  */
 
-import { spawn, ChildProcess, execSync } from 'child_process';
-import { EventEmitter } from 'events';
-import * as net from 'net';
-import * as http from 'http';
-import * as https from 'https';
+import { spawn, ChildProcess, execSync } from "child_process";
+import { EventEmitter } from "events";
+import * as net from "net";
+import * as http from "http";
+import * as https from "https";
 
 /**
  * Tunnel provider types
  */
-export type TunnelProvider = 'ngrok' | 'tailscale' | 'cloudflare' | 'localtunnel';
+export type TunnelProvider = "ngrok" | "tailscale" | "cloudflare" | "localtunnel";
 
 /**
  * Tunnel status
  */
-export type TunnelStatus = 'stopped' | 'starting' | 'running' | 'error';
+export type TunnelStatus = "stopped" | "starting" | "running" | "error";
 
 /**
  * Tunnel configuration
@@ -47,7 +47,7 @@ export interface TunnelConfig {
   ngrokAuthToken?: string;
 
   /** ngrok region (default: us) */
-  ngrokRegion?: 'us' | 'eu' | 'ap' | 'au' | 'sa' | 'jp' | 'in';
+  ngrokRegion?: "us" | "eu" | "ap" | "au" | "sa" | "jp" | "in";
 
   /** ngrok subdomain (requires paid plan) */
   ngrokSubdomain?: string;
@@ -62,7 +62,7 @@ export interface TunnelConfig {
   cloudflareCredentialsFile?: string;
 
   /** Protocol (default: https for ngrok/tailscale, http for localtunnel) */
-  protocol?: 'http' | 'https';
+  protocol?: "http" | "https";
 
   /** Path prefix for webhook endpoint */
   pathPrefix?: string;
@@ -109,7 +109,7 @@ export interface TunnelInfo {
 export class TunnelManager extends EventEmitter {
   private config: Required<TunnelConfig>;
   private process?: ChildProcess;
-  private _status: TunnelStatus = 'stopped';
+  private _status: TunnelStatus = "stopped";
   private _url?: string;
   private _startedAt?: Date;
   private _error?: string;
@@ -119,13 +119,13 @@ export class TunnelManager extends EventEmitter {
     super();
 
     this.config = {
-      host: 'localhost',
-      protocol: config.provider === 'localtunnel' ? 'http' : 'https',
-      pathPrefix: '',
+      host: "localhost",
+      protocol: config.provider === "localtunnel" ? "http" : "https",
+      pathPrefix: "",
       verbose: false,
       autoRestart: true,
       restartDelay: 5000,
-      ngrokRegion: 'us',
+      ngrokRegion: "us",
       ...config,
     } as Required<TunnelConfig>;
   }
@@ -149,7 +149,7 @@ export class TunnelManager extends EventEmitter {
    */
   getInfo(): TunnelInfo {
     return {
-      url: this._url || '',
+      url: this._url || "",
       provider: this.config.provider,
       port: this.config.port,
       status: this._status,
@@ -162,29 +162,29 @@ export class TunnelManager extends EventEmitter {
    * Start the tunnel
    */
   async start(): Promise<string> {
-    if (this._status === 'running') {
+    if (this._status === "running") {
       return this._url!;
     }
 
-    if (this._status === 'starting') {
+    if (this._status === "starting") {
       // Wait for startup to complete
       return new Promise((resolve, reject) => {
         const onRunning = () => {
-          this.off('error', onError);
+          this.off("error", onError);
           resolve(this._url!);
         };
         const onError = (error: Error) => {
-          this.off('running', onRunning);
+          this.off("running", onRunning);
           reject(error);
         };
-        this.once('running', onRunning);
-        this.once('error', onError);
+        this.once("running", onRunning);
+        this.once("error", onError);
       });
     }
 
-    this._status = 'starting';
+    this._status = "starting";
     this._error = undefined;
-    this.emit('starting');
+    this.emit("starting");
 
     try {
       // Check if provider is available
@@ -192,25 +192,25 @@ export class TunnelManager extends EventEmitter {
 
       // Start the tunnel
       switch (this.config.provider) {
-        case 'ngrok':
+        case "ngrok":
           this._url = await this.startNgrok();
           break;
-        case 'tailscale':
+        case "tailscale":
           this._url = await this.startTailscale();
           break;
-        case 'cloudflare':
+        case "cloudflare":
           this._url = await this.startCloudflare();
           break;
-        case 'localtunnel':
+        case "localtunnel":
           this._url = await this.startLocaltunnel();
           break;
         default:
           throw new Error(`Unsupported tunnel provider: ${this.config.provider}`);
       }
 
-      this._status = 'running';
+      this._status = "running";
       this._startedAt = new Date();
-      this.emit('running', this._url);
+      this.emit("running", this._url);
 
       if (this.config.verbose) {
         console.log(`Tunnel started: ${this._url}`);
@@ -218,9 +218,9 @@ export class TunnelManager extends EventEmitter {
 
       return this._url;
     } catch (error) {
-      this._status = 'error';
+      this._status = "error";
       this._error = error instanceof Error ? error.message : String(error);
-      this.emit('error', error);
+      this.emit("error", error);
       throw error;
     }
   }
@@ -235,17 +235,17 @@ export class TunnelManager extends EventEmitter {
     }
 
     if (this.process) {
-      this.process.kill('SIGTERM');
+      this.process.kill("SIGTERM");
       this.process = undefined;
     }
 
-    this._status = 'stopped';
+    this._status = "stopped";
     this._url = undefined;
     this._startedAt = undefined;
-    this.emit('stopped');
+    this.emit("stopped");
 
     if (this.config.verbose) {
-      console.log('Tunnel stopped');
+      console.log("Tunnel stopped");
     }
   }
 
@@ -262,25 +262,27 @@ export class TunnelManager extends EventEmitter {
    */
   private async checkProviderInstalled(): Promise<void> {
     const commands: Record<TunnelProvider, string> = {
-      ngrok: 'ngrok version',
-      tailscale: 'tailscale version',
-      cloudflare: 'cloudflared version',
-      localtunnel: 'lt --version',
+      ngrok: "ngrok version",
+      tailscale: "tailscale version",
+      cloudflare: "cloudflared version",
+      localtunnel: "lt --version",
     };
 
     const command = commands[this.config.provider];
 
     try {
-      execSync(command, { encoding: 'utf-8', stdio: 'pipe' });
+      execSync(command, { encoding: "utf-8", stdio: "pipe" });
     } catch {
       const installInstructions: Record<TunnelProvider, string> = {
-        ngrok: 'Install ngrok: brew install ngrok (macOS) or download from https://ngrok.com',
-        tailscale: 'Install Tailscale: https://tailscale.com/download',
-        cloudflare: 'Install cloudflared: brew install cloudflare/cloudflare/cloudflared',
-        localtunnel: 'Install localtunnel: npm install -g localtunnel',
+        ngrok: "Install ngrok: brew install ngrok (macOS) or download from https://ngrok.com",
+        tailscale: "Install Tailscale: https://tailscale.com/download",
+        cloudflare: "Install cloudflared: brew install cloudflare/cloudflare/cloudflared",
+        localtunnel: "Install localtunnel: npm install -g localtunnel",
       };
 
-      throw new Error(`${this.config.provider} is not installed. ${installInstructions[this.config.provider]}`);
+      throw new Error(
+        `${this.config.provider} is not installed. ${installInstructions[this.config.provider]}`,
+      );
     }
   }
 
@@ -292,27 +294,27 @@ export class TunnelManager extends EventEmitter {
     if (this.config.ngrokAuthToken) {
       try {
         execSync(`ngrok config add-authtoken ${this.config.ngrokAuthToken}`, {
-          encoding: 'utf-8',
-          stdio: 'pipe',
+          encoding: "utf-8",
+          stdio: "pipe",
         });
       } catch {
         // Ignore if already configured
       }
     }
 
-    const args = ['http', `${this.config.host}:${this.config.port}`];
+    const args = ["http", `${this.config.host}:${this.config.port}`];
 
     if (this.config.ngrokRegion) {
-      args.push('--region', this.config.ngrokRegion);
+      args.push("--region", this.config.ngrokRegion);
     }
 
     if (this.config.ngrokSubdomain) {
-      args.push('--subdomain', this.config.ngrokSubdomain);
+      args.push("--subdomain", this.config.ngrokSubdomain);
     }
 
     // Start ngrok process
-    this.process = spawn('ngrok', args, {
-      stdio: ['ignore', 'pipe', 'pipe'],
+    this.process = spawn("ngrok", args, {
+      stdio: ["ignore", "pipe", "pipe"],
     });
 
     this.setupProcessHandlers();
@@ -330,11 +332,12 @@ export class TunnelManager extends EventEmitter {
 
     for (let i = 0; i < maxAttempts; i++) {
       try {
-        const response = await this.httpGet('http://127.0.0.1:4040/api/tunnels');
+        const response = await this.httpGet("http://127.0.0.1:4040/api/tunnels");
         const data = JSON.parse(response);
 
         if (data.tunnels && data.tunnels.length > 0) {
-          const tunnel = data.tunnels.find((t: { proto: string }) => t.proto === 'https') || data.tunnels[0];
+          const tunnel =
+            data.tunnels.find((t: { proto: string }) => t.proto === "https") || data.tunnels[0];
           return tunnel.public_url;
         }
       } catch {
@@ -344,7 +347,7 @@ export class TunnelManager extends EventEmitter {
       await this.sleep(delay);
     }
 
-    throw new Error('Timeout waiting for ngrok to start');
+    throw new Error("Timeout waiting for ngrok to start");
   }
 
   /**
@@ -353,24 +356,24 @@ export class TunnelManager extends EventEmitter {
   private async startTailscale(): Promise<string> {
     // Check if Tailscale is connected
     try {
-      const status = execSync('tailscale status --json', { encoding: 'utf-8' });
+      const status = execSync("tailscale status --json", { encoding: "utf-8" });
       const statusData = JSON.parse(status);
 
       if (!statusData.Self?.Online) {
-        throw new Error('Tailscale is not connected. Run: tailscale up');
+        throw new Error("Tailscale is not connected. Run: tailscale up");
       }
     } catch (error) {
-      if (error instanceof Error && error.message.includes('not connected')) {
+      if (error instanceof Error && error.message.includes("not connected")) {
         throw error;
       }
-      throw new Error('Failed to check Tailscale status');
+      throw new Error("Failed to check Tailscale status");
     }
 
     // Enable funnel for the port
-    const args = ['funnel', `${this.config.port}`];
+    const args = ["funnel", `${this.config.port}`];
 
-    this.process = spawn('tailscale', args, {
-      stdio: ['ignore', 'pipe', 'pipe'],
+    this.process = spawn("tailscale", args, {
+      stdio: ["ignore", "pipe", "pipe"],
     });
 
     this.setupProcessHandlers();
@@ -384,17 +387,18 @@ export class TunnelManager extends EventEmitter {
    */
   private async getTailscaleFunnelUrl(): Promise<string> {
     try {
-      const status = execSync('tailscale status --json', { encoding: 'utf-8' });
+      const status = execSync("tailscale status --json", { encoding: "utf-8" });
       const statusData = JSON.parse(status);
-      const hostname = statusData.Self?.DNSName?.replace(/\.$/, '') || this.config.tailscaleHostname;
+      const hostname =
+        statusData.Self?.DNSName?.replace(/\.$/, "") || this.config.tailscaleHostname;
 
       if (!hostname) {
-        throw new Error('Could not determine Tailscale hostname');
+        throw new Error("Could not determine Tailscale hostname");
       }
 
       return `https://${hostname}:${this.config.port}`;
     } catch {
-      throw new Error('Failed to get Tailscale Funnel URL');
+      throw new Error("Failed to get Tailscale Funnel URL");
     }
   }
 
@@ -402,21 +406,21 @@ export class TunnelManager extends EventEmitter {
    * Start Cloudflare Tunnel
    */
   private async startCloudflare(): Promise<string> {
-    const args = ['tunnel'];
+    const args = ["tunnel"];
 
     if (this.config.cloudflareCredentialsFile) {
-      args.push('--credentials-file', this.config.cloudflareCredentialsFile);
+      args.push("--credentials-file", this.config.cloudflareCredentialsFile);
     }
 
     if (this.config.cloudflareTunnelName) {
-      args.push('run', this.config.cloudflareTunnelName);
+      args.push("run", this.config.cloudflareTunnelName);
     } else {
       // Quick tunnel (no account required)
-      args.push('--url', `http://${this.config.host}:${this.config.port}`);
+      args.push("--url", `http://${this.config.host}:${this.config.port}`);
     }
 
-    this.process = spawn('cloudflared', args, {
-      stdio: ['ignore', 'pipe', 'pipe'],
+    this.process = spawn("cloudflared", args, {
+      stdio: ["ignore", "pipe", "pipe"],
     });
 
     this.setupProcessHandlers();
@@ -431,7 +435,7 @@ export class TunnelManager extends EventEmitter {
   private async waitForCloudflareUrl(): Promise<string> {
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
-        reject(new Error('Timeout waiting for Cloudflare tunnel URL'));
+        reject(new Error("Timeout waiting for Cloudflare tunnel URL"));
       }, 30000);
 
       const urlPattern = /https:\/\/[a-z0-9-]+\.trycloudflare\.com/;
@@ -441,14 +445,14 @@ export class TunnelManager extends EventEmitter {
         const match = output.match(urlPattern);
         if (match) {
           clearTimeout(timeout);
-          this.process?.stdout?.off('data', handleData);
-          this.process?.stderr?.off('data', handleData);
+          this.process?.stdout?.off("data", handleData);
+          this.process?.stderr?.off("data", handleData);
           resolve(match[0]);
         }
       };
 
-      this.process?.stdout?.on('data', handleData);
-      this.process?.stderr?.on('data', handleData);
+      this.process?.stdout?.on("data", handleData);
+      this.process?.stderr?.on("data", handleData);
     });
   }
 
@@ -456,14 +460,14 @@ export class TunnelManager extends EventEmitter {
    * Start localtunnel
    */
   private async startLocaltunnel(): Promise<string> {
-    const args = ['--port', this.config.port.toString()];
+    const args = ["--port", this.config.port.toString()];
 
-    if (this.config.host !== 'localhost') {
-      args.push('--local-host', this.config.host);
+    if (this.config.host !== "localhost") {
+      args.push("--local-host", this.config.host);
     }
 
-    this.process = spawn('lt', args, {
-      stdio: ['ignore', 'pipe', 'pipe'],
+    this.process = spawn("lt", args, {
+      stdio: ["ignore", "pipe", "pipe"],
     });
 
     this.setupProcessHandlers();
@@ -478,7 +482,7 @@ export class TunnelManager extends EventEmitter {
   private async waitForLocaltunnelUrl(): Promise<string> {
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
-        reject(new Error('Timeout waiting for localtunnel URL'));
+        reject(new Error("Timeout waiting for localtunnel URL"));
       }, 30000);
 
       const urlPattern = /https:\/\/[a-z0-9-]+\.loca\.lt/;
@@ -488,12 +492,12 @@ export class TunnelManager extends EventEmitter {
         const match = output.match(urlPattern);
         if (match) {
           clearTimeout(timeout);
-          this.process?.stdout?.off('data', handleData);
+          this.process?.stdout?.off("data", handleData);
           resolve(match[0]);
         }
       };
 
-      this.process?.stdout?.on('data', handleData);
+      this.process?.stdout?.on("data", handleData);
     });
   }
 
@@ -503,19 +507,19 @@ export class TunnelManager extends EventEmitter {
   private setupProcessHandlers(): void {
     if (!this.process) return;
 
-    this.process.on('exit', (code, signal) => {
-      if (this._status === 'running' && this.config.autoRestart) {
+    this.process.on("exit", (code, signal) => {
+      if (this._status === "running" && this.config.autoRestart) {
         console.log(`Tunnel process exited (code: ${code}, signal: ${signal}), restarting...`);
-        this._status = 'stopped';
+        this._status = "stopped";
         this.scheduleRestart();
       }
     });
 
-    this.process.on('error', (error) => {
-      console.error('Tunnel process error:', error);
-      this._status = 'error';
+    this.process.on("error", (error) => {
+      console.error("Tunnel process error:", error);
+      this._status = "error";
       this._error = error.message;
-      this.emit('error', error);
+      this.emit("error", error);
 
       if (this.config.autoRestart) {
         this.scheduleRestart();
@@ -523,7 +527,7 @@ export class TunnelManager extends EventEmitter {
     });
 
     if (this.config.verbose && this.process.stderr) {
-      this.process.stderr.on('data', (data) => {
+      this.process.stderr.on("data", (data) => {
         console.log(`[${this.config.provider}]`, data.toString().trim());
       });
     }
@@ -542,7 +546,7 @@ export class TunnelManager extends EventEmitter {
       try {
         await this.start();
       } catch (error) {
-        console.error('Failed to restart tunnel:', error);
+        console.error("Failed to restart tunnel:", error);
         this.scheduleRestart();
       }
     }, this.config.restartDelay);
@@ -553,22 +557,22 @@ export class TunnelManager extends EventEmitter {
    */
   private httpGet(url: string): Promise<string> {
     return new Promise((resolve, reject) => {
-      const client = url.startsWith('https') ? https : http;
+      const client = url.startsWith("https") ? https : http;
 
       const request = client.get(url, (response) => {
-        let data = '';
-        response.on('data', (chunk) => {
+        let data = "";
+        response.on("data", (chunk) => {
           data += chunk;
         });
-        response.on('end', () => {
+        response.on("end", () => {
           resolve(data);
         });
       });
 
-      request.on('error', reject);
+      request.on("error", reject);
       request.setTimeout(5000, () => {
         request.destroy();
-        reject(new Error('Request timeout'));
+        reject(new Error("Request timeout"));
       });
     });
   }
@@ -587,15 +591,15 @@ export class TunnelManager extends EventEmitter {
 export async function getAvailableTunnelProviders(): Promise<TunnelProvider[]> {
   const providers: TunnelProvider[] = [];
   const commands: Record<TunnelProvider, string> = {
-    ngrok: 'ngrok version',
-    tailscale: 'tailscale version',
-    cloudflare: 'cloudflared version',
-    localtunnel: 'lt --version',
+    ngrok: "ngrok version",
+    tailscale: "tailscale version",
+    cloudflare: "cloudflared version",
+    localtunnel: "lt --version",
   };
 
   for (const [provider, command] of Object.entries(commands) as [TunnelProvider, string][]) {
     try {
-      execSync(command, { encoding: 'utf-8', stdio: 'pipe' });
+      execSync(command, { encoding: "utf-8", stdio: "pipe" });
       providers.push(provider);
     } catch {
       // Provider not installed
@@ -608,17 +612,22 @@ export async function getAvailableTunnelProviders(): Promise<TunnelProvider[]> {
 /**
  * Create a tunnel with auto-detection of available provider
  */
-export async function createAutoTunnel(port: number, preferredProvider?: TunnelProvider): Promise<TunnelManager> {
+export async function createAutoTunnel(
+  port: number,
+  preferredProvider?: TunnelProvider,
+): Promise<TunnelManager> {
   const available = await getAvailableTunnelProviders();
 
   if (available.length === 0) {
-    throw new Error('No tunnel providers installed. Install ngrok, Tailscale, cloudflared, or localtunnel.');
+    throw new Error(
+      "No tunnel providers installed. Install ngrok, Tailscale, cloudflared, or localtunnel.",
+    );
   }
 
   let provider = preferredProvider;
   if (!provider || !available.includes(provider)) {
     // Priority: ngrok > tailscale > cloudflare > localtunnel
-    const priority: TunnelProvider[] = ['ngrok', 'tailscale', 'cloudflare', 'localtunnel'];
+    const priority: TunnelProvider[] = ["ngrok", "tailscale", "cloudflare", "localtunnel"];
     provider = priority.find((p) => available.includes(p))!;
   }
 

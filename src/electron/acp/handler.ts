@@ -5,11 +5,11 @@
  * Leverages the existing WebSocket frame protocol and authentication.
  */
 
-import { randomUUID } from 'crypto';
-import { ErrorCodes } from '../control-plane/protocol';
-import type { ControlPlaneServer } from '../control-plane/server';
-import type { ControlPlaneClient } from '../control-plane/client';
-import { ACPAgentRegistry } from './agent-registry';
+import { randomUUID } from "crypto";
+import { ErrorCodes } from "../control-plane/protocol";
+import type { ControlPlaneServer } from "../control-plane/server";
+import type { ControlPlaneClient } from "../control-plane/client";
+import { ACPAgentRegistry } from "./agent-registry";
 import {
   ACPMethods,
   ACPEvents,
@@ -19,7 +19,7 @@ import {
   type ACPAgentRegisterParams,
   type ACPMessageSendParams,
   type ACPTaskCreateParams,
-} from './types';
+} from "./types";
 
 /**
  * Dependencies for ACP handler registration
@@ -68,13 +68,16 @@ export function getACPRegistry(): ACPAgentRegistry {
 
 function requireAuth(client: ControlPlaneClient): void {
   if (!client.isAuthenticated) {
-    throw { code: ErrorCodes.UNAUTHORIZED, message: 'Authentication required' };
+    throw { code: ErrorCodes.UNAUTHORIZED, message: "Authentication required" };
   }
 }
 
 function requireString(value: unknown, field: string): string {
-  if (typeof value !== 'string' || !value.trim()) {
-    throw { code: ErrorCodes.INVALID_PARAMS, message: `${field} is required and must be a non-empty string` };
+  if (typeof value !== "string" || !value.trim()) {
+    throw {
+      code: ErrorCodes.INVALID_PARAMS,
+      message: `${field} is required and must be a non-empty string`,
+    };
   }
   return value.trim();
 }
@@ -85,10 +88,7 @@ function requireString(value: unknown, field: string): string {
  * Register all ACP method handlers on the Control Plane server.
  * Call this during server startup alongside registerTaskAndWorkspaceMethods.
  */
-export function registerACPMethods(
-  server: ControlPlaneServer,
-  deps: ACPHandlerDeps
-): void {
+export function registerACPMethods(server: ControlPlaneServer, deps: ACPHandlerDeps): void {
   const reg = getACPRegistry();
 
   // ----- acp.discover -----
@@ -104,7 +104,7 @@ export function registerACPMethods(
   server.registerMethod(ACPMethods.AGENT_GET, async (client, params) => {
     requireAuth(client);
     const p = params as { agentId?: string } | undefined;
-    const agentId = requireString(p?.agentId, 'agentId');
+    const agentId = requireString(p?.agentId, "agentId");
     const roles = deps.getActiveRoles();
     const agent = reg.getAgent(agentId, roles);
     if (!agent) {
@@ -117,8 +117,8 @@ export function registerACPMethods(
   server.registerMethod(ACPMethods.AGENT_REGISTER, async (client, params) => {
     requireAuth(client);
     const p = (params || {}) as ACPAgentRegisterParams;
-    requireString(p.name, 'name');
-    requireString(p.description, 'description');
+    requireString(p.name, "name");
+    requireString(p.description, "description");
 
     const card = reg.registerRemoteAgent(p);
 
@@ -132,10 +132,10 @@ export function registerACPMethods(
   server.registerMethod(ACPMethods.AGENT_UNREGISTER, async (client, params) => {
     requireAuth(client);
     const p = params as { agentId?: string } | undefined;
-    const agentId = requireString(p?.agentId, 'agentId');
+    const agentId = requireString(p?.agentId, "agentId");
 
-    if (!agentId.startsWith('remote:')) {
-      throw { code: ErrorCodes.INVALID_PARAMS, message: 'Only remote agents can be unregistered' };
+    if (!agentId.startsWith("remote:")) {
+      throw { code: ErrorCodes.INVALID_PARAMS, message: "Only remote agents can be unregistered" };
     }
 
     const removed = reg.unregisterRemoteAgent(agentId);
@@ -153,8 +153,8 @@ export function registerACPMethods(
   server.registerMethod(ACPMethods.MESSAGE_SEND, async (client, params) => {
     requireAuth(client);
     const p = (params || {}) as ACPMessageSendParams & { from?: string };
-    const to = requireString(p.to, 'to');
-    const body = requireString(p.body, 'body');
+    const to = requireString(p.to, "to");
+    const body = requireString(p.body, "body");
 
     // Validate target agent exists
     const roles = deps.getActiveRoles();
@@ -167,12 +167,12 @@ export function registerACPMethods(
       id: randomUUID(),
       from: p.from || `client:${client.id}`,
       to,
-      contentType: p.contentType || 'text/plain',
+      contentType: p.contentType || "text/plain",
       body,
       data: p.data,
       correlationId: p.correlationId,
       replyTo: p.replyTo,
-      priority: p.priority || 'normal',
+      priority: p.priority || "normal",
       timestamp: Date.now(),
       ttlMs: p.ttlMs,
     };
@@ -186,16 +186,16 @@ export function registerACPMethods(
     // If the target is a local agent and we have task creation capability,
     // auto-create a task from high-priority messages
     if (
-      targetAgent.origin === 'local' &&
+      targetAgent.origin === "local" &&
       targetAgent.localRoleId &&
-      p.priority === 'high' &&
+      p.priority === "high" &&
       deps.createTask
     ) {
       try {
         const result = await deps.createTask({
           title: `ACP message from ${message.from}`,
           prompt: body,
-          workspaceId: '', // Will use default workspace
+          workspaceId: "", // Will use default workspace
           assignedAgentRoleId: targetAgent.localRoleId,
         });
         message.data = { ...((message.data as any) || {}), autoTaskId: result.taskId };
@@ -211,7 +211,7 @@ export function registerACPMethods(
   server.registerMethod(ACPMethods.MESSAGE_LIST, async (client, params) => {
     requireAuth(client);
     const p = (params || {}) as { agentId?: string; drain?: boolean };
-    const agentId = requireString(p.agentId, 'agentId');
+    const agentId = requireString(p.agentId, "agentId");
     const drain = p.drain === true;
     const messages = reg.getMessages(agentId, drain);
     return { messages };
@@ -221,9 +221,9 @@ export function registerACPMethods(
   server.registerMethod(ACPMethods.TASK_CREATE, async (client, params) => {
     requireAuth(client);
     const p = (params || {}) as ACPTaskCreateParams & { requesterId?: string };
-    const assigneeId = requireString(p.assigneeId, 'assigneeId');
-    const title = requireString(p.title, 'title');
-    const prompt = requireString(p.prompt, 'prompt');
+    const assigneeId = requireString(p.assigneeId, "assigneeId");
+    const title = requireString(p.title, "title");
+    const prompt = requireString(p.prompt, "prompt");
 
     // Validate assignee exists
     const roles = deps.getActiveRoles();
@@ -238,26 +238,26 @@ export function registerACPMethods(
       assigneeId,
       title,
       prompt,
-      status: 'pending',
+      status: "pending",
       workspaceId: p.workspaceId,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
 
     // If assignee is a local agent, delegate to the CoWork task system
-    if (assignee.origin === 'local' && assignee.localRoleId && deps.createTask) {
+    if (assignee.origin === "local" && assignee.localRoleId && deps.createTask) {
       try {
         const result = await deps.createTask({
           title,
           prompt,
-          workspaceId: p.workspaceId || '',
+          workspaceId: p.workspaceId || "",
           assignedAgentRoleId: assignee.localRoleId,
         });
         acpTask.coworkTaskId = result.taskId;
-        acpTask.status = 'running';
+        acpTask.status = "running";
       } catch (err: any) {
-        acpTask.status = 'failed';
-        acpTask.error = err?.message || 'Failed to create task';
+        acpTask.status = "failed";
+        acpTask.error = err?.message || "Failed to create task";
       }
     }
 
@@ -273,7 +273,7 @@ export function registerACPMethods(
   server.registerMethod(ACPMethods.TASK_GET, async (client, params) => {
     requireAuth(client);
     const p = params as { taskId?: string } | undefined;
-    const taskId = requireString(p?.taskId, 'taskId');
+    const taskId = requireString(p?.taskId, "taskId");
 
     const acpTask = acpTasks.get(taskId);
     if (!acpTask) {
@@ -284,18 +284,18 @@ export function registerACPMethods(
     if (acpTask.coworkTaskId && deps.getTask) {
       const coworkTask = deps.getTask(acpTask.coworkTaskId);
       if (coworkTask) {
-        const statusMap: Record<string, ACPTask['status']> = {
-          pending: 'pending',
-          running: 'running',
-          completed: 'completed',
-          failed: 'failed',
-          cancelled: 'cancelled',
+        const statusMap: Record<string, ACPTask["status"]> = {
+          pending: "pending",
+          running: "running",
+          completed: "completed",
+          failed: "failed",
+          cancelled: "cancelled",
         };
         const newStatus = statusMap[coworkTask.status] || acpTask.status;
         if (newStatus !== acpTask.status) {
           acpTask.status = newStatus;
           acpTask.updatedAt = Date.now();
-          if (newStatus === 'completed' || newStatus === 'failed' || newStatus === 'cancelled') {
+          if (newStatus === "completed" || newStatus === "failed" || newStatus === "cancelled") {
             acpTask.completedAt = Date.now();
           }
           if (coworkTask.error) {
@@ -335,14 +335,14 @@ export function registerACPMethods(
   server.registerMethod(ACPMethods.TASK_CANCEL, async (client, params) => {
     requireAuth(client);
     const p = params as { taskId?: string } | undefined;
-    const taskId = requireString(p?.taskId, 'taskId');
+    const taskId = requireString(p?.taskId, "taskId");
 
     const acpTask = acpTasks.get(taskId);
     if (!acpTask) {
       throw { code: ErrorCodes.INVALID_PARAMS, message: `ACP task not found: ${taskId}` };
     }
 
-    if (acpTask.status === 'completed' || acpTask.status === 'cancelled') {
+    if (acpTask.status === "completed" || acpTask.status === "cancelled") {
       throw { code: ErrorCodes.INVALID_PARAMS, message: `Task is already ${acpTask.status}` };
     }
 
@@ -355,7 +355,7 @@ export function registerACPMethods(
       }
     }
 
-    acpTask.status = 'cancelled';
+    acpTask.status = "cancelled";
     acpTask.updatedAt = Date.now();
     acpTask.completedAt = Date.now();
 
@@ -365,7 +365,7 @@ export function registerACPMethods(
     return { task: acpTask };
   });
 
-  console.log('[ACP] Registered 10 ACP method handlers on Control Plane');
+  console.log("[ACP] Registered 10 ACP method handlers on Control Plane");
 }
 
 /**

@@ -8,13 +8,13 @@
  * Remote agents register via the acp.agent.register method.
  */
 
-import { randomUUID } from 'crypto';
+import { randomUUID } from "crypto";
 import type {
   ACPAgentCard,
   ACPCapability,
   ACPDiscoverParams,
   ACPAgentRegisterParams,
-} from './types';
+} from "./types";
 
 /**
  * Minimal interface for the AgentRoleRepository dependency.
@@ -38,7 +38,7 @@ export class ACPAgentRegistry {
   private remoteAgents = new Map<string, ACPAgentCard>();
 
   /** Inbox: messages keyed by recipient agent ID */
-  private messageInboxes = new Map<string, Array<import('./types').ACPMessage>>();
+  private messageInboxes = new Map<string, Array<import("./types").ACPMessage>>();
 
   /** Maximum messages per inbox before oldest are dropped */
   private maxInboxSize = 100;
@@ -56,15 +56,15 @@ export class ACPAgentRegistry {
       id: `local:${role.name}`,
       name: role.displayName,
       description: role.description || `${role.displayName} agent`,
-      version: '1.0.0',
-      provider: 'CoWork OS',
+      version: "1.0.0",
+      provider: "CoWork OS",
       icon: role.icon,
       capabilities,
-      origin: 'local',
+      origin: "local",
       localRoleId: role.id,
       registeredAt: Date.now(),
       lastActiveAt: Date.now(),
-      status: role.isActive ? 'available' : 'offline',
+      status: role.isActive ? "available" : "offline",
     };
   }
 
@@ -98,7 +98,7 @@ export class ACPAgentRegistry {
     if (remote) return remote;
 
     // Check local agents
-    if (agentId.startsWith('local:')) {
+    if (agentId.startsWith("local:")) {
       const roleName = agentId.slice(6); // Remove 'local:' prefix
       const role = roles.find((r) => r.name === roleName && r.isActive);
       if (role) return this.roleToCard(role);
@@ -115,9 +115,7 @@ export class ACPAgentRegistry {
 
     if (params.capability) {
       const cap = params.capability.toLowerCase();
-      agents = agents.filter((a) =>
-        a.capabilities.some((c) => c.id.toLowerCase() === cap)
-      );
+      agents = agents.filter((a) => a.capabilities.some((c) => c.id.toLowerCase() === cap));
     }
 
     if (params.status) {
@@ -135,7 +133,7 @@ export class ACPAgentRegistry {
           a.name.toLowerCase().includes(q) ||
           a.description.toLowerCase().includes(q) ||
           a.skills?.some((s) => s.toLowerCase().includes(q)) ||
-          a.capabilities.some((c) => c.id.toLowerCase().includes(q))
+          a.capabilities.some((c) => c.id.toLowerCase().includes(q)),
       );
     }
 
@@ -146,13 +144,13 @@ export class ACPAgentRegistry {
    * Register a remote agent
    */
   registerRemoteAgent(params: ACPAgentRegisterParams): ACPAgentCard {
-    const id = `remote:${randomUUID().slice(0, 8)}-${params.name.toLowerCase().replace(/\s+/g, '-')}`;
+    const id = `remote:${randomUUID().slice(0, 8)}-${params.name.toLowerCase().replace(/\s+/g, "-")}`;
 
     const card: ACPAgentCard = {
       id,
       name: params.name,
       description: params.description,
-      version: params.version || '1.0.0',
+      version: params.version || "1.0.0",
       provider: params.provider,
       icon: params.icon,
       capabilities: (params.capabilities || []).map((c) => ({
@@ -165,10 +163,10 @@ export class ACPAgentRegistry {
       outputContentTypes: params.outputContentTypes,
       supportsStreaming: params.supportsStreaming,
       endpoint: params.endpoint,
-      origin: 'remote',
+      origin: "remote",
       registeredAt: Date.now(),
       lastActiveAt: Date.now(),
-      status: 'available',
+      status: "available",
       metadata: params.metadata,
     };
 
@@ -186,7 +184,7 @@ export class ACPAgentRegistry {
   /**
    * Update a remote agent's status
    */
-  updateAgentStatus(agentId: string, status: ACPAgentCard['status']): boolean {
+  updateAgentStatus(agentId: string, status: ACPAgentCard["status"]): boolean {
     const agent = this.remoteAgents.get(agentId);
     if (!agent) return false;
     agent.status = status;
@@ -197,7 +195,7 @@ export class ACPAgentRegistry {
   /**
    * Push a message into an agent's inbox
    */
-  pushMessage(agentId: string, message: import('./types').ACPMessage): void {
+  pushMessage(agentId: string, message: import("./types").ACPMessage): void {
     let inbox = this.messageInboxes.get(agentId);
     if (!inbox) {
       inbox = [];
@@ -213,7 +211,7 @@ export class ACPAgentRegistry {
   /**
    * Get and optionally drain messages from an agent's inbox
    */
-  getMessages(agentId: string, drain = false): import('./types').ACPMessage[] {
+  getMessages(agentId: string, drain = false): import("./types").ACPMessage[] {
     const inbox = this.messageInboxes.get(agentId) || [];
     if (drain) {
       this.messageInboxes.delete(agentId);

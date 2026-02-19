@@ -5,11 +5,11 @@
  * completion payload even when the last streamed assistant message is missing.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { EventEmitter } from 'events';
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { EventEmitter } from "events";
 
 // Mock better-sqlite3 (native module) before importing ChannelGateway
-vi.mock('better-sqlite3', () => {
+vi.mock("better-sqlite3", () => {
   return {
     default: vi.fn().mockImplementation(() => ({
       exec: vi.fn(),
@@ -24,16 +24,16 @@ vi.mock('better-sqlite3', () => {
 });
 
 // Mock electron APIs used by gateway modules
-vi.mock('electron', () => ({
+vi.mock("electron", () => ({
   app: {
-    getPath: vi.fn().mockReturnValue('/tmp/test-cowork'),
+    getPath: vi.fn().mockReturnValue("/tmp/test-cowork"),
   },
   BrowserWindow: {
     getAllWindows: vi.fn().mockReturnValue([]),
   },
 }));
 
-import { ChannelGateway } from '../index';
+import { ChannelGateway } from "../index";
 
 function createMockDb() {
   return {
@@ -46,14 +46,14 @@ function createMockDb() {
   } as any;
 }
 
-describe('ChannelGateway daemon listeners', () => {
+describe("ChannelGateway daemon listeners", () => {
   let agentDaemon: EventEmitter;
 
   beforeEach(() => {
     agentDaemon = new EventEmitter();
   });
 
-  it('prefers task_completed.resultSummary over last streamed assistant message', () => {
+  it("prefers task_completed.resultSummary over last streamed assistant message", () => {
     const db = createMockDb();
     const gateway = new ChannelGateway(db, { agentDaemon: agentDaemon as any });
 
@@ -61,13 +61,19 @@ describe('ChannelGateway daemon listeners', () => {
     router.sendTaskUpdate = vi.fn();
     router.handleTaskCompletion = vi.fn();
 
-    agentDaemon.emit('assistant_message', { taskId: 't1', message: 'Some streamed content that is not the final summary.' });
-    agentDaemon.emit('task_completed', { taskId: 't1', resultSummary: 'Final summary from daemon.' });
+    agentDaemon.emit("assistant_message", {
+      taskId: "t1",
+      message: "Some streamed content that is not the final summary.",
+    });
+    agentDaemon.emit("task_completed", {
+      taskId: "t1",
+      resultSummary: "Final summary from daemon.",
+    });
 
-    expect(router.handleTaskCompletion).toHaveBeenCalledWith('t1', 'Final summary from daemon.');
+    expect(router.handleTaskCompletion).toHaveBeenCalledWith("t1", "Final summary from daemon.");
   });
 
-  it('falls back to last streamed assistant message when resultSummary is missing', () => {
+  it("falls back to last streamed assistant message when resultSummary is missing", () => {
     const db = createMockDb();
     const gateway = new ChannelGateway(db, { agentDaemon: agentDaemon as any });
 
@@ -75,17 +81,17 @@ describe('ChannelGateway daemon listeners', () => {
     router.sendTaskUpdate = vi.fn();
     router.handleTaskCompletion = vi.fn();
 
-    const first = 'First streamed message (short).';
-    const second = 'Second streamed message that is longer and should win.';
+    const first = "First streamed message (short).";
+    const second = "Second streamed message that is longer and should win.";
 
-    agentDaemon.emit('assistant_message', { taskId: 't2', message: first });
-    agentDaemon.emit('assistant_message', { taskId: 't2', message: second });
-    agentDaemon.emit('task_completed', { taskId: 't2' });
+    agentDaemon.emit("assistant_message", { taskId: "t2", message: first });
+    agentDaemon.emit("assistant_message", { taskId: "t2", message: second });
+    agentDaemon.emit("task_completed", { taskId: "t2" });
 
-    expect(router.handleTaskCompletion).toHaveBeenCalledWith('t2', second);
+    expect(router.handleTaskCompletion).toHaveBeenCalledWith("t2", second);
   });
 
-  it('ignores generic task_completed.message and prefers last streamed assistant message', () => {
+  it("ignores generic task_completed.message and prefers last streamed assistant message", () => {
     const db = createMockDb();
     const gateway = new ChannelGateway(db, { agentDaemon: agentDaemon as any });
 
@@ -93,11 +99,11 @@ describe('ChannelGateway daemon listeners', () => {
     router.sendTaskUpdate = vi.fn();
     router.handleTaskCompletion = vi.fn();
 
-    const streamed = 'Here is the actual result the user should see.';
+    const streamed = "Here is the actual result the user should see.";
 
-    agentDaemon.emit('assistant_message', { taskId: 't3', message: streamed });
-    agentDaemon.emit('task_completed', { taskId: 't3', message: 'Task completed successfully' });
+    agentDaemon.emit("assistant_message", { taskId: "t3", message: streamed });
+    agentDaemon.emit("task_completed", { taskId: "t3", message: "Task completed successfully" });
 
-    expect(router.handleTaskCompletion).toHaveBeenCalledWith('t3', streamed);
+    expect(router.handleTaskCompletion).toHaveBeenCalledWith("t3", streamed);
   });
 });

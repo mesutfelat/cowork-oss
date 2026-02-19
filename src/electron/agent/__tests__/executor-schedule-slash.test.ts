@@ -1,20 +1,20 @@
-import { describe, it, expect, vi } from 'vitest';
-import { TaskExecutor } from '../executor';
+import { describe, it, expect, vi } from "vitest";
+import { TaskExecutor } from "../executor";
 
-describe('TaskExecutor /schedule slash command handling', () => {
+describe("TaskExecutor /schedule slash command handling", () => {
   function createExecutor(prompt: string, toolImpl: (input: any) => any) {
     const executor = Object.create(TaskExecutor.prototype) as any;
 
     executor.task = {
-      id: 'task-1',
-      title: 'Test Task',
+      id: "task-1",
+      title: "Test Task",
       prompt,
       createdAt: Date.now() - 1000,
     };
 
     executor.workspace = {
-      id: 'workspace-1',
-      path: '/tmp',
+      id: "workspace-1",
+      path: "/tmp",
       isTemp: false,
       permissions: { read: true, write: true, delete: true, network: true, shell: true },
     };
@@ -27,7 +27,7 @@ describe('TaskExecutor /schedule slash command handling', () => {
 
     executor.toolRegistry = {
       executeTool: vi.fn(async (name: string, input: any) => {
-        expect(name).toBe('schedule_task');
+        expect(name).toBe("schedule_task");
         return toolImpl(input);
       }),
     };
@@ -51,19 +51,19 @@ describe('TaskExecutor /schedule slash command handling', () => {
     };
   }
 
-  it('creates a scheduled task for `/schedule every <interval> <prompt>`', async () => {
+  it("creates a scheduled task for `/schedule every <interval> <prompt>`", async () => {
     const calls: any[] = [];
-    const executor = createExecutor('/schedule every 6h Check price.', (input) => {
+    const executor = createExecutor("/schedule every 6h Check price.", (input) => {
       calls.push(input);
-      if (input.action === 'list') return [];
-      if (input.action === 'create') {
+      if (input.action === "list") return [];
+      if (input.action === "create") {
         return {
           success: true,
           job: {
-            id: 'job-1',
+            id: "job-1",
             name: input.name,
             enabled: true,
-            schedule: { kind: 'every', everyMs: 6 * 60 * 60 * 1000 },
+            schedule: { kind: "every", everyMs: 6 * 60 * 60 * 1000 },
             state: { nextRunAtMs: Date.now() + 123_000 },
           },
         };
@@ -71,17 +71,19 @@ describe('TaskExecutor /schedule slash command handling', () => {
       throw new Error(`Unexpected action: ${input.action}`);
     });
 
-    const handled = await (TaskExecutor as any).prototype.maybeHandleScheduleSlashCommand.call(executor);
+    const handled = await (TaskExecutor as any).prototype.maybeHandleScheduleSlashCommand.call(
+      executor,
+    );
     expect(handled).toBe(true);
     expect(executor.taskCompleted).toBe(true);
 
     // Upsert logic: list then create
-    expect(calls[0]).toEqual({ action: 'list', includeDisabled: true });
+    expect(calls[0]).toEqual({ action: "list", includeDisabled: true });
     expect(calls[1]).toMatchObject({
-      action: 'create',
-      name: 'Check price.',
-      prompt: 'Check price.',
-      schedule: { type: 'interval', every: '6h' },
+      action: "create",
+      name: "Check price.",
+      prompt: "Check price.",
+      schedule: { type: "interval", every: "6h" },
       enabled: true,
     });
 
@@ -90,16 +92,16 @@ describe('TaskExecutor /schedule slash command handling', () => {
     expect(String(summary)).toContain('Scheduled "Check price."');
   });
 
-  it('lists scheduled tasks for `/schedule list`', async () => {
-    const executor = createExecutor('/schedule list', (input) => {
-      if (input.action === 'list') {
+  it("lists scheduled tasks for `/schedule list`", async () => {
+    const executor = createExecutor("/schedule list", (input) => {
+      if (input.action === "list") {
         return [
           {
-            id: 'job-1',
-            name: 'Job A',
+            id: "job-1",
+            name: "Job A",
             enabled: true,
             updatedAtMs: 2,
-            schedule: { kind: 'cron', expr: '0 9 * * *' },
+            schedule: { kind: "cron", expr: "0 9 * * *" },
             state: { nextRunAtMs: Date.now() + 1000 },
           },
         ];
@@ -107,20 +109,24 @@ describe('TaskExecutor /schedule slash command handling', () => {
       throw new Error(`Unexpected action: ${input.action}`);
     });
 
-    const handled = await (TaskExecutor as any).prototype.maybeHandleScheduleSlashCommand.call(executor);
+    const handled = await (TaskExecutor as any).prototype.maybeHandleScheduleSlashCommand.call(
+      executor,
+    );
     expect(handled).toBe(true);
-    expect(executor.daemon.completeTask).toHaveBeenCalledWith('task-1', 'Listed 1 scheduled task(s).');
+    expect(executor.daemon.completeTask).toHaveBeenCalledWith(
+      "task-1",
+      "Listed 1 scheduled task(s).",
+    );
   });
 
-  it('rejects too-small intervals for `/schedule every`', async () => {
-    const executor = createExecutor('/schedule every 10s Too fast', (input) => {
-      if (input.action === 'list') return [];
+  it("rejects too-small intervals for `/schedule every`", async () => {
+    const executor = createExecutor("/schedule every 10s Too fast", (input) => {
+      if (input.action === "list") return [];
       return { success: true };
     });
 
-    await expect((TaskExecutor as any).prototype.maybeHandleScheduleSlashCommand.call(executor)).rejects.toThrow(
-      /Invalid interval/i
-    );
+    await expect(
+      (TaskExecutor as any).prototype.maybeHandleScheduleSlashCommand.call(executor),
+    ).rejects.toThrow(/Invalid interval/i);
   });
 });
-

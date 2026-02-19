@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { AgentRoleData, AgentCapability } from '../../electron/preload';
+import { useState } from "react";
+import { AgentRoleData, AgentCapability } from "../../electron/preload";
 
 // Alias for UI usage
 type AgentRole = AgentRoleData;
@@ -12,46 +12,84 @@ interface AgentRoleEditorProps {
   error: string | null;
 }
 
-const ALL_CAPABILITIES: { value: AgentCapability; label: string; icon: string; description: string }[] = [
-  { value: 'code', label: 'Code', icon: '💻', description: 'Write, modify, and understand code' },
-  { value: 'review', label: 'Review', icon: '🔍', description: 'Review code for quality and issues' },
-  { value: 'research', label: 'Research', icon: '📚', description: 'Research topics and gather information' },
-  { value: 'test', label: 'Test', icon: '🧪', description: 'Write and run tests' },
-  { value: 'document', label: 'Document', icon: '📝', description: 'Write documentation and comments' },
-  { value: 'plan', label: 'Plan', icon: '📋', description: 'Plan and break down tasks' },
-  { value: 'design', label: 'Design', icon: '🎨', description: 'Design systems and architectures' },
-  { value: 'analyze', label: 'Analyze', icon: '📊', description: 'Analyze data and performance' },
+const ALL_CAPABILITIES: {
+  value: AgentCapability;
+  label: string;
+  icon: string;
+  description: string;
+}[] = [
+  { value: "code", label: "Code", icon: "💻", description: "Write, modify, and understand code" },
+  {
+    value: "review",
+    label: "Review",
+    icon: "🔍",
+    description: "Review code for quality and issues",
+  },
+  {
+    value: "research",
+    label: "Research",
+    icon: "📚",
+    description: "Research topics and gather information",
+  },
+  { value: "test", label: "Test", icon: "🧪", description: "Write and run tests" },
+  {
+    value: "document",
+    label: "Document",
+    icon: "📝",
+    description: "Write documentation and comments",
+  },
+  { value: "plan", label: "Plan", icon: "📋", description: "Plan and break down tasks" },
+  { value: "design", label: "Design", icon: "🎨", description: "Design systems and architectures" },
+  { value: "analyze", label: "Analyze", icon: "📊", description: "Analyze data and performance" },
 ];
 
 const PRESET_COLORS = [
-  '#3b82f6', // Blue
-  '#8b5cf6', // Purple
-  '#22c55e', // Green
-  '#f59e0b', // Amber
-  '#ef4444', // Red
-  '#ec4899', // Pink
-  '#06b6d4', // Cyan
-  '#6366f1', // Indigo
+  "#3b82f6", // Blue
+  "#8b5cf6", // Purple
+  "#22c55e", // Green
+  "#f59e0b", // Amber
+  "#ef4444", // Red
+  "#ec4899", // Pink
+  "#06b6d4", // Cyan
+  "#6366f1", // Indigo
 ];
 
 const PRESET_ICONS = [
-  '🤖', '💻', '🔍', '📚', '🧪', '📝', '📋', '🎨',
-  '📊', '🛠️', '⚡', '🚀', '🔧', '💡', '🎯', '🧠',
+  "🤖",
+  "💻",
+  "🔍",
+  "📚",
+  "🧪",
+  "📝",
+  "📋",
+  "🎨",
+  "📊",
+  "🛠️",
+  "⚡",
+  "🚀",
+  "🔧",
+  "💡",
+  "🎯",
+  "🧠",
 ];
 
 const AUTONOMY_LEVELS = [
-  { value: 'intern', label: 'Intern', description: 'Requires approval for most actions' },
-  { value: 'specialist', label: 'Specialist', description: 'Works independently on assigned tasks' },
-  { value: 'lead', label: 'Lead', description: 'Can delegate tasks to other agents' },
+  { value: "intern", label: "Intern", description: "Requires approval for most actions" },
+  {
+    value: "specialist",
+    label: "Specialist",
+    description: "Works independently on assigned tasks",
+  },
+  { value: "lead", label: "Lead", description: "Can delegate tasks to other agents" },
 ] as const;
 
 const HEARTBEAT_INTERVALS = [
-  { value: 5, label: '5 minutes' },
-  { value: 15, label: '15 minutes' },
-  { value: 30, label: '30 minutes' },
-  { value: 60, label: '1 hour' },
-  { value: 120, label: '2 hours' },
-  { value: 240, label: '4 hours' },
+  { value: 5, label: "5 minutes" },
+  { value: 15, label: "15 minutes" },
+  { value: 30, label: "30 minutes" },
+  { value: 60, label: "1 hour" },
+  { value: 120, label: "2 hours" },
+  { value: 240, label: "4 hours" },
 ];
 
 export function AgentRoleEditor({
@@ -64,7 +102,9 @@ export function AgentRoleEditor({
   const [editedRole, setEditedRole] = useState<AgentRole>(role);
   const [showIconPicker, setShowIconPicker] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
-  const [activeTab, setActiveTab] = useState<'basic' | 'capabilities' | 'mission' | 'advanced'>('basic');
+  const [activeTab, setActiveTab] = useState<"basic" | "capabilities" | "mission" | "advanced">(
+    "basic",
+  );
 
   const handleChange = <K extends keyof AgentRole>(key: K, value: AgentRole[K]) => {
     setEditedRole((prev) => ({ ...prev, [key]: value }));
@@ -74,7 +114,7 @@ export function AgentRoleEditor({
     const newCapabilities = editedRole.capabilities.includes(cap)
       ? editedRole.capabilities.filter((c) => c !== cap)
       : [...editedRole.capabilities, cap];
-    handleChange('capabilities', newCapabilities);
+    handleChange("capabilities", newCapabilities);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -82,21 +122,29 @@ export function AgentRoleEditor({
     onSave(editedRole);
   };
 
-  const isValid = editedRole.name.trim() && editedRole.displayName.trim() && editedRole.capabilities.length > 0;
+  const isValid =
+    editedRole.name.trim() && editedRole.displayName.trim() && editedRole.capabilities.length > 0;
 
   return (
     <div className="agent-role-editor">
       <form onSubmit={handleSubmit}>
         <div className="editor-header">
           <button type="button" className="btn-back" onClick={onCancel}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
               <path d="M19 12H5M12 19l-7-7 7-7" />
             </svg>
             Back
           </button>
-          <h3>{isCreating ? 'Create Agent Role' : 'Edit Agent Role'}</h3>
+          <h3>{isCreating ? "Create Agent Role" : "Edit Agent Role"}</h3>
           <button type="submit" className="btn-primary" disabled={!isValid}>
-            {isCreating ? 'Create' : 'Save Changes'}
+            {isCreating ? "Create" : "Save Changes"}
           </button>
         </div>
 
@@ -105,36 +153,36 @@ export function AgentRoleEditor({
         <div className="editor-tabs">
           <button
             type="button"
-            className={`editor-tab ${activeTab === 'basic' ? 'active' : ''}`}
-            onClick={() => setActiveTab('basic')}
+            className={`editor-tab ${activeTab === "basic" ? "active" : ""}`}
+            onClick={() => setActiveTab("basic")}
           >
             Basic Info
           </button>
           <button
             type="button"
-            className={`editor-tab ${activeTab === 'capabilities' ? 'active' : ''}`}
-            onClick={() => setActiveTab('capabilities')}
+            className={`editor-tab ${activeTab === "capabilities" ? "active" : ""}`}
+            onClick={() => setActiveTab("capabilities")}
           >
             Capabilities
           </button>
           <button
             type="button"
-            className={`editor-tab ${activeTab === 'mission' ? 'active' : ''}`}
-            onClick={() => setActiveTab('mission')}
+            className={`editor-tab ${activeTab === "mission" ? "active" : ""}`}
+            onClick={() => setActiveTab("mission")}
           >
             Mission Control
           </button>
           <button
             type="button"
-            className={`editor-tab ${activeTab === 'advanced' ? 'active' : ''}`}
-            onClick={() => setActiveTab('advanced')}
+            className={`editor-tab ${activeTab === "advanced" ? "active" : ""}`}
+            onClick={() => setActiveTab("advanced")}
           >
             Advanced
           </button>
         </div>
 
         <div className="editor-content">
-          {activeTab === 'basic' && (
+          {activeTab === "basic" && (
             <div className="editor-section">
               <div className="form-row icon-color-row">
                 <div className="icon-picker-container">
@@ -154,9 +202,9 @@ export function AgentRoleEditor({
                           <button
                             key={icon}
                             type="button"
-                            className={`picker-item ${editedRole.icon === icon ? 'selected' : ''}`}
+                            className={`picker-item ${editedRole.icon === icon ? "selected" : ""}`}
                             onClick={() => {
-                              handleChange('icon', icon);
+                              handleChange("icon", icon);
                               setShowIconPicker(false);
                             }}
                           >
@@ -183,10 +231,10 @@ export function AgentRoleEditor({
                           <button
                             key={color}
                             type="button"
-                            className={`picker-item color ${editedRole.color === color ? 'selected' : ''}`}
+                            className={`picker-item color ${editedRole.color === color ? "selected" : ""}`}
                             style={{ backgroundColor: color }}
                             onClick={() => {
-                              handleChange('color', color);
+                              handleChange("color", color);
                               setShowColorPicker(false);
                             }}
                           />
@@ -195,7 +243,7 @@ export function AgentRoleEditor({
                       <input
                         type="color"
                         value={editedRole.color}
-                        onChange={(e) => handleChange('color', e.target.value)}
+                        onChange={(e) => handleChange("color", e.target.value)}
                         className="custom-color-input"
                       />
                     </div>
@@ -210,10 +258,12 @@ export function AgentRoleEditor({
                 <input
                   type="text"
                   value={editedRole.name}
-                  onChange={(e) => handleChange('name', e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'))}
+                  onChange={(e) =>
+                    handleChange("name", e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))
+                  }
                   placeholder="e.g., code-reviewer"
                   disabled={!isCreating}
-                  className={!isCreating ? 'disabled' : ''}
+                  className={!isCreating ? "disabled" : ""}
                 />
                 <span className="form-hint">Unique identifier (lowercase, hyphens only)</span>
               </div>
@@ -225,7 +275,7 @@ export function AgentRoleEditor({
                 <input
                   type="text"
                   value={editedRole.displayName}
-                  onChange={(e) => handleChange('displayName', e.target.value)}
+                  onChange={(e) => handleChange("displayName", e.target.value)}
                   placeholder="e.g., Code Reviewer"
                 />
               </div>
@@ -233,8 +283,8 @@ export function AgentRoleEditor({
               <div className="form-row">
                 <label>Description</label>
                 <textarea
-                  value={editedRole.description || ''}
-                  onChange={(e) => handleChange('description', e.target.value)}
+                  value={editedRole.description || ""}
+                  onChange={(e) => handleChange("description", e.target.value)}
                   placeholder="Describe what this agent role specializes in..."
                   rows={3}
                 />
@@ -242,16 +292,17 @@ export function AgentRoleEditor({
             </div>
           )}
 
-          {activeTab === 'capabilities' && (
+          {activeTab === "capabilities" && (
             <div className="editor-section">
               <p className="section-description">
-                Select the capabilities this agent role should have. At least one capability is required.
+                Select the capabilities this agent role should have. At least one capability is
+                required.
               </p>
               <div className="capabilities-grid">
                 {ALL_CAPABILITIES.map((cap) => (
                   <label
                     key={cap.value}
-                    className={`capability-option ${editedRole.capabilities.includes(cap.value) ? 'selected' : ''}`}
+                    className={`capability-option ${editedRole.capabilities.includes(cap.value) ? "selected" : ""}`}
                   >
                     <input
                       type="checkbox"
@@ -269,7 +320,7 @@ export function AgentRoleEditor({
             </div>
           )}
 
-          {activeTab === 'mission' && (
+          {activeTab === "mission" && (
             <div className="editor-section">
               <p className="section-description">
                 Configure how this agent operates within the Mission Control system.
@@ -281,14 +332,19 @@ export function AgentRoleEditor({
                   {AUTONOMY_LEVELS.map((level) => (
                     <label
                       key={level.value}
-                      className={`autonomy-option ${editedRole.autonomyLevel === level.value ? 'selected' : ''}`}
+                      className={`autonomy-option ${editedRole.autonomyLevel === level.value ? "selected" : ""}`}
                     >
                       <input
                         type="radio"
                         name="autonomyLevel"
                         value={level.value}
                         checked={editedRole.autonomyLevel === level.value}
-                        onChange={(e) => handleChange('autonomyLevel', e.target.value as 'intern' | 'specialist' | 'lead')}
+                        onChange={(e) =>
+                          handleChange(
+                            "autonomyLevel",
+                            e.target.value as "intern" | "specialist" | "lead",
+                          )
+                        }
                       />
                       <span className="autonomy-label">{level.label}</span>
                       <span className="autonomy-description">{level.description}</span>
@@ -300,8 +356,8 @@ export function AgentRoleEditor({
               <div className="form-row">
                 <label>Soul (Extended Personality)</label>
                 <textarea
-                  value={editedRole.soul || ''}
-                  onChange={(e) => handleChange('soul', e.target.value || undefined)}
+                  value={editedRole.soul || ""}
+                  onChange={(e) => handleChange("soul", e.target.value || undefined)}
                   placeholder={`{
   "communicationStyle": "concise and technical",
   "focusAreas": ["performance", "architecture"],
@@ -314,7 +370,10 @@ export function AgentRoleEditor({
                   rows={8}
                   className="code-textarea"
                 />
-                <span className="form-hint">JSON object defining extended personality traits, communication style, and preferences</span>
+                <span className="form-hint">
+                  JSON object defining extended personality traits, communication style, and
+                  preferences
+                </span>
               </div>
 
               <div className="heartbeat-section">
@@ -324,13 +383,14 @@ export function AgentRoleEditor({
                     <input
                       type="checkbox"
                       checked={editedRole.heartbeatEnabled || false}
-                      onChange={(e) => handleChange('heartbeatEnabled', e.target.checked)}
+                      onChange={(e) => handleChange("heartbeatEnabled", e.target.checked)}
                     />
                     <span className="toggle-slider"></span>
                   </label>
                 </div>
                 <p className="section-description">
-                  When enabled, this agent will periodically wake up to check for pending @mentions, assigned tasks, and relevant activity.
+                  When enabled, this agent will periodically wake up to check for pending @mentions,
+                  assigned tasks, and relevant activity.
                 </p>
 
                 {editedRole.heartbeatEnabled && (
@@ -339,7 +399,9 @@ export function AgentRoleEditor({
                       <label>Check Interval</label>
                       <select
                         value={editedRole.heartbeatIntervalMinutes || 15}
-                        onChange={(e) => handleChange('heartbeatIntervalMinutes', parseInt(e.target.value))}
+                        onChange={(e) =>
+                          handleChange("heartbeatIntervalMinutes", parseInt(e.target.value))
+                        }
                       >
                         {HEARTBEAT_INTERVALS.map((interval) => (
                           <option key={interval.value} value={interval.value}>
@@ -355,11 +417,15 @@ export function AgentRoleEditor({
                       <input
                         type="number"
                         value={editedRole.heartbeatStaggerOffset || 0}
-                        onChange={(e) => handleChange('heartbeatStaggerOffset', parseInt(e.target.value) || 0)}
+                        onChange={(e) =>
+                          handleChange("heartbeatStaggerOffset", parseInt(e.target.value) || 0)
+                        }
                         min={0}
                         max={60}
                       />
-                      <span className="form-hint">Offset to stagger heartbeats across multiple agents (0-60 minutes)</span>
+                      <span className="form-hint">
+                        Offset to stagger heartbeats across multiple agents (0-60 minutes)
+                      </span>
                     </div>
                   </div>
                 )}
@@ -367,25 +433,27 @@ export function AgentRoleEditor({
             </div>
           )}
 
-          {activeTab === 'advanced' && (
+          {activeTab === "advanced" && (
             <div className="editor-section">
               <div className="form-row">
                 <label>System Prompt</label>
                 <textarea
-                  value={editedRole.systemPrompt || ''}
-                  onChange={(e) => handleChange('systemPrompt', e.target.value)}
+                  value={editedRole.systemPrompt || ""}
+                  onChange={(e) => handleChange("systemPrompt", e.target.value)}
                   placeholder="Optional custom system prompt for this agent role..."
                   rows={6}
                 />
-                <span className="form-hint">Override the default system prompt with custom instructions</span>
+                <span className="form-hint">
+                  Override the default system prompt with custom instructions
+                </span>
               </div>
 
               <div className="form-row">
                 <label>Model Override</label>
                 <input
                   type="text"
-                  value={editedRole.modelKey || ''}
-                  onChange={(e) => handleChange('modelKey', e.target.value || undefined)}
+                  value={editedRole.modelKey || ""}
+                  onChange={(e) => handleChange("modelKey", e.target.value || undefined)}
                   placeholder="e.g., claude-3-opus-20240229"
                 />
                 <span className="form-hint">Leave empty to use the default model</span>
@@ -396,7 +464,7 @@ export function AgentRoleEditor({
                 <input
                   type="number"
                   value={editedRole.sortOrder}
-                  onChange={(e) => handleChange('sortOrder', parseInt(e.target.value) || 100)}
+                  onChange={(e) => handleChange("sortOrder", parseInt(e.target.value) || 100)}
                   min={1}
                   max={999}
                 />

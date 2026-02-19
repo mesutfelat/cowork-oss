@@ -30,16 +30,11 @@ import {
   MessageAttachment,
   CallbackQuery,
   CallbackQueryHandler,
-} from './types';
-import {
-  SignalClient,
-  SignalMessage,
-  SignalDataMessage,
-  SignalAttachment,
-} from './signal-client';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
+} from "./types";
+import { SignalClient, SignalMessage, SignalDataMessage, SignalAttachment } from "./signal-client";
+import * as fs from "fs";
+import * as path from "path";
+import * as os from "os";
 
 /**
  * Signal adapter configuration with defaults
@@ -50,10 +45,10 @@ interface SignalAdapterConfig extends SignalConfig {
 }
 
 export class SignalAdapter implements ChannelAdapter {
-  readonly type = 'signal' as const;
+  readonly type = "signal" as const;
 
   private client: SignalClient | null = null;
-  private _status: ChannelStatus = 'disconnected';
+  private _status: ChannelStatus = "disconnected";
   private _botUsername?: string;
   private messageHandlers: MessageHandler[] = [];
   private errorHandlers: ErrorHandler[] = [];
@@ -77,12 +72,12 @@ export class SignalAdapter implements ChannelAdapter {
       sendTypingIndicators: true,
       maxAttachmentMb: 100,
       pollInterval: 1000,
-      trustMode: 'tofu',
+      trustMode: "tofu",
       ...config,
     };
 
     // Set up attachments directory
-    this.attachmentsDir = path.join(os.tmpdir(), 'cowork-signal-attachments');
+    this.attachmentsDir = path.join(os.tmpdir(), "cowork-signal-attachments");
     if (!fs.existsSync(this.attachmentsDir)) {
       fs.mkdirSync(this.attachmentsDir, { recursive: true });
     }
@@ -100,11 +95,11 @@ export class SignalAdapter implements ChannelAdapter {
    * Connect to Signal
    */
   async connect(): Promise<void> {
-    if (this._status === 'connected' || this._status === 'connecting') {
+    if (this._status === "connected" || this._status === "connecting") {
       return;
     }
 
-    this.setStatus('connecting');
+    this.setStatus("connecting");
 
     try {
       // Create Signal client
@@ -114,39 +109,39 @@ export class SignalAdapter implements ChannelAdapter {
         dataDir: this.config.dataDir,
         mode: this.config.mode,
         socketPath: this.config.socketPath,
-        verbose: process.env.NODE_ENV === 'development',
+        verbose: process.env.NODE_ENV === "development",
       });
 
       // Check installation
       const installCheck = await this.client.checkInstallation();
       if (!installCheck.installed) {
-        throw new Error(installCheck.error || 'signal-cli not installed');
+        throw new Error(installCheck.error || "signal-cli not installed");
       }
       console.log(`signal-cli version: ${installCheck.version}`);
 
       // Check registration
       const regCheck = await this.client.checkRegistration();
       if (!regCheck.registered) {
-        throw new Error(regCheck.error || 'Phone number not registered');
+        throw new Error(regCheck.error || "Phone number not registered");
       }
 
       // Set up event handlers
-      this.client.on('message', (message: SignalMessage) => {
+      this.client.on("message", (message: SignalMessage) => {
         this.handleIncomingMessage(message);
       });
 
-      this.client.on('error', (error: Error) => {
-        this.handleError(error, 'client');
+      this.client.on("error", (error: Error) => {
+        this.handleError(error, "client");
       });
 
-      this.client.on('connected', () => {
-        console.log('Signal client connected');
+      this.client.on("connected", () => {
+        console.log("Signal client connected");
       });
 
-      this.client.on('disconnected', () => {
-        console.log('Signal client disconnected');
-        if (this._status === 'connected') {
-          this.setStatus('disconnected');
+      this.client.on("disconnected", () => {
+        console.log("Signal client disconnected");
+        if (this._status === "connected") {
+          this.setStatus("disconnected");
         }
       });
 
@@ -161,11 +156,11 @@ export class SignalAdapter implements ChannelAdapter {
         this.startDedupCleanup();
       }
 
-      this.setStatus('connected');
+      this.setStatus("connected");
       console.log(`Signal adapter connected for ${this.config.phoneNumber}`);
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
-      this.setStatus('error', err);
+      this.setStatus("error", err);
       throw err;
     }
   }
@@ -190,15 +185,15 @@ export class SignalAdapter implements ChannelAdapter {
     }
 
     this._botUsername = undefined;
-    this.setStatus('disconnected');
+    this.setStatus("disconnected");
   }
 
   /**
    * Send a message
    */
   async sendMessage(message: OutgoingMessage): Promise<string> {
-    if (!this.client || this._status !== 'connected') {
-      throw new Error('Signal client is not connected');
+    if (!this.client || this._status !== "connected") {
+      throw new Error("Signal client is not connected");
     }
 
     // Prepare attachments
@@ -221,10 +216,12 @@ export class SignalAdapter implements ChannelAdapter {
     // Send the message
     const result = await this.client.sendMessage(message.chatId, text, {
       attachments: attachmentPaths.length > 0 ? attachmentPaths : undefined,
-      quote: message.replyTo ? {
-        timestamp: parseInt(message.replyTo, 10),
-        author: message.chatId,
-      } : undefined,
+      quote: message.replyTo
+        ? {
+            timestamp: parseInt(message.replyTo, 10),
+            author: message.chatId,
+          }
+        : undefined,
     });
 
     return result.timestamp.toString();
@@ -252,7 +249,7 @@ export class SignalAdapter implements ChannelAdapter {
    * Edit a message (not supported by Signal)
    */
   async editMessage(chatId: string, messageId: string, text: string): Promise<void> {
-    throw new Error('Signal does not support message editing');
+    throw new Error("Signal does not support message editing");
   }
 
   /**
@@ -261,15 +258,15 @@ export class SignalAdapter implements ChannelAdapter {
   async deleteMessage(chatId: string, messageId: string): Promise<void> {
     // Signal supports remote delete but it's complex
     // For now, just log a warning
-    console.warn('Signal message deletion not fully implemented');
+    console.warn("Signal message deletion not fully implemented");
   }
 
   /**
    * Send a document/file
    */
   async sendDocument(chatId: string, filePath: string, caption?: string): Promise<string> {
-    if (!this.client || this._status !== 'connected') {
-      throw new Error('Signal client is not connected');
+    if (!this.client || this._status !== "connected") {
+      throw new Error("Signal client is not connected");
     }
 
     const text = caption || path.basename(filePath);
@@ -306,7 +303,7 @@ export class SignalAdapter implements ChannelAdapter {
    */
   async answerCallbackQuery(queryId: string, text?: string, showAlert?: boolean): Promise<void> {
     // Signal doesn't have inline keyboards
-    console.warn('Signal does not support callback queries');
+    console.warn("Signal does not support callback queries");
   }
 
   /**
@@ -328,7 +325,7 @@ export class SignalAdapter implements ChannelAdapter {
    */
   async getInfo(): Promise<ChannelInfo> {
     return {
-      type: 'signal',
+      type: "signal",
       status: this._status,
       botId: this.config.phoneNumber,
       botUsername: this.config.phoneNumber,
@@ -378,24 +375,8 @@ export class SignalAdapter implements ChannelAdapter {
    * Add reaction to a message
    */
   async addReaction(chatId: string, messageId: string, emoji: string): Promise<void> {
-    if (!this.client || this._status !== 'connected') {
-      throw new Error('Signal client is not connected');
-    }
-
-    await this.client.sendReaction(
-      chatId,
-      emoji,
-      chatId, // targetAuthor
-      parseInt(messageId, 10)
-    );
-  }
-
-  /**
-   * Remove reaction from a message
-   */
-  async removeReaction(chatId: string, messageId: string, emoji: string): Promise<void> {
-    if (!this.client || this._status !== 'connected') {
-      throw new Error('Signal client is not connected');
+    if (!this.client || this._status !== "connected") {
+      throw new Error("Signal client is not connected");
     }
 
     await this.client.sendReaction(
@@ -403,7 +384,23 @@ export class SignalAdapter implements ChannelAdapter {
       emoji,
       chatId, // targetAuthor
       parseInt(messageId, 10),
-      true // remove
+    );
+  }
+
+  /**
+   * Remove reaction from a message
+   */
+  async removeReaction(chatId: string, messageId: string, emoji: string): Promise<void> {
+    if (!this.client || this._status !== "connected") {
+      throw new Error("Signal client is not connected");
+    }
+
+    await this.client.sendReaction(
+      chatId,
+      emoji,
+      chatId, // targetAuthor
+      parseInt(messageId, 10),
+      true, // remove
     );
   }
 
@@ -426,8 +423,8 @@ export class SignalAdapter implements ChannelAdapter {
    * Get contacts
    */
   async getContacts(): Promise<Array<{ number: string; name?: string }>> {
-    if (!this.client || this._status !== 'connected') {
-      throw new Error('Signal client is not connected');
+    if (!this.client || this._status !== "connected") {
+      throw new Error("Signal client is not connected");
     }
 
     return this.client.getContacts();
@@ -437,8 +434,8 @@ export class SignalAdapter implements ChannelAdapter {
    * Get groups
    */
   async getGroups(): Promise<Array<{ id: string; name: string; members: string[] }>> {
-    if (!this.client || this._status !== 'connected') {
-      throw new Error('Signal client is not connected');
+    if (!this.client || this._status !== "connected") {
+      throw new Error("Signal client is not connected");
     }
 
     return this.client.getGroups();
@@ -448,11 +445,11 @@ export class SignalAdapter implements ChannelAdapter {
    * Trust a contact's identity
    */
   async trustIdentity(phoneNumber: string): Promise<void> {
-    if (!this.client || this._status !== 'connected') {
-      throw new Error('Signal client is not connected');
+    if (!this.client || this._status !== "connected") {
+      throw new Error("Signal client is not connected");
     }
 
-    await this.client.trustIdentity(phoneNumber, this.config.trustMode === 'always');
+    await this.client.trustIdentity(phoneNumber, this.config.trustMode === "always");
   }
 
   // ============================================================================
@@ -496,7 +493,7 @@ export class SignalAdapter implements ChannelAdapter {
     // Convert to IncomingMessage
     const message: IncomingMessage = {
       messageId,
-      channel: 'signal',
+      channel: "signal",
       userId: envelope.source,
       userName: envelope.source, // Signal doesn't provide names in messages
       chatId: dataMessage.groupInfo?.groupId || envelope.source,
@@ -518,10 +515,10 @@ export class SignalAdapter implements ChannelAdapter {
       try {
         await handler(message);
       } catch (error) {
-        console.error('Error in Signal message handler:', error);
+        console.error("Error in Signal message handler:", error);
         this.handleError(
           error instanceof Error ? error : new Error(String(error)),
-          'messageHandler'
+          "messageHandler",
         );
       }
     }
@@ -535,15 +532,15 @@ export class SignalAdapter implements ChannelAdapter {
       return undefined;
     }
 
-    return attachments.map(att => {
-      let type: MessageAttachment['type'] = 'file';
+    return attachments.map((att) => {
+      let type: MessageAttachment["type"] = "file";
 
-      if (att.contentType.startsWith('image/')) {
-        type = 'image';
-      } else if (att.contentType.startsWith('audio/')) {
-        type = 'audio';
-      } else if (att.contentType.startsWith('video/')) {
-        type = 'video';
+      if (att.contentType.startsWith("image/")) {
+        type = "image";
+      } else if (att.contentType.startsWith("audio/")) {
+        type = "audio";
+      } else if (att.contentType.startsWith("video/")) {
+        type = "video";
       }
 
       return {
@@ -568,23 +565,23 @@ export class SignalAdapter implements ChannelAdapter {
     // Check allowlist if configured
     if (this.config.allowedNumbers && this.config.allowedNumbers.length > 0) {
       // Normalize phone numbers for comparison
-      const normalizedSender = sender.replace(/[^+\d]/g, '');
-      return this.config.allowedNumbers.some(num => {
-        const normalizedNum = num.replace(/[^+\d]/g, '');
+      const normalizedSender = sender.replace(/[^+\d]/g, "");
+      return this.config.allowedNumbers.some((num) => {
+        const normalizedNum = num.replace(/[^+\d]/g, "");
         return normalizedSender === normalizedNum || normalizedSender.endsWith(normalizedNum);
       });
     }
 
     // Check DM policy
     switch (this.config.dmPolicy) {
-      case 'disabled':
+      case "disabled":
         return false;
-      case 'allowlist':
+      case "allowlist":
         return false; // No allowlist configured
-      case 'pairing':
+      case "pairing":
         // TODO: Implement pairing code system
         return true;
-      case 'open':
+      case "open":
       default:
         return true;
     }
@@ -638,7 +635,7 @@ export class SignalAdapter implements ChannelAdapter {
       try {
         handler(error, context);
       } catch (e) {
-        console.error('Error in error handler:', e);
+        console.error("Error in error handler:", e);
       }
     }
   }
@@ -652,7 +649,7 @@ export class SignalAdapter implements ChannelAdapter {
       try {
         handler(status, error);
       } catch (e) {
-        console.error('Error in status handler:', e);
+        console.error("Error in status handler:", e);
       }
     }
   }
@@ -663,7 +660,7 @@ export class SignalAdapter implements ChannelAdapter {
  */
 export function createSignalAdapter(config: SignalConfig): SignalAdapter {
   if (!config.phoneNumber) {
-    throw new Error('Signal phone number is required');
+    throw new Error("Signal phone number is required");
   }
   return new SignalAdapter(config);
 }

@@ -3,9 +3,9 @@
  * Allows switching between Tavily, Brave Search, SerpAPI, and Google Custom Search
  */
 
-export type SearchProviderType = 'tavily' | 'brave' | 'serpapi' | 'google';
+export type SearchProviderType = "tavily" | "brave" | "serpapi" | "google";
 
-export type SearchType = 'web' | 'news' | 'images';
+export type SearchType = "web" | "news" | "images";
 
 export interface SearchProviderConfig {
   type: SearchProviderType;
@@ -25,7 +25,7 @@ export interface SearchQuery {
   searchType?: SearchType;
   maxResults?: number;
   // Optional filters
-  dateRange?: 'day' | 'week' | 'month' | 'year';
+  dateRange?: "day" | "week" | "month" | "year";
   region?: string; // e.g., 'us', 'uk', 'de'
   language?: string; // e.g., 'en', 'de', 'fr'
   safeSearch?: boolean;
@@ -52,7 +52,7 @@ export interface SearchResponse {
   query: string;
   searchType: SearchType;
   totalResults?: number;
-  provider: SearchProviderType | 'none';
+  provider: SearchProviderType | "none";
   // Optional execution status fields for tool-level circuit-breaker integration.
   // Providers may omit these; SearchTools sets them for explicit failure signaling.
   success?: boolean;
@@ -92,31 +92,31 @@ export interface SearchProvider {
  */
 export const SEARCH_PROVIDER_INFO = {
   tavily: {
-    displayName: 'Tavily',
-    description: 'AI-focused search API with structured results',
-    supportedTypes: ['web', 'news'] as SearchType[],
-    envVar: 'TAVILY_API_KEY',
-    signupUrl: 'https://tavily.com/',
+    displayName: "Tavily",
+    description: "AI-focused search API with structured results",
+    supportedTypes: ["web", "news"] as SearchType[],
+    envVar: "TAVILY_API_KEY",
+    signupUrl: "https://tavily.com/",
   },
   brave: {
-    displayName: 'Brave Search',
-    description: 'Privacy-focused web, news, and image search',
-    supportedTypes: ['web', 'news', 'images'] as SearchType[],
-    envVar: 'BRAVE_API_KEY',
-    signupUrl: 'https://brave.com/search/api/',
+    displayName: "Brave Search",
+    description: "Privacy-focused web, news, and image search",
+    supportedTypes: ["web", "news", "images"] as SearchType[],
+    envVar: "BRAVE_API_KEY",
+    signupUrl: "https://brave.com/search/api/",
   },
   serpapi: {
-    displayName: 'SerpAPI',
-    description: 'Aggregates Google, Bing, DuckDuckGo results',
-    supportedTypes: ['web', 'news', 'images'] as SearchType[],
-    envVar: 'SERPAPI_KEY',
-    signupUrl: 'https://serpapi.com/',
+    displayName: "SerpAPI",
+    description: "Aggregates Google, Bing, DuckDuckGo results",
+    supportedTypes: ["web", "news", "images"] as SearchType[],
+    envVar: "SERPAPI_KEY",
+    signupUrl: "https://serpapi.com/",
   },
   google: {
-    displayName: 'Google Custom Search',
-    description: 'Official Google Search API',
-    supportedTypes: ['web', 'images'] as SearchType[],
-    envVars: ['GOOGLE_API_KEY', 'GOOGLE_SEARCH_ENGINE_ID'],
-    signupUrl: 'https://developers.google.com/custom-search/v1/introduction',
+    displayName: "Google Custom Search",
+    description: "Official Google Search API",
+    supportedTypes: ["web", "images"] as SearchType[],
+    envVars: ["GOOGLE_API_KEY", "GOOGLE_SEARCH_ENGINE_ID"],
+    signupUrl: "https://developers.google.com/custom-search/v1/introduction",
   },
 } as const;

@@ -1,5 +1,5 @@
-import Database from 'better-sqlite3';
-import { v4 as uuidv4 } from 'uuid';
+import Database from "better-sqlite3";
+import { v4 as uuidv4 } from "uuid";
 import {
   Task,
   TaskEvent,
@@ -9,7 +9,7 @@ import {
   Skill,
   WorkspacePermissions,
   isTempWorkspaceId,
-} from '../../shared/types';
+} from "../../shared/types";
 
 /**
  * Safely parse JSON with error handling
@@ -19,7 +19,12 @@ function safeJsonParse<T>(jsonString: string, defaultValue: T, context?: string)
   try {
     return JSON.parse(jsonString);
   } catch (error) {
-    console.error(`Failed to parse JSON${context ? ` in ${context}` : ''}:`, error, 'Input:', jsonString?.slice(0, 100));
+    console.error(
+      `Failed to parse JSON${context ? ` in ${context}` : ""}:`,
+      error,
+      "Input:",
+      jsonString?.slice(0, 100),
+    );
     return defaultValue;
   }
 }
@@ -49,14 +54,14 @@ export class WorkspaceRepository {
       workspace.path,
       workspace.createdAt,
       workspace.lastUsedAt,
-      JSON.stringify(workspace.permissions)
+      JSON.stringify(workspace.permissions),
     );
 
     return workspace;
   }
 
   findById(id: string): Workspace | undefined {
-    const stmt = this.db.prepare('SELECT * FROM workspaces WHERE id = ?');
+    const stmt = this.db.prepare("SELECT * FROM workspaces WHERE id = ?");
     const row = stmt.get(id) as any;
     return row ? this.mapRowToWorkspace(row) : undefined;
   }
@@ -68,14 +73,14 @@ export class WorkspaceRepository {
       ORDER BY COALESCE(last_used_at, created_at) DESC
     `);
     const rows = stmt.all() as any[];
-    return rows.map(row => this.mapRowToWorkspace(row));
+    return rows.map((row) => this.mapRowToWorkspace(row));
   }
 
   /**
    * Check if a workspace with the given path already exists
    */
   existsByPath(path: string): boolean {
-    const stmt = this.db.prepare('SELECT 1 FROM workspaces WHERE path = ?');
+    const stmt = this.db.prepare("SELECT 1 FROM workspaces WHERE path = ?");
     const row = stmt.get(path);
     return !!row;
   }
@@ -84,7 +89,7 @@ export class WorkspaceRepository {
    * Find a workspace by its path
    */
   findByPath(path: string): Workspace | undefined {
-    const stmt = this.db.prepare('SELECT * FROM workspaces WHERE path = ?');
+    const stmt = this.db.prepare("SELECT * FROM workspaces WHERE path = ?");
     const row = stmt.get(path) as any;
     return row ? this.mapRowToWorkspace(row) : undefined;
   }
@@ -93,7 +98,7 @@ export class WorkspaceRepository {
    * Update workspace permissions
    */
   updatePermissions(id: string, permissions: WorkspacePermissions): void {
-    const stmt = this.db.prepare('UPDATE workspaces SET permissions = ? WHERE id = ?');
+    const stmt = this.db.prepare("UPDATE workspaces SET permissions = ? WHERE id = ?");
     stmt.run(JSON.stringify(permissions), id);
   }
 
@@ -101,7 +106,7 @@ export class WorkspaceRepository {
    * Update last used timestamp for recency ordering
    */
   updateLastUsedAt(id: string, lastUsedAt: number = Date.now()): void {
-    const stmt = this.db.prepare('UPDATE workspaces SET last_used_at = ? WHERE id = ?');
+    const stmt = this.db.prepare("UPDATE workspaces SET last_used_at = ? WHERE id = ?");
     stmt.run(lastUsedAt, id);
   }
 
@@ -109,14 +114,24 @@ export class WorkspaceRepository {
    * Delete a workspace by ID
    */
   delete(id: string): void {
-    const stmt = this.db.prepare('DELETE FROM workspaces WHERE id = ?');
+    const stmt = this.db.prepare("DELETE FROM workspaces WHERE id = ?");
     stmt.run(id);
   }
 
   private mapRowToWorkspace(row: any): Workspace {
     // Note: network is true by default for browser tools (web access)
-    const defaultPermissions: WorkspacePermissions = { read: true, write: true, delete: false, network: true, shell: false };
-    const storedPermissions = safeJsonParse(row.permissions, defaultPermissions, 'workspace.permissions');
+    const defaultPermissions: WorkspacePermissions = {
+      read: true,
+      write: true,
+      delete: false,
+      network: true,
+      shell: false,
+    };
+    const storedPermissions = safeJsonParse(
+      row.permissions,
+      defaultPermissions,
+      "workspace.permissions",
+    );
 
     // Merge with defaults to ensure new fields (like network) get proper defaults
     // for workspaces created before those fields existed
@@ -138,7 +153,7 @@ export class WorkspaceRepository {
       createdAt: row.created_at,
       lastUsedAt: row.last_used_at ?? undefined,
       permissions: mergedPermissions,
-      isTemp: isTempWorkspaceId(typeof row.id === 'string' ? row.id : undefined),
+      isTemp: isTempWorkspaceId(typeof row.id === "string" ? row.id : undefined),
     };
   }
 }
@@ -146,7 +161,7 @@ export class WorkspaceRepository {
 export class TaskRepository {
   constructor(private db: Database.Database) {}
 
-  create(task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>): Task {
+  create(task: Omit<Task, "id" | "createdAt" | "updatedAt">): Task {
     const newTask: Task = {
       ...task,
       id: uuidv4(),
@@ -173,10 +188,10 @@ export class TaskRepository {
       newTask.maxAttempts || null,
       newTask.currentAttempt || 1,
       newTask.parentTaskId || null,
-      newTask.agentType || 'main',
+      newTask.agentType || "main",
       newTask.agentConfig ? JSON.stringify(newTask.agentConfig) : null,
       newTask.depth ?? 0,
-      newTask.resultSummary || null
+      newTask.resultSummary || null,
     );
 
     return newTask;
@@ -184,13 +199,32 @@ export class TaskRepository {
 
   // Whitelist of allowed update fields to prevent SQL injection
   private static readonly ALLOWED_UPDATE_FIELDS = new Set([
-    'title', 'status', 'error', 'result', 'budgetTokens', 'budgetCost',
-    'successCriteria', 'maxAttempts', 'currentAttempt', 'completedAt', 'workspaceId',
-    'parentTaskId', 'agentType', 'agentConfig', 'depth', 'resultSummary',
+    "title",
+    "status",
+    "error",
+    "result",
+    "budgetTokens",
+    "budgetCost",
+    "successCriteria",
+    "maxAttempts",
+    "currentAttempt",
+    "completedAt",
+    "workspaceId",
+    "parentTaskId",
+    "agentType",
+    "agentConfig",
+    "depth",
+    "resultSummary",
     // Agent Squad fields
-    'assignedAgentRoleId', 'boardColumn', 'priority',
+    "assignedAgentRoleId",
+    "boardColumn",
+    "priority",
     // Task Board fields
-    'labels', 'dueDate', 'estimatedMinutes', 'actualMinutes', 'mentionedAgentRoleIds'
+    "labels",
+    "dueDate",
+    "estimatedMinutes",
+    "actualMinutes",
+    "mentionedAgentRoleIds",
   ]);
 
   update(id: string, updates: Partial<Task>): void {
@@ -203,10 +237,16 @@ export class TaskRepository {
         console.warn(`Ignoring unknown field in task update: ${key}`);
         return;
       }
-      const snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+      const snakeKey = key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
       fields.push(`${snakeKey} = ?`);
       // JSON serialize object/array fields
-      if ((key === 'successCriteria' || key === 'agentConfig' || key === 'labels' || key === 'mentionedAgentRoleIds') && value != null) {
+      if (
+        (key === "successCriteria" ||
+          key === "agentConfig" ||
+          key === "labels" ||
+          key === "mentionedAgentRoleIds") &&
+        value != null
+      ) {
         values.push(JSON.stringify(value));
       } else {
         values.push(value);
@@ -217,16 +257,16 @@ export class TaskRepository {
       return; // No valid fields to update
     }
 
-    fields.push('updated_at = ?');
+    fields.push("updated_at = ?");
     values.push(Date.now());
     values.push(id);
 
-    const stmt = this.db.prepare(`UPDATE tasks SET ${fields.join(', ')} WHERE id = ?`);
+    const stmt = this.db.prepare(`UPDATE tasks SET ${fields.join(", ")} WHERE id = ?`);
     stmt.run(...values);
   }
 
   findById(id: string): Task | undefined {
-    const stmt = this.db.prepare('SELECT * FROM tasks WHERE id = ?');
+    const stmt = this.db.prepare("SELECT * FROM tasks WHERE id = ?");
     const row = stmt.get(id) as any;
     return row ? this.mapRowToTask(row) : undefined;
   }
@@ -238,7 +278,7 @@ export class TaskRepository {
       LIMIT ? OFFSET ?
     `);
     const rows = stmt.all(limit, offset) as any[];
-    return rows.map(row => this.mapRowToTask(row));
+    return rows.map((row) => this.mapRowToTask(row));
   }
 
   /**
@@ -246,24 +286,24 @@ export class TaskRepository {
    */
   findByStatus(status: string | string[]): Task[] {
     const statuses = Array.isArray(status) ? status : [status];
-    const placeholders = statuses.map(() => '?').join(', ');
+    const placeholders = statuses.map(() => "?").join(", ");
     const stmt = this.db.prepare(`
       SELECT * FROM tasks
       WHERE status IN (${placeholders})
       ORDER BY created_at ASC
     `);
     const rows = stmt.all(...statuses) as any[];
-    return rows.map(row => this.mapRowToTask(row));
+    return rows.map((row) => this.mapRowToTask(row));
   }
 
   /**
    * Find tasks by workspace ID
    */
   findByWorkspace(workspaceId: string, limit?: number, offset?: number): Task[] {
-    if (typeof limit === 'number' && Number.isFinite(limit)) {
+    if (typeof limit === "number" && Number.isFinite(limit)) {
       const safeLimit = Math.max(1, Math.floor(limit));
       const safeOffset =
-        typeof offset === 'number' && Number.isFinite(offset) ? Math.max(0, Math.floor(offset)) : 0;
+        typeof offset === "number" && Number.isFinite(offset) ? Math.max(0, Math.floor(offset)) : 0;
       const stmt = this.db.prepare(`
         SELECT * FROM tasks
         WHERE workspace_id = ?
@@ -271,7 +311,7 @@ export class TaskRepository {
         LIMIT ? OFFSET ?
       `);
       const rows = stmt.all(workspaceId, safeLimit, safeOffset) as any[];
-      return rows.map(row => this.mapRowToTask(row));
+      return rows.map((row) => this.mapRowToTask(row));
     }
 
     const stmt = this.db.prepare(`
@@ -280,14 +320,14 @@ export class TaskRepository {
       ORDER BY created_at DESC
     `);
     const rows = stmt.all(workspaceId) as any[];
-    return rows.map(row => this.mapRowToTask(row));
+    return rows.map((row) => this.mapRowToTask(row));
   }
 
   countByWorkspace(workspaceId: string): number {
-    const stmt = this.db.prepare('SELECT COUNT(1) as count FROM tasks WHERE workspace_id = ?');
+    const stmt = this.db.prepare("SELECT COUNT(1) as count FROM tasks WHERE workspace_id = ?");
     const row = stmt.get(workspaceId) as any;
     const count = row?.count;
-    if (typeof count === 'number') return count;
+    if (typeof count === "number") return count;
     const parsed = Number(count);
     return Number.isFinite(parsed) ? parsed : 0;
   }
@@ -309,23 +349,23 @@ export class TaskRepository {
     if (endMs <= startMs) return [];
 
     const limit =
-      typeof params.limit === 'number' && Number.isFinite(params.limit)
+      typeof params.limit === "number" && Number.isFinite(params.limit)
         ? Math.min(Math.max(Math.floor(params.limit), 1), 200)
         : 50;
 
-    const where: string[] = ['created_at >= ?', 'created_at < ?'];
+    const where: string[] = ["created_at >= ?", "created_at < ?"];
     const args: any[] = [startMs, endMs];
 
-    const workspaceId = typeof params.workspaceId === 'string' ? params.workspaceId.trim() : '';
+    const workspaceId = typeof params.workspaceId === "string" ? params.workspaceId.trim() : "";
     if (workspaceId) {
-      where.push('workspace_id = ?');
+      where.push("workspace_id = ?");
       args.push(workspaceId);
     }
 
-    const query = typeof params.query === 'string' ? params.query.trim() : '';
+    const query = typeof params.query === "string" ? params.query.trim() : "";
     if (query) {
       // Simple LIKE match (SQLite default collation is case-insensitive for ASCII).
-      where.push('(title LIKE ? OR prompt LIKE ?)');
+      where.push("(title LIKE ? OR prompt LIKE ?)");
       args.push(`%${query}%`, `%${query}%`);
     }
 
@@ -333,50 +373,56 @@ export class TaskRepository {
 
     const stmt = this.db.prepare(`
       SELECT * FROM tasks
-      WHERE ${where.join(' AND ')}
+      WHERE ${where.join(" AND ")}
       ORDER BY created_at DESC
       LIMIT ?
     `);
 
     const rows = stmt.all(...args) as any[];
-    return rows.map(row => this.mapRowToTask(row));
+    return rows.map((row) => this.mapRowToTask(row));
   }
 
   delete(id: string): void {
     // Use transaction to ensure atomic deletion
     const deleteTransaction = this.db.transaction((taskId: string) => {
       // Delete related records from all tables with foreign keys to tasks
-      const deleteEvents = this.db.prepare('DELETE FROM task_events WHERE task_id = ?');
+      const deleteEvents = this.db.prepare("DELETE FROM task_events WHERE task_id = ?");
       deleteEvents.run(taskId);
 
-      const deleteArtifacts = this.db.prepare('DELETE FROM artifacts WHERE task_id = ?');
+      const deleteArtifacts = this.db.prepare("DELETE FROM artifacts WHERE task_id = ?");
       deleteArtifacts.run(taskId);
 
-      const deleteApprovals = this.db.prepare('DELETE FROM approvals WHERE task_id = ?');
+      const deleteApprovals = this.db.prepare("DELETE FROM approvals WHERE task_id = ?");
       deleteApprovals.run(taskId);
 
       // Delete activity feed entries for this task
-      const deleteActivities = this.db.prepare('DELETE FROM activity_feed WHERE task_id = ?');
+      const deleteActivities = this.db.prepare("DELETE FROM activity_feed WHERE task_id = ?");
       deleteActivities.run(taskId);
 
       // Delete agent mentions for this task
-      const deleteMentions = this.db.prepare('DELETE FROM agent_mentions WHERE task_id = ?');
+      const deleteMentions = this.db.prepare("DELETE FROM agent_mentions WHERE task_id = ?");
       deleteMentions.run(taskId);
 
       // Delete working state entries for this task
-      const deleteWorkingState = this.db.prepare('DELETE FROM agent_working_state WHERE task_id = ?');
+      const deleteWorkingState = this.db.prepare(
+        "DELETE FROM agent_working_state WHERE task_id = ?",
+      );
       deleteWorkingState.run(taskId);
 
       // Nullify task_id in memories rather than deleting them
-      const clearMemoryTaskId = this.db.prepare('UPDATE memories SET task_id = NULL WHERE task_id = ?');
+      const clearMemoryTaskId = this.db.prepare(
+        "UPDATE memories SET task_id = NULL WHERE task_id = ?",
+      );
       clearMemoryTaskId.run(taskId);
 
       // Nullify task_id in channel_sessions rather than deleting the session
-      const clearSessionTaskId = this.db.prepare('UPDATE channel_sessions SET task_id = NULL WHERE task_id = ?');
+      const clearSessionTaskId = this.db.prepare(
+        "UPDATE channel_sessions SET task_id = NULL WHERE task_id = ?",
+      );
       clearSessionTaskId.run(taskId);
 
       // Finally delete the task
-      const deleteTask = this.db.prepare('DELETE FROM tasks WHERE id = ?');
+      const deleteTask = this.db.prepare("DELETE FROM tasks WHERE id = ?");
       deleteTask.run(taskId);
     });
 
@@ -397,13 +443,17 @@ export class TaskRepository {
       budgetCost: row.budget_cost || undefined,
       error: row.error || undefined,
       // Verification/retry metadata
-      successCriteria: row.success_criteria ? safeJsonParse(row.success_criteria, undefined, 'task.successCriteria') : undefined,
+      successCriteria: row.success_criteria
+        ? safeJsonParse(row.success_criteria, undefined, "task.successCriteria")
+        : undefined,
       maxAttempts: row.max_attempts || undefined,
       currentAttempt: row.current_attempt || undefined,
       // Sub-Agent / Parallel Agent fields
       parentTaskId: row.parent_task_id || undefined,
       agentType: row.agent_type || undefined,
-      agentConfig: row.agent_config ? safeJsonParse(row.agent_config, undefined, 'task.agentConfig') : undefined,
+      agentConfig: row.agent_config
+        ? safeJsonParse(row.agent_config, undefined, "task.agentConfig")
+        : undefined,
       depth: row.depth ?? undefined,
       resultSummary: row.result_summary || undefined,
       // Agent Squad fields
@@ -411,11 +461,13 @@ export class TaskRepository {
       boardColumn: row.board_column || undefined,
       priority: row.priority ?? undefined,
       // Task Board fields
-      labels: row.labels ? safeJsonParse<string[]>(row.labels, [], 'task.labels') : undefined,
+      labels: row.labels ? safeJsonParse<string[]>(row.labels, [], "task.labels") : undefined,
       dueDate: row.due_date || undefined,
       estimatedMinutes: row.estimated_minutes || undefined,
       actualMinutes: row.actual_minutes || undefined,
-      mentionedAgentRoleIds: row.mentioned_agent_role_ids ? safeJsonParse<string[]>(row.mentioned_agent_role_ids, [], 'task.mentionedAgentRoleIds') : undefined,
+      mentionedAgentRoleIds: row.mentioned_agent_role_ids
+        ? safeJsonParse<string[]>(row.mentioned_agent_role_ids, [], "task.mentionedAgentRoleIds")
+        : undefined,
     };
   }
 
@@ -429,7 +481,7 @@ export class TaskRepository {
       ORDER BY created_at ASC
     `);
     const rows = stmt.all(parentTaskId) as any[];
-    return rows.map(row => this.mapRowToTask(row));
+    return rows.map((row) => this.mapRowToTask(row));
   }
 
   // ============ Task Board Methods ============
@@ -444,7 +496,7 @@ export class TaskRepository {
       ORDER BY priority DESC, created_at ASC
     `);
     const rows = stmt.all(workspaceId, boardColumn) as any[];
-    return rows.map(row => this.mapRowToTask(row));
+    return rows.map((row) => this.mapRowToTask(row));
   }
 
   /**
@@ -457,7 +509,7 @@ export class TaskRepository {
       ORDER BY board_column, priority DESC, created_at ASC
     `);
     const rows = stmt.all(workspaceId) as any[];
-    const tasks = rows.map(row => this.mapRowToTask(row));
+    const tasks = rows.map((row) => this.mapRowToTask(row));
 
     // Group tasks by board column
     const board: Record<string, Task[]> = {
@@ -469,7 +521,7 @@ export class TaskRepository {
     };
 
     for (const task of tasks) {
-      const column = task.boardColumn || 'backlog';
+      const column = task.boardColumn || "backlog";
       if (board[column]) {
         board[column].push(task);
       } else {
@@ -535,7 +587,7 @@ export class TaskRepository {
     if (!task) return undefined;
 
     const labels = task.labels || [];
-    const newLabels = labels.filter(l => l !== labelId);
+    const newLabels = labels.filter((l) => l !== labelId);
     this.update(id, { labels: newLabels } as any);
     return this.findById(id);
   }
@@ -552,7 +604,7 @@ export class TaskRepository {
 export class TaskEventRepository {
   constructor(private db: Database.Database) {}
 
-  create(event: Omit<TaskEvent, 'id'>): TaskEvent {
+  create(event: Omit<TaskEvent, "id">): TaskEvent {
     const newEvent: TaskEvent = {
       ...event,
       id: uuidv4(),
@@ -568,7 +620,7 @@ export class TaskEventRepository {
       newEvent.taskId,
       newEvent.timestamp,
       newEvent.type,
-      JSON.stringify(newEvent.payload)
+      JSON.stringify(newEvent.payload),
     );
 
     return newEvent;
@@ -581,7 +633,7 @@ export class TaskEventRepository {
       ORDER BY timestamp ASC
     `);
     const rows = stmt.all(taskId) as any[];
-    return rows.map(row => this.mapRowToEvent(row));
+    return rows.map((row) => this.mapRowToEvent(row));
   }
 
   findByTaskIds(taskIds: string[], types?: string[]): TaskEvent[] {
@@ -589,12 +641,16 @@ export class TaskEventRepository {
       return [];
     }
 
-    const normalizedTaskIds = taskIds.map((id) => (typeof id === 'string' ? id.trim() : '')).filter(Boolean);
+    const normalizedTaskIds = taskIds
+      .map((id) => (typeof id === "string" ? id.trim() : ""))
+      .filter(Boolean);
     if (normalizedTaskIds.length === 0) {
       return [];
     }
 
-    const normalizedTypes = (types || []).map((t) => (typeof t === 'string' ? t.trim() : '')).filter(Boolean);
+    const normalizedTypes = (types || [])
+      .map((t) => (typeof t === "string" ? t.trim() : ""))
+      .filter(Boolean);
 
     // Chunk task IDs to stay under SQLite's SQLITE_MAX_VARIABLE_NUMBER (999).
     const CHUNK_SIZE = 500;
@@ -602,7 +658,7 @@ export class TaskEventRepository {
 
     for (let i = 0; i < normalizedTaskIds.length; i += CHUNK_SIZE) {
       const chunk = normalizedTaskIds.slice(i, i + CHUNK_SIZE);
-      const taskPlaceholders = chunk.map(() => '?').join(', ');
+      const taskPlaceholders = chunk.map(() => "?").join(", ");
       const args: any[] = [...chunk];
 
       let sql = `
@@ -611,18 +667,18 @@ export class TaskEventRepository {
       `;
 
       if (normalizedTypes.length > 0) {
-        const typePlaceholders = normalizedTypes.map(() => '?').join(', ');
+        const typePlaceholders = normalizedTypes.map(() => "?").join(", ");
         sql += ` AND type IN (${typePlaceholders})`;
         args.push(...normalizedTypes);
       }
 
-      sql += ' ORDER BY task_id ASC, timestamp ASC';
+      sql += " ORDER BY task_id ASC, timestamp ASC";
 
       const stmt = this.db.prepare(sql);
       allRows.push(...(stmt.all(...args) as any[]));
     }
 
-    return allRows.map(row => this.mapRowToEvent(row));
+    return allRows.map((row) => this.mapRowToEvent(row));
   }
 
   private mapRowToEvent(row: any): TaskEvent {
@@ -631,7 +687,7 @@ export class TaskEventRepository {
       taskId: row.task_id,
       timestamp: row.timestamp,
       type: row.type,
-      payload: safeJsonParse(row.payload, {}, 'taskEvent.payload'),
+      payload: safeJsonParse(row.payload, {}, "taskEvent.payload"),
     };
   }
 
@@ -650,7 +706,7 @@ export class TaskEventRepository {
 
     // Keep only the most recent one, delete the rest
     if (snapshots.length > 1) {
-      const idsToDelete = snapshots.slice(1).map(s => s.id);
+      const idsToDelete = snapshots.slice(1).map((s) => s.id);
       const deleteStmt = this.db.prepare(`
         DELETE FROM task_events WHERE id = ?
       `);
@@ -659,7 +715,9 @@ export class TaskEventRepository {
         deleteStmt.run(id);
       }
 
-      console.log(`[TaskEventRepository] Pruned ${idsToDelete.length} old snapshot(s) for task ${taskId}`);
+      console.log(
+        `[TaskEventRepository] Pruned ${idsToDelete.length} old snapshot(s) for task ${taskId}`,
+      );
     }
   }
 }
@@ -667,7 +725,7 @@ export class TaskEventRepository {
 export class ArtifactRepository {
   constructor(private db: Database.Database) {}
 
-  create(artifact: Omit<Artifact, 'id'>): Artifact {
+  create(artifact: Omit<Artifact, "id">): Artifact {
     const newArtifact: Artifact = {
       ...artifact,
       id: uuidv4(),
@@ -685,16 +743,18 @@ export class ArtifactRepository {
       newArtifact.mimeType,
       newArtifact.sha256,
       newArtifact.size,
-      newArtifact.createdAt
+      newArtifact.createdAt,
     );
 
     return newArtifact;
   }
 
   findByTaskId(taskId: string): Artifact[] {
-    const stmt = this.db.prepare('SELECT * FROM artifacts WHERE task_id = ? ORDER BY created_at DESC');
+    const stmt = this.db.prepare(
+      "SELECT * FROM artifacts WHERE task_id = ? ORDER BY created_at DESC",
+    );
     const rows = stmt.all(taskId) as any[];
-    return rows.map(row => this.mapRowToArtifact(row));
+    return rows.map((row) => this.mapRowToArtifact(row));
   }
 
   private mapRowToArtifact(row: any): Artifact {
@@ -713,7 +773,7 @@ export class ArtifactRepository {
 export class ApprovalRepository {
   constructor(private db: Database.Database) {}
 
-  create(approval: Omit<ApprovalRequest, 'id'>): ApprovalRequest {
+  create(approval: Omit<ApprovalRequest, "id">): ApprovalRequest {
     const newApproval: ApprovalRequest = {
       ...approval,
       id: uuidv4(),
@@ -731,13 +791,13 @@ export class ApprovalRepository {
       newApproval.description,
       JSON.stringify(newApproval.details),
       newApproval.status,
-      newApproval.requestedAt
+      newApproval.requestedAt,
     );
 
     return newApproval;
   }
 
-  update(id: string, status: 'approved' | 'denied'): void {
+  update(id: string, status: "approved" | "denied"): void {
     const stmt = this.db.prepare(`
       UPDATE approvals
       SET status = ?, resolved_at = ?
@@ -753,7 +813,7 @@ export class ApprovalRepository {
       ORDER BY requested_at ASC
     `);
     const rows = stmt.all(taskId) as any[];
-    return rows.map(row => this.mapRowToApproval(row));
+    return rows.map((row) => this.mapRowToApproval(row));
   }
 
   private mapRowToApproval(row: any): ApprovalRequest {
@@ -762,7 +822,7 @@ export class ApprovalRepository {
       taskId: row.task_id,
       type: row.type,
       description: row.description,
-      details: safeJsonParse(row.details, {}, 'approval.details'),
+      details: safeJsonParse(row.details, {}, "approval.details"),
       status: row.status,
       requestedAt: row.requested_at,
       resolvedAt: row.resolved_at || undefined,
@@ -773,7 +833,7 @@ export class ApprovalRepository {
 export class SkillRepository {
   constructor(private db: Database.Database) {}
 
-  create(skill: Omit<Skill, 'id'>): Skill {
+  create(skill: Omit<Skill, "id">): Skill {
     const newSkill: Skill = {
       ...skill,
       id: uuidv4(),
@@ -791,20 +851,20 @@ export class SkillRepository {
       newSkill.category,
       newSkill.prompt,
       newSkill.scriptPath || null,
-      newSkill.parameters ? JSON.stringify(newSkill.parameters) : null
+      newSkill.parameters ? JSON.stringify(newSkill.parameters) : null,
     );
 
     return newSkill;
   }
 
   findAll(): Skill[] {
-    const stmt = this.db.prepare('SELECT * FROM skills ORDER BY name ASC');
+    const stmt = this.db.prepare("SELECT * FROM skills ORDER BY name ASC");
     const rows = stmt.all() as any[];
-    return rows.map(row => this.mapRowToSkill(row));
+    return rows.map((row) => this.mapRowToSkill(row));
   }
 
   findById(id: string): Skill | undefined {
-    const stmt = this.db.prepare('SELECT * FROM skills WHERE id = ?');
+    const stmt = this.db.prepare("SELECT * FROM skills WHERE id = ?");
     const row = stmt.get(id) as any;
     return row ? this.mapRowToSkill(row) : undefined;
   }
@@ -817,7 +877,9 @@ export class SkillRepository {
       category: row.category,
       prompt: row.prompt,
       scriptPath: row.script_path || undefined,
-      parameters: row.parameters ? safeJsonParse(row.parameters, undefined, 'skill.parameters') : undefined,
+      parameters: row.parameters
+        ? safeJsonParse(row.parameters, undefined, "skill.parameters")
+        : undefined,
     };
   }
 }
@@ -845,17 +907,17 @@ export class LLMModelRepository {
       ORDER BY sort_order ASC
     `);
     const rows = stmt.all() as any[];
-    return rows.map(row => this.mapRowToModel(row));
+    return rows.map((row) => this.mapRowToModel(row));
   }
 
   findByKey(key: string): LLMModel | undefined {
-    const stmt = this.db.prepare('SELECT * FROM llm_models WHERE key = ?');
+    const stmt = this.db.prepare("SELECT * FROM llm_models WHERE key = ?");
     const row = stmt.get(key) as any;
     return row ? this.mapRowToModel(row) : undefined;
   }
 
   findById(id: string): LLMModel | undefined {
-    const stmt = this.db.prepare('SELECT * FROM llm_models WHERE id = ?');
+    const stmt = this.db.prepare("SELECT * FROM llm_models WHERE id = ?");
     const row = stmt.get(id) as any;
     return row ? this.mapRowToModel(row) : undefined;
   }
@@ -887,7 +949,7 @@ export interface Channel {
   enabled: boolean;
   config: Record<string, unknown>;
   securityConfig: {
-    mode: 'open' | 'allowlist' | 'pairing';
+    mode: "open" | "allowlist" | "pairing";
     allowedUsers?: string[];
     pairingCodeTTL?: number;
     maxPairingAttempts?: number;
@@ -922,7 +984,7 @@ export interface ChannelSession {
   userId?: string;
   taskId?: string;
   workspaceId?: string;
-  state: 'idle' | 'active' | 'waiting_approval';
+  state: "idle" | "active" | "waiting_approval";
   context?: Record<string, unknown>;
   shellEnabled?: boolean;
   debugMode?: boolean;
@@ -943,7 +1005,7 @@ export interface ChannelMessage {
    * - outgoing: message sent by CoWork OS back into the chat
    * - outgoing_user: message sent by the local user (captured from some channels when enabled)
    */
-  direction: 'incoming' | 'outgoing' | 'outgoing_user';
+  direction: "incoming" | "outgoing" | "outgoing_user";
   content: string;
   attachments?: Array<{ type: string; url?: string; fileName?: string }>;
   timestamp: number;
@@ -952,7 +1014,7 @@ export interface ChannelMessage {
 export class ChannelRepository {
   constructor(private db: Database.Database) {}
 
-  create(channel: Omit<Channel, 'id' | 'createdAt' | 'updatedAt'>): Channel {
+  create(channel: Omit<Channel, "id" | "createdAt" | "updatedAt">): Channel {
     const now = Date.now();
     const newChannel: Channel = {
       ...channel,
@@ -976,7 +1038,7 @@ export class ChannelRepository {
       newChannel.status,
       newChannel.botUsername || null,
       newChannel.createdAt,
-      newChannel.updatedAt
+      newChannel.updatedAt,
     );
 
     return newChannel;
@@ -987,78 +1049,84 @@ export class ChannelRepository {
     const values: unknown[] = [];
 
     if (updates.name !== undefined) {
-      fields.push('name = ?');
+      fields.push("name = ?");
       values.push(updates.name);
     }
     if (updates.enabled !== undefined) {
-      fields.push('enabled = ?');
+      fields.push("enabled = ?");
       values.push(updates.enabled ? 1 : 0);
     }
     if (updates.config !== undefined) {
-      fields.push('config = ?');
+      fields.push("config = ?");
       values.push(JSON.stringify(updates.config));
     }
     if (updates.securityConfig !== undefined) {
-      fields.push('security_config = ?');
+      fields.push("security_config = ?");
       values.push(JSON.stringify(updates.securityConfig));
     }
     if (updates.status !== undefined) {
-      fields.push('status = ?');
+      fields.push("status = ?");
       values.push(updates.status);
     }
     if (updates.botUsername !== undefined) {
-      fields.push('bot_username = ?');
+      fields.push("bot_username = ?");
       values.push(updates.botUsername);
     }
 
     if (fields.length === 0) return;
 
-    fields.push('updated_at = ?');
+    fields.push("updated_at = ?");
     values.push(Date.now());
     values.push(id);
 
-    const stmt = this.db.prepare(`UPDATE channels SET ${fields.join(', ')} WHERE id = ?`);
+    const stmt = this.db.prepare(`UPDATE channels SET ${fields.join(", ")} WHERE id = ?`);
     stmt.run(...values);
   }
 
   findById(id: string): Channel | undefined {
-    const stmt = this.db.prepare('SELECT * FROM channels WHERE id = ?');
+    const stmt = this.db.prepare("SELECT * FROM channels WHERE id = ?");
     const row = stmt.get(id) as Record<string, unknown> | undefined;
     return row ? this.mapRowToChannel(row) : undefined;
   }
 
   findByType(type: string): Channel | undefined {
-    const stmt = this.db.prepare('SELECT * FROM channels WHERE type = ?');
+    const stmt = this.db.prepare("SELECT * FROM channels WHERE type = ?");
     const row = stmt.get(type) as Record<string, unknown> | undefined;
     return row ? this.mapRowToChannel(row) : undefined;
   }
 
   findAll(): Channel[] {
-    const stmt = this.db.prepare('SELECT * FROM channels ORDER BY created_at ASC');
+    const stmt = this.db.prepare("SELECT * FROM channels ORDER BY created_at ASC");
     const rows = stmt.all() as Record<string, unknown>[];
-    return rows.map(row => this.mapRowToChannel(row));
+    return rows.map((row) => this.mapRowToChannel(row));
   }
 
   findEnabled(): Channel[] {
-    const stmt = this.db.prepare('SELECT * FROM channels WHERE enabled = 1 ORDER BY created_at ASC');
+    const stmt = this.db.prepare(
+      "SELECT * FROM channels WHERE enabled = 1 ORDER BY created_at ASC",
+    );
     const rows = stmt.all() as Record<string, unknown>[];
-    return rows.map(row => this.mapRowToChannel(row));
+    return rows.map((row) => this.mapRowToChannel(row));
   }
 
   delete(id: string): void {
-    const stmt = this.db.prepare('DELETE FROM channels WHERE id = ?');
+    const stmt = this.db.prepare("DELETE FROM channels WHERE id = ?");
     stmt.run(id);
   }
 
   private mapRowToChannel(row: Record<string, unknown>): Channel {
-    const defaultSecurityConfig = { mode: 'pairing' as const };
+    const defaultSecurityConfig = { mode: "pairing" as const };
     return {
       id: row.id as string,
       type: row.type as string,
       name: row.name as string,
       enabled: row.enabled === 1,
-      config: safeJsonParse(row.config as string, {}, 'channel.config'),
-      securityConfig: safeJsonParse(row.security_config as string, defaultSecurityConfig, 'channel.securityConfig'),
+      config: safeJsonParse(row.config as string, {}, "channel.config"),
+      securityConfig: safeJsonParse(
+        row.security_config as string,
+        defaultSecurityConfig,
+        "channel.securityConfig",
+      ),
       status: row.status as string,
       botUsername: (row.bot_username as string) || undefined,
       createdAt: row.created_at as number,
@@ -1070,7 +1138,9 @@ export class ChannelRepository {
 export class ChannelUserRepository {
   constructor(private db: Database.Database) {}
 
-  create(user: Omit<ChannelUser, 'id' | 'createdAt' | 'lastSeenAt' | 'pairingAttempts'>): ChannelUser {
+  create(
+    user: Omit<ChannelUser, "id" | "createdAt" | "lastSeenAt" | "pairingAttempts">,
+  ): ChannelUser {
     const now = Date.now();
     const newUser: ChannelUser = {
       ...user,
@@ -1096,7 +1166,7 @@ export class ChannelUserRepository {
       newUser.pairingAttempts,
       newUser.pairingExpiresAt || null,
       newUser.createdAt,
-      newUser.lastSeenAt
+      newUser.lastSeenAt,
     );
 
     return newUser;
@@ -1107,76 +1177,82 @@ export class ChannelUserRepository {
     const values: unknown[] = [];
 
     if (updates.displayName !== undefined) {
-      fields.push('display_name = ?');
+      fields.push("display_name = ?");
       values.push(updates.displayName);
     }
     if (updates.username !== undefined) {
-      fields.push('username = ?');
+      fields.push("username = ?");
       values.push(updates.username);
     }
     if (updates.allowed !== undefined) {
-      fields.push('allowed = ?');
+      fields.push("allowed = ?");
       values.push(updates.allowed ? 1 : 0);
     }
     if (updates.pairingCode !== undefined) {
-      fields.push('pairing_code = ?');
+      fields.push("pairing_code = ?");
       values.push(updates.pairingCode);
     }
     if (updates.pairingAttempts !== undefined) {
-      fields.push('pairing_attempts = ?');
+      fields.push("pairing_attempts = ?");
       values.push(updates.pairingAttempts);
     }
     if (updates.pairingExpiresAt !== undefined) {
-      fields.push('pairing_expires_at = ?');
+      fields.push("pairing_expires_at = ?");
       values.push(updates.pairingExpiresAt);
     }
     if (updates.lockoutUntil !== undefined) {
-      fields.push('lockout_until = ?');
+      fields.push("lockout_until = ?");
       values.push(updates.lockoutUntil);
     }
     if (updates.lastSeenAt !== undefined) {
-      fields.push('last_seen_at = ?');
+      fields.push("last_seen_at = ?");
       values.push(updates.lastSeenAt);
     }
 
     if (fields.length === 0) return;
 
     values.push(id);
-    const stmt = this.db.prepare(`UPDATE channel_users SET ${fields.join(', ')} WHERE id = ?`);
+    const stmt = this.db.prepare(`UPDATE channel_users SET ${fields.join(", ")} WHERE id = ?`);
     stmt.run(...values);
   }
 
   findById(id: string): ChannelUser | undefined {
-    const stmt = this.db.prepare('SELECT * FROM channel_users WHERE id = ?');
+    const stmt = this.db.prepare("SELECT * FROM channel_users WHERE id = ?");
     const row = stmt.get(id) as Record<string, unknown> | undefined;
     return row ? this.mapRowToUser(row) : undefined;
   }
 
   findByChannelUserId(channelId: string, channelUserId: string): ChannelUser | undefined {
-    const stmt = this.db.prepare('SELECT * FROM channel_users WHERE channel_id = ? AND channel_user_id = ?');
+    const stmt = this.db.prepare(
+      "SELECT * FROM channel_users WHERE channel_id = ? AND channel_user_id = ?",
+    );
     const row = stmt.get(channelId, channelUserId) as Record<string, unknown> | undefined;
     return row ? this.mapRowToUser(row) : undefined;
   }
 
   findByChannelId(channelId: string): ChannelUser[] {
-    const stmt = this.db.prepare('SELECT * FROM channel_users WHERE channel_id = ? ORDER BY last_seen_at DESC');
+    const stmt = this.db.prepare(
+      "SELECT * FROM channel_users WHERE channel_id = ? ORDER BY last_seen_at DESC",
+    );
     const rows = stmt.all(channelId) as Record<string, unknown>[];
-    return rows.map(row => this.mapRowToUser(row));
+    return rows.map((row) => this.mapRowToUser(row));
   }
 
   findAllowedByChannelId(channelId: string): ChannelUser[] {
-    const stmt = this.db.prepare('SELECT * FROM channel_users WHERE channel_id = ? AND allowed = 1 ORDER BY last_seen_at DESC');
+    const stmt = this.db.prepare(
+      "SELECT * FROM channel_users WHERE channel_id = ? AND allowed = 1 ORDER BY last_seen_at DESC",
+    );
     const rows = stmt.all(channelId) as Record<string, unknown>[];
-    return rows.map(row => this.mapRowToUser(row));
+    return rows.map((row) => this.mapRowToUser(row));
   }
 
   deleteByChannelId(channelId: string): void {
-    const stmt = this.db.prepare('DELETE FROM channel_users WHERE channel_id = ?');
+    const stmt = this.db.prepare("DELETE FROM channel_users WHERE channel_id = ?");
     stmt.run(channelId);
   }
 
   delete(id: string): void {
-    const stmt = this.db.prepare('DELETE FROM channel_users WHERE id = ?');
+    const stmt = this.db.prepare("DELETE FROM channel_users WHERE id = ?");
     stmt.run(id);
   }
 
@@ -1236,7 +1312,9 @@ export class ChannelUserRepository {
   }
 
   findByPairingCode(channelId: string, pairingCode: string): ChannelUser | undefined {
-    const stmt = this.db.prepare('SELECT * FROM channel_users WHERE channel_id = ? AND UPPER(pairing_code) = UPPER(?)');
+    const stmt = this.db.prepare(
+      "SELECT * FROM channel_users WHERE channel_id = ? AND UPPER(pairing_code) = UPPER(?)",
+    );
     const row = stmt.get(channelId, pairingCode) as Record<string, unknown> | undefined;
     return row ? this.mapRowToUser(row) : undefined;
   }
@@ -1262,7 +1340,7 @@ export class ChannelUserRepository {
 export class ChannelSessionRepository {
   constructor(private db: Database.Database) {}
 
-  create(session: Omit<ChannelSession, 'id' | 'createdAt' | 'lastActivityAt'>): ChannelSession {
+  create(session: Omit<ChannelSession, "id" | "createdAt" | "lastActivityAt">): ChannelSession {
     const now = Date.now();
     const newSession: ChannelSession = {
       ...session,
@@ -1286,7 +1364,7 @@ export class ChannelSessionRepository {
       newSession.state,
       newSession.context ? JSON.stringify(newSession.context) : null,
       newSession.createdAt,
-      newSession.lastActivityAt
+      newSession.lastActivityAt,
     );
 
     return newSession;
@@ -1297,77 +1375,84 @@ export class ChannelSessionRepository {
     const values: unknown[] = [];
 
     // Use 'in' check to allow setting fields to null/undefined (clearing them)
-    if ('taskId' in updates) {
-      fields.push('task_id = ?');
+    if ("taskId" in updates) {
+      fields.push("task_id = ?");
       values.push(updates.taskId ?? null); // Convert undefined to null for SQLite
     }
-    if ('workspaceId' in updates) {
-      fields.push('workspace_id = ?');
+    if ("workspaceId" in updates) {
+      fields.push("workspace_id = ?");
       values.push(updates.workspaceId ?? null);
     }
-    if ('state' in updates) {
-      fields.push('state = ?');
+    if ("state" in updates) {
+      fields.push("state = ?");
       values.push(updates.state);
     }
-    if ('lastActivityAt' in updates) {
-      fields.push('last_activity_at = ?');
+    if ("lastActivityAt" in updates) {
+      fields.push("last_activity_at = ?");
       values.push(updates.lastActivityAt);
     }
 
     // Handle shellEnabled and debugMode by merging into context
-    const hasContextUpdate = 'context' in updates || 'shellEnabled' in updates || 'debugMode' in updates;
+    const hasContextUpdate =
+      "context" in updates || "shellEnabled" in updates || "debugMode" in updates;
     if (hasContextUpdate) {
       // Load existing session to merge context
       const existing = this.findById(id);
       const existingContext = existing?.context || {};
       const newContext = {
         ...existingContext,
-        ...('context' in updates ? updates.context : {}),
-        ...('shellEnabled' in updates ? { shellEnabled: updates.shellEnabled } : {}),
-        ...('debugMode' in updates ? { debugMode: updates.debugMode } : {}),
+        ...("context" in updates ? updates.context : {}),
+        ...("shellEnabled" in updates ? { shellEnabled: updates.shellEnabled } : {}),
+        ...("debugMode" in updates ? { debugMode: updates.debugMode } : {}),
       };
-      fields.push('context = ?');
+      fields.push("context = ?");
       values.push(JSON.stringify(newContext));
     }
 
     if (fields.length === 0) return;
 
     values.push(id);
-    const stmt = this.db.prepare(`UPDATE channel_sessions SET ${fields.join(', ')} WHERE id = ?`);
+    const stmt = this.db.prepare(`UPDATE channel_sessions SET ${fields.join(", ")} WHERE id = ?`);
     stmt.run(...values);
   }
 
   findById(id: string): ChannelSession | undefined {
-    const stmt = this.db.prepare('SELECT * FROM channel_sessions WHERE id = ?');
+    const stmt = this.db.prepare("SELECT * FROM channel_sessions WHERE id = ?");
     const row = stmt.get(id) as Record<string, unknown> | undefined;
     return row ? this.mapRowToSession(row) : undefined;
   }
 
   findByChatId(channelId: string, chatId: string): ChannelSession | undefined {
-    const stmt = this.db.prepare('SELECT * FROM channel_sessions WHERE channel_id = ? AND chat_id = ? ORDER BY last_activity_at DESC LIMIT 1');
+    const stmt = this.db.prepare(
+      "SELECT * FROM channel_sessions WHERE channel_id = ? AND chat_id = ? ORDER BY last_activity_at DESC LIMIT 1",
+    );
     const row = stmt.get(channelId, chatId) as Record<string, unknown> | undefined;
     return row ? this.mapRowToSession(row) : undefined;
   }
 
   findByTaskId(taskId: string): ChannelSession | undefined {
-    const stmt = this.db.prepare('SELECT * FROM channel_sessions WHERE task_id = ?');
+    const stmt = this.db.prepare("SELECT * FROM channel_sessions WHERE task_id = ?");
     const row = stmt.get(taskId) as Record<string, unknown> | undefined;
     return row ? this.mapRowToSession(row) : undefined;
   }
 
   findActiveByChannelId(channelId: string): ChannelSession[] {
-    const stmt = this.db.prepare("SELECT * FROM channel_sessions WHERE channel_id = ? AND state != 'idle' ORDER BY last_activity_at DESC");
+    const stmt = this.db.prepare(
+      "SELECT * FROM channel_sessions WHERE channel_id = ? AND state != 'idle' ORDER BY last_activity_at DESC",
+    );
     const rows = stmt.all(channelId) as Record<string, unknown>[];
-    return rows.map(row => this.mapRowToSession(row));
+    return rows.map((row) => this.mapRowToSession(row));
   }
 
   deleteByChannelId(channelId: string): void {
-    const stmt = this.db.prepare('DELETE FROM channel_sessions WHERE channel_id = ?');
+    const stmt = this.db.prepare("DELETE FROM channel_sessions WHERE channel_id = ?");
     stmt.run(channelId);
   }
 
   private mapRowToSession(row: Record<string, unknown>): ChannelSession {
-    const context = row.context ? safeJsonParse(row.context as string, {} as Record<string, unknown>, 'session.context') : undefined;
+    const context = row.context
+      ? safeJsonParse(row.context as string, {} as Record<string, unknown>, "session.context")
+      : undefined;
     // Extract shellEnabled and debugMode from context
     const shellEnabled = context?.shellEnabled as boolean | undefined;
     const debugMode = context?.debugMode as boolean | undefined;
@@ -1378,7 +1463,7 @@ export class ChannelSessionRepository {
       userId: (row.user_id as string) || undefined,
       taskId: (row.task_id as string) || undefined,
       workspaceId: (row.workspace_id as string) || undefined,
-      state: row.state as 'idle' | 'active' | 'waiting_approval',
+      state: row.state as "idle" | "active" | "waiting_approval",
       context,
       shellEnabled,
       debugMode,
@@ -1391,7 +1476,7 @@ export class ChannelSessionRepository {
 export class ChannelMessageRepository {
   constructor(private db: Database.Database) {}
 
-  create(message: Omit<ChannelMessage, 'id'>): ChannelMessage {
+  create(message: Omit<ChannelMessage, "id">): ChannelMessage {
     const newMessage: ChannelMessage = {
       ...message,
       id: uuidv4(),
@@ -1412,33 +1497,37 @@ export class ChannelMessageRepository {
       newMessage.direction,
       newMessage.content,
       newMessage.attachments ? JSON.stringify(newMessage.attachments) : null,
-      newMessage.timestamp
+      newMessage.timestamp,
     );
 
     return newMessage;
   }
 
   findBySessionId(sessionId: string, limit = 50): ChannelMessage[] {
-    const stmt = this.db.prepare('SELECT * FROM channel_messages WHERE session_id = ? ORDER BY timestamp DESC LIMIT ?');
+    const stmt = this.db.prepare(
+      "SELECT * FROM channel_messages WHERE session_id = ? ORDER BY timestamp DESC LIMIT ?",
+    );
     const rows = stmt.all(sessionId, limit) as Record<string, unknown>[];
-    return rows.map(row => this.mapRowToMessage(row)).reverse();
+    return rows.map((row) => this.mapRowToMessage(row)).reverse();
   }
 
   findByChatId(channelId: string, chatId: string, limit = 50): ChannelMessage[] {
-    const stmt = this.db.prepare('SELECT * FROM channel_messages WHERE channel_id = ? AND chat_id = ? ORDER BY timestamp DESC LIMIT ?');
+    const stmt = this.db.prepare(
+      "SELECT * FROM channel_messages WHERE channel_id = ? AND chat_id = ? ORDER BY timestamp DESC LIMIT ?",
+    );
     const rows = stmt.all(channelId, chatId, limit) as Record<string, unknown>[];
-    return rows.map(row => this.mapRowToMessage(row)).reverse();
+    return rows.map((row) => this.mapRowToMessage(row)).reverse();
   }
 
   deleteByChannelId(channelId: string): void {
-    const stmt = this.db.prepare('DELETE FROM channel_messages WHERE channel_id = ?');
+    const stmt = this.db.prepare("DELETE FROM channel_messages WHERE channel_id = ?");
     stmt.run(channelId);
   }
 
   private mapRowToMessage(row: Record<string, unknown>): ChannelMessage {
-    const directionRaw = String(row.direction ?? '').trim();
-    const direction: ChannelMessage['direction'] =
-      directionRaw === 'outgoing' || directionRaw === 'outgoing_user' ? directionRaw : 'incoming';
+    const directionRaw = String(row.direction ?? "").trim();
+    const direction: ChannelMessage["direction"] =
+      directionRaw === "outgoing" || directionRaw === "outgoing_user" ? directionRaw : "incoming";
 
     return {
       id: row.id as string,
@@ -1449,7 +1538,9 @@ export class ChannelMessageRepository {
       userId: (row.user_id as string) || undefined,
       direction,
       content: row.content as string,
-      attachments: row.attachments ? safeJsonParse(row.attachments as string, undefined, 'message.attachments') : undefined,
+      attachments: row.attachments
+        ? safeJsonParse(row.attachments as string, undefined, "message.attachments")
+        : undefined,
       timestamp: row.timestamp as number,
     };
   }
@@ -1465,7 +1556,7 @@ export interface QueuedMessage {
   chatId: string;
   message: Record<string, unknown>;
   priority: number;
-  status: 'pending' | 'processing' | 'sent' | 'failed';
+  status: "pending" | "processing" | "sent" | "failed";
   attempts: number;
   maxAttempts: number;
   lastAttemptAt?: number;
@@ -1480,7 +1571,7 @@ export interface ScheduledMessage {
   chatId: string;
   message: Record<string, unknown>;
   scheduledAt: number;
-  status: 'pending' | 'sent' | 'failed' | 'cancelled';
+  status: "pending" | "sent" | "failed" | "cancelled";
   sentMessageId?: string;
   error?: string;
   createdAt: number;
@@ -1491,7 +1582,7 @@ export interface DeliveryRecord {
   channelType: string;
   chatId: string;
   messageId: string;
-  status: 'pending' | 'sent' | 'delivered' | 'read' | 'failed';
+  status: "pending" | "sent" | "delivered" | "read" | "failed";
   sentAt?: number;
   deliveredAt?: number;
   readAt?: number;
@@ -1517,17 +1608,17 @@ export interface AuditLogEntry {
   userId?: string;
   chatId?: string;
   details?: Record<string, unknown>;
-  severity: 'debug' | 'info' | 'warn' | 'error';
+  severity: "debug" | "info" | "warn" | "error";
 }
 
 export class MessageQueueRepository {
   constructor(private db: Database.Database) {}
 
-  enqueue(item: Omit<QueuedMessage, 'id' | 'createdAt' | 'attempts' | 'status'>): QueuedMessage {
+  enqueue(item: Omit<QueuedMessage, "id" | "createdAt" | "attempts" | "status">): QueuedMessage {
     const newItem: QueuedMessage = {
       ...item,
       id: uuidv4(),
-      status: 'pending',
+      status: "pending",
       attempts: 0,
       createdAt: Date.now(),
     };
@@ -1549,7 +1640,7 @@ export class MessageQueueRepository {
       newItem.lastAttemptAt || null,
       newItem.error || null,
       newItem.createdAt,
-      newItem.scheduledAt || null
+      newItem.scheduledAt || null,
     );
 
     return newItem;
@@ -1560,26 +1651,26 @@ export class MessageQueueRepository {
     const values: unknown[] = [];
 
     if (updates.status !== undefined) {
-      fields.push('status = ?');
+      fields.push("status = ?");
       values.push(updates.status);
     }
     if (updates.attempts !== undefined) {
-      fields.push('attempts = ?');
+      fields.push("attempts = ?");
       values.push(updates.attempts);
     }
     if (updates.lastAttemptAt !== undefined) {
-      fields.push('last_attempt_at = ?');
+      fields.push("last_attempt_at = ?");
       values.push(updates.lastAttemptAt);
     }
     if (updates.error !== undefined) {
-      fields.push('error = ?');
+      fields.push("error = ?");
       values.push(updates.error);
     }
 
     if (fields.length === 0) return;
 
     values.push(id);
-    const stmt = this.db.prepare(`UPDATE message_queue SET ${fields.join(', ')} WHERE id = ?`);
+    const stmt = this.db.prepare(`UPDATE message_queue SET ${fields.join(", ")} WHERE id = ?`);
     stmt.run(...values);
   }
 
@@ -1592,23 +1683,25 @@ export class MessageQueueRepository {
       LIMIT ?
     `);
     const rows = stmt.all(now, limit) as Record<string, unknown>[];
-    return rows.map(row => this.mapRowToItem(row));
+    return rows.map((row) => this.mapRowToItem(row));
   }
 
   findById(id: string): QueuedMessage | undefined {
-    const stmt = this.db.prepare('SELECT * FROM message_queue WHERE id = ?');
+    const stmt = this.db.prepare("SELECT * FROM message_queue WHERE id = ?");
     const row = stmt.get(id) as Record<string, unknown> | undefined;
     return row ? this.mapRowToItem(row) : undefined;
   }
 
   delete(id: string): void {
-    const stmt = this.db.prepare('DELETE FROM message_queue WHERE id = ?');
+    const stmt = this.db.prepare("DELETE FROM message_queue WHERE id = ?");
     stmt.run(id);
   }
 
   deleteOld(olderThanMs: number): number {
     const cutoff = Date.now() - olderThanMs;
-    const stmt = this.db.prepare("DELETE FROM message_queue WHERE status IN ('sent', 'failed') AND created_at < ?");
+    const stmt = this.db.prepare(
+      "DELETE FROM message_queue WHERE status IN ('sent', 'failed') AND created_at < ?",
+    );
     const result = stmt.run(cutoff);
     return result.changes;
   }
@@ -1618,9 +1711,9 @@ export class MessageQueueRepository {
       id: row.id as string,
       channelType: row.channel_type as string,
       chatId: row.chat_id as string,
-      message: safeJsonParse(row.message as string, {}, 'queue.message'),
+      message: safeJsonParse(row.message as string, {}, "queue.message"),
       priority: row.priority as number,
-      status: row.status as QueuedMessage['status'],
+      status: row.status as QueuedMessage["status"],
       attempts: row.attempts as number,
       maxAttempts: row.max_attempts as number,
       lastAttemptAt: (row.last_attempt_at as number) || undefined,
@@ -1634,11 +1727,11 @@ export class MessageQueueRepository {
 export class ScheduledMessageRepository {
   constructor(private db: Database.Database) {}
 
-  create(item: Omit<ScheduledMessage, 'id' | 'createdAt' | 'status'>): ScheduledMessage {
+  create(item: Omit<ScheduledMessage, "id" | "createdAt" | "status">): ScheduledMessage {
     const newItem: ScheduledMessage = {
       ...item,
       id: uuidv4(),
-      status: 'pending',
+      status: "pending",
       createdAt: Date.now(),
     };
 
@@ -1656,7 +1749,7 @@ export class ScheduledMessageRepository {
       newItem.status,
       newItem.sentMessageId || null,
       newItem.error || null,
-      newItem.createdAt
+      newItem.createdAt,
     );
 
     return newItem;
@@ -1667,26 +1760,26 @@ export class ScheduledMessageRepository {
     const values: unknown[] = [];
 
     if (updates.status !== undefined) {
-      fields.push('status = ?');
+      fields.push("status = ?");
       values.push(updates.status);
     }
     if (updates.sentMessageId !== undefined) {
-      fields.push('sent_message_id = ?');
+      fields.push("sent_message_id = ?");
       values.push(updates.sentMessageId);
     }
     if (updates.error !== undefined) {
-      fields.push('error = ?');
+      fields.push("error = ?");
       values.push(updates.error);
     }
     if (updates.scheduledAt !== undefined) {
-      fields.push('scheduled_at = ?');
+      fields.push("scheduled_at = ?");
       values.push(updates.scheduledAt);
     }
 
     if (fields.length === 0) return;
 
     values.push(id);
-    const stmt = this.db.prepare(`UPDATE scheduled_messages SET ${fields.join(', ')} WHERE id = ?`);
+    const stmt = this.db.prepare(`UPDATE scheduled_messages SET ${fields.join(", ")} WHERE id = ?`);
     stmt.run(...values);
   }
 
@@ -1699,11 +1792,11 @@ export class ScheduledMessageRepository {
       LIMIT ?
     `);
     const rows = stmt.all(now, limit) as Record<string, unknown>[];
-    return rows.map(row => this.mapRowToItem(row));
+    return rows.map((row) => this.mapRowToItem(row));
   }
 
   findById(id: string): ScheduledMessage | undefined {
-    const stmt = this.db.prepare('SELECT * FROM scheduled_messages WHERE id = ?');
+    const stmt = this.db.prepare("SELECT * FROM scheduled_messages WHERE id = ?");
     const row = stmt.get(id) as Record<string, unknown> | undefined;
     return row ? this.mapRowToItem(row) : undefined;
   }
@@ -1715,16 +1808,18 @@ export class ScheduledMessageRepository {
       ORDER BY scheduled_at ASC
     `);
     const rows = stmt.all(channelType, chatId) as Record<string, unknown>[];
-    return rows.map(row => this.mapRowToItem(row));
+    return rows.map((row) => this.mapRowToItem(row));
   }
 
   cancel(id: string): void {
-    const stmt = this.db.prepare("UPDATE scheduled_messages SET status = 'cancelled' WHERE id = ? AND status = 'pending'");
+    const stmt = this.db.prepare(
+      "UPDATE scheduled_messages SET status = 'cancelled' WHERE id = ? AND status = 'pending'",
+    );
     stmt.run(id);
   }
 
   delete(id: string): void {
-    const stmt = this.db.prepare('DELETE FROM scheduled_messages WHERE id = ?');
+    const stmt = this.db.prepare("DELETE FROM scheduled_messages WHERE id = ?");
     stmt.run(id);
   }
 
@@ -1733,9 +1828,9 @@ export class ScheduledMessageRepository {
       id: row.id as string,
       channelType: row.channel_type as string,
       chatId: row.chat_id as string,
-      message: safeJsonParse(row.message as string, {}, 'scheduled.message'),
+      message: safeJsonParse(row.message as string, {}, "scheduled.message"),
       scheduledAt: row.scheduled_at as number,
-      status: row.status as ScheduledMessage['status'],
+      status: row.status as ScheduledMessage["status"],
       sentMessageId: (row.sent_message_id as string) || undefined,
       error: (row.error as string) || undefined,
       createdAt: row.created_at as number,
@@ -1746,7 +1841,7 @@ export class ScheduledMessageRepository {
 export class DeliveryTrackingRepository {
   constructor(private db: Database.Database) {}
 
-  create(item: Omit<DeliveryRecord, 'id' | 'createdAt'>): DeliveryRecord {
+  create(item: Omit<DeliveryRecord, "id" | "createdAt">): DeliveryRecord {
     const newItem: DeliveryRecord = {
       ...item,
       id: uuidv4(),
@@ -1768,7 +1863,7 @@ export class DeliveryTrackingRepository {
       newItem.deliveredAt || null,
       newItem.readAt || null,
       newItem.error || null,
-      newItem.createdAt
+      newItem.createdAt,
     );
 
     return newItem;
@@ -1779,35 +1874,35 @@ export class DeliveryTrackingRepository {
     const values: unknown[] = [];
 
     if (updates.status !== undefined) {
-      fields.push('status = ?');
+      fields.push("status = ?");
       values.push(updates.status);
     }
     if (updates.sentAt !== undefined) {
-      fields.push('sent_at = ?');
+      fields.push("sent_at = ?");
       values.push(updates.sentAt);
     }
     if (updates.deliveredAt !== undefined) {
-      fields.push('delivered_at = ?');
+      fields.push("delivered_at = ?");
       values.push(updates.deliveredAt);
     }
     if (updates.readAt !== undefined) {
-      fields.push('read_at = ?');
+      fields.push("read_at = ?");
       values.push(updates.readAt);
     }
     if (updates.error !== undefined) {
-      fields.push('error = ?');
+      fields.push("error = ?");
       values.push(updates.error);
     }
 
     if (fields.length === 0) return;
 
     values.push(id);
-    const stmt = this.db.prepare(`UPDATE delivery_tracking SET ${fields.join(', ')} WHERE id = ?`);
+    const stmt = this.db.prepare(`UPDATE delivery_tracking SET ${fields.join(", ")} WHERE id = ?`);
     stmt.run(...values);
   }
 
   findByMessageId(messageId: string): DeliveryRecord | undefined {
-    const stmt = this.db.prepare('SELECT * FROM delivery_tracking WHERE message_id = ?');
+    const stmt = this.db.prepare("SELECT * FROM delivery_tracking WHERE message_id = ?");
     const row = stmt.get(messageId) as Record<string, unknown> | undefined;
     return row ? this.mapRowToItem(row) : undefined;
   }
@@ -1820,12 +1915,12 @@ export class DeliveryTrackingRepository {
       LIMIT ?
     `);
     const rows = stmt.all(channelType, chatId, limit) as Record<string, unknown>[];
-    return rows.map(row => this.mapRowToItem(row));
+    return rows.map((row) => this.mapRowToItem(row));
   }
 
   deleteOld(olderThanMs: number): number {
     const cutoff = Date.now() - olderThanMs;
-    const stmt = this.db.prepare('DELETE FROM delivery_tracking WHERE created_at < ?');
+    const stmt = this.db.prepare("DELETE FROM delivery_tracking WHERE created_at < ?");
     const result = stmt.run(cutoff);
     return result.changes;
   }
@@ -1836,7 +1931,7 @@ export class DeliveryTrackingRepository {
       channelType: row.channel_type as string,
       chatId: row.chat_id as string,
       messageId: row.message_id as string,
-      status: row.status as DeliveryRecord['status'],
+      status: row.status as DeliveryRecord["status"],
       sentAt: (row.sent_at as number) || undefined,
       deliveredAt: (row.delivered_at as number) || undefined,
       readAt: (row.read_at as number) || undefined,
@@ -1850,7 +1945,9 @@ export class RateLimitRepository {
   constructor(private db: Database.Database) {}
 
   getOrCreate(channelType: string, userId: string): RateLimitRecord {
-    const stmt = this.db.prepare('SELECT * FROM rate_limits WHERE channel_type = ? AND user_id = ?');
+    const stmt = this.db.prepare(
+      "SELECT * FROM rate_limits WHERE channel_type = ? AND user_id = ?",
+    );
     const row = stmt.get(channelType, userId) as Record<string, unknown> | undefined;
 
     if (row) {
@@ -1879,7 +1976,7 @@ export class RateLimitRepository {
       newItem.messageCount,
       newItem.windowStart,
       newItem.isLimited ? 1 : 0,
-      newItem.limitExpiresAt || null
+      newItem.limitExpiresAt || null,
     );
 
     return newItem;
@@ -1890,26 +1987,28 @@ export class RateLimitRepository {
     const values: unknown[] = [];
 
     if (updates.messageCount !== undefined) {
-      fields.push('message_count = ?');
+      fields.push("message_count = ?");
       values.push(updates.messageCount);
     }
     if (updates.windowStart !== undefined) {
-      fields.push('window_start = ?');
+      fields.push("window_start = ?");
       values.push(updates.windowStart);
     }
     if (updates.isLimited !== undefined) {
-      fields.push('is_limited = ?');
+      fields.push("is_limited = ?");
       values.push(updates.isLimited ? 1 : 0);
     }
     if (updates.limitExpiresAt !== undefined) {
-      fields.push('limit_expires_at = ?');
+      fields.push("limit_expires_at = ?");
       values.push(updates.limitExpiresAt);
     }
 
     if (fields.length === 0) return;
 
     values.push(channelType, userId);
-    const stmt = this.db.prepare(`UPDATE rate_limits SET ${fields.join(', ')} WHERE channel_type = ? AND user_id = ?`);
+    const stmt = this.db.prepare(
+      `UPDATE rate_limits SET ${fields.join(", ")} WHERE channel_type = ? AND user_id = ?`,
+    );
     stmt.run(...values);
   }
 
@@ -1938,7 +2037,7 @@ export class RateLimitRepository {
 export class AuditLogRepository {
   constructor(private db: Database.Database) {}
 
-  log(entry: Omit<AuditLogEntry, 'id' | 'timestamp'>): AuditLogEntry {
+  log(entry: Omit<AuditLogEntry, "id" | "timestamp">): AuditLogEntry {
     const newEntry: AuditLogEntry = {
       ...entry,
       id: uuidv4(),
@@ -1958,7 +2057,7 @@ export class AuditLogRepository {
       newEntry.userId || null,
       newEntry.chatId || null,
       newEntry.details ? JSON.stringify(newEntry.details) : null,
-      newEntry.severity
+      newEntry.severity,
     );
 
     return newEntry;
@@ -1971,7 +2070,7 @@ export class AuditLogRepository {
     chatId?: string;
     fromTimestamp?: number;
     toTimestamp?: number;
-    severity?: AuditLogEntry['severity'];
+    severity?: AuditLogEntry["severity"];
     limit?: number;
     offset?: number;
   }): AuditLogEntry[] {
@@ -1979,35 +2078,35 @@ export class AuditLogRepository {
     const values: unknown[] = [];
 
     if (options.action) {
-      conditions.push('action = ?');
+      conditions.push("action = ?");
       values.push(options.action);
     }
     if (options.channelType) {
-      conditions.push('channel_type = ?');
+      conditions.push("channel_type = ?");
       values.push(options.channelType);
     }
     if (options.userId) {
-      conditions.push('user_id = ?');
+      conditions.push("user_id = ?");
       values.push(options.userId);
     }
     if (options.chatId) {
-      conditions.push('chat_id = ?');
+      conditions.push("chat_id = ?");
       values.push(options.chatId);
     }
     if (options.fromTimestamp) {
-      conditions.push('timestamp >= ?');
+      conditions.push("timestamp >= ?");
       values.push(options.fromTimestamp);
     }
     if (options.toTimestamp) {
-      conditions.push('timestamp <= ?');
+      conditions.push("timestamp <= ?");
       values.push(options.toTimestamp);
     }
     if (options.severity) {
-      conditions.push('severity = ?');
+      conditions.push("severity = ?");
       values.push(options.severity);
     }
 
-    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
     const limit = options.limit || 100;
     const offset = options.offset || 0;
 
@@ -2020,12 +2119,12 @@ export class AuditLogRepository {
 
     values.push(limit, offset);
     const rows = stmt.all(...values) as Record<string, unknown>[];
-    return rows.map(row => this.mapRowToEntry(row));
+    return rows.map((row) => this.mapRowToEntry(row));
   }
 
   deleteOld(olderThanMs: number): number {
     const cutoff = Date.now() - olderThanMs;
-    const stmt = this.db.prepare('DELETE FROM audit_log WHERE timestamp < ?');
+    const stmt = this.db.prepare("DELETE FROM audit_log WHERE timestamp < ?");
     const result = stmt.run(cutoff);
     return result.changes;
   }
@@ -2038,8 +2137,10 @@ export class AuditLogRepository {
       channelType: (row.channel_type as string) || undefined,
       userId: (row.user_id as string) || undefined,
       chatId: (row.chat_id as string) || undefined,
-      details: row.details ? safeJsonParse(row.details as string, undefined, 'audit.details') : undefined,
-      severity: row.severity as AuditLogEntry['severity'],
+      details: row.details
+        ? safeJsonParse(row.details as string, undefined, "audit.details")
+        : undefined,
+      severity: row.severity as AuditLogEntry["severity"],
     };
   }
 }
@@ -2048,9 +2149,9 @@ export class AuditLogRepository {
 // Memory System Repositories
 // ============================================================
 
-export type MemoryType = 'observation' | 'decision' | 'error' | 'insight' | 'summary';
-export type PrivacyMode = 'normal' | 'strict' | 'disabled';
-export type TimePeriod = 'hourly' | 'daily' | 'weekly';
+export type MemoryType = "observation" | "decision" | "error" | "insight" | "summary";
+export type PrivacyMode = "normal" | "strict" | "disabled";
+export type TimePeriod = "hourly" | "daily" | "weekly";
 
 export interface Memory {
   id: string;
@@ -2098,7 +2199,7 @@ export type MemorySearchResult =
       createdAt: number;
       taskId?: string;
       /** Origin of this search result (database memory vs markdown kit index). */
-      source: 'db';
+      source: "db";
     }
   | {
       id: string;
@@ -2108,7 +2209,7 @@ export type MemorySearchResult =
       createdAt: number;
       taskId?: string;
       /** Origin of this search result (database memory vs markdown kit index). */
-      source: 'markdown';
+      source: "markdown";
       /** File path for markdown-backed results (workspace-relative). */
       path: string;
       /** Start line (1-based) for markdown-backed results. */
@@ -2146,16 +2247,70 @@ export class MemoryRepository {
   // natural-language queries (punctuation, filler words) without pulling in
   // other modules and risking circular deps.
   private static readonly MEMORY_SEARCH_STOP_WORDS = new Set([
-    'a', 'an', 'the', 'and', 'or', 'but', 'if', 'then', 'else',
-    'is', 'are', 'was', 'were', 'be', 'been', 'being',
-    'to', 'of', 'in', 'on', 'for', 'with', 'by', 'as', 'at', 'from', 'into', 'about',
-    'that', 'this', 'it', 'its', 'we', 'you', 'they', 'i', 'he', 'she', 'them',
-    'our', 'your', 'my', 'me', 'us',
-    'do', 'does', 'did', 'done', 'can', 'could', 'should', 'would', 'will', 'shall', 'may', 'might',
-    'not', 'no', 'yes', 'please', 'help',
+    "a",
+    "an",
+    "the",
+    "and",
+    "or",
+    "but",
+    "if",
+    "then",
+    "else",
+    "is",
+    "are",
+    "was",
+    "were",
+    "be",
+    "been",
+    "being",
+    "to",
+    "of",
+    "in",
+    "on",
+    "for",
+    "with",
+    "by",
+    "as",
+    "at",
+    "from",
+    "into",
+    "about",
+    "that",
+    "this",
+    "it",
+    "its",
+    "we",
+    "you",
+    "they",
+    "i",
+    "he",
+    "she",
+    "them",
+    "our",
+    "your",
+    "my",
+    "me",
+    "us",
+    "do",
+    "does",
+    "did",
+    "done",
+    "can",
+    "could",
+    "should",
+    "would",
+    "will",
+    "shall",
+    "may",
+    "might",
+    "not",
+    "no",
+    "yes",
+    "please",
+    "help",
   ]);
 
-  create(memory: Omit<Memory, 'id' | 'createdAt' | 'updatedAt'>): Memory {
+  create(memory: Omit<Memory, "id" | "createdAt" | "updatedAt">): Memory {
     const now = Date.now();
     const newMemory: Memory = {
       ...memory,
@@ -2180,59 +2335,64 @@ export class MemoryRepository {
       newMemory.isCompressed ? 1 : 0,
       newMemory.isPrivate ? 1 : 0,
       newMemory.createdAt,
-      newMemory.updatedAt
+      newMemory.updatedAt,
     );
 
     return newMemory;
   }
 
-  update(id: string, updates: Partial<Pick<Memory, 'summary' | 'tokens' | 'isCompressed'>>): void {
+  update(id: string, updates: Partial<Pick<Memory, "summary" | "tokens" | "isCompressed">>): void {
     const fields: string[] = [];
     const values: unknown[] = [];
 
     if (updates.summary !== undefined) {
-      fields.push('summary = ?');
+      fields.push("summary = ?");
       values.push(updates.summary);
     }
     if (updates.tokens !== undefined) {
-      fields.push('tokens = ?');
+      fields.push("tokens = ?");
       values.push(updates.tokens);
     }
     if (updates.isCompressed !== undefined) {
-      fields.push('is_compressed = ?');
+      fields.push("is_compressed = ?");
       values.push(updates.isCompressed ? 1 : 0);
     }
 
     if (fields.length === 0) return;
 
-    fields.push('updated_at = ?');
+    fields.push("updated_at = ?");
     values.push(Date.now());
     values.push(id);
 
-    const stmt = this.db.prepare(`UPDATE memories SET ${fields.join(', ')} WHERE id = ?`);
+    const stmt = this.db.prepare(`UPDATE memories SET ${fields.join(", ")} WHERE id = ?`);
     stmt.run(...values);
   }
 
   findById(id: string): Memory | undefined {
-    const stmt = this.db.prepare('SELECT * FROM memories WHERE id = ?');
+    const stmt = this.db.prepare("SELECT * FROM memories WHERE id = ?");
     const row = stmt.get(id) as Record<string, unknown> | undefined;
     return row ? this.mapRowToMemory(row) : undefined;
   }
 
   findByIds(ids: string[]): Memory[] {
     if (ids.length === 0) return [];
-    const placeholders = ids.map(() => '?').join(', ');
+    const placeholders = ids.map(() => "?").join(", ");
     const stmt = this.db.prepare(`SELECT * FROM memories WHERE id IN (${placeholders})`);
     const rows = stmt.all(...ids) as Record<string, unknown>[];
-    return rows.map(row => this.mapRowToMemory(row));
+    return rows.map((row) => this.mapRowToMemory(row));
   }
 
   /**
    * Layer 1: Search returns IDs + brief snippets (~50 tokens each)
    * Uses FTS5 for full-text search with relevance ranking
    */
-  search(workspaceId: string, query: string, limit = 20, includePrivate = false): MemorySearchResult[] {
-    const privacyFilter = includePrivate ? '' : 'AND m.is_private = 0';
+  search(
+    workspaceId: string,
+    query: string,
+    limit = 20,
+    includePrivate = false,
+  ): MemorySearchResult[] {
+    const privacyFilter = includePrivate ? "" : "AND m.is_private = 0";
     try {
       // Try FTS5 search first.
       //
@@ -2251,19 +2411,19 @@ export class MemoryRepository {
         LIMIT ?
       `);
 
-      const raw = (query || '').trim();
+      const raw = (query || "").trim();
       if (!raw) return [];
       const tokenized = this.buildRelaxedFtsQuery(raw);
 
       const mapRows = (rows: Record<string, unknown>[]) =>
-        rows.map(row => ({
+        rows.map((row) => ({
           id: row.id as string,
           snippet: (row.summary as string) || this.truncateToSnippet(row.content as string, 200),
           type: row.type as MemoryType,
           relevanceScore: Math.abs(row.score as number),
           createdAt: row.created_at as number,
           taskId: (row.task_id as string) || undefined,
-          source: 'db' as const,
+          source: "db" as const,
         }));
 
       let rows: Record<string, unknown>[] = [];
@@ -2289,8 +2449,8 @@ export class MemoryRepository {
       }
     } catch {
       // Fall back to LIKE search if FTS5 is not available
-      const fallbackPrivacyFilter = includePrivate ? '' : 'AND is_private = 0';
-      const raw = (query || '').trim();
+      const fallbackPrivacyFilter = includePrivate ? "" : "AND is_private = 0";
+      const raw = (query || "").trim();
       const tokens = this.tokenizeSearchQuery(raw);
       const likeTokens = (tokens.length > 0 ? tokens : [raw]).slice(0, 8).filter(Boolean);
 
@@ -2298,12 +2458,12 @@ export class MemoryRepository {
       const clauses: string[] = [];
       const params: unknown[] = [workspaceId];
       for (const token of likeTokens) {
-        clauses.push('(content LIKE ? OR summary LIKE ?)');
+        clauses.push("(content LIKE ? OR summary LIKE ?)");
         const like = `%${token}%`;
         params.push(like, like);
       }
 
-      const where = clauses.length > 0 ? `AND (${clauses.join(' OR ')})` : '';
+      const where = clauses.length > 0 ? `AND (${clauses.join(" OR ")})` : "";
       const stmt = this.db.prepare(`
         SELECT id, summary, content, type, created_at, task_id
         FROM memories
@@ -2315,14 +2475,14 @@ export class MemoryRepository {
 
       params.push(limit);
       const rows = stmt.all(...params) as Record<string, unknown>[];
-      return rows.map(row => ({
+      return rows.map((row) => ({
         id: row.id as string,
         snippet: (row.summary as string) || this.truncateToSnippet(row.content as string, 200),
         type: row.type as MemoryType,
         relevanceScore: 1,
         createdAt: row.created_at as number,
         taskId: (row.task_id as string) || undefined,
-        source: 'db' as const,
+        source: "db" as const,
       }));
     }
 
@@ -2334,7 +2494,7 @@ export class MemoryRepository {
    * This is intentionally global so sessions from any workspace can retrieve imported history.
    */
   searchImportedGlobal(query: string, limit = 20, includePrivate = false): MemorySearchResult[] {
-    const privacyFilter = includePrivate ? '' : 'AND m.is_private = 0';
+    const privacyFilter = includePrivate ? "" : "AND m.is_private = 0";
     try {
       const stmt = this.db.prepare(`
         SELECT m.id, m.summary, m.content, m.type, m.created_at, m.task_id,
@@ -2348,7 +2508,7 @@ export class MemoryRepository {
         LIMIT ?
       `);
 
-      const raw = (query || '').trim();
+      const raw = (query || "").trim();
       if (!raw) return [];
       const tokenized = this.buildRelaxedFtsQuery(raw);
 
@@ -2368,14 +2528,14 @@ export class MemoryRepository {
       }
 
       if (rows.length > 0) {
-        return rows.map(row => ({
+        return rows.map((row) => ({
           id: row.id as string,
           snippet: (row.summary as string) || this.truncateToSnippet(row.content as string, 200),
           type: row.type as MemoryType,
           relevanceScore: Math.abs(row.score as number),
           createdAt: row.created_at as number,
           taskId: (row.task_id as string) || undefined,
-          source: 'db' as const,
+          source: "db" as const,
         }));
       }
     } catch {
@@ -2383,7 +2543,7 @@ export class MemoryRepository {
     }
 
     // LIKE fallback (global)
-    const raw = (query || '').trim();
+    const raw = (query || "").trim();
     if (!raw) return [];
     const tokens = this.tokenizeSearchQuery(raw);
     const likeTokens = (tokens.length > 0 ? tokens : [raw]).slice(0, 8).filter(Boolean);
@@ -2391,17 +2551,17 @@ export class MemoryRepository {
     const clauses: string[] = [];
     const params: unknown[] = [];
     for (const token of likeTokens) {
-      clauses.push('(m.content LIKE ? OR m.summary LIKE ?)');
+      clauses.push("(m.content LIKE ? OR m.summary LIKE ?)");
       const like = `%${token}%`;
       params.push(like, like);
     }
 
-    const where = clauses.length > 0 ? `AND (${clauses.join(' OR ')})` : '';
+    const where = clauses.length > 0 ? `AND (${clauses.join(" OR ")})` : "";
     const stmt = this.db.prepare(`
       SELECT m.id, m.summary, m.content, m.type, m.created_at, m.task_id
       FROM memories m
       WHERE m.content LIKE '[Imported from ChatGPT %'
-        ${includePrivate ? '' : 'AND m.is_private = 0'}
+        ${includePrivate ? "" : "AND m.is_private = 0"}
         ${where}
       ORDER BY m.created_at DESC
       LIMIT ?
@@ -2409,14 +2569,14 @@ export class MemoryRepository {
 
     params.push(limit);
     const rows = stmt.all(...params) as Record<string, unknown>[];
-    return rows.map(row => ({
+    return rows.map((row) => ({
       id: row.id as string,
       snippet: (row.summary as string) || this.truncateToSnippet(row.content as string, 200),
       type: row.type as MemoryType,
       relevanceScore: 1,
       createdAt: row.created_at as number,
       taskId: (row.task_id as string) || undefined,
-      source: 'db' as const,
+      source: "db" as const,
     }));
   }
 
@@ -2442,10 +2602,10 @@ export class MemoryRepository {
       memory.workspaceId,
       memory.createdAt - timeWindow,
       memory.createdAt + timeWindow,
-      windowSize * 2 + 1
+      windowSize * 2 + 1,
     ) as Record<string, unknown>[];
 
-    return rows.map(row => ({
+    return rows.map((row) => ({
       id: row.id as string,
       content: row.content as string,
       type: row.type as MemoryType,
@@ -2466,7 +2626,7 @@ export class MemoryRepository {
    * Get recent memories for context injection
    */
   getRecentForWorkspace(workspaceId: string, limit = 10, includePrivate = false): Memory[] {
-    const privacyFilter = includePrivate ? '' : 'AND is_private = 0';
+    const privacyFilter = includePrivate ? "" : "AND is_private = 0";
     const stmt = this.db.prepare(`
       SELECT * FROM memories
       WHERE workspace_id = ? ${privacyFilter}
@@ -2474,11 +2634,11 @@ export class MemoryRepository {
       LIMIT ?
     `);
     const rows = stmt.all(workspaceId, limit) as Record<string, unknown>[];
-    return rows.map(row => this.mapRowToMemory(row));
+    return rows.map((row) => this.mapRowToMemory(row));
   }
 
   getRecentImportedGlobal(limit = 20, includePrivate = false): Memory[] {
-    const privacyFilter = includePrivate ? '' : 'AND is_private = 0';
+    const privacyFilter = includePrivate ? "" : "AND is_private = 0";
     const stmt = this.db.prepare(`
       SELECT * FROM memories
       WHERE content LIKE '[Imported from ChatGPT %' ${privacyFilter}
@@ -2486,7 +2646,7 @@ export class MemoryRepository {
       LIMIT ?
     `);
     const rows = stmt.all(limit) as Record<string, unknown>[];
-    return rows.map(row => this.mapRowToMemory(row));
+    return rows.map((row) => this.mapRowToMemory(row));
   }
 
   /**
@@ -2500,7 +2660,7 @@ export class MemoryRepository {
       LIMIT ?
     `);
     const rows = stmt.all(limit) as Record<string, unknown>[];
-    return rows.map(row => this.mapRowToMemory(row));
+    return rows.map((row) => this.mapRowToMemory(row));
   }
 
   /**
@@ -2514,7 +2674,9 @@ export class MemoryRepository {
       LIMIT ?
     `);
     const rows = stmt.all(limit) as Array<{ workspace_id: string }>;
-    return rows.map((row) => row.workspace_id).filter((id) => typeof id === 'string' && id.length > 0);
+    return rows
+      .map((row) => row.workspace_id)
+      .filter((id) => typeof id === "string" && id.length > 0);
   }
 
   /**
@@ -2536,7 +2698,7 @@ export class MemoryRepository {
    */
   getOldestForWorkspace(
     workspaceId: string,
-    limit = 200
+    limit = 200,
   ): Array<{ id: string; createdAt: number; approxBytes: number }> {
     const stmt = this.db.prepare(`
       SELECT id, created_at, (length(content) + COALESCE(length(summary), 0)) as approx_bytes
@@ -2562,7 +2724,7 @@ export class MemoryRepository {
    */
   deleteByIds(workspaceId: string, ids: string[]): number {
     if (!ids.length) return 0;
-    const placeholders = ids.map(() => '?').join(', ');
+    const placeholders = ids.map(() => "?").join(", ");
     const stmt = this.db.prepare(`
       DELETE FROM memories
       WHERE workspace_id = ? AND id IN (${placeholders})
@@ -2582,7 +2744,7 @@ export class MemoryRepository {
       LIMIT ? OFFSET ?
     `);
     const rows = stmt.all(workspaceId, limit, offset) as Record<string, unknown>[];
-    return rows.map(row => this.mapRowToMemory(row));
+    return rows.map((row) => this.mapRowToMemory(row));
   }
 
   /**
@@ -2595,7 +2757,7 @@ export class MemoryRepository {
       ORDER BY created_at ASC
     `);
     const rows = stmt.all(taskId) as Record<string, unknown>[];
-    return rows.map(row => this.mapRowToMemory(row));
+    return rows.map((row) => this.mapRowToMemory(row));
   }
 
   /**
@@ -2614,7 +2776,7 @@ export class MemoryRepository {
    * Delete all memories for a workspace
    */
   deleteByWorkspace(workspaceId: string): number {
-    const stmt = this.db.prepare('DELETE FROM memories WHERE workspace_id = ?');
+    const stmt = this.db.prepare("DELETE FROM memories WHERE workspace_id = ?");
     const result = stmt.run(workspaceId);
     return result.changes;
   }
@@ -2668,7 +2830,7 @@ export class MemoryRepository {
       LIMIT ? OFFSET ?
     `);
     const rows = stmt.all(workspaceId, limit, offset) as Record<string, unknown>[];
-    return rows.map(row => this.mapRowToMemory(row));
+    return rows.map((row) => this.mapRowToMemory(row));
   }
 
   /**
@@ -2676,7 +2838,7 @@ export class MemoryRepository {
    */
   deleteImported(workspaceId: string): number {
     const stmt = this.db.prepare(
-      `DELETE FROM memories WHERE workspace_id = ? AND content LIKE '[Imported from ChatGPT %'`
+      `DELETE FROM memories WHERE workspace_id = ? AND content LIKE '[Imported from ChatGPT %'`,
     );
     const result = stmt.run(workspaceId);
     return result.changes;
@@ -2684,13 +2846,13 @@ export class MemoryRepository {
 
   private truncateToSnippet(content: string, maxChars: number): string {
     if (content.length <= maxChars) return content;
-    return content.slice(0, maxChars - 3) + '...';
+    return content.slice(0, maxChars - 3) + "...";
   }
 
   private tokenizeSearchQuery(raw: string): string[] {
-    return (raw || '')
+    return (raw || "")
       .toLowerCase()
-      .replace(/[^a-z0-9_\s-]/g, ' ')
+      .replace(/[^a-z0-9_\s-]/g, " ")
       .split(/\s+/)
       .map((t) => t.trim())
       .filter((t) => t.length > 1 && !MemoryRepository.MEMORY_SEARCH_STOP_WORDS.has(t));
@@ -2702,8 +2864,8 @@ export class MemoryRepository {
 
     // Quote tokens to avoid them being interpreted as query operators.
     // Use OR to improve recall for long natural-language prompts.
-    const parts = tokens.map((t) => `"${t.replace(/"/g, '')}"`);
-    return parts.join(' OR ');
+    const parts = tokens.map((t) => `"${t.replace(/"/g, "")}"`);
+    return parts.join(" OR ");
   }
 
   private mapRowToMemory(row: Record<string, unknown>): Memory {
@@ -2785,7 +2947,7 @@ export class MemoryEmbeddingRepository {
    */
   findMissingOrStale(
     workspaceId: string,
-    limit = 500
+    limit = 500,
   ): Array<{ memoryId: string; updatedAt: number; content: string; summary?: string }> {
     const stmt = this.db.prepare(`
       SELECT m.id as memory_id, m.updated_at, m.content, m.summary, e.updated_at as emb_updated_at
@@ -2845,9 +3007,13 @@ export class MemoryEmbeddingRepository {
     return results;
   }
 
-  findMissingOrStaleImportedGlobal(
-    limit = 500
-  ): Array<{ memoryId: string; workspaceId: string; updatedAt: number; content: string; summary?: string }> {
+  findMissingOrStaleImportedGlobal(limit = 500): Array<{
+    memoryId: string;
+    workspaceId: string;
+    updatedAt: number;
+    content: string;
+    summary?: string;
+  }> {
     const stmt = this.db.prepare(`
       SELECT m.id as memory_id, m.workspace_id, m.updated_at, m.content, m.summary, e.updated_at as emb_updated_at
       FROM memories m
@@ -2875,14 +3041,14 @@ export class MemoryEmbeddingRepository {
   }
 
   deleteByWorkspace(workspaceId: string): number {
-    const stmt = this.db.prepare('DELETE FROM memory_embeddings WHERE workspace_id = ?');
+    const stmt = this.db.prepare("DELETE FROM memory_embeddings WHERE workspace_id = ?");
     const result = stmt.run(workspaceId);
     return result.changes;
   }
 
   deleteByMemoryIds(ids: string[]): number {
     if (!ids.length) return 0;
-    const placeholders = ids.map(() => '?').join(', ');
+    const placeholders = ids.map(() => "?").join(", ");
     const stmt = this.db.prepare(`
       DELETE FROM memory_embeddings
       WHERE memory_id IN (${placeholders})
@@ -2909,7 +3075,7 @@ export class MemoryEmbeddingRepository {
 export class MemorySummaryRepository {
   constructor(private db: Database.Database) {}
 
-  create(summary: Omit<MemorySummary, 'id' | 'createdAt'>): MemorySummary {
+  create(summary: Omit<MemorySummary, "id" | "createdAt">): MemorySummary {
     const newSummary: MemorySummary = {
       ...summary,
       id: uuidv4(),
@@ -2930,13 +3096,17 @@ export class MemorySummaryRepository {
       newSummary.summary,
       JSON.stringify(newSummary.memoryIds),
       newSummary.tokens,
-      newSummary.createdAt
+      newSummary.createdAt,
     );
 
     return newSummary;
   }
 
-  findByWorkspaceAndPeriod(workspaceId: string, timePeriod: TimePeriod, limit = 10): MemorySummary[] {
+  findByWorkspaceAndPeriod(
+    workspaceId: string,
+    timePeriod: TimePeriod,
+    limit = 10,
+  ): MemorySummary[] {
     const stmt = this.db.prepare(`
       SELECT * FROM memory_summaries
       WHERE workspace_id = ? AND time_period = ?
@@ -2944,7 +3114,7 @@ export class MemorySummaryRepository {
       LIMIT ?
     `);
     const rows = stmt.all(workspaceId, timePeriod, limit) as Record<string, unknown>[];
-    return rows.map(row => this.mapRowToSummary(row));
+    return rows.map((row) => this.mapRowToSummary(row));
   }
 
   findByWorkspace(workspaceId: string, limit = 50): MemorySummary[] {
@@ -2955,11 +3125,11 @@ export class MemorySummaryRepository {
       LIMIT ?
     `);
     const rows = stmt.all(workspaceId, limit) as Record<string, unknown>[];
-    return rows.map(row => this.mapRowToSummary(row));
+    return rows.map((row) => this.mapRowToSummary(row));
   }
 
   deleteByWorkspace(workspaceId: string): number {
-    const stmt = this.db.prepare('DELETE FROM memory_summaries WHERE workspace_id = ?');
+    const stmt = this.db.prepare("DELETE FROM memory_summaries WHERE workspace_id = ?");
     const result = stmt.run(workspaceId);
     return result.changes;
   }
@@ -2972,7 +3142,7 @@ export class MemorySummaryRepository {
       periodStart: row.period_start as number,
       periodEnd: row.period_end as number,
       summary: row.summary as string,
-      memoryIds: safeJsonParse(row.memory_ids as string, [] as string[], 'memorySummary.memoryIds'),
+      memoryIds: safeJsonParse(row.memory_ids as string, [] as string[], "memorySummary.memoryIds"),
       tokens: row.tokens as number,
       createdAt: row.created_at as number,
     };
@@ -2983,7 +3153,7 @@ export class MemorySettingsRepository {
   constructor(private db: Database.Database) {}
 
   getOrCreate(workspaceId: string): MemorySettings {
-    const stmt = this.db.prepare('SELECT * FROM memory_settings WHERE workspace_id = ?');
+    const stmt = this.db.prepare("SELECT * FROM memory_settings WHERE workspace_id = ?");
     const row = stmt.get(workspaceId) as Record<string, unknown> | undefined;
 
     if (row) {
@@ -2998,7 +3168,7 @@ export class MemorySettingsRepository {
       compressionEnabled: true,
       retentionDays: 90,
       maxStorageMb: 100,
-      privacyMode: 'normal',
+      privacyMode: "normal",
       excludedPatterns: [],
     };
 
@@ -3015,54 +3185,56 @@ export class MemorySettingsRepository {
       defaults.retentionDays,
       defaults.maxStorageMb,
       defaults.privacyMode,
-      JSON.stringify(defaults.excludedPatterns)
+      JSON.stringify(defaults.excludedPatterns),
     );
 
     return defaults;
   }
 
-  update(workspaceId: string, updates: Partial<Omit<MemorySettings, 'workspaceId'>>): void {
+  update(workspaceId: string, updates: Partial<Omit<MemorySettings, "workspaceId">>): void {
     const fields: string[] = [];
     const values: unknown[] = [];
 
     if (updates.enabled !== undefined) {
-      fields.push('enabled = ?');
+      fields.push("enabled = ?");
       values.push(updates.enabled ? 1 : 0);
     }
     if (updates.autoCapture !== undefined) {
-      fields.push('auto_capture = ?');
+      fields.push("auto_capture = ?");
       values.push(updates.autoCapture ? 1 : 0);
     }
     if (updates.compressionEnabled !== undefined) {
-      fields.push('compression_enabled = ?');
+      fields.push("compression_enabled = ?");
       values.push(updates.compressionEnabled ? 1 : 0);
     }
     if (updates.retentionDays !== undefined) {
-      fields.push('retention_days = ?');
+      fields.push("retention_days = ?");
       values.push(updates.retentionDays);
     }
     if (updates.maxStorageMb !== undefined) {
-      fields.push('max_storage_mb = ?');
+      fields.push("max_storage_mb = ?");
       values.push(updates.maxStorageMb);
     }
     if (updates.privacyMode !== undefined) {
-      fields.push('privacy_mode = ?');
+      fields.push("privacy_mode = ?");
       values.push(updates.privacyMode);
     }
     if (updates.excludedPatterns !== undefined) {
-      fields.push('excluded_patterns = ?');
+      fields.push("excluded_patterns = ?");
       values.push(JSON.stringify(updates.excludedPatterns));
     }
 
     if (fields.length === 0) return;
 
     values.push(workspaceId);
-    const stmt = this.db.prepare(`UPDATE memory_settings SET ${fields.join(', ')} WHERE workspace_id = ?`);
+    const stmt = this.db.prepare(
+      `UPDATE memory_settings SET ${fields.join(", ")} WHERE workspace_id = ?`,
+    );
     stmt.run(...values);
   }
 
   delete(workspaceId: string): void {
-    const stmt = this.db.prepare('DELETE FROM memory_settings WHERE workspace_id = ?');
+    const stmt = this.db.prepare("DELETE FROM memory_settings WHERE workspace_id = ?");
     stmt.run(workspaceId);
   }
 
@@ -3075,7 +3247,11 @@ export class MemorySettingsRepository {
       retentionDays: row.retention_days as number,
       maxStorageMb: row.max_storage_mb as number,
       privacyMode: row.privacy_mode as PrivacyMode,
-      excludedPatterns: safeJsonParse(row.excluded_patterns as string, [] as string[], 'memorySettings.excludedPatterns'),
+      excludedPatterns: safeJsonParse(
+        row.excluded_patterns as string,
+        [] as string[],
+        "memorySettings.excludedPatterns",
+      ),
     };
   }
 }

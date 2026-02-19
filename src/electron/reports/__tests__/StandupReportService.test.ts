@@ -2,13 +2,13 @@
  * Tests for StandupReportService
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import type { StandupReport, Task } from '../../../shared/types';
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import type { StandupReport, Task } from "../../../shared/types";
 
 // Mock electron to avoid getPath errors
-vi.mock('electron', () => ({
+vi.mock("electron", () => ({
   app: {
-    getPath: vi.fn().mockReturnValue('/tmp/test-cowork'),
+    getPath: vi.fn().mockReturnValue("/tmp/test-cowork"),
   },
 }));
 
@@ -37,8 +37,8 @@ class MockStandupReportService {
     }
 
     // Get tasks
-    const completedTasks = this.getTasksByColumn(workspaceId, 'done', yesterday);
-    const inProgressTasks = this.getTasksByColumn(workspaceId, 'in_progress');
+    const completedTasks = this.getTasksByColumn(workspaceId, "done", yesterday);
+    const inProgressTasks = this.getTasksByColumn(workspaceId, "in_progress");
     const blockedTasks = this.getBlockedTasks(workspaceId);
 
     // Generate summary
@@ -48,9 +48,9 @@ class MockStandupReportService {
       id: `report-${++reportIdCounter}`,
       workspaceId,
       reportDate,
-      completedTaskIds: completedTasks.map(t => t.id),
-      inProgressTaskIds: inProgressTasks.map(t => t.id),
-      blockedTaskIds: blockedTasks.map(t => t.id),
+      completedTaskIds: completedTasks.map((t) => t.id),
+      inProgressTaskIds: inProgressTasks.map((t) => t.id),
+      blockedTaskIds: blockedTasks.map((t) => t.id),
       summary,
       createdAt: ++timestampCounter, // Use incrementing timestamp for deterministic ordering
     };
@@ -61,9 +61,12 @@ class MockStandupReportService {
     return report;
   }
 
-  async deliverReport(report: StandupReport, config: { channelType: string; channelId: string }): Promise<void> {
+  async deliverReport(
+    report: StandupReport,
+    config: { channelType: string; channelId: string },
+  ): Promise<void> {
     if (!this.deliverToChannel) {
-      throw new Error('No delivery handler configured');
+      throw new Error("No delivery handler configured");
     }
 
     await this.deliverToChannel(report, config);
@@ -98,7 +101,12 @@ class MockStandupReportService {
     return undefined;
   }
 
-  list(query: { workspaceId: string; limit?: number; startDate?: string; endDate?: string }): StandupReport[] {
+  list(query: {
+    workspaceId: string;
+    limit?: number;
+    startDate?: string;
+    endDate?: string;
+  }): StandupReport[] {
     const results: StandupReport[] = [];
 
     mockReports.forEach((stored) => {
@@ -139,48 +147,45 @@ class MockStandupReportService {
   }
 
   formatReportMessage(report: StandupReport, tasks: Map<string, Task>): string {
-    const lines: string[] = [
-      `**Daily Standup Report - ${report.reportDate}**`,
-      '',
-    ];
+    const lines: string[] = [`**Daily Standup Report - ${report.reportDate}**`, ""];
 
     if (report.completedTaskIds.length > 0) {
-      lines.push('**Completed Today:**');
+      lines.push("**Completed Today:**");
       for (const taskId of report.completedTaskIds) {
         const task = tasks.get(taskId);
         if (task) {
           lines.push(`- ${task.title}`);
         }
       }
-      lines.push('');
+      lines.push("");
     }
 
     if (report.inProgressTaskIds.length > 0) {
-      lines.push('**In Progress:**');
+      lines.push("**In Progress:**");
       for (const taskId of report.inProgressTaskIds) {
         const task = tasks.get(taskId);
         if (task) {
           lines.push(`- ${task.title}`);
         }
       }
-      lines.push('');
+      lines.push("");
     }
 
     if (report.blockedTaskIds.length > 0) {
-      lines.push('**Blocked:**');
+      lines.push("**Blocked:**");
       for (const taskId of report.blockedTaskIds) {
         const task = tasks.get(taskId);
         if (task) {
           lines.push(`- ${task.title}`);
         }
       }
-      lines.push('');
+      lines.push("");
     }
 
-    lines.push('**Summary:**');
+    lines.push("**Summary:**");
     lines.push(report.summary);
 
-    return lines.join('\n');
+    return lines.join("\n");
   }
 
   private save(report: StandupReport): void {
@@ -212,7 +217,7 @@ class MockStandupReportService {
     const results: Task[] = [];
     mockTasks.forEach((stored) => {
       if (stored.workspace_id !== workspaceId) return;
-      if (stored.status !== 'blocked' && stored.status !== 'failed') return;
+      if (stored.status !== "blocked" && stored.status !== "failed") return;
       results.push(this.mapRowToTask(stored));
     });
     return results;
@@ -222,24 +227,24 @@ class MockStandupReportService {
     const parts: string[] = [];
 
     if (completed.length > 0) {
-      parts.push(`${completed.length} task${completed.length === 1 ? '' : 's'} completed`);
+      parts.push(`${completed.length} task${completed.length === 1 ? "" : "s"} completed`);
     }
     if (inProgress.length > 0) {
-      parts.push(`${inProgress.length} task${inProgress.length === 1 ? '' : 's'} in progress`);
+      parts.push(`${inProgress.length} task${inProgress.length === 1 ? "" : "s"} in progress`);
     }
     if (blocked.length > 0) {
-      parts.push(`${blocked.length} task${blocked.length === 1 ? '' : 's'} blocked`);
+      parts.push(`${blocked.length} task${blocked.length === 1 ? "" : "s"} blocked`);
     }
 
     if (parts.length === 0) {
-      return 'No task activity today.';
+      return "No task activity today.";
     }
 
-    return parts.join(', ') + '.';
+    return parts.join(", ") + ".";
   }
 
   private formatDate(date: Date): string {
-    return date.toISOString().split('T')[0];
+    return date.toISOString().split("T")[0];
   }
 
   private mapRowToReport(row: any): StandupReport {
@@ -247,9 +252,9 @@ class MockStandupReportService {
       id: row.id,
       workspaceId: row.workspace_id,
       reportDate: row.report_date,
-      completedTaskIds: JSON.parse(row.completed_task_ids || '[]'),
-      inProgressTaskIds: JSON.parse(row.in_progress_task_ids || '[]'),
-      blockedTaskIds: JSON.parse(row.blocked_task_ids || '[]'),
+      completedTaskIds: JSON.parse(row.completed_task_ids || "[]"),
+      inProgressTaskIds: JSON.parse(row.in_progress_task_ids || "[]"),
+      blockedTaskIds: JSON.parse(row.blocked_task_ids || "[]"),
       summary: row.summary,
       deliveredToChannel: row.delivered_to_channel || undefined,
       createdAt: row.created_at,
@@ -272,7 +277,13 @@ class MockStandupReportService {
 }
 
 // Helper to add test tasks
-function addTask(id: string, workspaceId: string, status: string, boardColumn: string, updatedAt?: number) {
+function addTask(
+  id: string,
+  workspaceId: string,
+  status: string,
+  boardColumn: string,
+  updatedAt?: number,
+) {
   mockTasks.set(id, {
     id,
     title: `Task ${id}`,
@@ -285,7 +296,7 @@ function addTask(id: string, workspaceId: string, status: string, boardColumn: s
   });
 }
 
-describe('StandupReportService', () => {
+describe("StandupReportService", () => {
   let service: MockStandupReportService;
 
   beforeEach(() => {
@@ -296,191 +307,197 @@ describe('StandupReportService', () => {
     service = new MockStandupReportService();
   });
 
-  describe('generateReport', () => {
-    it('should generate a report with no tasks', async () => {
-      const report = await service.generateReport('workspace-1');
+  describe("generateReport", () => {
+    it("should generate a report with no tasks", async () => {
+      const report = await service.generateReport("workspace-1");
 
       expect(report).toBeDefined();
       expect(report.id).toBeDefined();
-      expect(report.workspaceId).toBe('workspace-1');
+      expect(report.workspaceId).toBe("workspace-1");
       expect(report.completedTaskIds).toHaveLength(0);
       expect(report.inProgressTaskIds).toHaveLength(0);
       expect(report.blockedTaskIds).toHaveLength(0);
-      expect(report.summary).toBe('No task activity today.');
+      expect(report.summary).toBe("No task activity today.");
     });
 
-    it('should include completed tasks from last 24 hours', async () => {
-      addTask('task-1', 'workspace-1', 'done', 'done');
-      addTask('task-2', 'workspace-1', 'done', 'done');
+    it("should include completed tasks from last 24 hours", async () => {
+      addTask("task-1", "workspace-1", "done", "done");
+      addTask("task-2", "workspace-1", "done", "done");
 
-      const report = await service.generateReport('workspace-1');
+      const report = await service.generateReport("workspace-1");
 
       expect(report.completedTaskIds).toHaveLength(2);
-      expect(report.summary).toContain('2 tasks completed');
+      expect(report.summary).toContain("2 tasks completed");
     });
 
-    it('should include in-progress tasks', async () => {
-      addTask('task-1', 'workspace-1', 'in_progress', 'in_progress');
-      addTask('task-2', 'workspace-1', 'in_progress', 'in_progress');
-      addTask('task-3', 'workspace-1', 'in_progress', 'in_progress');
+    it("should include in-progress tasks", async () => {
+      addTask("task-1", "workspace-1", "in_progress", "in_progress");
+      addTask("task-2", "workspace-1", "in_progress", "in_progress");
+      addTask("task-3", "workspace-1", "in_progress", "in_progress");
 
-      const report = await service.generateReport('workspace-1');
+      const report = await service.generateReport("workspace-1");
 
       expect(report.inProgressTaskIds).toHaveLength(3);
-      expect(report.summary).toContain('3 tasks in progress');
+      expect(report.summary).toContain("3 tasks in progress");
     });
 
-    it('should include blocked tasks', async () => {
-      addTask('task-1', 'workspace-1', 'blocked', 'in_progress');
+    it("should include blocked tasks", async () => {
+      addTask("task-1", "workspace-1", "blocked", "in_progress");
 
-      const report = await service.generateReport('workspace-1');
+      const report = await service.generateReport("workspace-1");
 
       expect(report.blockedTaskIds).toHaveLength(1);
-      expect(report.summary).toContain('1 task blocked');
+      expect(report.summary).toContain("1 task blocked");
     });
 
-    it('should not include old completed tasks', async () => {
+    it("should not include old completed tasks", async () => {
       const twoDaysAgo = Date.now() - 2 * 86400000;
-      addTask('task-1', 'workspace-1', 'done', 'done', twoDaysAgo);
+      addTask("task-1", "workspace-1", "done", "done", twoDaysAgo);
 
-      const report = await service.generateReport('workspace-1');
+      const report = await service.generateReport("workspace-1");
 
       expect(report.completedTaskIds).toHaveLength(0);
     });
 
-    it('should return existing report for same date', async () => {
-      const report1 = await service.generateReport('workspace-1');
-      const report2 = await service.generateReport('workspace-1');
+    it("should return existing report for same date", async () => {
+      const report1 = await service.generateReport("workspace-1");
+      const report2 = await service.generateReport("workspace-1");
 
       expect(report1.id).toBe(report2.id);
     });
 
-    it('should filter by workspace', async () => {
-      addTask('task-1', 'workspace-1', 'in_progress', 'in_progress');
-      addTask('task-2', 'workspace-2', 'in_progress', 'in_progress');
+    it("should filter by workspace", async () => {
+      addTask("task-1", "workspace-1", "in_progress", "in_progress");
+      addTask("task-2", "workspace-2", "in_progress", "in_progress");
 
-      const report = await service.generateReport('workspace-1');
+      const report = await service.generateReport("workspace-1");
 
       expect(report.inProgressTaskIds).toHaveLength(1);
-      expect(report.inProgressTaskIds).toContain('task-1');
+      expect(report.inProgressTaskIds).toContain("task-1");
     });
   });
 
-  describe('deliverReport', () => {
-    it('should throw if no delivery handler configured', async () => {
-      const report = await service.generateReport('workspace-1');
+  describe("deliverReport", () => {
+    it("should throw if no delivery handler configured", async () => {
+      const report = await service.generateReport("workspace-1");
 
       await expect(
-        service.deliverReport(report, { channelType: 'telegram', channelId: 'chat-1' })
-      ).rejects.toThrow('No delivery handler configured');
+        service.deliverReport(report, { channelType: "telegram", channelId: "chat-1" }),
+      ).rejects.toThrow("No delivery handler configured");
     });
 
-    it('should call delivery handler and update report', async () => {
+    it("should call delivery handler and update report", async () => {
       const deliveryHandler = vi.fn().mockResolvedValue(undefined);
       const serviceWithHandler = new MockStandupReportService(deliveryHandler);
 
       // Generate report first
-      const report = await serviceWithHandler.generateReport('workspace-1');
+      const report = await serviceWithHandler.generateReport("workspace-1");
 
       // Deliver
-      await serviceWithHandler.deliverReport(report, { channelType: 'telegram', channelId: 'chat-1' });
+      await serviceWithHandler.deliverReport(report, {
+        channelType: "telegram",
+        channelId: "chat-1",
+      });
 
-      expect(deliveryHandler).toHaveBeenCalledWith(report, { channelType: 'telegram', channelId: 'chat-1' });
+      expect(deliveryHandler).toHaveBeenCalledWith(report, {
+        channelType: "telegram",
+        channelId: "chat-1",
+      });
 
       // Verify delivered_to_channel is set
       const stored = mockReports.get(report.id);
-      expect(stored.delivered_to_channel).toBe('telegram:chat-1');
+      expect(stored.delivered_to_channel).toBe("telegram:chat-1");
     });
   });
 
-  describe('getLatest', () => {
-    it('should return the latest report', async () => {
-      await service.generateReport('workspace-1', new Date('2024-01-01'));
-      await service.generateReport('workspace-1', new Date('2024-01-02'));
-      await service.generateReport('workspace-1', new Date('2024-01-03'));
+  describe("getLatest", () => {
+    it("should return the latest report", async () => {
+      await service.generateReport("workspace-1", new Date("2024-01-01"));
+      await service.generateReport("workspace-1", new Date("2024-01-02"));
+      await service.generateReport("workspace-1", new Date("2024-01-03"));
 
-      const latest = service.getLatest('workspace-1');
+      const latest = service.getLatest("workspace-1");
 
       expect(latest).toBeDefined();
-      expect(latest?.reportDate).toBe('2024-01-03');
+      expect(latest?.reportDate).toBe("2024-01-03");
     });
 
-    it('should return undefined if no reports exist', () => {
-      const latest = service.getLatest('workspace-1');
+    it("should return undefined if no reports exist", () => {
+      const latest = service.getLatest("workspace-1");
 
       expect(latest).toBeUndefined();
     });
   });
 
-  describe('getByDate', () => {
-    it('should return report by date', async () => {
-      await service.generateReport('workspace-1', new Date('2024-01-15'));
+  describe("getByDate", () => {
+    it("should return report by date", async () => {
+      await service.generateReport("workspace-1", new Date("2024-01-15"));
 
-      const report = service.getByDate('workspace-1', '2024-01-15');
+      const report = service.getByDate("workspace-1", "2024-01-15");
 
       expect(report).toBeDefined();
-      expect(report?.reportDate).toBe('2024-01-15');
+      expect(report?.reportDate).toBe("2024-01-15");
     });
 
-    it('should return undefined for non-existent date', () => {
-      const report = service.getByDate('workspace-1', '2024-01-01');
+    it("should return undefined for non-existent date", () => {
+      const report = service.getByDate("workspace-1", "2024-01-01");
 
       expect(report).toBeUndefined();
     });
   });
 
-  describe('list', () => {
-    it('should list all reports for workspace', async () => {
-      await service.generateReport('workspace-1', new Date('2024-01-01'));
-      await service.generateReport('workspace-1', new Date('2024-01-02'));
-      await service.generateReport('workspace-2', new Date('2024-01-01'));
+  describe("list", () => {
+    it("should list all reports for workspace", async () => {
+      await service.generateReport("workspace-1", new Date("2024-01-01"));
+      await service.generateReport("workspace-1", new Date("2024-01-02"));
+      await service.generateReport("workspace-2", new Date("2024-01-01"));
 
-      const reports = service.list({ workspaceId: 'workspace-1' });
+      const reports = service.list({ workspaceId: "workspace-1" });
 
       expect(reports).toHaveLength(2);
     });
 
-    it('should filter by date range', async () => {
-      await service.generateReport('workspace-1', new Date('2024-01-01'));
-      await service.generateReport('workspace-1', new Date('2024-01-15'));
-      await service.generateReport('workspace-1', new Date('2024-01-31'));
+    it("should filter by date range", async () => {
+      await service.generateReport("workspace-1", new Date("2024-01-01"));
+      await service.generateReport("workspace-1", new Date("2024-01-15"));
+      await service.generateReport("workspace-1", new Date("2024-01-31"));
 
       const reports = service.list({
-        workspaceId: 'workspace-1',
-        startDate: '2024-01-10',
-        endDate: '2024-01-20',
+        workspaceId: "workspace-1",
+        startDate: "2024-01-10",
+        endDate: "2024-01-20",
       });
 
       expect(reports).toHaveLength(1);
-      expect(reports[0].reportDate).toBe('2024-01-15');
+      expect(reports[0].reportDate).toBe("2024-01-15");
     });
 
-    it('should respect limit', async () => {
-      await service.generateReport('workspace-1', new Date('2024-01-01'));
-      await service.generateReport('workspace-1', new Date('2024-01-02'));
-      await service.generateReport('workspace-1', new Date('2024-01-03'));
+    it("should respect limit", async () => {
+      await service.generateReport("workspace-1", new Date("2024-01-01"));
+      await service.generateReport("workspace-1", new Date("2024-01-02"));
+      await service.generateReport("workspace-1", new Date("2024-01-03"));
 
-      const reports = service.list({ workspaceId: 'workspace-1', limit: 2 });
+      const reports = service.list({ workspaceId: "workspace-1", limit: 2 });
 
       expect(reports).toHaveLength(2);
     });
 
-    it('should sort by date descending', async () => {
-      await service.generateReport('workspace-1', new Date('2024-01-01'));
-      await service.generateReport('workspace-1', new Date('2024-01-03'));
-      await service.generateReport('workspace-1', new Date('2024-01-02'));
+    it("should sort by date descending", async () => {
+      await service.generateReport("workspace-1", new Date("2024-01-01"));
+      await service.generateReport("workspace-1", new Date("2024-01-03"));
+      await service.generateReport("workspace-1", new Date("2024-01-02"));
 
-      const reports = service.list({ workspaceId: 'workspace-1' });
+      const reports = service.list({ workspaceId: "workspace-1" });
 
-      expect(reports[0].reportDate).toBe('2024-01-03');
-      expect(reports[1].reportDate).toBe('2024-01-02');
-      expect(reports[2].reportDate).toBe('2024-01-01');
+      expect(reports[0].reportDate).toBe("2024-01-03");
+      expect(reports[1].reportDate).toBe("2024-01-02");
+      expect(reports[2].reportDate).toBe("2024-01-01");
     });
   });
 
-  describe('findById', () => {
-    it('should find report by ID', async () => {
-      const created = await service.generateReport('workspace-1');
+  describe("findById", () => {
+    it("should find report by ID", async () => {
+      const created = await service.generateReport("workspace-1");
 
       const found = service.findById(created.id);
 
@@ -488,44 +505,44 @@ describe('StandupReportService', () => {
       expect(found?.id).toBe(created.id);
     });
 
-    it('should return undefined for non-existent ID', () => {
-      const found = service.findById('non-existent');
+    it("should return undefined for non-existent ID", () => {
+      const found = service.findById("non-existent");
 
       expect(found).toBeUndefined();
     });
   });
 
-  describe('deleteOlderThan', () => {
-    it('should delete old reports', async () => {
+  describe("deleteOlderThan", () => {
+    it("should delete old reports", async () => {
       // Generate some reports with old dates
-      await service.generateReport('workspace-1', new Date('2024-01-01'));
-      await service.generateReport('workspace-1', new Date('2024-01-15'));
+      await service.generateReport("workspace-1", new Date("2024-01-01"));
+      await service.generateReport("workspace-1", new Date("2024-01-15"));
 
       // Delete reports older than today (all test reports are old)
-      const deleted = service.deleteOlderThan('workspace-1', 0);
+      const deleted = service.deleteOlderThan("workspace-1", 0);
 
       expect(deleted).toBe(2);
-      expect(service.list({ workspaceId: 'workspace-1' })).toHaveLength(0);
+      expect(service.list({ workspaceId: "workspace-1" })).toHaveLength(0);
     });
 
-    it('should only delete for specified workspace', async () => {
-      await service.generateReport('workspace-1', new Date('2024-01-01'));
-      await service.generateReport('workspace-2', new Date('2024-01-01'));
+    it("should only delete for specified workspace", async () => {
+      await service.generateReport("workspace-1", new Date("2024-01-01"));
+      await service.generateReport("workspace-2", new Date("2024-01-01"));
 
-      service.deleteOlderThan('workspace-1', 0);
+      service.deleteOlderThan("workspace-1", 0);
 
-      expect(service.list({ workspaceId: 'workspace-1' })).toHaveLength(0);
-      expect(service.list({ workspaceId: 'workspace-2' })).toHaveLength(1);
+      expect(service.list({ workspaceId: "workspace-1" })).toHaveLength(0);
+      expect(service.list({ workspaceId: "workspace-2" })).toHaveLength(1);
     });
   });
 
-  describe('formatReportMessage', () => {
-    it('should format report with all sections', async () => {
-      addTask('task-1', 'workspace-1', 'done', 'done');
-      addTask('task-2', 'workspace-1', 'in_progress', 'in_progress');
-      addTask('task-3', 'workspace-1', 'blocked', 'in_progress');
+  describe("formatReportMessage", () => {
+    it("should format report with all sections", async () => {
+      addTask("task-1", "workspace-1", "done", "done");
+      addTask("task-2", "workspace-1", "in_progress", "in_progress");
+      addTask("task-3", "workspace-1", "blocked", "in_progress");
 
-      const report = await service.generateReport('workspace-1');
+      const report = await service.generateReport("workspace-1");
 
       const taskMap = new Map<string, Task>();
       mockTasks.forEach((stored, id) => {
@@ -543,11 +560,11 @@ describe('StandupReportService', () => {
 
       const message = service.formatReportMessage(report, taskMap);
 
-      expect(message).toContain('Daily Standup Report');
-      expect(message).toContain('Completed Today:');
-      expect(message).toContain('In Progress:');
-      expect(message).toContain('Blocked:');
-      expect(message).toContain('Summary:');
+      expect(message).toContain("Daily Standup Report");
+      expect(message).toContain("Completed Today:");
+      expect(message).toContain("In Progress:");
+      expect(message).toContain("Blocked:");
+      expect(message).toContain("Summary:");
     });
   });
 });

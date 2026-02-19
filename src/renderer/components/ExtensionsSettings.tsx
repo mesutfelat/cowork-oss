@@ -1,21 +1,21 @@
-import { useState, useEffect } from 'react';
-import { ExtensionData, TunnelStatusData } from '../../shared/types';
+import { useState, useEffect } from "react";
+import { ExtensionData, TunnelStatusData } from "../../shared/types";
 
-type ExtensionType = 'channel' | 'tool' | 'provider' | 'integration';
-type ExtensionState = 'loading' | 'loaded' | 'registered' | 'active' | 'error' | 'disabled';
+type ExtensionType = "channel" | "tool" | "provider" | "integration";
+type ExtensionState = "loading" | "loaded" | "registered" | "active" | "error" | "disabled";
 
 export function ExtensionsSettings() {
   const [extensions, setExtensions] = useState<ExtensionData[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedExtension, setSelectedExtension] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   // Tunnel state
   const [tunnelStatus, setTunnelStatus] = useState<TunnelStatusData | null>(null);
-  const [tunnelProvider, setTunnelProvider] = useState<'ngrok' | 'localtunnel'>('ngrok');
+  const [tunnelProvider, setTunnelProvider] = useState<"ngrok" | "localtunnel">("ngrok");
   const [tunnelPort, setTunnelPort] = useState(3000);
-  const [ngrokAuthToken, setNgrokAuthToken] = useState('');
+  const [ngrokAuthToken, setNgrokAuthToken] = useState("");
 
   useEffect(() => {
     loadExtensions();
@@ -28,7 +28,7 @@ export function ExtensionsSettings() {
       const data = await window.electronAPI.getExtensions();
       setExtensions(data || []);
     } catch (error) {
-      console.error('Failed to load extensions:', error);
+      console.error("Failed to load extensions:", error);
     } finally {
       setLoading(false);
     }
@@ -39,7 +39,7 @@ export function ExtensionsSettings() {
       const status = await window.electronAPI.getTunnelStatus();
       setTunnelStatus(status);
     } catch (error) {
-      console.error('Failed to load tunnel status:', error);
+      console.error("Failed to load tunnel status:", error);
     }
   };
 
@@ -52,13 +52,13 @@ export function ExtensionsSettings() {
       setSaving(true);
       const result = await window.electronAPI.enableExtension(name);
       if (result.success) {
-        setMessage({ type: 'success', text: `Extension "${name}" enabled` });
+        setMessage({ type: "success", text: `Extension "${name}" enabled` });
         await loadExtensions();
       } else {
-        setMessage({ type: 'error', text: result.error || 'Failed to enable extension' });
+        setMessage({ type: "error", text: result.error || "Failed to enable extension" });
       }
     } catch (error: any) {
-      setMessage({ type: 'error', text: error.message });
+      setMessage({ type: "error", text: error.message });
     } finally {
       setSaving(false);
     }
@@ -69,13 +69,13 @@ export function ExtensionsSettings() {
       setSaving(true);
       const result = await window.electronAPI.disableExtension(name);
       if (result.success) {
-        setMessage({ type: 'success', text: `Extension "${name}" disabled` });
+        setMessage({ type: "success", text: `Extension "${name}" disabled` });
         await loadExtensions();
       } else {
-        setMessage({ type: 'error', text: result.error || 'Failed to disable extension' });
+        setMessage({ type: "error", text: result.error || "Failed to disable extension" });
       }
     } catch (error: any) {
-      setMessage({ type: 'error', text: error.message });
+      setMessage({ type: "error", text: error.message });
     } finally {
       setSaving(false);
     }
@@ -86,13 +86,13 @@ export function ExtensionsSettings() {
       setSaving(true);
       const result = await window.electronAPI.reloadExtension(name);
       if (result.success) {
-        setMessage({ type: 'success', text: `Extension "${name}" reloaded` });
+        setMessage({ type: "success", text: `Extension "${name}" reloaded` });
         await loadExtensions();
       } else {
-        setMessage({ type: 'error', text: result.error || 'Failed to reload extension' });
+        setMessage({ type: "error", text: result.error || "Failed to reload extension" });
       }
     } catch (error: any) {
-      setMessage({ type: 'error', text: error.message });
+      setMessage({ type: "error", text: error.message });
     } finally {
       setSaving(false);
     }
@@ -102,10 +102,10 @@ export function ExtensionsSettings() {
     try {
       setSaving(true);
       await window.electronAPI.discoverExtensions();
-      setMessage({ type: 'success', text: 'Extensions discovered and loaded' });
+      setMessage({ type: "success", text: "Extensions discovered and loaded" });
       await loadExtensions();
     } catch (error: any) {
-      setMessage({ type: 'error', text: error.message });
+      setMessage({ type: "error", text: error.message });
     } finally {
       setSaving(false);
     }
@@ -120,13 +120,13 @@ export function ExtensionsSettings() {
         ngrokAuthToken: ngrokAuthToken || undefined,
       });
       if (result.success) {
-        setMessage({ type: 'success', text: `Tunnel started: ${result.url}` });
+        setMessage({ type: "success", text: `Tunnel started: ${result.url}` });
         await loadTunnelStatus();
       } else {
-        setMessage({ type: 'error', text: result.error || 'Failed to start tunnel' });
+        setMessage({ type: "error", text: result.error || "Failed to start tunnel" });
       }
     } catch (error: any) {
-      setMessage({ type: 'error', text: error.message });
+      setMessage({ type: "error", text: error.message });
     } finally {
       setSaving(false);
     }
@@ -137,13 +137,13 @@ export function ExtensionsSettings() {
       setSaving(true);
       const result = await window.electronAPI.stopTunnel();
       if (result.success) {
-        setMessage({ type: 'success', text: 'Tunnel stopped' });
+        setMessage({ type: "success", text: "Tunnel stopped" });
         await loadTunnelStatus();
       } else {
-        setMessage({ type: 'error', text: result.error || 'Failed to stop tunnel' });
+        setMessage({ type: "error", text: result.error || "Failed to stop tunnel" });
       }
     } catch (error: any) {
-      setMessage({ type: 'error', text: error.message });
+      setMessage({ type: "error", text: error.message });
     } finally {
       setSaving(false);
     }
@@ -151,32 +151,32 @@ export function ExtensionsSettings() {
 
   const getStateColor = (state: ExtensionState): string => {
     switch (state) {
-      case 'active':
-        return 'var(--color-success)';
-      case 'registered':
-      case 'loaded':
-        return 'var(--color-warning)';
-      case 'error':
-        return 'var(--color-error)';
-      case 'disabled':
-        return 'var(--color-text-secondary)';
+      case "active":
+        return "var(--color-success)";
+      case "registered":
+      case "loaded":
+        return "var(--color-warning)";
+      case "error":
+        return "var(--color-error)";
+      case "disabled":
+        return "var(--color-text-secondary)";
       default:
-        return 'var(--color-text-secondary)';
+        return "var(--color-text-secondary)";
     }
   };
 
   const getTypeIcon = (type: ExtensionType): string => {
     switch (type) {
-      case 'channel':
-        return '💬';
-      case 'tool':
-        return '🔧';
-      case 'provider':
-        return '🤖';
-      case 'integration':
-        return '🔌';
+      case "channel":
+        return "💬";
+      case "tool":
+        return "🔧";
+      case "provider":
+        return "🤖";
+      case "integration":
+        return "🔌";
       default:
-        return '📦';
+        return "📦";
     }
   };
 
@@ -192,36 +192,28 @@ export function ExtensionsSettings() {
           Manage installed extensions that add new channels, tools, and integrations.
         </p>
 
-        {message && (
-          <div className={`settings-callout ${message.type}`}>
-            {message.text}
-          </div>
-        )}
+        {message && <div className={`settings-callout ${message.type}`}>{message.text}</div>}
 
         <div className="settings-field">
-          <button
-            className="settings-button"
-            onClick={handleDiscoverExtensions}
-            disabled={saving}
-          >
-            {saving ? 'Scanning...' : 'Scan for Extensions'}
+          <button className="settings-button" onClick={handleDiscoverExtensions} disabled={saving}>
+            {saving ? "Scanning..." : "Scan for Extensions"}
           </button>
-          <p className="settings-hint">
-            Scan extension directories for new plugins
-          </p>
+          <p className="settings-hint">Scan extension directories for new plugins</p>
         </div>
 
         {extensions.length === 0 ? (
           <div className="settings-callout info">
             <strong>No extensions installed</strong>
-            <p style={{ marginTop: '8px' }}>
-              Extensions can be installed in:
-            </p>
-            <ul style={{ margin: '8px 0 0 20px', padding: 0 }}>
-              <li><code>~/.cowork/extensions/</code></li>
-              <li><code>~/Library/Application Support/cowork-os/extensions/</code></li>
+            <p style={{ marginTop: "8px" }}>Extensions can be installed in:</p>
+            <ul style={{ margin: "8px 0 0 20px", padding: 0 }}>
+              <li>
+                <code>~/.cowork/extensions/</code>
+              </li>
+              <li>
+                <code>~/Library/Application Support/cowork-os/extensions/</code>
+              </li>
             </ul>
-            <p style={{ marginTop: '8px', fontSize: '13px' }}>
+            <p style={{ marginTop: "8px", fontSize: "13px" }}>
               Each extension should have a <code>cowork.plugin.json</code> manifest file.
             </p>
           </div>
@@ -230,7 +222,7 @@ export function ExtensionsSettings() {
             {extensions.map((ext) => (
               <div
                 key={ext.name}
-                className={`extension-item ${selectedExtension === ext.name ? 'selected' : ''}`}
+                className={`extension-item ${selectedExtension === ext.name ? "selected" : ""}`}
                 onClick={() => handleSelectExtension(ext.name)}
               >
                 <div className="extension-icon">{getTypeIcon(ext.type)}</div>
@@ -241,10 +233,7 @@ export function ExtensionsSettings() {
                   </div>
                   <div className="extension-description">{ext.description}</div>
                   <div className="extension-meta">
-                    <span
-                      className="extension-state"
-                      style={{ color: getStateColor(ext.state) }}
-                    >
+                    <span className="extension-state" style={{ color: getStateColor(ext.state) }}>
                       {ext.state}
                     </span>
                     <span className="extension-type">{ext.type}</span>
@@ -252,7 +241,7 @@ export function ExtensionsSettings() {
                   </div>
                 </div>
                 <div className="extension-actions">
-                  {ext.state === 'active' || ext.state === 'registered' ? (
+                  {ext.state === "active" || ext.state === "registered" ? (
                     <button
                       className="settings-button small"
                       onClick={(e) => {
@@ -263,7 +252,7 @@ export function ExtensionsSettings() {
                     >
                       Disable
                     </button>
-                  ) : ext.state === 'disabled' ? (
+                  ) : ext.state === "disabled" ? (
                     <button
                       className="settings-button small primary"
                       onClick={(e) => {
@@ -298,14 +287,18 @@ export function ExtensionsSettings() {
           Create a public URL for webhook-based channels (Telegram, Discord, Slack).
         </p>
 
-        {tunnelStatus && tunnelStatus.status !== 'stopped' && (
+        {tunnelStatus && tunnelStatus.status !== "stopped" && (
           <div className="settings-status">
             <div className="status-row">
               <span className="status-label">Status:</span>
               <span className={`status-value status-${tunnelStatus.status}`}>
-                {tunnelStatus.status === 'running' ? 'Running' :
-                 tunnelStatus.status === 'starting' ? 'Starting...' :
-                 tunnelStatus.status === 'error' ? 'Error' : 'Stopped'}
+                {tunnelStatus.status === "running"
+                  ? "Running"
+                  : tunnelStatus.status === "starting"
+                    ? "Starting..."
+                    : tunnelStatus.status === "error"
+                      ? "Error"
+                      : "Stopped"}
               </span>
             </div>
             {tunnelStatus.url && (
@@ -329,20 +322,21 @@ export function ExtensionsSettings() {
           </div>
         )}
 
-        {(!tunnelStatus || tunnelStatus.status === 'stopped') && (
+        {(!tunnelStatus || tunnelStatus.status === "stopped") && (
           <>
             <div className="settings-field">
               <label>Tunnel Provider</label>
               <select
                 className="settings-select"
                 value={tunnelProvider}
-                onChange={(e) => setTunnelProvider(e.target.value as 'ngrok' | 'localtunnel')}
+                onChange={(e) => setTunnelProvider(e.target.value as "ngrok" | "localtunnel")}
               >
                 <option value="ngrok">ngrok</option>
                 <option value="localtunnel">localtunnel</option>
               </select>
               <p className="settings-hint">
-                ngrok requires an account for persistent URLs. localtunnel is free but less reliable.
+                ngrok requires an account for persistent URLs. localtunnel is free but less
+                reliable.
               </p>
             </div>
 
@@ -354,12 +348,10 @@ export function ExtensionsSettings() {
                 value={tunnelPort}
                 onChange={(e) => setTunnelPort(parseInt(e.target.value) || 3000)}
               />
-              <p className="settings-hint">
-                The local port to tunnel (default: 3000)
-              </p>
+              <p className="settings-hint">The local port to tunnel (default: 3000)</p>
             </div>
 
-            {tunnelProvider === 'ngrok' && (
+            {tunnelProvider === "ngrok" && (
               <div className="settings-field">
                 <label>ngrok Auth Token (optional)</label>
                 <input
@@ -370,8 +362,12 @@ export function ExtensionsSettings() {
                   placeholder="Your ngrok auth token"
                 />
                 <p className="settings-hint">
-                  Get your auth token from{' '}
-                  <a href="https://dashboard.ngrok.com/get-started/your-authtoken" target="_blank" rel="noopener noreferrer">
+                  Get your auth token from{" "}
+                  <a
+                    href="https://dashboard.ngrok.com/get-started/your-authtoken"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     ngrok dashboard
                   </a>
                 </p>
@@ -381,13 +377,9 @@ export function ExtensionsSettings() {
         )}
 
         <div className="settings-actions">
-          {tunnelStatus?.status === 'running' ? (
-            <button
-              className="settings-button danger"
-              onClick={handleStopTunnel}
-              disabled={saving}
-            >
-              {saving ? 'Stopping...' : 'Stop Tunnel'}
+          {tunnelStatus?.status === "running" ? (
+            <button className="settings-button danger" onClick={handleStopTunnel} disabled={saving}>
+              {saving ? "Stopping..." : "Stop Tunnel"}
             </button>
           ) : (
             <button
@@ -395,7 +387,7 @@ export function ExtensionsSettings() {
               onClick={handleStartTunnel}
               disabled={saving}
             >
-              {saving ? 'Starting...' : 'Start Tunnel'}
+              {saving ? "Starting..." : "Start Tunnel"}
             </button>
           )}
         </div>

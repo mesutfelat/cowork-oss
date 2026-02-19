@@ -39,7 +39,7 @@ export function parseVoiceDirectives(message: string): VoiceDirective {
   let hasDirective = false;
   const speakTexts: string[] = [];
   let displayText = message;
-  let params: VoiceDirective['params'] = undefined;
+  let params: VoiceDirective["params"] = undefined;
 
   // Find all [[speak]] blocks
   let match;
@@ -59,12 +59,10 @@ export function parseVoiceDirectives(message: string): VoiceDirective {
   }
 
   // Remove [[speak]] tags from display text
-  displayText = message.replace(speakPattern, '$2').trim();
+  displayText = message.replace(speakPattern, "$2").trim();
 
   // If no explicit directives, the speak text is the full message
-  const speakText = hasDirective
-    ? speakTexts.join(' ')
-    : stripMarkdownForSpeech(message);
+  const speakText = hasDirective ? speakTexts.join(" ") : stripMarkdownForSpeech(message);
 
   return {
     speakText,
@@ -77,8 +75,8 @@ export function parseVoiceDirectives(message: string): VoiceDirective {
 /**
  * Parse directive parameters like voice=alloy speed=1.2
  */
-function parseDirectiveParams(paramString: string): VoiceDirective['params'] {
-  const params: VoiceDirective['params'] = {};
+function parseDirectiveParams(paramString: string): VoiceDirective["params"] {
+  const params: VoiceDirective["params"] = {};
 
   // Match key=value pairs
   const paramPattern = /(\w+)=([^\s]+)/g;
@@ -87,14 +85,14 @@ function parseDirectiveParams(paramString: string): VoiceDirective['params'] {
   while ((match = paramPattern.exec(paramString)) !== null) {
     const [, key, value] = match;
     switch (key.toLowerCase()) {
-      case 'voice':
+      case "voice":
         params.voice = value;
         break;
-      case 'speed':
-      case 'rate':
+      case "speed":
+      case "rate":
         params.speed = parseFloat(value);
         break;
-      case 'pitch':
+      case "pitch":
         params.pitch = parseFloat(value);
         break;
     }
@@ -107,31 +105,33 @@ function parseDirectiveParams(paramString: string): VoiceDirective['params'] {
  * Strip markdown formatting for cleaner speech
  */
 export function stripMarkdownForSpeech(text: string): string {
-  return text
-    // Remove code blocks
-    .replace(/```[\s\S]*?```/g, '')
-    // Remove inline code
-    .replace(/`[^`]+`/g, '')
-    // Remove links but keep text
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-    // Remove images
-    .replace(/!\[([^\]]*)\]\([^)]+\)/g, '')
-    // Remove headers
-    .replace(/^#{1,6}\s+/gm, '')
-    // Remove bold/italic
-    .replace(/\*\*([^*]+)\*\*/g, '$1')
-    .replace(/\*([^*]+)\*/g, '$1')
-    .replace(/__([^_]+)__/g, '$1')
-    .replace(/_([^_]+)_/g, '$1')
-    // Remove horizontal rules
-    .replace(/^[-*_]{3,}$/gm, '')
-    // Remove bullet points
-    .replace(/^[\s]*[-*+]\s+/gm, '')
-    // Remove numbered lists
-    .replace(/^[\s]*\d+\.\s+/gm, '')
-    // Collapse multiple newlines
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
+  return (
+    text
+      // Remove code blocks
+      .replace(/```[\s\S]*?```/g, "")
+      // Remove inline code
+      .replace(/`[^`]+`/g, "")
+      // Remove links but keep text
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+      // Remove images
+      .replace(/!\[([^\]]*)\]\([^)]+\)/g, "")
+      // Remove headers
+      .replace(/^#{1,6}\s+/gm, "")
+      // Remove bold/italic
+      .replace(/\*\*([^*]+)\*\*/g, "$1")
+      .replace(/\*([^*]+)\*/g, "$1")
+      .replace(/__([^_]+)__/g, "$1")
+      .replace(/_([^_]+)_/g, "$1")
+      // Remove horizontal rules
+      .replace(/^[-*_]{3,}$/gm, "")
+      // Remove bullet points
+      .replace(/^[\s]*[-*+]\s+/gm, "")
+      // Remove numbered lists
+      .replace(/^[\s]*\d+\.\s+/gm, "")
+      // Collapse multiple newlines
+      .replace(/\n{3,}/g, "\n\n")
+      .trim()
+  );
 }
 
 /**
@@ -139,21 +139,21 @@ export function stripMarkdownForSpeech(text: string): string {
  */
 export function shouldSpeak(
   message: string,
-  responseMode: 'auto' | 'manual' | 'smart',
-  voiceEnabled: boolean
+  responseMode: "auto" | "manual" | "smart",
+  voiceEnabled: boolean,
 ): boolean {
   if (!voiceEnabled) return false;
 
   const { hasDirective, speakText } = parseVoiceDirectives(message);
 
   switch (responseMode) {
-    case 'auto':
+    case "auto":
       // Speak all messages with content
       return speakText.length > 0;
-    case 'smart':
+    case "smart":
       // Only speak if has [[speak]] directive
       return hasDirective;
-    case 'manual':
+    case "manual":
     default:
       // Never auto-speak
       return false;

@@ -5,13 +5,17 @@
  * Settings are stored encrypted in the database using SecureSettingsRepository.
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
-import { GuardrailSettings, DEFAULT_BLOCKED_COMMAND_PATTERNS, DEFAULT_TRUSTED_COMMAND_PATTERNS } from '../../shared/types';
-import { SecureSettingsRepository } from '../database/SecureSettingsRepository';
-import { getUserDataDir } from '../utils/user-data-dir';
+import * as fs from "fs";
+import * as path from "path";
+import {
+  GuardrailSettings,
+  DEFAULT_BLOCKED_COMMAND_PATTERNS,
+  DEFAULT_TRUSTED_COMMAND_PATTERNS,
+} from "../../shared/types";
+import { SecureSettingsRepository } from "../database/SecureSettingsRepository";
+import { getUserDataDir } from "../utils/user-data-dir";
 
-const LEGACY_SETTINGS_FILE = 'guardrail-settings.json';
+const LEGACY_SETTINGS_FILE = "guardrail-settings.json";
 
 const DEFAULT_SETTINGS: GuardrailSettings = {
   // Token Budget
@@ -19,7 +23,7 @@ const DEFAULT_SETTINGS: GuardrailSettings = {
   tokenBudgetEnabled: true,
 
   // Cost Budget
-  maxCostPerTask: 1.00,
+  maxCostPerTask: 1.0,
   costBudgetEnabled: false,
 
   // Dangerous Commands
@@ -27,7 +31,7 @@ const DEFAULT_SETTINGS: GuardrailSettings = {
   customBlockedPatterns: [],
 
   // Auto-Approve Trusted Commands
-  autoApproveTrustedCommands: true,  // Enabled by default for common safe commands
+  autoApproveTrustedCommands: true, // Enabled by default for common safe commands
   trustedCommandPatterns: [],
 
   // File Size
@@ -67,48 +71,52 @@ export class GuardrailManager {
 
     try {
       if (!SecureSettingsRepository.isInitialized()) {
-        console.log('[GuardrailManager] SecureSettingsRepository not yet initialized, skipping migration');
+        console.log(
+          "[GuardrailManager] SecureSettingsRepository not yet initialized, skipping migration",
+        );
         return;
       }
 
       const repository = SecureSettingsRepository.getInstance();
 
-      if (repository.exists('guardrails')) {
+      if (repository.exists("guardrails")) {
         this.migrationCompleted = true;
         return;
       }
 
       if (!fs.existsSync(this.legacySettingsPath)) {
-        console.log('[GuardrailManager] No legacy settings file found');
+        console.log("[GuardrailManager] No legacy settings file found");
         this.migrationCompleted = true;
         return;
       }
 
-      console.log('[GuardrailManager] Migrating settings from legacy JSON file to encrypted database...');
+      console.log(
+        "[GuardrailManager] Migrating settings from legacy JSON file to encrypted database...",
+      );
 
       // Create backup before migration
-      const backupPath = this.legacySettingsPath + '.migration-backup';
+      const backupPath = this.legacySettingsPath + ".migration-backup";
       fs.copyFileSync(this.legacySettingsPath, backupPath);
 
       try {
-        const data = fs.readFileSync(this.legacySettingsPath, 'utf-8');
+        const data = fs.readFileSync(this.legacySettingsPath, "utf-8");
         const legacySettings = { ...DEFAULT_SETTINGS, ...JSON.parse(data) };
 
-        repository.save('guardrails', legacySettings);
-        console.log('[GuardrailManager] Settings migrated to encrypted database');
+        repository.save("guardrails", legacySettings);
+        console.log("[GuardrailManager] Settings migrated to encrypted database");
 
         // Migration successful - delete backup and original
         fs.unlinkSync(backupPath);
         fs.unlinkSync(this.legacySettingsPath);
-        console.log('[GuardrailManager] Migration complete, cleaned up legacy files');
+        console.log("[GuardrailManager] Migration complete, cleaned up legacy files");
 
         this.migrationCompleted = true;
       } catch (migrationError) {
-        console.error('[GuardrailManager] Migration failed, backup preserved at:', backupPath);
+        console.error("[GuardrailManager] Migration failed, backup preserved at:", backupPath);
         throw migrationError;
       }
     } catch (error) {
-      console.error('[GuardrailManager] Migration failed:', error);
+      console.error("[GuardrailManager] Migration failed:", error);
     }
   }
 
@@ -123,14 +131,14 @@ export class GuardrailManager {
     try {
       if (SecureSettingsRepository.isInitialized()) {
         const repository = SecureSettingsRepository.getInstance();
-        const stored = repository.load<GuardrailSettings>('guardrails');
+        const stored = repository.load<GuardrailSettings>("guardrails");
         if (stored) {
           this.cachedSettings = { ...DEFAULT_SETTINGS, ...stored };
           return this.cachedSettings;
         }
       }
     } catch (error) {
-      console.error('[GuardrailManager] Failed to load settings:', error);
+      console.error("[GuardrailManager] Failed to load settings:", error);
     }
 
     this.cachedSettings = { ...DEFAULT_SETTINGS };
@@ -143,15 +151,15 @@ export class GuardrailManager {
   static saveSettings(settings: GuardrailSettings): void {
     try {
       if (!SecureSettingsRepository.isInitialized()) {
-        throw new Error('SecureSettingsRepository not initialized');
+        throw new Error("SecureSettingsRepository not initialized");
       }
 
       const repository = SecureSettingsRepository.getInstance();
-      repository.save('guardrails', settings);
+      repository.save("guardrails", settings);
       this.cachedSettings = settings;
-      console.log('[GuardrailManager] Settings saved to encrypted database');
+      console.log("[GuardrailManager] Settings saved to encrypted database");
     } catch (error) {
-      console.error('[GuardrailManager] Failed to save settings:', error);
+      console.error("[GuardrailManager] Failed to save settings:", error);
       throw error;
     }
   }
@@ -182,15 +190,12 @@ export class GuardrailManager {
     }
 
     // Combine default patterns with custom patterns
-    const allPatterns = [
-      ...DEFAULT_BLOCKED_COMMAND_PATTERNS,
-      ...settings.customBlockedPatterns,
-    ];
+    const allPatterns = [...DEFAULT_BLOCKED_COMMAND_PATTERNS, ...settings.customBlockedPatterns];
 
     for (const pattern of allPatterns) {
       try {
         // Try to compile as regex
-        const regex = new RegExp(pattern, 'i');
+        const regex = new RegExp(pattern, "i");
         if (regex.test(command)) {
           return { blocked: true, pattern };
         }
@@ -211,10 +216,10 @@ export class GuardrailManager {
    */
   private static globToRegex(pattern: string): RegExp {
     // Escape special regex characters except *
-    const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
+    const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
     // Convert * to regex wildcard (.*)
-    const regexStr = '^' + escaped.replace(/\*/g, '.*') + '$';
-    return new RegExp(regexStr, 'i');
+    const regexStr = "^" + escaped.replace(/\*/g, ".*") + "$";
+    return new RegExp(regexStr, "i");
   }
 
   /**
@@ -229,10 +234,7 @@ export class GuardrailManager {
     }
 
     // Combine default patterns with custom patterns
-    const allPatterns = [
-      ...DEFAULT_TRUSTED_COMMAND_PATTERNS,
-      ...settings.trustedCommandPatterns,
-    ];
+    const allPatterns = [...DEFAULT_TRUSTED_COMMAND_PATTERNS, ...settings.trustedCommandPatterns];
 
     for (const pattern of allPatterns) {
       try {
@@ -242,7 +244,7 @@ export class GuardrailManager {
         }
       } catch {
         // If conversion fails, try simple prefix match
-        const prefix = pattern.replace(/\*/g, '');
+        const prefix = pattern.replace(/\*/g, "");
         if (command.toLowerCase().startsWith(prefix.toLowerCase())) {
           return { trusted: true, pattern };
         }
@@ -273,13 +275,13 @@ export class GuardrailManager {
       const parsedUrl = new URL(url);
       const hostname = parsedUrl.hostname.toLowerCase();
 
-      return settings.allowedDomains.some(pattern => {
+      return settings.allowedDomains.some((pattern) => {
         const normalizedPattern = pattern.toLowerCase().trim();
 
-        if (normalizedPattern.startsWith('*.')) {
+        if (normalizedPattern.startsWith("*.")) {
           // Wildcard match (e.g., *.google.com matches maps.google.com)
           const suffix = normalizedPattern.slice(2);
-          return hostname === suffix || hostname.endsWith('.' + suffix);
+          return hostname === suffix || hostname.endsWith("." + suffix);
         }
 
         // Exact match

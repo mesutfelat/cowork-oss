@@ -9,12 +9,16 @@
  * Uses bearer auth provided by the configured LOOM access token.
  */
 
-import { EventEmitter } from 'events';
-import { createHash } from 'node:crypto';
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
-import * as path from 'node:path';
-import { EmailAddress, EmailMessage } from './email-client';
-import { assertSafeLoomBaseUrl, assertSafeLoomMailboxFolder, normalizeLoomBaseUrl } from '../../utils/loom';
+import { EventEmitter } from "events";
+import { createHash } from "node:crypto";
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import * as path from "node:path";
+import { EmailAddress, EmailMessage } from "./email-client";
+import {
+  assertSafeLoomBaseUrl,
+  assertSafeLoomMailboxFolder,
+  normalizeLoomBaseUrl,
+} from "../../utils/loom";
 
 interface LoomMailboxMessage {
   uid?: number;
@@ -56,7 +60,7 @@ export interface LoomEmailClientOptions {
 }
 
 interface LoomRequestOptions {
-  method?: 'GET' | 'POST' | 'PATCH';
+  method?: "GET" | "POST" | "PATCH";
   body?: unknown;
   idempotencyKey?: string;
 }
@@ -86,8 +90,8 @@ export class LoomEmailClient extends EventEmitter {
     const parsedBaseUrl = assertSafeLoomBaseUrl(options.baseUrl);
     this.baseUrl = normalizeLoomBaseUrl(parsedBaseUrl);
 
-    if (typeof options.accessTokenProvider !== 'function') {
-      throw new Error('LOOM access token is required');
+    if (typeof options.accessTokenProvider !== "function") {
+      throw new Error("LOOM access token is required");
     }
 
     this.accessTokenProvider = options.accessTokenProvider;
@@ -101,12 +105,12 @@ export class LoomEmailClient extends EventEmitter {
 
   async checkConnection(): Promise<{ success: boolean; email?: string; error?: string }> {
     try {
-      await this.request<{ threads?: unknown[] }>('/v1/threads');
+      await this.request<{ threads?: unknown[] }>("/v1/threads");
       return { success: true, email: this.getEmail() };
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error.message : "Unknown error",
       };
     }
   }
@@ -115,7 +119,7 @@ export class LoomEmailClient extends EventEmitter {
     if (this.connected) return;
 
     this.connected = true;
-    this.emit('connected');
+    this.emit("connected");
 
     await this.pollMailbox();
     this.pollTimer = setInterval(() => {
@@ -136,22 +140,22 @@ export class LoomEmailClient extends EventEmitter {
     this.connected = false;
     this.pollInFlight = false;
     this.threadByUid.clear();
-    this.emit('disconnected');
+    this.emit("disconnected");
   }
 
   private loadPersistedState(): void {
     if (!this.stateFilePath) return;
 
     try {
-      const raw = readFileSync(this.stateFilePath, 'utf8');
+      const raw = readFileSync(this.stateFilePath, "utf8");
       const parsed = JSON.parse(raw);
 
-      if (!parsed || typeof parsed !== 'object') return;
-      if (typeof parsed.version === 'number' && parsed.version > this.persistedStateVersion) return;
+      if (!parsed || typeof parsed !== "object") return;
+      if (typeof parsed.version === "number" && parsed.version > this.persistedStateVersion) return;
 
       if (Array.isArray(parsed.seenMessageIds)) {
         for (const rawId of parsed.seenMessageIds) {
-          if (typeof rawId !== 'string' || !rawId.trim()) continue;
+          if (typeof rawId !== "string" || !rawId.trim()) continue;
           this.seenMessageIds.add(rawId);
           this.seenOrder.push(rawId);
         }
@@ -159,7 +163,8 @@ export class LoomEmailClient extends EventEmitter {
 
       if (Array.isArray(parsed.seenOrder)) {
         for (const rawId of parsed.seenOrder) {
-          if (typeof rawId !== 'string' || !rawId.trim() || this.seenMessageIds.has(rawId)) continue;
+          if (typeof rawId !== "string" || !rawId.trim() || this.seenMessageIds.has(rawId))
+            continue;
           this.seenMessageIds.add(rawId);
           this.seenOrder.push(rawId);
         }
@@ -171,27 +176,30 @@ export class LoomEmailClient extends EventEmitter {
           const [rawUid, rawThreadId] = entry;
           const uid = Number(rawUid);
           if (!Number.isFinite(uid) || uid <= 0) continue;
-          if (typeof rawThreadId !== 'string' || !rawThreadId.trim()) continue;
+          if (typeof rawThreadId !== "string" || !rawThreadId.trim()) continue;
           this.threadByUid.set(uid, rawThreadId);
         }
-      } else if (parsed.threadByUid && typeof parsed.threadByUid === 'object') {
+      } else if (parsed.threadByUid && typeof parsed.threadByUid === "object") {
         for (const [rawUid, rawThreadId] of Object.entries(parsed.threadByUid)) {
           const uid = Number(rawUid);
           if (!Number.isFinite(uid) || uid <= 0) continue;
-          if (typeof rawThreadId !== 'string' || !rawThreadId.trim()) continue;
+          if (typeof rawThreadId !== "string" || !rawThreadId.trim()) continue;
           this.threadByUid.set(uid, rawThreadId);
         }
       }
 
       if (Number.isFinite(parsed.nextSyntheticUid)) {
-        this.nextSyntheticUid = Math.max(this.nextSyntheticUid, Math.floor(Number(parsed.nextSyntheticUid)));
+        this.nextSyntheticUid = Math.max(
+          this.nextSyntheticUid,
+          Math.floor(Number(parsed.nextSyntheticUid)),
+        );
       }
 
       this.pruneInMemoryState();
       this.pruneThreadMap();
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-        console.warn('[LoomEmailClient] Failed to load persisted state:', error);
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+        console.warn("[LoomEmailClient] Failed to load persisted state:", error);
       }
     }
   }
@@ -212,10 +220,10 @@ export class LoomEmailClient extends EventEmitter {
       };
 
       const tempPath = `${this.stateFilePath}.tmp`;
-      writeFileSync(tempPath, JSON.stringify(payload), 'utf8');
+      writeFileSync(tempPath, JSON.stringify(payload), "utf8");
       renameSync(tempPath, this.stateFilePath);
     } catch (error) {
-      console.warn('[LoomEmailClient] Failed to persist state:', error);
+      console.warn("[LoomEmailClient] Failed to persist state:", error);
     }
   }
 
@@ -274,9 +282,9 @@ export class LoomEmailClient extends EventEmitter {
     references?: string[];
   }): Promise<string> {
     const headers: Record<string, string> = {};
-    if (options.inReplyTo) headers['In-Reply-To'] = options.inReplyTo;
+    if (options.inReplyTo) headers["In-Reply-To"] = options.inReplyTo;
     if (options.references && options.references.length > 0) {
-      headers.References = options.references.join(' ');
+      headers.References = options.references.join(" ");
     }
 
     const payload: Record<string, unknown> = {
@@ -289,15 +297,15 @@ export class LoomEmailClient extends EventEmitter {
       payload.headers = headers;
     }
 
-    const submitted = await this.request<LoomSmtpSubmitResponse>('/v1/gateway/smtp/submit', {
-      method: 'POST',
+    const submitted = await this.request<LoomSmtpSubmitResponse>("/v1/gateway/smtp/submit", {
+      method: "POST",
       body: payload,
       idempotencyKey: this.buildIdempotencyKey(),
     });
 
     return (
-      (typeof submitted.message_id === 'string' && submitted.message_id) ||
-      (typeof submitted.envelope_id === 'string' && submitted.envelope_id) ||
+      (typeof submitted.message_id === "string" && submitted.message_id) ||
+      (typeof submitted.envelope_id === "string" && submitted.envelope_id) ||
       `loom-${Date.now()}`
     );
   }
@@ -307,13 +315,13 @@ export class LoomEmailClient extends EventEmitter {
     if (!threadId) return;
 
     await this.request(`/v1/mailbox/threads/${encodeURIComponent(threadId)}/state`, {
-      method: 'PATCH',
+      method: "PATCH",
       body: { seen: true },
     });
   }
 
   getEmail(): string {
-    return this.identity || 'loom://identity@local';
+    return this.identity || "loom://identity@local";
   }
 
   private async pollMailbox(): Promise<void> {
@@ -324,8 +332,8 @@ export class LoomEmailClient extends EventEmitter {
       const messages = await this.fetchFolderMessages(this.folder, 200);
       const unreadMessages = messages.filter((message) => message?.mailbox_state?.seen !== true);
       const oldestFirst = [...unreadMessages].sort((a, b) => {
-        const aDate = Date.parse(String(a.date || ''));
-        const bDate = Date.parse(String(b.date || ''));
+        const aDate = Date.parse(String(a.date || ""));
+        const bDate = Date.parse(String(b.date || ""));
         if (Number.isNaN(aDate) && Number.isNaN(bDate)) return 0;
         if (Number.isNaN(aDate)) return -1;
         if (Number.isNaN(bDate)) return 1;
@@ -338,10 +346,10 @@ export class LoomEmailClient extends EventEmitter {
 
         this.rememberSeenMessage(messageId);
         const parsed = this.toEmailMessage(message, true);
-        this.emit('message', parsed);
+        this.emit("message", parsed);
       }
     } catch (error) {
-      this.emit('error', error instanceof Error ? error : new Error(String(error)));
+      this.emit("error", error instanceof Error ? error : new Error(String(error)));
     } finally {
       this.pollInFlight = false;
     }
@@ -351,7 +359,7 @@ export class LoomEmailClient extends EventEmitter {
     const normalizedFolder = encodeURIComponent(assertSafeLoomMailboxFolder(folder));
     const cappedLimit = Math.max(1, Math.min(Number(limit || 100), 500));
     const response = await this.request<LoomFolderMessagesResponse>(
-      `/v1/gateway/imap/folders/${normalizedFolder}/messages?limit=${cappedLimit}`
+      `/v1/gateway/imap/folders/${normalizedFolder}/messages?limit=${cappedLimit}`,
     );
     return Array.isArray(response.messages) ? response.messages : [];
   }
@@ -361,15 +369,15 @@ export class LoomEmailClient extends EventEmitter {
     const messageId = this.resolveMessageId(message);
     const fromAddress = this.resolveFromAddress(message);
     const toAddresses = this.resolveToAddresses(message.to);
-    const subject = String(message.subject || '(no subject)');
-    const text = typeof message.body_text === 'string' ? message.body_text : '';
+    const subject = String(message.subject || "(no subject)");
+    const text = typeof message.body_text === "string" ? message.body_text : "";
 
     let uid = Number(message.uid);
     if (!Number.isFinite(uid) || uid <= 0) {
       uid = this.nextSyntheticUid++;
     }
 
-    const threadId = typeof message.thread_id === 'string' ? message.thread_id : '';
+    const threadId = typeof message.thread_id === "string" ? message.thread_id : "";
     if (trackUid && threadId) {
       this.threadByUid.set(uid, threadId);
       this.pruneThreadMap();
@@ -377,11 +385,11 @@ export class LoomEmailClient extends EventEmitter {
     }
 
     const inReplyTo =
-      (typeof message.in_reply_to === 'string' && message.in_reply_to) ||
-      headers.get('in-reply-to') ||
+      (typeof message.in_reply_to === "string" && message.in_reply_to) ||
+      headers.get("in-reply-to") ||
       undefined;
 
-    const references = this.parseReferences(headers.get('references'));
+    const references = this.parseReferences(headers.get("references"));
 
     return {
       messageId,
@@ -401,10 +409,10 @@ export class LoomEmailClient extends EventEmitter {
 
   private toHeadersMap(value: unknown): Map<string, string> {
     const map = new Map<string, string>();
-    if (!value || typeof value !== 'object') return map;
+    if (!value || typeof value !== "object") return map;
 
     for (const [key, raw] of Object.entries(value as Record<string, unknown>)) {
-      if (typeof raw === 'string') {
+      if (typeof raw === "string") {
         map.set(key.toLowerCase(), raw);
       } else if (raw != null) {
         map.set(key.toLowerCase(), String(raw));
@@ -427,15 +435,15 @@ export class LoomEmailClient extends EventEmitter {
   }
 
   private parseDate(raw: unknown): Date {
-    const parsed = Date.parse(String(raw || ''));
+    const parsed = Date.parse(String(raw || ""));
     return Number.isNaN(parsed) ? new Date() : new Date(parsed);
   }
 
   private resolveMessageId(message: LoomMailboxMessage): string {
-    if (typeof message.message_id === 'string' && message.message_id.trim()) {
+    if (typeof message.message_id === "string" && message.message_id.trim()) {
       return message.message_id.trim();
     }
-    if (typeof message.envelope_id === 'string' && message.envelope_id.trim()) {
+    if (typeof message.envelope_id === "string" && message.envelope_id.trim()) {
       return `<${message.envelope_id.trim()}@loom>`;
     }
     return this.resolveMessageFallbackId(message);
@@ -444,38 +452,38 @@ export class LoomEmailClient extends EventEmitter {
   private resolveMessageFallbackId(message: LoomMailboxMessage): string {
     const toSeed = Array.isArray(message.to)
       ? message.to
-          .map((entry) => (typeof entry === 'string' ? entry : String(entry || '').trim()))
+          .map((entry) => (typeof entry === "string" ? entry : String(entry || "").trim()))
           .filter(Boolean)
           .sort()
-          .join(',')
-      : '';
+          .join(",")
+      : "";
 
     const seed = [
-      message.thread_id || '',
-      message.uid || '',
-      message.from || '',
-      message.from_email || '',
-      message.subject || '',
-      message.date || '',
+      message.thread_id || "",
+      message.uid || "",
+      message.from || "",
+      message.from_email || "",
+      message.subject || "",
+      message.date || "",
       toSeed,
-      (message.body_text || '').slice(0, 1024),
-      message.in_reply_to || '',
-      (typeof message.mailbox_state?.seen === 'boolean' ? String(message.mailbox_state.seen) : ''),
+      (message.body_text || "").slice(0, 1024),
+      message.in_reply_to || "",
+      typeof message.mailbox_state?.seen === "boolean" ? String(message.mailbox_state.seen) : "",
     ]
-      .join('\n')
+      .join("\n")
       .toLowerCase()
       .trim();
 
-    const hash = createHash('sha256').update(seed).digest('hex').slice(0, 16);
+    const hash = createHash("sha256").update(seed).digest("hex").slice(0, 16);
     return `<loom-fallback-${hash}@loom>`;
   }
 
   private resolveFromAddress(message: LoomMailboxMessage): EmailAddress {
-    const identity = typeof message.from === 'string' ? message.from : '';
+    const identity = typeof message.from === "string" ? message.from : "";
     const address =
-      (typeof message.from_email === 'string' && message.from_email.trim()) ||
+      (typeof message.from_email === "string" && message.from_email.trim()) ||
       this.inferEmailFromIdentity(identity) ||
-      'unknown@loom.local';
+      "unknown@loom.local";
 
     return {
       name: identity || address,
@@ -487,7 +495,7 @@ export class LoomEmailClient extends EventEmitter {
     if (!Array.isArray(to)) return [];
     return to
       .map((entry) => {
-        const identity = typeof entry === 'string' ? entry : '';
+        const identity = typeof entry === "string" ? entry : "";
         const address = this.inferEmailFromIdentity(identity);
         if (!address) return null;
         return {
@@ -499,7 +507,7 @@ export class LoomEmailClient extends EventEmitter {
   }
 
   private inferEmailFromIdentity(identity: string): string | null {
-    const normalized = String(identity || '').trim();
+    const normalized = String(identity || "").trim();
     if (!normalized) return null;
     if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) return normalized;
 
@@ -532,29 +540,29 @@ export class LoomEmailClient extends EventEmitter {
 
   private async request<T = unknown>(path: string, options: LoomRequestOptions = {}): Promise<T> {
     const tokenValue = await Promise.resolve(this.accessTokenProvider());
-    const token = typeof tokenValue === 'string' ? tokenValue.trim() : '';
+    const token = typeof tokenValue === "string" ? tokenValue.trim() : "";
     if (!token) {
-      throw new Error('LOOM access token is required');
+      throw new Error("LOOM access token is required");
     }
 
-    const method = options.method || 'GET';
-    const url = new URL(path.startsWith('/') ? path : `/${path}`, this.baseUrl);
+    const method = options.method || "GET";
+    const url = new URL(path.startsWith("/") ? path : `/${path}`, this.baseUrl);
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 30000);
 
     try {
       const headers: Record<string, string> = {
-        Accept: 'application/json',
+        Accept: "application/json",
         Authorization: `Bearer ${token}`,
       };
 
       if (options.idempotencyKey) {
-        headers['Idempotency-Key'] = options.idempotencyKey;
+        headers["Idempotency-Key"] = options.idempotencyKey;
       }
 
       let body: string | undefined;
       if (options.body !== undefined) {
-        headers['Content-Type'] = 'application/json';
+        headers["Content-Type"] = "application/json";
         body = JSON.stringify(options.body);
       }
 
@@ -583,10 +591,12 @@ export class LoomEmailClient extends EventEmitter {
       try {
         return JSON.parse(text) as T;
       } catch {
-        throw new Error(`LOOM request returned invalid JSON (${response.status}): ${method} ${url.pathname}`);
+        throw new Error(
+          `LOOM request returned invalid JSON (${response.status}): ${method} ${url.pathname}`,
+        );
       }
     } catch (error) {
-      if ((error as Error)?.name === 'AbortError') {
+      if ((error as Error)?.name === "AbortError") {
         throw new Error(`LOOM request timed out: ${method} ${path}`);
       }
       throw error;

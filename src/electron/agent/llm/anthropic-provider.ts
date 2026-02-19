@@ -1,4 +1,4 @@
-import Anthropic from '@anthropic-ai/sdk';
+import Anthropic from "@anthropic-ai/sdk";
 import {
   LLMProvider,
   LLMProviderConfig,
@@ -7,19 +7,21 @@ import {
   LLMContent,
   LLMMessage,
   LLMTool,
-} from './types';
+} from "./types";
 
 /**
  * Anthropic API provider implementation
  */
 export class AnthropicProvider implements LLMProvider {
-  readonly type = 'anthropic' as const;
+  readonly type = "anthropic" as const;
   private client: Anthropic;
 
   constructor(config: LLMProviderConfig) {
     const apiKey = config.anthropicApiKey;
     if (!apiKey) {
-      throw new Error('Anthropic API key is required. Configure it in Settings or get one from https://console.anthropic.com/');
+      throw new Error(
+        "Anthropic API key is required. Configure it in Settings or get one from https://console.anthropic.com/",
+      );
     }
 
     this.client = new Anthropic({ apiKey });
@@ -41,15 +43,15 @@ export class AnthropicProvider implements LLMProvider {
           ...(tools && { tools }),
         },
         // Pass abort signal to allow cancellation
-        request.signal ? { signal: request.signal } : undefined
+        request.signal ? { signal: request.signal } : undefined,
       );
 
       return this.convertResponse(response);
     } catch (error: any) {
       // Handle abort errors gracefully
-      if (error.name === 'AbortError' || error.message?.includes('aborted')) {
+      if (error.name === "AbortError" || error.message?.includes("aborted")) {
         console.log(`[Anthropic] Request aborted`);
-        throw new Error('Request cancelled');
+        throw new Error("Request cancelled");
       }
 
       console.error(`[Anthropic] API error:`, {
@@ -66,22 +68,22 @@ export class AnthropicProvider implements LLMProvider {
     try {
       // Send a minimal request to test the connection
       await this.client.messages.create({
-        model: 'claude-3-5-haiku-20241022',
+        model: "claude-3-5-haiku-20241022",
         max_tokens: 10,
-        messages: [{ role: 'user', content: 'Hi' }],
+        messages: [{ role: "user", content: "Hi" }],
       });
       return { success: true };
     } catch (error: any) {
       return {
         success: false,
-        error: error.message || 'Failed to connect to Anthropic API',
+        error: error.message || "Failed to connect to Anthropic API",
       };
     }
   }
 
   private convertMessages(messages: LLMMessage[]): Anthropic.MessageParam[] {
     return messages.map((msg) => {
-      if (typeof msg.content === 'string') {
+      if (typeof msg.content === "string") {
         return {
           role: msg.role,
           content: msg.content,
@@ -90,34 +92,34 @@ export class AnthropicProvider implements LLMProvider {
 
       // Handle array content (tool results or mixed content)
       const content = msg.content.map((item) => {
-        if (item.type === 'tool_result') {
+        if (item.type === "tool_result") {
           return {
-            type: 'tool_result' as const,
+            type: "tool_result" as const,
             tool_use_id: item.tool_use_id,
             content: item.content,
             ...(item.is_error && { is_error: true }),
           };
         }
-        if (item.type === 'tool_use') {
+        if (item.type === "tool_use") {
           return {
-            type: 'tool_use' as const,
+            type: "tool_use" as const,
             id: item.id,
             name: item.name,
             input: item.input,
           };
         }
-        if (item.type === 'image') {
+        if (item.type === "image") {
           return {
-            type: 'image' as const,
+            type: "image" as const,
             source: {
-              type: 'base64' as const,
-              media_type: item.mimeType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
+              type: "base64" as const,
+              media_type: item.mimeType as "image/jpeg" | "image/png" | "image/gif" | "image/webp",
               data: item.data,
             },
           };
         }
         return {
-          type: 'text' as const,
+          type: "text" as const,
           text: item.text,
         };
       });
@@ -139,11 +141,11 @@ export class AnthropicProvider implements LLMProvider {
 
   private convertResponse(response: Anthropic.Message): LLMResponse {
     const content: LLMContent[] = response.content
-      .filter((block) => block.type === 'text' || block.type === 'tool_use')
+      .filter((block) => block.type === "text" || block.type === "tool_use")
       .map((block) => {
-        if (block.type === 'tool_use') {
+        if (block.type === "tool_use") {
           return {
-            type: 'tool_use' as const,
+            type: "tool_use" as const,
             id: block.id,
             name: block.name,
             input: block.input as Record<string, any>,
@@ -151,7 +153,7 @@ export class AnthropicProvider implements LLMProvider {
         }
         // Type guard: at this point block must be a TextBlock
         return {
-          type: 'text' as const,
+          type: "text" as const,
           text: (block as Anthropic.TextBlock).text,
         };
       });
@@ -166,20 +168,18 @@ export class AnthropicProvider implements LLMProvider {
     };
   }
 
-  private mapStopReason(
-    reason: Anthropic.Message['stop_reason']
-  ): LLMResponse['stopReason'] {
+  private mapStopReason(reason: Anthropic.Message["stop_reason"]): LLMResponse["stopReason"] {
     switch (reason) {
-      case 'end_turn':
-        return 'end_turn';
-      case 'tool_use':
-        return 'tool_use';
-      case 'max_tokens':
-        return 'max_tokens';
-      case 'stop_sequence':
-        return 'stop_sequence';
+      case "end_turn":
+        return "end_turn";
+      case "tool_use":
+        return "tool_use";
+      case "max_tokens":
+        return "max_tokens";
+      case "stop_sequence":
+        return "stop_sequence";
       default:
-        return 'end_turn';
+        return "end_turn";
     }
   }
 }

@@ -1,12 +1,12 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Workspace } from '../../../../shared/types';
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { Workspace } from "../../../../shared/types";
 
 const mocks = vi.hoisted(() => {
   const mcpState: { servers: Array<any> } = { servers: [] };
   const hooksState: any = {
     enabled: false,
-    token: '',
-    path: '/hooks',
+    token: "",
+    path: "/hooks",
     maxBodyBytes: 256 * 1024,
     presets: [],
     mappings: [],
@@ -14,19 +14,19 @@ const mocks = vi.hoisted(() => {
   };
 
   const installServer = vi.fn(async () => {
-    const existing = mcpState.servers.find((s) => s.name === 'Resend');
-    if (existing) throw new Error('Server Resend is already installed');
+    const existing = mcpState.servers.find((s) => s.name === "Resend");
+    if (existing) throw new Error("Server Resend is already installed");
     const server = {
-      id: 'resend-server',
-      name: 'Resend',
-      description: 'Resend connector',
+      id: "resend-server",
+      name: "Resend",
+      description: "Resend connector",
       enabled: false,
-      transport: 'stdio',
+      transport: "stdio",
       command: process.execPath,
-      args: ['--runAsNode', '/tmp/connectors/resend-mcp/dist/index.js'],
+      args: ["--runAsNode", "/tmp/connectors/resend-mcp/dist/index.js"],
       env: {
-        RESEND_API_KEY: '',
-        RESEND_BASE_URL: 'https://api.resend.com',
+        RESEND_API_KEY: "",
+        RESEND_BASE_URL: "https://api.resend.com",
       },
     };
     mcpState.servers.push(server);
@@ -37,22 +37,22 @@ const mocks = vi.hoisted(() => {
     mcpState,
     hooksState,
     connectServer: vi.fn().mockResolvedValue(undefined),
-    getServerStatus: vi.fn().mockReturnValue({ status: 'disconnected' }),
+    getServerStatus: vi.fn().mockReturnValue({ status: "disconnected" }),
     callTool: vi.fn().mockResolvedValue({
-      content: [{ type: 'text', text: 'ok' }],
+      content: [{ type: "text", text: "ok" }],
     }),
     getAllTools: vi.fn().mockReturnValue([]),
     installServer,
   };
 });
 
-vi.mock('electron', () => ({
+vi.mock("electron", () => ({
   app: {
-    getPath: vi.fn().mockReturnValue('/tmp'),
+    getPath: vi.fn().mockReturnValue("/tmp"),
   },
 }));
 
-vi.mock('../../../mcp/client/MCPClientManager', () => ({
+vi.mock("../../../mcp/client/MCPClientManager", () => ({
   MCPClientManager: {
     getInstance: vi.fn().mockReturnValue({
       connectServer: mocks.connectServer,
@@ -63,17 +63,17 @@ vi.mock('../../../mcp/client/MCPClientManager', () => ({
   },
 }));
 
-vi.mock('../../../mcp/settings', () => ({
+vi.mock("../../../mcp/settings", () => ({
   MCPSettingsManager: {
     initialize: vi.fn(),
     loadSettings: vi.fn().mockImplementation(() => ({
       servers: mocks.mcpState.servers,
       autoConnect: true,
-      toolNamePrefix: 'mcp_',
+      toolNamePrefix: "mcp_",
       maxReconnectAttempts: 5,
       reconnectDelayMs: 1000,
       registryEnabled: true,
-      registryUrl: 'https://registry.modelcontextprotocol.io/servers.json',
+      registryUrl: "https://registry.modelcontextprotocol.io/servers.json",
       hostEnabled: false,
     })),
     updateServer: vi.fn().mockImplementation((id: string, updates: any) => {
@@ -85,19 +85,19 @@ vi.mock('../../../mcp/settings', () => ({
   },
 }));
 
-vi.mock('../../../mcp/registry/MCPRegistryManager', () => ({
+vi.mock("../../../mcp/registry/MCPRegistryManager", () => ({
   MCPRegistryManager: {
     installServer: mocks.installServer,
   },
 }));
 
-vi.mock('../../../hooks/settings', () => ({
+vi.mock("../../../hooks/settings", () => ({
   HooksSettingsManager: {
     initialize: vi.fn(),
     loadSettings: vi.fn().mockImplementation(() => ({ ...mocks.hooksState })),
     enableHooks: vi.fn().mockImplementation(() => {
       mocks.hooksState.enabled = true;
-      if (!mocks.hooksState.token) mocks.hooksState.token = 'hooks-token';
+      if (!mocks.hooksState.token) mocks.hooksState.token = "hooks-token";
       return { ...mocks.hooksState };
     }),
     updateConfig: vi.fn().mockImplementation((updates: any) => {
@@ -107,13 +107,13 @@ vi.mock('../../../hooks/settings', () => ({
   },
 }));
 
-vi.mock('../../../settings/personality-manager', () => ({
+vi.mock("../../../settings/personality-manager", () => ({
   PersonalityManager: {
     loadSettings: vi.fn().mockReturnValue({}),
     saveSettings: vi.fn(),
     setUserName: vi.fn(),
     getUserName: vi.fn(),
-    getAgentName: vi.fn().mockReturnValue('CoWork'),
+    getAgentName: vi.fn().mockReturnValue("CoWork"),
     setActivePersona: vi.fn(),
     setResponseStyle: vi.fn(),
     setQuirks: vi.fn(),
@@ -121,35 +121,35 @@ vi.mock('../../../settings/personality-manager', () => ({
   },
 }));
 
-vi.mock('../../custom-skill-loader', () => ({
+vi.mock("../../custom-skill-loader", () => ({
   getCustomSkillLoader: vi.fn().mockReturnValue({
     getSkill: vi.fn(),
     listModelInvocableSkills: vi.fn().mockReturnValue([]),
-    expandPrompt: vi.fn().mockReturnValue(''),
-    getSkillDescriptionsForModel: vi.fn().mockReturnValue(''),
+    expandPrompt: vi.fn().mockReturnValue(""),
+    getSkillDescriptionsForModel: vi.fn().mockReturnValue(""),
   }),
 }));
 
-vi.mock('../../../security/policy-manager', () => ({
+vi.mock("../../../security/policy-manager", () => ({
   isToolAllowedQuick: vi.fn().mockReturnValue(true),
 }));
 
-vi.mock('../builtin-settings', () => ({
+vi.mock("../builtin-settings", () => ({
   BuiltinToolsSettingsManager: {
     isToolEnabled: vi.fn().mockReturnValue(true),
-    getToolCategory: vi.fn().mockReturnValue('meta'),
-    getToolPriority: vi.fn().mockReturnValue('normal'),
+    getToolCategory: vi.fn().mockReturnValue("meta"),
+    getToolPriority: vi.fn().mockReturnValue("normal"),
   },
 }));
 
-vi.mock('../../search', () => ({
+vi.mock("../../search", () => ({
   SearchProviderFactory: {
     isAnyProviderConfigured: vi.fn().mockReturnValue(false),
     getAvailableProviders: vi.fn().mockReturnValue([]),
   },
 }));
 
-vi.mock('../mention-tools', () => ({
+vi.mock("../mention-tools", () => ({
   MentionTools: class MockMentionTools {
     static getToolDefinitions() {
       return [];
@@ -157,43 +157,43 @@ vi.mock('../mention-tools', () => ({
   },
 }));
 
-import { ToolRegistry } from '../registry';
+import { ToolRegistry } from "../registry";
 
 function createWorkspace(): Workspace {
   return {
-    id: 'ws-1',
-    name: 'Test',
-    path: '/tmp',
+    id: "ws-1",
+    name: "Test",
+    path: "/tmp",
     createdAt: Date.now(),
     permissions: { read: true, write: true, delete: true, shell: false, network: true },
   };
 }
 
-describe('integration_setup tool', () => {
+describe("integration_setup tool", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.getServerStatus.mockReturnValue({ status: 'disconnected' });
+    mocks.getServerStatus.mockReturnValue({ status: "disconnected" });
     mocks.mcpState.servers = [];
     mocks.hooksState.enabled = false;
-    mocks.hooksState.token = '';
-    mocks.hooksState.path = '/hooks';
+    mocks.hooksState.token = "";
+    mocks.hooksState.path = "/hooks";
     mocks.hooksState.maxBodyBytes = 256 * 1024;
     mocks.hooksState.presets = [];
     mocks.hooksState.mappings = [];
     mocks.hooksState.resend = undefined;
   });
 
-  it('is exposed in tool list', () => {
-    const registry = new ToolRegistry(createWorkspace(), { logEvent: vi.fn() } as any, 'task-1');
-    const tool = registry.getTools().find((t) => t.name === 'integration_setup');
+  it("is exposed in tool list", () => {
+    const registry = new ToolRegistry(createWorkspace(), { logEvent: vi.fn() } as any, "task-1");
+    const tool = registry.getTools().find((t) => t.name === "integration_setup");
     expect(tool).toBeDefined();
   });
 
-  it('returns missing api_key guidance when configuring without key', async () => {
-    const registry = new ToolRegistry(createWorkspace(), { logEvent: vi.fn() } as any, 'task-1');
-    const result = await registry.executeTool('integration_setup', {
-      action: 'configure',
-      provider: 'resend',
+  it("returns missing api_key guidance when configuring without key", async () => {
+    const registry = new ToolRegistry(createWorkspace(), { logEvent: vi.fn() } as any, "task-1");
+    const result = await registry.executeTool("integration_setup", {
+      action: "configure",
+      provider: "resend",
     });
 
     expect(mocks.installServer).toHaveBeenCalledTimes(1);
@@ -201,32 +201,32 @@ describe('integration_setup tool', () => {
     expect(result.installed).toBe(true);
     expect(result.configured).toBe(false);
     expect(result.missing_inputs).toHaveLength(1);
-    expect(result.missing_inputs[0].field).toBe('api_key');
-    expect(result.links.create_api_key).toContain('resend.com');
+    expect(result.missing_inputs[0].field).toBe("api_key");
+    expect(result.links.create_api_key).toContain("resend.com");
   });
 
-  it('inspect mode reports readiness without failing when connector is missing', async () => {
-    const registry = new ToolRegistry(createWorkspace(), { logEvent: vi.fn() } as any, 'task-1');
-    const result = await registry.executeTool('integration_setup', {
-      action: 'inspect',
-      provider: 'resend',
+  it("inspect mode reports readiness without failing when connector is missing", async () => {
+    const registry = new ToolRegistry(createWorkspace(), { logEvent: vi.fn() } as any, "task-1");
+    const result = await registry.executeTool("integration_setup", {
+      action: "inspect",
+      provider: "resend",
     });
 
     expect(result.success).toBe(true);
     expect(result.installed).toBe(false);
     expect(result.configured).toBe(false);
     expect(result.missing_inputs).toHaveLength(1);
-    expect(result.missing_inputs[0].field).toBe('api_key');
+    expect(result.missing_inputs[0].field).toBe("api_key");
   });
 
-  it('configures resend sending and inbound setup when key is provided', async () => {
-    const registry = new ToolRegistry(createWorkspace(), { logEvent: vi.fn() } as any, 'task-1');
-    const result = await registry.executeTool('integration_setup', {
-      action: 'configure',
-      provider: 'resend',
-      api_key: 're_test_key',
+  it("configures resend sending and inbound setup when key is provided", async () => {
+    const registry = new ToolRegistry(createWorkspace(), { logEvent: vi.fn() } as any, "task-1");
+    const result = await registry.executeTool("integration_setup", {
+      action: "configure",
+      provider: "resend",
+      api_key: "re_test_key",
       enable_inbound: true,
-      webhook_secret: 'whsec_test_secret',
+      webhook_secret: "whsec_test_secret",
     });
 
     expect(result.success).toBe(true);
@@ -237,29 +237,29 @@ describe('integration_setup tool', () => {
     expect(result.inbound.hooks_enabled).toBe(true);
     expect(result.inbound.signing_secret_configured).toBe(true);
     expect(mocks.connectServer).toHaveBeenCalledTimes(1);
-    expect(mocks.callTool).toHaveBeenCalledWith('resend.health', {});
+    expect(mocks.callTool).toHaveBeenCalledWith("resend.health", {});
   });
 
-  it('keeps existing connected session when connect_now is false', async () => {
+  it("keeps existing connected session when connect_now is false", async () => {
     mocks.mcpState.servers.push({
-      id: 'resend-server',
-      name: 'Resend',
-      description: 'Resend connector',
+      id: "resend-server",
+      name: "Resend",
+      description: "Resend connector",
       enabled: true,
-      transport: 'stdio',
+      transport: "stdio",
       command: process.execPath,
-      args: ['--runAsNode', '/tmp/connectors/resend-mcp/dist/index.js'],
+      args: ["--runAsNode", "/tmp/connectors/resend-mcp/dist/index.js"],
       env: {
-        RESEND_API_KEY: 're_existing_key',
-        RESEND_BASE_URL: 'https://api.resend.com',
+        RESEND_API_KEY: "re_existing_key",
+        RESEND_BASE_URL: "https://api.resend.com",
       },
     });
-    mocks.getServerStatus.mockReturnValue({ status: 'connected' });
+    mocks.getServerStatus.mockReturnValue({ status: "connected" });
 
-    const registry = new ToolRegistry(createWorkspace(), { logEvent: vi.fn() } as any, 'task-1');
-    const result = await registry.executeTool('integration_setup', {
-      action: 'configure',
-      provider: 'resend',
+    const registry = new ToolRegistry(createWorkspace(), { logEvent: vi.fn() } as any, "task-1");
+    const result = await registry.executeTool("integration_setup", {
+      action: "configure",
+      provider: "resend",
       connect_now: false,
     });
 
@@ -267,6 +267,6 @@ describe('integration_setup tool', () => {
     expect(result.connected).toBe(true);
     expect(result.email_sending_ready).toBe(true);
     expect(mocks.connectServer).not.toHaveBeenCalled();
-    expect(mocks.callTool).toHaveBeenCalledWith('resend.health', {});
+    expect(mocks.callTool).toHaveBeenCalledWith("resend.health", {});
   });
 });

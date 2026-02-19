@@ -5,10 +5,10 @@
  * Handles plugin lifecycle, configuration, and event dispatch.
  */
 
-import { EventEmitter } from 'events';
-import * as fs from 'fs';
-import * as path from 'path';
-import { app } from 'electron';
+import { EventEmitter } from "events";
+import * as fs from "fs";
+import * as path from "path";
+import { app } from "electron";
 import {
   Plugin,
   PluginManifest,
@@ -22,17 +22,12 @@ import {
   RegisterToolOptions,
   SecureStorage,
   PluginType,
-} from './types';
-import {
-  discoverPlugins,
-  loadPlugin,
-  getPluginDataPath,
-  isPluginCompatible,
-} from './loader';
-import { ChannelAdapter, ChannelConfig } from '../gateway/channels/types';
+} from "./types";
+import { discoverPlugins, loadPlugin, getPluginDataPath, isPluginCompatible } from "./loader";
+import { ChannelAdapter, ChannelConfig } from "../gateway/channels/types";
 
 // Package version (will be replaced at build time or read from package.json)
-const COWORK_VERSION = process.env.npm_package_version || '0.3.0';
+const COWORK_VERSION = process.env.npm_package_version || "0.3.0";
 
 /**
  * Plugin Registry - Singleton manager for all plugins
@@ -152,20 +147,20 @@ export class PluginRegistry extends EventEmitter {
 
       // Register the plugin
       await loadedPlugin.instance.register(api);
-      loadedPlugin.state = 'registered';
+      loadedPlugin.state = "registered";
 
-      this.emitPluginEvent('plugin:registered', pluginName);
+      this.emitPluginEvent("plugin:registered", pluginName);
       console.log(`Plugin ${pluginName} registered successfully`);
     } catch (error) {
       console.error(`Error registering plugin ${pluginName}:`, error);
 
       const loadedPlugin = this.plugins.get(pluginName);
       if (loadedPlugin) {
-        loadedPlugin.state = 'error';
+        loadedPlugin.state = "error";
         loadedPlugin.error = error instanceof Error ? error : new Error(String(error));
       }
 
-      this.emitPluginEvent('plugin:error', pluginName, { error });
+      this.emitPluginEvent("plugin:error", pluginName, { error });
     }
   }
 
@@ -176,9 +171,9 @@ export class PluginRegistry extends EventEmitter {
     const runtime: PluginRuntime = {
       version: COWORK_VERSION,
       platform: process.platform,
-      appDataPath: app?.getPath?.('userData') || path.join(process.env.HOME || '', '.cowork'),
+      appDataPath: app?.getPath?.("userData") || path.join(process.env.HOME || "", ".cowork"),
       pluginDataPath: getPluginDataPath(pluginName),
-      isDev: process.env.NODE_ENV === 'development',
+      isDev: process.env.NODE_ENV === "development",
     };
 
     return {
@@ -202,26 +197,26 @@ export class PluginRegistry extends EventEmitter {
       setConfig: async (config: Record<string, unknown>): Promise<void> => {
         this.configs.set(pluginName, config);
         await this.savePluginConfig(pluginName, config);
-        this.emitPluginEvent('plugin:config-changed', pluginName, { config });
+        this.emitPluginEvent("plugin:config-changed", pluginName, { config });
       },
 
       getSecureStorage: (): SecureStorage => {
         return this.createSecureStorage(pluginName);
       },
 
-      log: (level: 'debug' | 'info' | 'warn' | 'error', message: string, ...args: unknown[]) => {
+      log: (level: "debug" | "info" | "warn" | "error", message: string, ...args: unknown[]) => {
         const prefix = `[${pluginName}]`;
         switch (level) {
-          case 'debug':
+          case "debug":
             console.debug(prefix, message, ...args);
             break;
-          case 'info':
+          case "info":
             console.log(prefix, message, ...args);
             break;
-          case 'warn':
+          case "warn":
             console.warn(prefix, message, ...args);
             break;
-          case 'error':
+          case "error":
             console.error(prefix, message, ...args);
             break;
         }
@@ -263,14 +258,14 @@ export class PluginRegistry extends EventEmitter {
   private createSecureStorage(pluginName: string): SecureStorage {
     // Use a simple file-based storage for now
     // In production, this should use the OS keychain
-    const storagePath = path.join(getPluginDataPath(pluginName), '.secrets');
+    const storagePath = path.join(getPluginDataPath(pluginName), ".secrets");
 
     const readSecrets = (): Record<string, string> => {
       if (!fs.existsSync(storagePath)) {
         return {};
       }
       try {
-        return JSON.parse(fs.readFileSync(storagePath, 'utf-8'));
+        return JSON.parse(fs.readFileSync(storagePath, "utf-8"));
       } catch {
         return {};
       }
@@ -309,7 +304,7 @@ export class PluginRegistry extends EventEmitter {
    * Load plugin configuration from disk
    */
   private loadPluginConfig(pluginName: string): Record<string, unknown> {
-    const configPath = path.join(getPluginDataPath(pluginName), 'config.json');
+    const configPath = path.join(getPluginDataPath(pluginName), "config.json");
 
     if (!fs.existsSync(configPath)) {
       // Return default config from manifest
@@ -327,7 +322,7 @@ export class PluginRegistry extends EventEmitter {
     }
 
     try {
-      return JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+      return JSON.parse(fs.readFileSync(configPath, "utf-8"));
     } catch {
       return {};
     }
@@ -336,9 +331,12 @@ export class PluginRegistry extends EventEmitter {
   /**
    * Save plugin configuration to disk
    */
-  private async savePluginConfig(pluginName: string, config: Record<string, unknown>): Promise<void> {
-    const configPath = path.join(getPluginDataPath(pluginName), 'config.json');
-    fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
+  private async savePluginConfig(
+    pluginName: string,
+    config: Record<string, unknown>,
+  ): Promise<void> {
+    const configPath = path.join(getPluginDataPath(pluginName), "config.json");
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2), "utf-8");
   }
 
   /**
@@ -376,8 +374,7 @@ export class PluginRegistry extends EventEmitter {
    * Get plugins by type
    */
   getPluginsByType(type: PluginType): LoadedPlugin[] {
-    return Array.from(this.plugins.values())
-      .filter(p => p.manifest.type === type);
+    return Array.from(this.plugins.values()).filter((p) => p.manifest.type === type);
   }
 
   /**
@@ -436,12 +433,12 @@ export class PluginRegistry extends EventEmitter {
       throw new Error(`Plugin not found: ${name}`);
     }
 
-    if (plugin.state === 'active') {
+    if (plugin.state === "active") {
       return;
     }
 
-    plugin.state = 'active';
-    this.emitPluginEvent('plugin:loaded', name);
+    plugin.state = "active";
+    this.emitPluginEvent("plugin:loaded", name);
   }
 
   /**
@@ -453,7 +450,7 @@ export class PluginRegistry extends EventEmitter {
       throw new Error(`Plugin not found: ${name}`);
     }
 
-    if (plugin.state === 'disabled') {
+    if (plugin.state === "disabled") {
       return;
     }
 
@@ -466,8 +463,8 @@ export class PluginRegistry extends EventEmitter {
       }
     }
 
-    plugin.state = 'disabled';
-    this.emitPluginEvent('plugin:unregistered', name);
+    plugin.state = "disabled";
+    this.emitPluginEvent("plugin:unregistered", name);
   }
 
   /**
@@ -530,14 +527,14 @@ export class PluginRegistry extends EventEmitter {
 
     this.configs.set(name, config);
     await this.savePluginConfig(name, config);
-    this.emitPluginEvent('plugin:config-changed', name, { config });
+    this.emitPluginEvent("plugin:config-changed", name, { config });
   }
 
   /**
    * Shutdown the registry
    */
   async shutdown(): Promise<void> {
-    console.log('Shutting down plugin registry...');
+    console.log("Shutting down plugin registry...");
 
     for (const [name, plugin] of this.plugins) {
       try {
@@ -556,7 +553,7 @@ export class PluginRegistry extends EventEmitter {
     this.pluginEventHandlers.clear();
     this.initialized = false;
 
-    console.log('Plugin registry shutdown complete');
+    console.log("Plugin registry shutdown complete");
   }
 }
 

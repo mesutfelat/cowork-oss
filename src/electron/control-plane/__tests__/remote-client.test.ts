@@ -2,12 +2,12 @@
  * Tests for Remote Gateway Client
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from 'vitest';
-import { EventEmitter } from 'events';
+import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from "vitest";
+import { EventEmitter } from "events";
 
 // Create mock WebSocket class inside the factory - avoid using vi inside factory
-vi.mock('ws', () => {
-  const { EventEmitter } = require('events');
+vi.mock("ws", () => {
+  const { EventEmitter } = require("events");
 
   class MockWebSocket extends EventEmitter {
     static CONNECTING = 0;
@@ -26,7 +26,7 @@ vi.mock('ws', () => {
       // Simulate immediate connection by default
       setTimeout(() => {
         this.readyState = 1; // OPEN
-        this.emit('open');
+        this.emit("open");
       }, 0);
     }
 
@@ -46,11 +46,11 @@ vi.mock('ws', () => {
 });
 
 // Mock crypto
-vi.mock('crypto', () => ({
+vi.mock("crypto", () => ({
   default: {
-    randomUUID: () => 'test-uuid-1234',
+    randomUUID: () => "test-uuid-1234",
   },
-  randomUUID: () => 'test-uuid-1234',
+  randomUUID: () => "test-uuid-1234",
 }));
 
 // Import after mocking
@@ -60,18 +60,18 @@ import {
   initRemoteGatewayClient,
   shutdownRemoteGatewayClient,
   type RemoteGatewayClientOptions,
-} from '../remote-client';
+} from "../remote-client";
 
-describe('RemoteGatewayClient', () => {
+describe("RemoteGatewayClient", () => {
   let client: RemoteGatewayClient;
   let onStateChange: Mock;
   let onEvent: Mock;
   let onResponse: Mock;
 
   const defaultOptions: RemoteGatewayClientOptions = {
-    url: 'ws://127.0.0.1:18789',
-    token: 'test-token-123',
-    deviceName: 'Test Client',
+    url: "ws://127.0.0.1:18789",
+    token: "test-token-123",
+    deviceName: "Test Client",
     autoReconnect: false,
     reconnectIntervalMs: 1000,
     maxReconnectAttempts: 3,
@@ -92,53 +92,53 @@ describe('RemoteGatewayClient', () => {
     }
   });
 
-  describe('constructor', () => {
-    it('should initialize with default options', () => {
+  describe("constructor", () => {
+    it("should initialize with default options", () => {
       client = new RemoteGatewayClient({
-        url: 'ws://localhost:18789',
-        token: 'token',
+        url: "ws://localhost:18789",
+        token: "token",
       });
 
       const status = client.getStatus();
-      expect(status.state).toBe('disconnected');
+      expect(status.state).toBe("disconnected");
     });
 
-    it('should merge provided options with defaults', () => {
+    it("should merge provided options with defaults", () => {
       client = new RemoteGatewayClient({
-        url: 'ws://localhost:9999',
-        token: 'my-token',
-        deviceName: 'Custom Device',
+        url: "ws://localhost:9999",
+        token: "my-token",
+        deviceName: "Custom Device",
         maxReconnectAttempts: 5,
       });
 
       // Client should be initialized without errors
-      expect(client.getStatus().state).toBe('disconnected');
+      expect(client.getStatus().state).toBe("disconnected");
     });
   });
 
-  describe('getStatus', () => {
-    it('should return disconnected status initially', () => {
+  describe("getStatus", () => {
+    it("should return disconnected status initially", () => {
       client = new RemoteGatewayClient(defaultOptions);
       const status = client.getStatus();
 
-      expect(status.state).toBe('disconnected');
-      expect(status.url).toBe('ws://127.0.0.1:18789');
+      expect(status.state).toBe("disconnected");
+      expect(status.url).toBe("ws://127.0.0.1:18789");
       expect(status.connectedAt).toBeUndefined();
       expect(status.clientId).toBeUndefined();
     });
 
-    it('should include url in status', () => {
+    it("should include url in status", () => {
       client = new RemoteGatewayClient({
-        url: 'ws://custom-host:9999',
-        token: 'token',
+        url: "ws://custom-host:9999",
+        token: "token",
       });
 
-      expect(client.getStatus().url).toBe('ws://custom-host:9999');
+      expect(client.getStatus().url).toBe("ws://custom-host:9999");
     });
   });
 
-  describe('connect', () => {
-    it('should transition to connecting state', async () => {
+  describe("connect", () => {
+    it("should transition to connecting state", async () => {
       client = new RemoteGatewayClient({
         ...defaultOptions,
         onStateChange,
@@ -147,10 +147,10 @@ describe('RemoteGatewayClient', () => {
       client.connect();
 
       // Should immediately be in connecting state
-      expect(onStateChange).toHaveBeenCalledWith('connecting', undefined);
+      expect(onStateChange).toHaveBeenCalledWith("connecting", undefined);
     });
 
-    it('should not connect if already connecting', async () => {
+    it("should not connect if already connecting", async () => {
       client = new RemoteGatewayClient({
         ...defaultOptions,
         onStateChange,
@@ -169,57 +169,57 @@ describe('RemoteGatewayClient', () => {
       expect(onStateChange).not.toHaveBeenCalled();
     });
 
-    it('should reject TLS fingerprint without wss:// URL', async () => {
+    it("should reject TLS fingerprint without wss:// URL", async () => {
       client = new RemoteGatewayClient({
         ...defaultOptions,
-        tlsFingerprint: 'abc123',
+        tlsFingerprint: "abc123",
         onStateChange,
       });
 
-      await expect(client.connect()).rejects.toThrow('TLS fingerprint requires wss:// URL');
-      expect(onStateChange).toHaveBeenCalledWith('error', 'TLS fingerprint requires wss:// URL');
+      await expect(client.connect()).rejects.toThrow("TLS fingerprint requires wss:// URL");
+      expect(onStateChange).toHaveBeenCalledWith("error", "TLS fingerprint requires wss:// URL");
     });
 
-    it('should accept TLS fingerprint with wss:// URL', async () => {
+    it("should accept TLS fingerprint with wss:// URL", async () => {
       client = new RemoteGatewayClient({
         ...defaultOptions,
-        url: 'wss://secure-host:18789',
-        tlsFingerprint: 'AA:BB:CC:DD:EE:FF',
+        url: "wss://secure-host:18789",
+        tlsFingerprint: "AA:BB:CC:DD:EE:FF",
         onStateChange,
       });
 
       // Should transition to connecting (not rejected for URL mismatch)
       client.connect();
-      expect(onStateChange).toHaveBeenCalledWith('connecting', undefined);
+      expect(onStateChange).toHaveBeenCalledWith("connecting", undefined);
     });
 
-    it('should normalize TLS fingerprint by removing colons and lowercasing', async () => {
+    it("should normalize TLS fingerprint by removing colons and lowercasing", async () => {
       client = new RemoteGatewayClient({
         ...defaultOptions,
-        url: 'wss://secure-host:18789',
-        tlsFingerprint: 'AA:BB:CC:DD',
+        url: "wss://secure-host:18789",
+        tlsFingerprint: "AA:BB:CC:DD",
         onStateChange,
       });
 
       // Should not throw - fingerprint format is normalized internally
       client.connect();
-      expect(onStateChange).toHaveBeenCalledWith('connecting', undefined);
+      expect(onStateChange).toHaveBeenCalledWith("connecting", undefined);
     });
 
-    it('should connect without TLS fingerprint for wss:// URLs', async () => {
+    it("should connect without TLS fingerprint for wss:// URLs", async () => {
       client = new RemoteGatewayClient({
         ...defaultOptions,
-        url: 'wss://secure-host:18789',
+        url: "wss://secure-host:18789",
         onStateChange,
       });
 
       client.connect();
-      expect(onStateChange).toHaveBeenCalledWith('connecting', undefined);
+      expect(onStateChange).toHaveBeenCalledWith("connecting", undefined);
     });
   });
 
-  describe('disconnect', () => {
-    it('should transition to disconnected state', () => {
+  describe("disconnect", () => {
+    it("should transition to disconnected state", () => {
       client = new RemoteGatewayClient({
         ...defaultOptions,
         onStateChange,
@@ -227,22 +227,22 @@ describe('RemoteGatewayClient', () => {
 
       client.disconnect();
 
-      expect(client.getStatus().state).toBe('disconnected');
+      expect(client.getStatus().state).toBe("disconnected");
     });
 
-    it('should clear client state', async () => {
+    it("should clear client state", async () => {
       client = new RemoteGatewayClient(defaultOptions);
       client.disconnect();
 
       const status = client.getStatus();
-      expect(status.state).toBe('disconnected');
+      expect(status.state).toBe("disconnected");
       expect(status.clientId).toBeUndefined();
       expect(status.connectedAt).toBeUndefined();
     });
   });
 
-  describe('testConnection', () => {
-    it('should return error on timeout', async () => {
+  describe("testConnection", () => {
+    it("should return error on timeout", async () => {
       client = new RemoteGatewayClient(defaultOptions);
 
       const testPromise = client.testConnection();
@@ -252,28 +252,30 @@ describe('RemoteGatewayClient', () => {
 
       const result = await testPromise;
       expect(result.success).toBe(false);
-      expect(result.error).toBe('Connection timeout');
+      expect(result.error).toBe("Connection timeout");
     });
   });
 
-  describe('request', () => {
-    it('should throw when not connected', async () => {
+  describe("request", () => {
+    it("should throw when not connected", async () => {
       client = new RemoteGatewayClient(defaultOptions);
 
-      await expect(client.request('test.method')).rejects.toThrow('Not connected to remote gateway');
+      await expect(client.request("test.method")).rejects.toThrow(
+        "Not connected to remote gateway",
+      );
     });
 
-    it('should throw with custom method name in error', async () => {
+    it("should throw with custom method name in error", async () => {
       client = new RemoteGatewayClient(defaultOptions);
 
-      await expect(client.request('custom.method', { param: 'value' })).rejects.toThrow(
-        'Not connected to remote gateway'
+      await expect(client.request("custom.method", { param: "value" })).rejects.toThrow(
+        "Not connected to remote gateway",
       );
     });
   });
 });
 
-describe('Singleton functions', () => {
+describe("Singleton functions", () => {
   beforeEach(() => {
     shutdownRemoteGatewayClient();
     vi.clearAllMocks();
@@ -283,44 +285,44 @@ describe('Singleton functions', () => {
     shutdownRemoteGatewayClient();
   });
 
-  describe('getRemoteGatewayClient', () => {
-    it('should return null when not initialized', () => {
+  describe("getRemoteGatewayClient", () => {
+    it("should return null when not initialized", () => {
       expect(getRemoteGatewayClient()).toBeNull();
     });
 
-    it('should return client after initialization', () => {
+    it("should return client after initialization", () => {
       const client = initRemoteGatewayClient({
-        url: 'ws://localhost:18789',
-        token: 'test-token',
+        url: "ws://localhost:18789",
+        token: "test-token",
       });
 
       expect(getRemoteGatewayClient()).toBe(client);
     });
   });
 
-  describe('initRemoteGatewayClient', () => {
-    it('should create a new client', () => {
+  describe("initRemoteGatewayClient", () => {
+    it("should create a new client", () => {
       const client = initRemoteGatewayClient({
-        url: 'ws://localhost:18789',
-        token: 'test-token',
-        deviceName: 'Test Device',
+        url: "ws://localhost:18789",
+        token: "test-token",
+        deviceName: "Test Device",
       });
 
       expect(client).toBeInstanceOf(RemoteGatewayClient);
       expect(getRemoteGatewayClient()).toBe(client);
     });
 
-    it('should disconnect previous client when reinitializing', () => {
+    it("should disconnect previous client when reinitializing", () => {
       const client1 = initRemoteGatewayClient({
-        url: 'ws://localhost:18789',
-        token: 'token1',
+        url: "ws://localhost:18789",
+        token: "token1",
       });
 
-      const disconnectSpy = vi.spyOn(client1, 'disconnect');
+      const disconnectSpy = vi.spyOn(client1, "disconnect");
 
       const client2 = initRemoteGatewayClient({
-        url: 'ws://localhost:18789',
-        token: 'token2',
+        url: "ws://localhost:18789",
+        token: "token2",
       });
 
       expect(disconnectSpy).toHaveBeenCalled();
@@ -328,11 +330,11 @@ describe('Singleton functions', () => {
       expect(client1).not.toBe(client2);
     });
 
-    it('should create client with all options', () => {
+    it("should create client with all options", () => {
       const client = initRemoteGatewayClient({
-        url: 'ws://localhost:18789',
-        token: 'test-token',
-        deviceName: 'Custom Device',
+        url: "ws://localhost:18789",
+        token: "test-token",
+        deviceName: "Custom Device",
         autoReconnect: true,
         reconnectIntervalMs: 10000,
         maxReconnectAttempts: 5,
@@ -343,14 +345,14 @@ describe('Singleton functions', () => {
     });
   });
 
-  describe('shutdownRemoteGatewayClient', () => {
-    it('should disconnect and clear the client', () => {
+  describe("shutdownRemoteGatewayClient", () => {
+    it("should disconnect and clear the client", () => {
       const client = initRemoteGatewayClient({
-        url: 'ws://localhost:18789',
-        token: 'test-token',
+        url: "ws://localhost:18789",
+        token: "test-token",
       });
 
-      const disconnectSpy = vi.spyOn(client, 'disconnect');
+      const disconnectSpy = vi.spyOn(client, "disconnect");
 
       shutdownRemoteGatewayClient();
 
@@ -358,23 +360,23 @@ describe('Singleton functions', () => {
       expect(getRemoteGatewayClient()).toBeNull();
     });
 
-    it('should do nothing when no client exists', () => {
+    it("should do nothing when no client exists", () => {
       // Should not throw
       expect(() => shutdownRemoteGatewayClient()).not.toThrow();
     });
 
-    it('should allow reinitialization after shutdown', () => {
+    it("should allow reinitialization after shutdown", () => {
       const client1 = initRemoteGatewayClient({
-        url: 'ws://localhost:18789',
-        token: 'token1',
+        url: "ws://localhost:18789",
+        token: "token1",
       });
 
       shutdownRemoteGatewayClient();
       expect(getRemoteGatewayClient()).toBeNull();
 
       const client2 = initRemoteGatewayClient({
-        url: 'ws://localhost:18789',
-        token: 'token2',
+        url: "ws://localhost:18789",
+        token: "token2",
       });
 
       expect(getRemoteGatewayClient()).toBe(client2);
@@ -383,7 +385,7 @@ describe('Singleton functions', () => {
   });
 });
 
-describe('RemoteGatewayClient status tracking', () => {
+describe("RemoteGatewayClient status tracking", () => {
   let client: RemoteGatewayClient;
 
   afterEach(() => {
@@ -392,10 +394,10 @@ describe('RemoteGatewayClient status tracking', () => {
     }
   });
 
-  it('should not have reconnect attempts initially', () => {
+  it("should not have reconnect attempts initially", () => {
     client = new RemoteGatewayClient({
-      url: 'ws://localhost:18789',
-      token: 'token',
+      url: "ws://localhost:18789",
+      token: "token",
       autoReconnect: true,
       maxReconnectAttempts: 5,
     });
@@ -404,32 +406,32 @@ describe('RemoteGatewayClient status tracking', () => {
     expect(status.reconnectAttempts).toBeUndefined();
   });
 
-  it('should track state correctly', () => {
+  it("should track state correctly", () => {
     client = new RemoteGatewayClient({
-      url: 'ws://localhost:18789',
-      token: 'token',
+      url: "ws://localhost:18789",
+      token: "token",
     });
 
     const status = client.getStatus();
-    expect(status.state).toBe('disconnected');
+    expect(status.state).toBe("disconnected");
   });
 
-  it('should include url in status', () => {
+  it("should include url in status", () => {
     client = new RemoteGatewayClient({
-      url: 'ws://custom:9999',
-      token: 'token',
+      url: "ws://custom:9999",
+      token: "token",
     });
 
-    expect(client.getStatus().url).toBe('ws://custom:9999');
+    expect(client.getStatus().url).toBe("ws://custom:9999");
   });
 });
 
-describe('Connection state callbacks', () => {
-  it('should not trigger callback when already disconnected', () => {
+describe("Connection state callbacks", () => {
+  it("should not trigger callback when already disconnected", () => {
     const onStateChange = vi.fn();
     const client = new RemoteGatewayClient({
-      url: 'ws://localhost:18789',
-      token: 'token',
+      url: "ws://localhost:18789",
+      token: "token",
       onStateChange,
     });
 
@@ -442,13 +444,13 @@ describe('Connection state callbacks', () => {
     client.disconnect();
   });
 
-  it('should trigger callback on connect', async () => {
+  it("should trigger callback on connect", async () => {
     vi.useFakeTimers();
 
     const onStateChange = vi.fn();
     const client = new RemoteGatewayClient({
-      url: 'ws://localhost:18789',
-      token: 'token',
+      url: "ws://localhost:18789",
+      token: "token",
       onStateChange,
     });
 
@@ -456,57 +458,57 @@ describe('Connection state callbacks', () => {
     client.connect();
 
     // Should have triggered 'connecting' state
-    expect(onStateChange).toHaveBeenCalledWith('connecting', undefined);
+    expect(onStateChange).toHaveBeenCalledWith("connecting", undefined);
 
     vi.useRealTimers();
     client.disconnect();
   });
 });
 
-describe('Auto-reconnect configuration', () => {
-  it('should accept autoReconnect option', () => {
+describe("Auto-reconnect configuration", () => {
+  it("should accept autoReconnect option", () => {
     const client = new RemoteGatewayClient({
-      url: 'ws://localhost:18789',
-      token: 'token',
+      url: "ws://localhost:18789",
+      token: "token",
       autoReconnect: true,
     });
 
     // Should not throw
-    expect(client.getStatus().state).toBe('disconnected');
+    expect(client.getStatus().state).toBe("disconnected");
     client.disconnect();
   });
 
-  it('should accept reconnectIntervalMs option', () => {
+  it("should accept reconnectIntervalMs option", () => {
     const client = new RemoteGatewayClient({
-      url: 'ws://localhost:18789',
-      token: 'token',
+      url: "ws://localhost:18789",
+      token: "token",
       reconnectIntervalMs: 10000,
     });
 
-    expect(client.getStatus().state).toBe('disconnected');
+    expect(client.getStatus().state).toBe("disconnected");
     client.disconnect();
   });
 
-  it('should accept maxReconnectAttempts option', () => {
+  it("should accept maxReconnectAttempts option", () => {
     const client = new RemoteGatewayClient({
-      url: 'ws://localhost:18789',
-      token: 'token',
+      url: "ws://localhost:18789",
+      token: "token",
       maxReconnectAttempts: 20,
     });
 
-    expect(client.getStatus().state).toBe('disconnected');
+    expect(client.getStatus().state).toBe("disconnected");
     client.disconnect();
   });
 
-  it('should allow unlimited reconnects with maxReconnectAttempts = 0', () => {
+  it("should allow unlimited reconnects with maxReconnectAttempts = 0", () => {
     const client = new RemoteGatewayClient({
-      url: 'ws://localhost:18789',
-      token: 'token',
+      url: "ws://localhost:18789",
+      token: "token",
       autoReconnect: true,
       maxReconnectAttempts: 0, // unlimited
     });
 
-    expect(client.getStatus().state).toBe('disconnected');
+    expect(client.getStatus().state).toBe("disconnected");
     client.disconnect();
   });
 });

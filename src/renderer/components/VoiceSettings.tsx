@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   VoiceSettings as VoiceSettingsType,
   VoiceProvider,
@@ -9,7 +9,7 @@ import {
   OPENAI_VOICES,
   VOICE_LANGUAGES,
   DEFAULT_VOICE_SETTINGS,
-} from '../../shared/types';
+} from "../../shared/types";
 
 // Audio playback helper for renderer process
 async function playAudioData(audioData: number[], volume: number): Promise<void> {
@@ -86,7 +86,7 @@ export function VoiceSettings({ onStateChange }: VoiceSettingsProps) {
 
     // Subscribe to voice events
     const unsubscribe = window.electronAPI.onVoiceEvent((event) => {
-      if (event.type === 'voice:state-changed') {
+      if (event.type === "voice:state-changed") {
         const newState = event.data as VoiceState;
         setVoiceState(newState);
         onStateChange?.(newState);
@@ -113,7 +113,7 @@ export function VoiceSettings({ onStateChange }: VoiceSettingsProps) {
         await loadElevenLabsVoices();
       }
     } catch (error) {
-      console.error('Failed to load voice settings:', error);
+      console.error("Failed to load voice settings:", error);
     } finally {
       setLoading(false);
     }
@@ -125,7 +125,7 @@ export function VoiceSettings({ onStateChange }: VoiceSettingsProps) {
       const voices = await window.electronAPI.getElevenLabsVoices();
       setElevenLabsVoices(voices);
     } catch (error) {
-      console.error('Failed to load ElevenLabs voices:', error);
+      console.error("Failed to load ElevenLabs voices:", error);
     } finally {
       setLoadingVoices(false);
     }
@@ -137,7 +137,7 @@ export function VoiceSettings({ onStateChange }: VoiceSettingsProps) {
       const updated = await window.electronAPI.saveVoiceSettings(newSettings);
       setSettings(updated);
     } catch (error) {
-      console.error('Failed to save voice settings:', error);
+      console.error("Failed to save voice settings:", error);
     } finally {
       setSaving(false);
     }
@@ -149,7 +149,7 @@ export function VoiceSettings({ onStateChange }: VoiceSettingsProps) {
     pendingSettingsRef.current = { ...pendingSettingsRef.current, ...newSettings };
 
     // Update local state immediately for responsive UI
-    setSettings(prev => ({ ...prev, ...newSettings }));
+    setSettings((prev) => ({ ...prev, ...newSettings }));
 
     // Clear existing timeout
     if (saveTimeoutRef.current) {
@@ -166,7 +166,7 @@ export function VoiceSettings({ onStateChange }: VoiceSettingsProps) {
         const updated = await window.electronAPI.saveVoiceSettings(toSave);
         setSettings(updated);
       } catch (error) {
-        console.error('Failed to save voice settings:', error);
+        console.error("Failed to save voice settings:", error);
       } finally {
         setSaving(false);
       }
@@ -180,10 +180,10 @@ export function VoiceSettings({ onStateChange }: VoiceSettingsProps) {
   const handleTTSProviderChange = async (provider: VoiceProvider) => {
     // When switching to Azure, also switch STT to Azure for consistency
     // When switching away from Azure, switch STT to OpenAI (most common)
-    if (provider === 'azure' && settings.sttProvider !== 'azure') {
-      await saveSettings({ ttsProvider: provider, sttProvider: 'azure' });
-    } else if (provider !== 'azure' && settings.sttProvider === 'azure') {
-      await saveSettings({ ttsProvider: provider, sttProvider: 'openai' });
+    if (provider === "azure" && settings.sttProvider !== "azure") {
+      await saveSettings({ ttsProvider: provider, sttProvider: "azure" });
+    } else if (provider !== "azure" && settings.sttProvider === "azure") {
+      await saveSettings({ ttsProvider: provider, sttProvider: "openai" });
     } else {
       await saveSettings({ ttsProvider: provider });
     }
@@ -239,16 +239,16 @@ export function VoiceSettings({ onStateChange }: VoiceSettingsProps) {
 
   const handleAzureVoiceChange = async (voice: string) => {
     await saveSettings({
-      azureVoice: voice as 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer',
+      azureVoice: voice as "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer",
     });
   };
 
   const handleVoiceChange = async (voiceId: string) => {
-    if (settings.ttsProvider === 'elevenlabs') {
+    if (settings.ttsProvider === "elevenlabs") {
       await saveSettings({ elevenLabsVoiceId: voiceId });
-    } else if (settings.ttsProvider === 'openai') {
+    } else if (settings.ttsProvider === "openai") {
       await saveSettings({
-        openaiVoice: voiceId as 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer',
+        openaiVoice: voiceId as "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer",
       });
     }
   };
@@ -282,12 +282,12 @@ export function VoiceSettings({ onStateChange }: VoiceSettingsProps) {
         success: result.success,
         message: result.success
           ? `Connected! Found ${result.voiceCount} voices.`
-          : result.error || 'Connection failed',
+          : result.error || "Connection failed",
       });
     } catch (error: any) {
       setElevenLabsTestResult({
         success: false,
-        message: error.message || 'Connection failed',
+        message: error.message || "Connection failed",
       });
     } finally {
       setTestingElevenLabs(false);
@@ -301,12 +301,12 @@ export function VoiceSettings({ onStateChange }: VoiceSettingsProps) {
       const result = await window.electronAPI.testOpenAIVoiceConnection();
       setOpenAITestResult({
         success: result.success,
-        message: result.success ? 'Connected!' : result.error || 'Connection failed',
+        message: result.success ? "Connected!" : result.error || "Connection failed",
       });
     } catch (error: any) {
       setOpenAITestResult({
         success: false,
-        message: error.message || 'Connection failed',
+        message: error.message || "Connection failed",
       });
     } finally {
       setTestingOpenAI(false);
@@ -320,12 +320,12 @@ export function VoiceSettings({ onStateChange }: VoiceSettingsProps) {
       const result = await window.electronAPI.testAzureVoiceConnection();
       setAzureTestResult({
         success: result.success,
-        message: result.success ? 'Connected!' : result.error || 'Connection failed',
+        message: result.success ? "Connected!" : result.error || "Connection failed",
       });
     } catch (error: any) {
       setAzureTestResult({
         success: false,
-        message: error.message || 'Connection failed',
+        message: error.message || "Connection failed",
       });
     } finally {
       setTestingAzure(false);
@@ -335,15 +335,17 @@ export function VoiceSettings({ onStateChange }: VoiceSettingsProps) {
   const handleTestSpeech = async () => {
     setTestingSpeech(true);
     try {
-      const result = await window.electronAPI.voiceSpeak('Hello! This is a test of the text to speech system.');
+      const result = await window.electronAPI.voiceSpeak(
+        "Hello! This is a test of the text to speech system.",
+      );
       if (result.success && result.audioData) {
         // Play audio in renderer process
         await playAudioData(result.audioData, settings.volume);
       } else if (!result.success) {
-        console.error('Test speech failed:', result.error);
+        console.error("Test speech failed:", result.error);
       }
     } catch (error) {
-      console.error('Test speech failed:', error);
+      console.error("Test speech failed:", error);
     } finally {
       setTestingSpeech(false);
     }
@@ -382,18 +384,18 @@ export function VoiceSettings({ onStateChange }: VoiceSettingsProps) {
 
         {/* Status indicator */}
         {settings.enabled && (
-          <div className={`voice-status ${voiceState.isActive ? 'active' : 'inactive'}`}>
+          <div className={`voice-status ${voiceState.isActive ? "active" : "inactive"}`}>
             <span className="status-dot" />
             <span className="status-text">
               {voiceState.isSpeaking
-                ? 'Speaking...'
+                ? "Speaking..."
                 : voiceState.isListening
-                ? 'Listening...'
-                : voiceState.isProcessing
-                ? 'Processing...'
-                : voiceState.isActive
-                ? 'Ready'
-                : 'Inactive'}
+                  ? "Listening..."
+                  : voiceState.isProcessing
+                    ? "Processing..."
+                    : voiceState.isActive
+                      ? "Ready"
+                      : "Inactive"}
             </span>
           </div>
         )}
@@ -405,32 +407,34 @@ export function VoiceSettings({ onStateChange }: VoiceSettingsProps) {
         <p className="settings-description">Choose the voice synthesis provider.</p>
         <div className="llm-provider-tabs">
           <button
-            className={`llm-provider-tab ${settings.ttsProvider === 'elevenlabs' ? 'active' : ''}`}
-            onClick={() => handleTTSProviderChange('elevenlabs')}
+            className={`llm-provider-tab ${settings.ttsProvider === "elevenlabs" ? "active" : ""}`}
+            onClick={() => handleTTSProviderChange("elevenlabs")}
             disabled={saving}
           >
             <span className="llm-provider-tab-label">ElevenLabs</span>
             {settings.elevenLabsApiKey && <span className="llm-provider-tab-status" />}
           </button>
           <button
-            className={`llm-provider-tab ${settings.ttsProvider === 'openai' ? 'active' : ''}`}
-            onClick={() => handleTTSProviderChange('openai')}
+            className={`llm-provider-tab ${settings.ttsProvider === "openai" ? "active" : ""}`}
+            onClick={() => handleTTSProviderChange("openai")}
             disabled={saving}
           >
             <span className="llm-provider-tab-label">OpenAI</span>
             {settings.openaiApiKey && <span className="llm-provider-tab-status" />}
           </button>
           <button
-            className={`llm-provider-tab ${settings.ttsProvider === 'azure' ? 'active' : ''}`}
-            onClick={() => handleTTSProviderChange('azure')}
+            className={`llm-provider-tab ${settings.ttsProvider === "azure" ? "active" : ""}`}
+            onClick={() => handleTTSProviderChange("azure")}
             disabled={saving}
           >
             <span className="llm-provider-tab-label">Azure OpenAI</span>
-            {settings.azureApiKey && settings.azureEndpoint && <span className="llm-provider-tab-status" />}
+            {settings.azureApiKey && settings.azureEndpoint && (
+              <span className="llm-provider-tab-status" />
+            )}
           </button>
           <button
-            className={`llm-provider-tab ${settings.ttsProvider === 'local' ? 'active' : ''}`}
-            onClick={() => handleTTSProviderChange('local')}
+            className={`llm-provider-tab ${settings.ttsProvider === "local" ? "active" : ""}`}
+            onClick={() => handleTTSProviderChange("local")}
             disabled={saving}
           >
             <span className="llm-provider-tab-label">System</span>
@@ -440,7 +444,7 @@ export function VoiceSettings({ onStateChange }: VoiceSettingsProps) {
       </div>
 
       {/* ElevenLabs Configuration */}
-      {settings.ttsProvider === 'elevenlabs' && (
+      {settings.ttsProvider === "elevenlabs" && (
         <div className="settings-section">
           <h4>ElevenLabs Configuration</h4>
 
@@ -451,7 +455,7 @@ export function VoiceSettings({ onStateChange }: VoiceSettingsProps) {
                 type="password"
                 className="settings-input"
                 placeholder="Enter your ElevenLabs API key"
-                value={settings.elevenLabsApiKey || ''}
+                value={settings.elevenLabsApiKey || ""}
                 onChange={(e) => handleElevenLabsApiKeyChange(e.target.value)}
               />
               <button
@@ -459,11 +463,11 @@ export function VoiceSettings({ onStateChange }: VoiceSettingsProps) {
                 onClick={handleTestElevenLabs}
                 disabled={testingElevenLabs || !settings.elevenLabsApiKey}
               >
-                {testingElevenLabs ? 'Testing...' : 'Test'}
+                {testingElevenLabs ? "Testing..." : "Test"}
               </button>
             </div>
             <p className="settings-hint">
-              Get your API key from{' '}
+              Get your API key from{" "}
               <a
                 href="https://elevenlabs.io/app/settings/api-keys"
                 target="_blank"
@@ -473,9 +477,7 @@ export function VoiceSettings({ onStateChange }: VoiceSettingsProps) {
               </a>
             </p>
             {elevenLabsTestResult && (
-              <div
-                className={`test-result ${elevenLabsTestResult.success ? 'success' : 'error'}`}
-              >
+              <div className={`test-result ${elevenLabsTestResult.success ? "success" : "error"}`}>
                 {elevenLabsTestResult.message}
               </div>
             )}
@@ -485,16 +487,16 @@ export function VoiceSettings({ onStateChange }: VoiceSettingsProps) {
             <label>Voice</label>
             <select
               className="settings-select"
-              value={settings.elevenLabsVoiceId || ''}
+              value={settings.elevenLabsVoiceId || ""}
               onChange={(e) => handleVoiceChange(e.target.value)}
               disabled={loadingVoices || elevenLabsVoices.length === 0}
             >
               <option value="">
                 {loadingVoices
-                  ? 'Loading voices...'
+                  ? "Loading voices..."
                   : elevenLabsVoices.length === 0
-                  ? 'Enter API key to load voices'
-                  : 'Select a voice'}
+                    ? "Enter API key to load voices"
+                    : "Select a voice"}
               </option>
               {elevenLabsVoices.map((voice) => (
                 <option key={voice.voice_id} value={voice.voice_id}>
@@ -511,8 +513,8 @@ export function VoiceSettings({ onStateChange }: VoiceSettingsProps) {
       <div className="settings-section">
         <h4>Phone Calls (ElevenLabs Agents)</h4>
         <p className="settings-description">
-          Configure outbound phone calls initiated by the agent. Calls require an ElevenLabs agent and an outbound phone
-          number configured in your ElevenLabs account.
+          Configure outbound phone calls initiated by the agent. Calls require an ElevenLabs agent
+          and an outbound phone number configured in your ElevenLabs account.
         </p>
 
         <div className="settings-field">
@@ -521,15 +523,16 @@ export function VoiceSettings({ onStateChange }: VoiceSettingsProps) {
             type="password"
             className="settings-input"
             placeholder="Enter your ElevenLabs Agents API key"
-            value={settings.elevenLabsAgentsApiKey || ''}
+            value={settings.elevenLabsAgentsApiKey || ""}
             onChange={(e) => handleElevenLabsAgentsApiKeyChange(e.target.value)}
           />
           <p className="settings-hint">
-            Recommended: create an API key scoped to <code>agents-write</code> with a reasonable spend limit. If left
-            blank, the app will fall back to the ElevenLabs API key from the TTS configuration (if set).
+            Recommended: create an API key scoped to <code>agents-write</code> with a reasonable
+            spend limit. If left blank, the app will fall back to the ElevenLabs API key from the
+            TTS configuration (if set).
           </p>
           <p className="settings-hint">
-            Get your API key from{' '}
+            Get your API key from{" "}
             <a
               href="https://elevenlabs.io/app/settings/api-keys"
               target="_blank"
@@ -546,7 +549,7 @@ export function VoiceSettings({ onStateChange }: VoiceSettingsProps) {
             type="text"
             className="settings-input"
             placeholder="e.g., 7f3d6c2e-...."
-            value={settings.elevenLabsAgentId || ''}
+            value={settings.elevenLabsAgentId || ""}
             onChange={(e) => handleElevenLabsAgentIdChange(e.target.value)}
           />
           <p className="settings-hint">
@@ -560,17 +563,18 @@ export function VoiceSettings({ onStateChange }: VoiceSettingsProps) {
             type="text"
             className="settings-input"
             placeholder="e.g., 2a1b3c4d-...."
-            value={settings.elevenLabsAgentPhoneNumberId || ''}
+            value={settings.elevenLabsAgentPhoneNumberId || ""}
             onChange={(e) => handleElevenLabsAgentPhoneNumberIdChange(e.target.value)}
           />
           <p className="settings-hint">
-            The outbound phone number ID associated with your agent. Phone numbers should be configured in ElevenLabs.
+            The outbound phone number ID associated with your agent. Phone numbers should be
+            configured in ElevenLabs.
           </p>
         </div>
       </div>
 
       {/* OpenAI Configuration - show when TTS or STT uses OpenAI */}
-      {(settings.ttsProvider === 'openai' || settings.sttProvider === 'openai') && (
+      {(settings.ttsProvider === "openai" || settings.sttProvider === "openai") && (
         <div className="settings-section">
           <h4>OpenAI Configuration</h4>
 
@@ -581,7 +585,7 @@ export function VoiceSettings({ onStateChange }: VoiceSettingsProps) {
                 type="password"
                 className="settings-input"
                 placeholder="Enter your OpenAI API key"
-                value={settings.openaiApiKey || ''}
+                value={settings.openaiApiKey || ""}
                 onChange={(e) => handleOpenAIApiKeyChange(e.target.value)}
               />
               <button
@@ -589,34 +593,34 @@ export function VoiceSettings({ onStateChange }: VoiceSettingsProps) {
                 onClick={handleTestOpenAI}
                 disabled={testingOpenAI}
               >
-                {testingOpenAI ? 'Testing...' : 'Test'}
+                {testingOpenAI ? "Testing..." : "Test"}
               </button>
             </div>
             <p className="settings-hint">
-              Required for {settings.ttsProvider === 'openai' && settings.sttProvider === 'openai'
-                ? 'TTS and STT'
-                : settings.ttsProvider === 'openai'
-                  ? 'TTS'
-                  : 'STT (Whisper)'}.
+              Required for{" "}
+              {settings.ttsProvider === "openai" && settings.sttProvider === "openai"
+                ? "TTS and STT"
+                : settings.ttsProvider === "openai"
+                  ? "TTS"
+                  : "STT (Whisper)"}
+              .
             </p>
             {openAITestResult && (
-              <div
-                className={`test-result ${openAITestResult.success ? 'success' : 'error'}`}
-              >
+              <div className={`test-result ${openAITestResult.success ? "success" : "error"}`}>
                 {openAITestResult.message}
               </div>
             )}
           </div>
 
           {/* Voice selection only when using OpenAI for TTS */}
-          {settings.ttsProvider === 'openai' && (
+          {settings.ttsProvider === "openai" && (
             <div className="settings-field">
               <label>Voice</label>
               <div className="voice-grid">
                 {OPENAI_VOICES.map((voice) => (
                   <button
                     key={voice.id}
-                    className={`voice-option ${settings.openaiVoice === voice.id ? 'selected' : ''}`}
+                    className={`voice-option ${settings.openaiVoice === voice.id ? "selected" : ""}`}
                     onClick={() => handleVoiceChange(voice.id)}
                     title={voice.description}
                   >
@@ -631,7 +635,7 @@ export function VoiceSettings({ onStateChange }: VoiceSettingsProps) {
       )}
 
       {/* Azure OpenAI Configuration - show when TTS or STT uses Azure */}
-      {(settings.ttsProvider === 'azure' || settings.sttProvider === 'azure') && (
+      {(settings.ttsProvider === "azure" || settings.sttProvider === "azure") && (
         <div className="settings-section">
           <h4>Azure OpenAI Configuration</h4>
 
@@ -641,7 +645,7 @@ export function VoiceSettings({ onStateChange }: VoiceSettingsProps) {
               type="text"
               className="settings-input"
               placeholder="https://your-resource.openai.azure.com"
-              value={settings.azureEndpoint || ''}
+              value={settings.azureEndpoint || ""}
               onChange={(e) => handleAzureEndpointChange(e.target.value)}
             />
             <p className="settings-hint">
@@ -656,7 +660,7 @@ export function VoiceSettings({ onStateChange }: VoiceSettingsProps) {
                 type="password"
                 className="settings-input"
                 placeholder="Enter your Azure OpenAI API key"
-                value={settings.azureApiKey || ''}
+                value={settings.azureApiKey || ""}
                 onChange={(e) => handleAzureApiKeyChange(e.target.value)}
               />
               <button
@@ -664,38 +668,32 @@ export function VoiceSettings({ onStateChange }: VoiceSettingsProps) {
                 onClick={handleTestAzure}
                 disabled={testingAzure || !settings.azureApiKey || !settings.azureEndpoint}
               >
-                {testingAzure ? 'Testing...' : 'Test'}
+                {testingAzure ? "Testing..." : "Test"}
               </button>
             </div>
             <p className="settings-hint">
-              Get your API key from the{' '}
-              <a
-                href="https://portal.azure.com"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
+              Get your API key from the{" "}
+              <a href="https://portal.azure.com" target="_blank" rel="noopener noreferrer">
                 Azure Portal
-              </a>
-              {' '}under your OpenAI resource → Keys and Endpoint.
+              </a>{" "}
+              under your OpenAI resource → Keys and Endpoint.
             </p>
             {azureTestResult && (
-              <div
-                className={`test-result ${azureTestResult.success ? 'success' : 'error'}`}
-              >
+              <div className={`test-result ${azureTestResult.success ? "success" : "error"}`}>
                 {azureTestResult.message}
               </div>
             )}
           </div>
 
           {/* TTS Deployment Name - only show when using Azure for TTS */}
-          {settings.ttsProvider === 'azure' && (
+          {settings.ttsProvider === "azure" && (
             <div className="settings-field">
               <label>TTS Deployment Name</label>
               <input
                 type="text"
                 className="settings-input"
                 placeholder="e.g., tts-1"
-                value={settings.azureTtsDeploymentName || ''}
+                value={settings.azureTtsDeploymentName || ""}
                 onChange={(e) => handleAzureTtsDeploymentChange(e.target.value)}
               />
               <p className="settings-hint">
@@ -705,14 +703,14 @@ export function VoiceSettings({ onStateChange }: VoiceSettingsProps) {
           )}
 
           {/* STT Deployment Name - only show when using Azure for STT */}
-          {settings.sttProvider === 'azure' && (
+          {settings.sttProvider === "azure" && (
             <div className="settings-field">
               <label>STT (Whisper) Deployment Name</label>
               <input
                 type="text"
                 className="settings-input"
                 placeholder="e.g., whisper-1"
-                value={settings.azureSttDeploymentName || ''}
+                value={settings.azureSttDeploymentName || ""}
                 onChange={(e) => handleAzureSttDeploymentChange(e.target.value)}
               />
               <p className="settings-hint">
@@ -722,14 +720,14 @@ export function VoiceSettings({ onStateChange }: VoiceSettingsProps) {
           )}
 
           {/* Voice selection - only when using Azure for TTS */}
-          {settings.ttsProvider === 'azure' && (
+          {settings.ttsProvider === "azure" && (
             <div className="settings-field">
               <label>Voice</label>
               <div className="voice-grid">
                 {OPENAI_VOICES.map((voice) => (
                   <button
                     key={voice.id}
-                    className={`voice-option ${settings.azureVoice === voice.id ? 'selected' : ''}`}
+                    className={`voice-option ${settings.azureVoice === voice.id ? "selected" : ""}`}
                     onClick={() => handleAzureVoiceChange(voice.id)}
                     title={voice.description}
                   >
@@ -749,24 +747,26 @@ export function VoiceSettings({ onStateChange }: VoiceSettingsProps) {
         <p className="settings-description">Choose the speech recognition provider.</p>
         <div className="llm-provider-tabs">
           <button
-            className={`llm-provider-tab ${settings.sttProvider === 'openai' ? 'active' : ''}`}
-            onClick={() => handleSTTProviderChange('openai')}
+            className={`llm-provider-tab ${settings.sttProvider === "openai" ? "active" : ""}`}
+            onClick={() => handleSTTProviderChange("openai")}
             disabled={saving}
           >
             <span className="llm-provider-tab-label">OpenAI Whisper</span>
             {settings.openaiApiKey && <span className="llm-provider-tab-status" />}
           </button>
           <button
-            className={`llm-provider-tab ${settings.sttProvider === 'azure' ? 'active' : ''}`}
-            onClick={() => handleSTTProviderChange('azure')}
+            className={`llm-provider-tab ${settings.sttProvider === "azure" ? "active" : ""}`}
+            onClick={() => handleSTTProviderChange("azure")}
             disabled={saving}
           >
             <span className="llm-provider-tab-label">Azure Whisper</span>
-            {settings.azureApiKey && settings.azureEndpoint && <span className="llm-provider-tab-status" />}
+            {settings.azureApiKey && settings.azureEndpoint && (
+              <span className="llm-provider-tab-status" />
+            )}
           </button>
           <button
-            className={`llm-provider-tab ${settings.sttProvider === 'local' ? 'active' : ''}`}
-            onClick={() => handleSTTProviderChange('local')}
+            className={`llm-provider-tab ${settings.sttProvider === "local" ? "active" : ""}`}
+            onClick={() => handleSTTProviderChange("local")}
             disabled={saving}
           >
             <span className="llm-provider-tab-label">System</span>
@@ -780,33 +780,33 @@ export function VoiceSettings({ onStateChange }: VoiceSettingsProps) {
         <h4>Voice Input Mode</h4>
         <div className="llm-provider-tabs">
           <button
-            className={`llm-provider-tab ${settings.inputMode === 'push_to_talk' ? 'active' : ''}`}
-            onClick={() => handleInputModeChange('push_to_talk')}
+            className={`llm-provider-tab ${settings.inputMode === "push_to_talk" ? "active" : ""}`}
+            onClick={() => handleInputModeChange("push_to_talk")}
             disabled={saving}
           >
             <span className="llm-provider-tab-label">Push to Talk</span>
           </button>
           <button
-            className={`llm-provider-tab ${settings.inputMode === 'voice_activity' ? 'active' : ''}`}
-            onClick={() => handleInputModeChange('voice_activity')}
+            className={`llm-provider-tab ${settings.inputMode === "voice_activity" ? "active" : ""}`}
+            onClick={() => handleInputModeChange("voice_activity")}
             disabled={saving}
           >
             <span className="llm-provider-tab-label">Voice Activity</span>
           </button>
           <button
-            className={`llm-provider-tab ${settings.inputMode === 'disabled' ? 'active' : ''}`}
-            onClick={() => handleInputModeChange('disabled')}
+            className={`llm-provider-tab ${settings.inputMode === "disabled" ? "active" : ""}`}
+            onClick={() => handleInputModeChange("disabled")}
             disabled={saving}
           >
             <span className="llm-provider-tab-label">Disabled</span>
           </button>
         </div>
         <p className="settings-hint">
-          {settings.inputMode === 'push_to_talk'
+          {settings.inputMode === "push_to_talk"
             ? `Hold ${settings.pushToTalkKey} to speak`
-            : settings.inputMode === 'voice_activity'
-            ? 'Automatically detects when you speak'
-            : 'Voice input is disabled'}
+            : settings.inputMode === "voice_activity"
+              ? "Automatically detects when you speak"
+              : "Voice input is disabled"}
         </p>
       </div>
 
@@ -883,7 +883,7 @@ export function VoiceSettings({ onStateChange }: VoiceSettingsProps) {
             onClick={handleTestSpeech}
             disabled={testingSpeech || !settings.enabled}
           >
-            {testingSpeech ? 'Speaking...' : 'Test Speech'}
+            {testingSpeech ? "Speaking..." : "Test Speech"}
           </button>
           {(testingSpeech || voiceState.isSpeaking) && (
             <button className="button-secondary" onClick={handleStopSpeaking}>

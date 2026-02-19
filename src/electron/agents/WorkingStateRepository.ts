@@ -1,12 +1,12 @@
-import Database from 'better-sqlite3';
-import { v4 as uuidv4 } from 'uuid';
+import Database from "better-sqlite3";
+import { v4 as uuidv4 } from "uuid";
 import {
   AgentWorkingState,
   UpdateWorkingStateRequest,
   WorkingStateQuery,
   WorkingStateHistoryQuery,
   WorkingStateType,
-} from '../../shared/types';
+} from "../../shared/types";
 
 /**
  * Repository for managing agent working state in the database
@@ -18,7 +18,7 @@ export class WorkingStateRepository {
    * Get a working state by ID
    */
   findById(id: string): AgentWorkingState | undefined {
-    const stmt = this.db.prepare('SELECT * FROM agent_working_state WHERE id = ?');
+    const stmt = this.db.prepare("SELECT * FROM agent_working_state WHERE id = ?");
     const row = stmt.get(id) as any;
     return row ? this.mapRowToState(row) : undefined;
   }
@@ -36,18 +36,18 @@ export class WorkingStateRepository {
     const params: any[] = [query.agentRoleId, query.workspaceId];
 
     if (query.taskId) {
-      sql += ' AND task_id = ?';
+      sql += " AND task_id = ?";
       params.push(query.taskId);
     } else {
-      sql += ' AND task_id IS NULL';
+      sql += " AND task_id IS NULL";
     }
 
     if (query.stateType) {
-      sql += ' AND state_type = ?';
+      sql += " AND state_type = ?";
       params.push(query.stateType);
     }
 
-    sql += ' ORDER BY updated_at DESC LIMIT 1';
+    sql += " ORDER BY updated_at DESC LIMIT 1";
 
     const stmt = this.db.prepare(sql);
     const row = stmt.get(...params) as any;
@@ -81,7 +81,7 @@ export class WorkingStateRepository {
         AND workspace_id = ?
         AND state_type = ?
         AND is_current = 1
-        ${request.taskId ? 'AND task_id = ?' : 'AND task_id IS NULL'}
+        ${request.taskId ? "AND task_id = ?" : "AND task_id IS NULL"}
     `);
 
     const updateParams = [now, request.agentRoleId, request.workspaceId, request.stateType];
@@ -119,7 +119,7 @@ export class WorkingStateRepository {
       state.content,
       state.fileReferences ? JSON.stringify(state.fileReferences) : null,
       state.createdAt,
-      state.updatedAt
+      state.updatedAt,
     );
 
     return state;
@@ -173,7 +173,7 @@ export class WorkingStateRepository {
         AND workspace_id = ?
         AND state_type = ?
         AND is_current = 1
-        ${state.taskId ? 'AND task_id = ?' : 'AND task_id IS NULL'}
+        ${state.taskId ? "AND task_id = ?" : "AND task_id IS NULL"}
     `);
 
     const updateParams = [now, state.agentRoleId, state.workspaceId, state.stateType];
@@ -195,7 +195,7 @@ export class WorkingStateRepository {
    * Delete a working state
    */
   delete(id: string): boolean {
-    const stmt = this.db.prepare('DELETE FROM agent_working_state WHERE id = ?');
+    const stmt = this.db.prepare("DELETE FROM agent_working_state WHERE id = ?");
     const result = stmt.run(id);
     return result.changes > 0;
   }
@@ -205,7 +205,7 @@ export class WorkingStateRepository {
    */
   deleteByAgentAndWorkspace(agentRoleId: string, workspaceId: string): number {
     const stmt = this.db.prepare(
-      'DELETE FROM agent_working_state WHERE agent_role_id = ? AND workspace_id = ?'
+      "DELETE FROM agent_working_state WHERE agent_role_id = ? AND workspace_id = ?",
     );
     const result = stmt.run(agentRoleId, workspaceId);
     return result.changes;
@@ -215,7 +215,7 @@ export class WorkingStateRepository {
    * Delete all working states for a task
    */
   deleteByTask(taskId: string): number {
-    const stmt = this.db.prepare('DELETE FROM agent_working_state WHERE task_id = ?');
+    const stmt = this.db.prepare("DELETE FROM agent_working_state WHERE task_id = ?");
     const result = stmt.run(taskId);
     return result.changes;
   }
@@ -250,7 +250,7 @@ export class WorkingStateRepository {
       const result = deleteStmt.run(
         group.agent_role_id,
         group.workspace_id,
-        group.total - keepCount
+        group.total - keepCount,
       );
       totalDeleted += result.changes;
     }

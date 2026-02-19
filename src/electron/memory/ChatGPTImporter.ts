@@ -15,20 +15,20 @@
  * - After import the caller is reminded to delete the source file.
  */
 
-import * as fs from 'fs/promises';
-import * as crypto from 'crypto';
-import { EventEmitter } from 'events';
-import { LLMProviderFactory } from '../agent/llm';
-import type { LLMProviderType } from '../../shared/types';
-import { InputSanitizer } from '../agent/security';
-import { estimateTokens } from '../agent/context-manager';
+import * as fs from "fs/promises";
+import * as crypto from "crypto";
+import { EventEmitter } from "events";
+import { LLMProviderFactory } from "../agent/llm";
+import type { LLMProviderType } from "../../shared/types";
+import { InputSanitizer } from "../agent/security";
+import { estimateTokens } from "../agent/context-manager";
 import {
   MemoryRepository,
   MemoryEmbeddingRepository,
   MemorySettingsRepository,
-} from '../database/repositories';
-import { DatabaseManager } from '../database/schema';
-import { createLocalEmbedding } from './local-embedding';
+} from "../database/repositories";
+import { DatabaseManager } from "../database/schema";
+import { createLocalEmbedding } from "./local-embedding";
 
 // ── ChatGPT export format types ────────────────────────────────
 
@@ -58,7 +58,7 @@ interface ChatGPTConversation {
 // ── Public types ───────────────────────────────────────────────
 
 export interface ChatGPTImportProgress {
-  phase: 'parsing' | 'distilling' | 'storing' | 'done' | 'error';
+  phase: "parsing" | "distilling" | "storing" | "done" | "error";
   current: number;
   total: number;
   conversationTitle?: string;
@@ -137,8 +137,8 @@ export class ChatGPTImporter {
    * Subscribe to progress events during an active import.
    */
   static onProgress(callback: (progress: ChatGPTImportProgress) => void): () => void {
-    importEvents.on('progress', callback);
-    return () => importEvents.off('progress', callback);
+    importEvents.on("progress", callback);
+    return () => importEvents.off("progress", callback);
   }
 
   /**
@@ -146,7 +146,7 @@ export class ChatGPTImporter {
    */
   static async import(options: ChatGPTImportOptions): Promise<ChatGPTImportResult> {
     if (this.isImporting) {
-      throw new Error('An import is already in progress. Please wait for it to finish.');
+      throw new Error("An import is already in progress. Please wait for it to finish.");
     }
 
     this.isImporting = true;
@@ -182,71 +182,86 @@ export class ChatGPTImporter {
       conversationsProcessed: 0,
       skipped: 0,
       errors: [],
-      sourceFileHash: '',
+      sourceFileHash: "",
     };
 
     try {
       // Check abort before starting
       if (signal?.aborted) {
-        throw new Error('Import was cancelled.');
+        throw new Error("Import was cancelled.");
       }
 
       // Verify memory system is enabled (but ignore autoCapture)
       const settings = settingsRepo.getOrCreate(workspaceId);
       if (!settings.enabled) {
-        throw new Error('Memory system is disabled for this workspace. Enable it in settings first.');
+        throw new Error(
+          "Memory system is disabled for this workspace. Enable it in settings first.",
+        );
       }
 
       // ── 1. Validate & hash source file ────────────────────
-      this.emitProgress({ phase: 'parsing', current: 0, total: 0, memoriesCreated: 0 });
+      this.emitProgress({ phase: "parsing", current: 0, total: 0, memoriesCreated: 0 });
 
       const stat = await fs.stat(filePath);
       if (!stat.isFile()) {
-        throw new Error('Selected path is not a file.');
+        throw new Error("Selected path is not a file.");
       }
       if (stat.size > MAX_FILE_SIZE_BYTES) {
-        throw new Error(`File is too large (${Math.round(stat.size / 1024 / 1024)} MB). Maximum is ${Math.round(MAX_FILE_SIZE_BYTES / 1024 / 1024)} MB.`);
+        throw new Error(
+          `File is too large (${Math.round(stat.size / 1024 / 1024)} MB). Maximum is ${Math.round(MAX_FILE_SIZE_BYTES / 1024 / 1024)} MB.`,
+        );
       }
       if (stat.size === 0) {
-        throw new Error('File is empty.');
+        throw new Error("File is empty.");
       }
 
       // Hash the source so the user can verify we read the right file
       const rawBuffer = await fs.readFile(filePath);
-      result.sourceFileHash = crypto.createHash('sha256').update(rawBuffer).digest('hex').slice(0, 16);
+      result.sourceFileHash = crypto
+        .createHash("sha256")
+        .update(rawBuffer)
+        .digest("hex")
+        .slice(0, 16);
 
       if (signal?.aborted) {
-        throw new Error('Import was cancelled.');
+        throw new Error("Import was cancelled.");
       }
 
       // ── 2. Parse JSON ─────────────────────────────────────
       let conversations: ChatGPTConversation[];
       try {
-        const parsed = JSON.parse(rawBuffer.toString('utf-8'));
+        const parsed = JSON.parse(rawBuffer.toString("utf-8"));
         conversations = Array.isArray(parsed) ? parsed : [];
       } catch {
-        throw new Error('Failed to parse file. Make sure this is the conversations.json from a ChatGPT data export.');
+        throw new Error(
+          "Failed to parse file. Make sure this is the conversations.json from a ChatGPT data export.",
+        );
       }
 
       if (conversations.length === 0) {
-        throw new Error('No conversations found in the file.');
+        throw new Error("No conversations found in the file.");
       }
 
       // Enforce hard cap
-      const cap = maxConversations > 0
-        ? Math.min(maxConversations, HARD_MAX_CONVERSATIONS)
-        : Math.min(conversations.length, HARD_MAX_CONVERSATIONS);
+      const cap =
+        maxConversations > 0
+          ? Math.min(maxConversations, HARD_MAX_CONVERSATIONS)
+          : Math.min(conversations.length, HARD_MAX_CONVERSATIONS);
 
       // Sort by most recent first
-      conversations.sort((a, b) => (b.update_time ?? b.create_time ?? 0) - (a.update_time ?? a.create_time ?? 0));
+      conversations.sort(
+        (a, b) => (b.update_time ?? b.create_time ?? 0) - (a.update_time ?? a.create_time ?? 0),
+      );
       conversations = conversations.slice(0, cap);
 
       // ── 2b. Build set of already-imported conversation IDs for resume ──
       const alreadyImported = new Set<string>();
       try {
-        const rows = db.prepare(
-          `SELECT content FROM memories WHERE workspace_id = ? AND content LIKE '[Imported from ChatGPT %' LIMIT 100000`
-        ).all(workspaceId) as Array<{ content: string }>;
+        const rows = db
+          .prepare(
+            `SELECT content FROM memories WHERE workspace_id = ? AND content LIKE '[Imported from ChatGPT %' LIMIT 100000`,
+          )
+          .all(workspaceId) as Array<{ content: string }>;
         for (const row of rows) {
           const match = row.content.match(/\(conv:([a-f0-9-]+)\)/);
           if (match) alreadyImported.add(match[1]);
@@ -255,27 +270,32 @@ export class ChatGPTImporter {
         // If query fails, proceed without dedup
       }
 
-      this.emitProgress({ phase: 'distilling', current: 0, total: conversations.length, memoriesCreated: 0 });
+      this.emitProgress({
+        phase: "distilling",
+        current: 0,
+        total: conversations.length,
+        memoriesCreated: 0,
+      });
 
       // ── 3. Distil each conversation ───────────────────────
       for (let i = 0; i < conversations.length; i++) {
         // Check abort between conversations
         if (signal?.aborted) {
-          result.errors.push('Import was cancelled by user.');
+          result.errors.push("Import was cancelled by user.");
           break;
         }
 
         const convo = conversations[i];
-        const convId = convo.conversation_id || '';
-        const rawTitle = convo.title || 'Untitled';
+        const convId = convo.conversation_id || "";
+        const rawTitle = convo.title || "Untitled";
         // Sanitize the title before using it anywhere
-        const title = InputSanitizer.sanitizeMemoryContent(rawTitle) || 'Untitled';
+        const title = InputSanitizer.sanitizeMemoryContent(rawTitle) || "Untitled";
 
         // Skip already-imported conversations (resume support)
         if (convId && alreadyImported.has(convId)) {
           result.skipped++;
           this.emitProgress({
-            phase: 'distilling',
+            phase: "distilling",
             current: i + 1,
             total: conversations.length,
             conversationTitle: title,
@@ -291,7 +311,7 @@ export class ChatGPTImporter {
           if (messages.length < minMessages) {
             result.skipped++;
             this.emitProgress({
-              phase: 'distilling',
+              phase: "distilling",
               current: i + 1,
               total: conversations.length,
               conversationTitle: title,
@@ -304,11 +324,16 @@ export class ChatGPTImporter {
           const transcript = this.buildTranscript(title, messages);
 
           // Distil via LLM
-          const distilled = await this.distilConversation(transcript, title, distillProvider, distillModel);
+          const distilled = await this.distilConversation(
+            transcript,
+            title,
+            distillProvider,
+            distillModel,
+          );
 
           // ── 4. Store memories directly via repository ──────
           this.emitProgress({
-            phase: 'storing',
+            phase: "storing",
             current: i + 1,
             total: conversations.length,
             conversationTitle: title,
@@ -320,18 +345,21 @@ export class ChatGPTImporter {
             const sanitized = InputSanitizer.sanitizeMemoryContent(entry.content);
             if (!sanitized || sanitized.length < 10) continue;
 
-            const convTag = convId ? ` (conv:${convId})` : '';
+            const convTag = convId ? ` (conv:${convId})` : "";
             const memoryContent = `[Imported from ChatGPT — "${title}"${convTag}]\n${sanitized}`;
             const tokens = estimateTokens(memoryContent);
 
             // Write directly to DB, bypassing MemoryService.capture()
             // which checks autoCapture setting and would block imports
-            const isPrivate = forcePrivate || settings.privacyMode === 'strict' || containsSensitiveData(memoryContent);
+            const isPrivate =
+              forcePrivate ||
+              settings.privacyMode === "strict" ||
+              containsSensitiveData(memoryContent);
 
             const created = memoryRepo.create({
               workspaceId,
               taskId: undefined,
-              type: entry.type as 'observation' | 'decision' | 'insight',
+              type: entry.type as "observation" | "decision" | "insight",
               content: memoryContent,
               tokens,
               isCompressed: false,
@@ -358,7 +386,7 @@ export class ChatGPTImporter {
         }
 
         this.emitProgress({
-          phase: 'distilling',
+          phase: "distilling",
           current: i + 1,
           total: conversations.length,
           conversationTitle: title,
@@ -373,7 +401,7 @@ export class ChatGPTImporter {
 
       result.success = !signal?.aborted;
       this.emitProgress({
-        phase: 'done',
+        phase: "done",
         current: conversations.length,
         total: conversations.length,
         memoriesCreated: result.memoriesCreated,
@@ -382,7 +410,7 @@ export class ChatGPTImporter {
       const msg = err instanceof Error ? err.message : String(err);
       result.errors.push(msg);
       this.emitProgress({
-        phase: 'error',
+        phase: "error",
         current: 0,
         total: 0,
         memoriesCreated: result.memoriesCreated,
@@ -398,7 +426,9 @@ export class ChatGPTImporter {
   /**
    * Walk the mapping tree and extract human-readable messages.
    */
-  private static extractMessages(convo: ChatGPTConversation): Array<{ role: string; text: string }> {
+  private static extractMessages(
+    convo: ChatGPTConversation,
+  ): Array<{ role: string; text: string }> {
     const mapping = convo.mapping;
     if (!mapping) return [];
 
@@ -409,14 +439,14 @@ export class ChatGPTImporter {
       if (!msg) continue;
 
       const role = msg.author?.role;
-      if (!role || (role !== 'user' && role !== 'assistant')) continue;
+      if (!role || (role !== "user" && role !== "assistant")) continue;
 
       const parts = msg.content?.parts;
       if (!Array.isArray(parts)) continue;
 
       const textParts = parts
-        .filter((p): p is string => typeof p === 'string')
-        .join('\n')
+        .filter((p): p is string => typeof p === "string")
+        .join("\n")
         .trim();
 
       if (!textParts) continue;
@@ -440,19 +470,19 @@ export class ChatGPTImporter {
    */
   private static buildTranscript(
     title: string,
-    messages: Array<{ role: string; text: string }>
+    messages: Array<{ role: string; text: string }>,
   ): string {
     const lines: string[] = [`Conversation: "${title}"\n`];
     let charCount = lines[0].length;
 
     for (const msg of messages) {
-      const prefix = msg.role === 'user' ? 'User' : 'Assistant';
+      const prefix = msg.role === "user" ? "User" : "Assistant";
       // Truncate individual messages that are very long
-      const text = msg.text.length > 1500 ? msg.text.slice(0, 1500) + '...' : msg.text;
+      const text = msg.text.length > 1500 ? msg.text.slice(0, 1500) + "..." : msg.text;
       const line = `${prefix}: ${text}\n`;
 
       if (charCount + line.length > MAX_DISTILL_INPUT_CHARS) {
-        lines.push('[... rest of conversation truncated for processing ...]');
+        lines.push("[... rest of conversation truncated for processing ...]");
         break;
       }
 
@@ -460,7 +490,7 @@ export class ChatGPTImporter {
       charCount += line.length;
     }
 
-    return lines.join('');
+    return lines.join("");
   }
 
   /**
@@ -470,13 +500,16 @@ export class ChatGPTImporter {
     transcript: string,
     _title: string,
     distillProvider?: string,
-    distillModel?: string
+    distillModel?: string,
   ): Promise<Array<{ type: string; content: string }>> {
     try {
       // If a provider override is specified, create a provider for that type
       // (credentials are merged from global settings automatically)
       const overrideConfig = distillProvider
-        ? { type: distillProvider as LLMProviderType, ...(distillModel ? { model: distillModel } : {}) }
+        ? {
+            type: distillProvider as LLMProviderType,
+            ...(distillModel ? { model: distillModel } : {}),
+          }
         : undefined;
       const provider = LLMProviderFactory.createProvider(overrideConfig);
 
@@ -502,7 +535,7 @@ export class ChatGPTImporter {
           settings.xai?.model,
           settings.kimi?.model,
           settings.customProviders,
-          settings.bedrock?.model
+          settings.bedrock?.model,
         );
       }
 
@@ -526,23 +559,23 @@ Rules:
 - Return ONLY valid JSON, no markdown fences.`,
         messages: [
           {
-            role: 'user',
+            role: "user",
             content: transcript,
           },
         ],
       });
 
       // Extract text from response
-      let responseText = '';
+      let responseText = "";
       for (const content of response.content) {
-        if (content.type === 'text') {
+        if (content.type === "text") {
           responseText += content.text;
         }
       }
       responseText = responseText.trim();
 
       // Strip markdown fences if present
-      responseText = responseText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
+      responseText = responseText.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
 
       // If the response isn't valid JSON directly, try to extract a JSON array from it
       // (some models prepend conversational text before the JSON)
@@ -563,22 +596,24 @@ Rules:
       return items
         .filter(
           (item: unknown): item is { type: string; content: string } =>
-            typeof item === 'object' &&
+            typeof item === "object" &&
             item !== null &&
-            'type' in item &&
-            'content' in item &&
-            typeof (item as Record<string, unknown>).type === 'string' &&
-            typeof (item as Record<string, unknown>).content === 'string' &&
-            ['observation', 'decision', 'insight'].includes((item as Record<string, unknown>).type as string)
+            "type" in item &&
+            "content" in item &&
+            typeof (item as Record<string, unknown>).type === "string" &&
+            typeof (item as Record<string, unknown>).content === "string" &&
+            ["observation", "decision", "insight"].includes(
+              (item as Record<string, unknown>).type as string,
+            ),
         )
         .slice(0, 5); // Hard cap per conversation
     } catch (err) {
-      console.warn('[ChatGPTImporter] Distillation failed:', err);
+      console.warn("[ChatGPTImporter] Distillation failed:", err);
       return [];
     }
   }
 
   private static emitProgress(progress: ChatGPTImportProgress): void {
-    importEvents.emit('progress', progress);
+    importEvents.emit("progress", progress);
   }
 }

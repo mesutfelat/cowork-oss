@@ -4,12 +4,8 @@
  * Manages channel sessions linking chats to CoWork tasks.
  */
 
-import Database from 'better-sqlite3';
-import {
-  ChannelSessionRepository,
-  ChannelSession,
-  Channel,
-} from '../database/repositories';
+import Database from "better-sqlite3";
+import { ChannelSessionRepository, ChannelSession, Channel } from "../database/repositories";
 
 export class SessionManager {
   private sessionRepo: ChannelSessionRepository;
@@ -25,7 +21,7 @@ export class SessionManager {
     channel: Channel,
     chatId: string,
     userId?: string,
-    defaultWorkspaceId?: string
+    defaultWorkspaceId?: string,
   ): Promise<ChannelSession> {
     // Look for existing session
     let session = this.sessionRepo.findByChatId(channel.id, chatId);
@@ -44,7 +40,7 @@ export class SessionManager {
       chatId,
       userId,
       workspaceId: defaultWorkspaceId,
-      state: 'idle',
+      state: "idle",
     });
 
     return session;
@@ -67,10 +63,7 @@ export class SessionManager {
   /**
    * Update session state
    */
-  updateSessionState(
-    sessionId: string,
-    state: 'idle' | 'active' | 'waiting_approval'
-  ): void {
+  updateSessionState(sessionId: string, state: "idle" | "active" | "waiting_approval"): void {
     this.sessionRepo.update(sessionId, {
       state,
       lastActivityAt: Date.now(),
@@ -83,7 +76,7 @@ export class SessionManager {
   linkSessionToTask(sessionId: string, taskId: string): void {
     this.sessionRepo.update(sessionId, {
       taskId,
-      state: 'active',
+      state: "active",
       lastActivityAt: Date.now(),
     });
   }
@@ -94,7 +87,7 @@ export class SessionManager {
   unlinkSessionFromTask(sessionId: string): void {
     this.sessionRepo.update(sessionId, {
       taskId: undefined,
-      state: 'idle',
+      state: "idle",
       lastActivityAt: Date.now(),
     });
   }
@@ -112,10 +105,7 @@ export class SessionManager {
   /**
    * Update session context
    */
-  updateSessionContext(
-    sessionId: string,
-    context: Record<string, unknown>
-  ): void {
+  updateSessionContext(sessionId: string, context: Record<string, unknown>): void {
     const session = this.sessionRepo.findById(sessionId);
     if (session) {
       const mergedContext = { ...session.context, ...context };
@@ -139,6 +129,6 @@ export class SessionManager {
   cleanupOldSessions(maxAgeMs: number = 24 * 60 * 60 * 1000): void {
     // This would require a new method in the repository
     // For now, we'll skip automated cleanup
-    console.log('Session cleanup not yet implemented');
+    console.log("Session cleanup not yet implemented");
   }
 }

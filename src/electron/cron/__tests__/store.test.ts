@@ -2,18 +2,18 @@
  * Tests for cron store operations
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
-import type { CronStoreFile, CronJob } from '../types';
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import type { CronStoreFile, CronJob } from "../types";
 
 const ORIGINAL_COWORK_USER_DATA_DIR = process.env.COWORK_USER_DATA_DIR;
 
 // Mock electron app
-vi.mock('electron', () => ({
+vi.mock("electron", () => ({
   app: {
-    getPath: vi.fn().mockReturnValue('/mock/user/data'),
+    getPath: vi.fn().mockReturnValue("/mock/user/data"),
   },
 }));
 
@@ -24,11 +24,11 @@ import {
   loadCronStoreSync,
   saveCronStore,
   saveCronStoreSync,
-} from '../store';
+} from "../store";
 
-describe('resolveCronStorePath', () => {
+describe("resolveCronStorePath", () => {
   beforeEach(() => {
-    process.env.COWORK_USER_DATA_DIR = '/mock/user/data';
+    process.env.COWORK_USER_DATA_DIR = "/mock/user/data";
   });
 
   afterEach(() => {
@@ -39,40 +39,40 @@ describe('resolveCronStorePath', () => {
     }
   });
 
-  it('should return default path when no path provided', () => {
+  it("should return default path when no path provided", () => {
     const result = resolveCronStorePath();
-    expect(result).toBe('/mock/user/data/cron/jobs.json');
+    expect(result).toBe("/mock/user/data/cron/jobs.json");
   });
 
-  it('should return default path for empty string', () => {
-    const result = resolveCronStorePath('');
-    expect(result).toBe('/mock/user/data/cron/jobs.json');
+  it("should return default path for empty string", () => {
+    const result = resolveCronStorePath("");
+    expect(result).toBe("/mock/user/data/cron/jobs.json");
   });
 
-  it('should return default path for whitespace only', () => {
-    const result = resolveCronStorePath('   ');
-    expect(result).toBe('/mock/user/data/cron/jobs.json');
+  it("should return default path for whitespace only", () => {
+    const result = resolveCronStorePath("   ");
+    expect(result).toBe("/mock/user/data/cron/jobs.json");
   });
 
-  it('should expand ~ to home directory', () => {
-    const result = resolveCronStorePath('~/my-cron/jobs.json');
-    expect(result).toBe(path.resolve(os.homedir(), 'my-cron/jobs.json'));
+  it("should expand ~ to home directory", () => {
+    const result = resolveCronStorePath("~/my-cron/jobs.json");
+    expect(result).toBe(path.resolve(os.homedir(), "my-cron/jobs.json"));
   });
 
-  it('should resolve relative paths', () => {
-    const result = resolveCronStorePath('./data/jobs.json');
-    expect(result).toBe(path.resolve('./data/jobs.json'));
+  it("should resolve relative paths", () => {
+    const result = resolveCronStorePath("./data/jobs.json");
+    expect(result).toBe(path.resolve("./data/jobs.json"));
   });
 
-  it('should return absolute paths as-is', () => {
-    const result = resolveCronStorePath('/absolute/path/jobs.json');
-    expect(result).toBe('/absolute/path/jobs.json');
+  it("should return absolute paths as-is", () => {
+    const result = resolveCronStorePath("/absolute/path/jobs.json");
+    expect(result).toBe("/absolute/path/jobs.json");
   });
 });
 
-describe('loadCronStore', () => {
-  const testDir = path.join(os.tmpdir(), 'cron-store-test-' + process.pid);
-  const testStorePath = path.join(testDir, 'jobs.json');
+describe("loadCronStore", () => {
+  const testDir = path.join(os.tmpdir(), "cron-store-test-" + process.pid);
+  const testStorePath = path.join(testDir, "jobs.json");
 
   beforeEach(async () => {
     await fs.promises.mkdir(testDir, { recursive: true });
@@ -86,37 +86,37 @@ describe('loadCronStore', () => {
     }
   });
 
-  it('should return empty store when file does not exist', async () => {
-    const result = await loadCronStore('/non/existent/path.json');
+  it("should return empty store when file does not exist", async () => {
+    const result = await loadCronStore("/non/existent/path.json");
     expect(result).toEqual({ version: 1, jobs: [] });
   });
 
-  it('should return empty store for invalid JSON', async () => {
-    await fs.promises.writeFile(testStorePath, 'not valid json');
+  it("should return empty store for invalid JSON", async () => {
+    await fs.promises.writeFile(testStorePath, "not valid json");
     const result = await loadCronStore(testStorePath);
     expect(result).toEqual({ version: 1, jobs: [] });
   });
 
-  it('should return empty store for null content', async () => {
-    await fs.promises.writeFile(testStorePath, 'null');
+  it("should return empty store for null content", async () => {
+    await fs.promises.writeFile(testStorePath, "null");
     const result = await loadCronStore(testStorePath);
     expect(result).toEqual({ version: 1, jobs: [] });
   });
 
-  it('should return empty store when jobs is not an array', async () => {
-    await fs.promises.writeFile(testStorePath, JSON.stringify({ version: 1, jobs: 'not-array' }));
+  it("should return empty store when jobs is not an array", async () => {
+    await fs.promises.writeFile(testStorePath, JSON.stringify({ version: 1, jobs: "not-array" }));
     const result = await loadCronStore(testStorePath);
     expect(result).toEqual({ version: 1, jobs: [] });
   });
 
-  it('should load valid jobs', async () => {
+  it("should load valid jobs", async () => {
     const validJob: CronJob = {
-      id: 'job-1',
-      name: 'Test Job',
+      id: "job-1",
+      name: "Test Job",
       enabled: true,
-      workspaceId: 'ws-1',
-      taskPrompt: 'Do something',
-      schedule: { kind: 'every', everyMs: 60000 },
+      workspaceId: "ws-1",
+      taskPrompt: "Do something",
+      schedule: { kind: "every", everyMs: 60000 },
       createdAtMs: Date.now(),
       updatedAtMs: Date.now(),
       state: {},
@@ -126,28 +126,35 @@ describe('loadCronStore', () => {
 
     const result = await loadCronStore(testStorePath);
     expect(result.jobs).toHaveLength(1);
-    expect(result.jobs[0].id).toBe('job-1');
-    expect(result.jobs[0].name).toBe('Test Job');
+    expect(result.jobs[0].id).toBe("job-1");
+    expect(result.jobs[0].name).toBe("Test Job");
   });
 
-  it('should filter out invalid jobs', async () => {
+  it("should filter out invalid jobs", async () => {
     const validJob: CronJob = {
-      id: 'job-1',
-      name: 'Valid Job',
+      id: "job-1",
+      name: "Valid Job",
       enabled: true,
-      workspaceId: 'ws-1',
-      taskPrompt: 'Do something',
-      schedule: { kind: 'every', everyMs: 60000 },
+      workspaceId: "ws-1",
+      taskPrompt: "Do something",
+      schedule: { kind: "every", everyMs: 60000 },
       createdAtMs: Date.now(),
       updatedAtMs: Date.now(),
       state: {},
     };
     const invalidJobs = [
       null,
-      'string-job',
-      { id: 'missing-fields' },
-      { id: 'job-2', name: 'Missing enabled' },
-      { id: 'job-3', name: 'Test', enabled: 'not-boolean', workspaceId: 'ws', taskPrompt: 'p', schedule: {} },
+      "string-job",
+      { id: "missing-fields" },
+      { id: "job-2", name: "Missing enabled" },
+      {
+        id: "job-3",
+        name: "Test",
+        enabled: "not-boolean",
+        workspaceId: "ws",
+        taskPrompt: "p",
+        schedule: {},
+      },
     ];
 
     const store = { version: 1, jobs: [validJob, ...invalidJobs] };
@@ -155,13 +162,13 @@ describe('loadCronStore', () => {
 
     const result = await loadCronStore(testStorePath);
     expect(result.jobs).toHaveLength(1);
-    expect(result.jobs[0].id).toBe('job-1');
+    expect(result.jobs[0].id).toBe("job-1");
   });
 });
 
-describe('loadCronStoreSync', () => {
-  const testDir = path.join(os.tmpdir(), 'cron-store-sync-test-' + process.pid);
-  const testStorePath = path.join(testDir, 'jobs.json');
+describe("loadCronStoreSync", () => {
+  const testDir = path.join(os.tmpdir(), "cron-store-sync-test-" + process.pid);
+  const testStorePath = path.join(testDir, "jobs.json");
 
   beforeEach(() => {
     fs.mkdirSync(testDir, { recursive: true });
@@ -175,19 +182,19 @@ describe('loadCronStoreSync', () => {
     }
   });
 
-  it('should return empty store when file does not exist', () => {
-    const result = loadCronStoreSync('/non/existent/path.json');
+  it("should return empty store when file does not exist", () => {
+    const result = loadCronStoreSync("/non/existent/path.json");
     expect(result).toEqual({ version: 1, jobs: [] });
   });
 
-  it('should load valid jobs synchronously', () => {
+  it("should load valid jobs synchronously", () => {
     const validJob: CronJob = {
-      id: 'sync-job',
-      name: 'Sync Test',
+      id: "sync-job",
+      name: "Sync Test",
       enabled: true,
-      workspaceId: 'ws-sync',
-      taskPrompt: 'Sync task',
-      schedule: { kind: 'at', atMs: Date.now() + 3600000 },
+      workspaceId: "ws-sync",
+      taskPrompt: "Sync task",
+      schedule: { kind: "at", atMs: Date.now() + 3600000 },
       createdAtMs: Date.now(),
       updatedAtMs: Date.now(),
       state: {},
@@ -196,13 +203,13 @@ describe('loadCronStoreSync', () => {
 
     const result = loadCronStoreSync(testStorePath);
     expect(result.jobs).toHaveLength(1);
-    expect(result.jobs[0].id).toBe('sync-job');
+    expect(result.jobs[0].id).toBe("sync-job");
   });
 });
 
-describe('saveCronStore', () => {
-  const testDir = path.join(os.tmpdir(), 'cron-save-test-' + process.pid);
-  const testStorePath = path.join(testDir, 'jobs.json');
+describe("saveCronStore", () => {
+  const testDir = path.join(os.tmpdir(), "cron-save-test-" + process.pid);
+  const testStorePath = path.join(testDir, "jobs.json");
 
   beforeEach(async () => {
     await fs.promises.mkdir(testDir, { recursive: true });
@@ -216,8 +223,8 @@ describe('saveCronStore', () => {
     }
   });
 
-  it('should create directory if it does not exist', async () => {
-    const nestedPath = path.join(testDir, 'nested', 'deep', 'jobs.json');
+  it("should create directory if it does not exist", async () => {
+    const nestedPath = path.join(testDir, "nested", "deep", "jobs.json");
     const store: CronStoreFile = { version: 1, jobs: [] };
 
     await saveCronStore(nestedPath, store);
@@ -226,14 +233,14 @@ describe('saveCronStore', () => {
     expect(exists).toBe(true);
   });
 
-  it('should save jobs to file', async () => {
+  it("should save jobs to file", async () => {
     const job: CronJob = {
-      id: 'save-job',
-      name: 'Save Test',
+      id: "save-job",
+      name: "Save Test",
       enabled: false,
-      workspaceId: 'ws-save',
-      taskPrompt: 'Save this',
-      schedule: { kind: 'cron', expr: '0 * * * *' },
+      workspaceId: "ws-save",
+      taskPrompt: "Save this",
+      schedule: { kind: "cron", expr: "0 * * * *" },
       createdAtMs: Date.now(),
       updatedAtMs: Date.now(),
       state: {},
@@ -242,13 +249,13 @@ describe('saveCronStore', () => {
 
     await saveCronStore(testStorePath, store);
 
-    const raw = await fs.promises.readFile(testStorePath, 'utf-8');
+    const raw = await fs.promises.readFile(testStorePath, "utf-8");
     const loaded = JSON.parse(raw);
     expect(loaded.jobs).toHaveLength(1);
-    expect(loaded.jobs[0].id).toBe('save-job');
+    expect(loaded.jobs[0].id).toBe("save-job");
   });
 
-  it('should create backup file', async () => {
+  it("should create backup file", async () => {
     const store: CronStoreFile = { version: 1, jobs: [] };
 
     await saveCronStore(testStorePath, store);
@@ -257,30 +264,30 @@ describe('saveCronStore', () => {
     expect(backupExists).toBe(true);
   });
 
-  it('should format JSON with indentation', async () => {
+  it("should format JSON with indentation", async () => {
     const store: CronStoreFile = { version: 1, jobs: [] };
 
     await saveCronStore(testStorePath, store);
 
-    const raw = await fs.promises.readFile(testStorePath, 'utf-8');
-    expect(raw).toContain('\n'); // Formatted JSON has newlines
-    expect(raw).toContain('  '); // 2-space indentation
+    const raw = await fs.promises.readFile(testStorePath, "utf-8");
+    expect(raw).toContain("\n"); // Formatted JSON has newlines
+    expect(raw).toContain("  "); // 2-space indentation
   });
 
-  it('should not leave temp files after successful save', async () => {
+  it("should not leave temp files after successful save", async () => {
     const store: CronStoreFile = { version: 1, jobs: [] };
 
     await saveCronStore(testStorePath, store);
 
     const files = await fs.promises.readdir(testDir);
-    const tmpFiles = files.filter((f) => f.endsWith('.tmp'));
+    const tmpFiles = files.filter((f) => f.endsWith(".tmp"));
     expect(tmpFiles).toHaveLength(0);
   });
 });
 
-describe('saveCronStoreSync', () => {
-  const testDir = path.join(os.tmpdir(), 'cron-save-sync-test-' + process.pid);
-  const testStorePath = path.join(testDir, 'jobs.json');
+describe("saveCronStoreSync", () => {
+  const testDir = path.join(os.tmpdir(), "cron-save-sync-test-" + process.pid);
+  const testStorePath = path.join(testDir, "jobs.json");
 
   beforeEach(() => {
     fs.mkdirSync(testDir, { recursive: true });
@@ -294,14 +301,14 @@ describe('saveCronStoreSync', () => {
     }
   });
 
-  it('should save jobs synchronously', () => {
+  it("should save jobs synchronously", () => {
     const job: CronJob = {
-      id: 'sync-save',
-      name: 'Sync Save Test',
+      id: "sync-save",
+      name: "Sync Save Test",
       enabled: true,
-      workspaceId: 'ws-sync-save',
-      taskPrompt: 'Sync save',
-      schedule: { kind: 'every', everyMs: 30000 },
+      workspaceId: "ws-sync-save",
+      taskPrompt: "Sync save",
+      schedule: { kind: "every", everyMs: 30000 },
       createdAtMs: Date.now(),
       updatedAtMs: Date.now(),
       state: {},
@@ -310,13 +317,13 @@ describe('saveCronStoreSync', () => {
 
     saveCronStoreSync(testStorePath, store);
 
-    const raw = fs.readFileSync(testStorePath, 'utf-8');
+    const raw = fs.readFileSync(testStorePath, "utf-8");
     const loaded = JSON.parse(raw);
     expect(loaded.jobs).toHaveLength(1);
-    expect(loaded.jobs[0].id).toBe('sync-save');
+    expect(loaded.jobs[0].id).toBe("sync-save");
   });
 
-  it('should create backup synchronously', () => {
+  it("should create backup synchronously", () => {
     const store: CronStoreFile = { version: 1, jobs: [] };
 
     saveCronStoreSync(testStorePath, store);

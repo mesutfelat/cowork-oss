@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { SearchProviderType, SearchConfigStatus } from '../../shared/types';
+import { useState, useEffect } from "react";
+import { SearchProviderType, SearchConfigStatus } from "../../shared/types";
 
 interface SearchSettingsProps {
   onStatusChange?: (configured: boolean) => void;
@@ -10,18 +10,22 @@ export function SearchSettings({ onStatusChange }: SearchSettingsProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testingProvider, setTestingProvider] = useState<SearchProviderType | null>(null);
-  const [testResult, setTestResult] = useState<{ provider: SearchProviderType; success: boolean; error?: string } | null>(null);
+  const [testResult, setTestResult] = useState<{
+    provider: SearchProviderType;
+    success: boolean;
+    error?: string;
+  } | null>(null);
 
   // Form state
   const [primaryProvider, setPrimaryProvider] = useState<SearchProviderType | null>(null);
   const [fallbackProvider, setFallbackProvider] = useState<SearchProviderType | null>(null);
 
   // API Key form state
-  const [tavilyApiKey, setTavilyApiKey] = useState('');
-  const [braveApiKey, setBraveApiKey] = useState('');
-  const [serpapiApiKey, setSerpapiApiKey] = useState('');
-  const [googleApiKey, setGoogleApiKey] = useState('');
-  const [googleSearchEngineId, setGoogleSearchEngineId] = useState('');
+  const [tavilyApiKey, setTavilyApiKey] = useState("");
+  const [braveApiKey, setBraveApiKey] = useState("");
+  const [serpapiApiKey, setSerpapiApiKey] = useState("");
+  const [googleApiKey, setGoogleApiKey] = useState("");
+  const [googleSearchEngineId, setGoogleSearchEngineId] = useState("");
 
   // Track which provider is active in the tab view
   const [activeProvider, setActiveProvider] = useState<SearchProviderType | null>(null);
@@ -45,7 +49,7 @@ export function SearchSettings({ onStatusChange }: SearchSettingsProps) {
       });
       onStatusChange?.(status.isConfigured);
     } catch (error) {
-      console.error('Failed to load search config:', error);
+      console.error("Failed to load search config:", error);
     } finally {
       setLoading(false);
     }
@@ -61,20 +65,23 @@ export function SearchSettings({ onStatusChange }: SearchSettingsProps) {
         tavily: tavilyApiKey ? { apiKey: tavilyApiKey } : undefined,
         brave: braveApiKey ? { apiKey: braveApiKey } : undefined,
         serpapi: serpapiApiKey ? { apiKey: serpapiApiKey } : undefined,
-        google: (googleApiKey || googleSearchEngineId) ? {
-          apiKey: googleApiKey || undefined,
-          searchEngineId: googleSearchEngineId || undefined,
-        } : undefined,
+        google:
+          googleApiKey || googleSearchEngineId
+            ? {
+                apiKey: googleApiKey || undefined,
+                searchEngineId: googleSearchEngineId || undefined,
+              }
+            : undefined,
       });
       // Clear the input fields after saving
-      setTavilyApiKey('');
-      setBraveApiKey('');
-      setSerpapiApiKey('');
-      setGoogleApiKey('');
-      setGoogleSearchEngineId('');
+      setTavilyApiKey("");
+      setBraveApiKey("");
+      setSerpapiApiKey("");
+      setGoogleApiKey("");
+      setGoogleSearchEngineId("");
       await loadConfig();
     } catch (error: any) {
-      console.error('Failed to save search settings:', error);
+      console.error("Failed to save search settings:", error);
     } finally {
       setSaving(false);
     }
@@ -93,9 +100,10 @@ export function SearchSettings({ onStatusChange }: SearchSettingsProps) {
     }
   };
 
-  const configuredProviders = configStatus?.providers.filter(p => p.configured) || [];
+  const configuredProviders = configStatus?.providers.filter((p) => p.configured) || [];
   const hasMultipleProviders = configuredProviders.length > 1;
-  const activeProviderConfig = configStatus?.providers.find(p => p.type === activeProvider) || null;
+  const activeProviderConfig =
+    configStatus?.providers.find((p) => p.type === activeProvider) || null;
 
   if (loading) {
     return <div className="settings-loading">Loading search settings...</div>;
@@ -106,14 +114,15 @@ export function SearchSettings({ onStatusChange }: SearchSettingsProps) {
       <div className="settings-section">
         <h3>Configure Search Providers</h3>
         <p className="settings-description">
-          Add API keys to enable web search. You can configure multiple providers and set a primary and fallback.
+          Add API keys to enable web search. You can configure multiple providers and set a primary
+          and fallback.
         </p>
 
         <div className="llm-provider-tabs">
-          {configStatus?.providers.map(provider => (
+          {configStatus?.providers.map((provider) => (
             <button
               key={provider.type}
-              className={`llm-provider-tab ${activeProvider === provider.type ? 'active' : ''}`}
+              className={`llm-provider-tab ${activeProvider === provider.type ? "active" : ""}`}
               onClick={() => {
                 setActiveProvider(provider.type);
                 setTestResult(null);
@@ -130,65 +139,80 @@ export function SearchSettings({ onStatusChange }: SearchSettingsProps) {
             <div className="provider-config-form">
               <p className="provider-description">{activeProviderConfig.description}</p>
               <p className="provider-types">
-                Supports: {activeProviderConfig.supportedTypes.join(', ')}
+                Supports: {activeProviderConfig.supportedTypes.join(", ")}
               </p>
 
-              {activeProviderConfig.type === 'tavily' && (
+              {activeProviderConfig.type === "tavily" && (
                 <div className="settings-field">
                   <label>Tavily API Key</label>
                   <input
                     type="password"
                     className="settings-input"
-                    placeholder={activeProviderConfig.configured ? '••••••••••••••••' : 'tvly-...'}
+                    placeholder={activeProviderConfig.configured ? "••••••••••••••••" : "tvly-..."}
                     value={tavilyApiKey}
                     onChange={(e) => setTavilyApiKey(e.target.value)}
                   />
                   <p className="settings-hint">
-                    Get your API key from <a href="https://tavily.com/" target="_blank" rel="noopener noreferrer">tavily.com</a>
+                    Get your API key from{" "}
+                    <a href="https://tavily.com/" target="_blank" rel="noopener noreferrer">
+                      tavily.com
+                    </a>
                   </p>
                 </div>
               )}
 
-              {activeProviderConfig.type === 'brave' && (
+              {activeProviderConfig.type === "brave" && (
                 <div className="settings-field">
                   <label>Brave Search API Key</label>
                   <input
                     type="password"
                     className="settings-input"
-                    placeholder={activeProviderConfig.configured ? '••••••••••••••••' : 'BSA...'}
+                    placeholder={activeProviderConfig.configured ? "••••••••••••••••" : "BSA..."}
                     value={braveApiKey}
                     onChange={(e) => setBraveApiKey(e.target.value)}
                   />
                   <p className="settings-hint">
-                    Get your API key from <a href="https://brave.com/search/api/" target="_blank" rel="noopener noreferrer">brave.com/search/api</a>
+                    Get your API key from{" "}
+                    <a
+                      href="https://brave.com/search/api/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      brave.com/search/api
+                    </a>
                   </p>
                 </div>
               )}
 
-              {activeProviderConfig.type === 'serpapi' && (
+              {activeProviderConfig.type === "serpapi" && (
                 <div className="settings-field">
                   <label>SerpAPI Key</label>
                   <input
                     type="password"
                     className="settings-input"
-                    placeholder={activeProviderConfig.configured ? '••••••••••••••••' : 'Enter API key'}
+                    placeholder={
+                      activeProviderConfig.configured ? "••••••••••••••••" : "Enter API key"
+                    }
                     value={serpapiApiKey}
                     onChange={(e) => setSerpapiApiKey(e.target.value)}
                   />
                   <p className="settings-hint">
-                    Get your API key from <a href="https://serpapi.com/" target="_blank" rel="noopener noreferrer">serpapi.com</a>
+                    Get your API key from{" "}
+                    <a href="https://serpapi.com/" target="_blank" rel="noopener noreferrer">
+                      serpapi.com
+                    </a>
                   </p>
                 </div>
               )}
 
-              {activeProviderConfig.type === 'google' && (
+              {activeProviderConfig.type === "google" && (
                 <>
                   <div className="settings-field">
                     <label>Google API Key</label>
                     <input
                       type="password"
                       className="settings-input"
-                      placeholder={activeProviderConfig.configured ? '••••••••••••••••' : 'AIza...'}
+                      placeholder={activeProviderConfig.configured ? "••••••••••••••••" : "AIza..."}
                       value={googleApiKey}
                       onChange={(e) => setGoogleApiKey(e.target.value)}
                     />
@@ -203,7 +227,14 @@ export function SearchSettings({ onStatusChange }: SearchSettingsProps) {
                       onChange={(e) => setGoogleSearchEngineId(e.target.value)}
                     />
                     <p className="settings-hint">
-                      Get your credentials from <a href="https://developers.google.com/custom-search/v1/introduction" target="_blank" rel="noopener noreferrer">Google Custom Search</a>
+                      Get your credentials from{" "}
+                      <a
+                        href="https://developers.google.com/custom-search/v1/introduction"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Google Custom Search
+                      </a>
                     </p>
                   </div>
                 </>
@@ -215,13 +246,13 @@ export function SearchSettings({ onStatusChange }: SearchSettingsProps) {
                   onClick={() => handleTestProvider(activeProviderConfig.type)}
                   disabled={testingProvider === activeProviderConfig.type}
                 >
-                  {testingProvider === activeProviderConfig.type ? 'Testing...' : 'Test Connection'}
+                  {testingProvider === activeProviderConfig.type ? "Testing..." : "Test Connection"}
                 </button>
               )}
 
               {testResult?.provider === activeProviderConfig.type && (
-                <div className={`test-result-inline ${testResult.success ? 'success' : 'error'}`}>
-                  {testResult.success ? '✓ Connection successful' : `✗ ${testResult.error}`}
+                <div className={`test-result-inline ${testResult.success ? "success" : "error"}`}>
+                  {testResult.success ? "✓ Connection successful" : `✗ ${testResult.error}`}
                 </div>
               )}
             </div>
@@ -235,15 +266,13 @@ export function SearchSettings({ onStatusChange }: SearchSettingsProps) {
         <>
           <div className="settings-section">
             <h3>Primary Provider</h3>
-            <p className="settings-description">
-              Select which search provider to use by default.
-            </p>
+            <p className="settings-description">Select which search provider to use by default.</p>
 
             <div className="provider-options">
-              {configuredProviders.map(provider => (
+              {configuredProviders.map((provider) => (
                 <label
                   key={provider.type}
-                  className={`provider-option ${primaryProvider === provider.type ? 'selected' : ''}`}
+                  className={`provider-option ${primaryProvider === provider.type ? "selected" : ""}`}
                 >
                   <input
                     type="radio"
@@ -260,7 +289,7 @@ export function SearchSettings({ onStatusChange }: SearchSettingsProps) {
                   <div className="provider-option-content">
                     <span className="provider-name">{provider.name}</span>
                     <span className="provider-types">
-                      Supports: {provider.supportedTypes.join(', ')}
+                      Supports: {provider.supportedTypes.join(", ")}
                     </span>
                   </div>
                 </label>
@@ -276,9 +305,7 @@ export function SearchSettings({ onStatusChange }: SearchSettingsProps) {
               </p>
 
               <div className="provider-options">
-                <label
-                  className={`provider-option ${fallbackProvider === null ? 'selected' : ''}`}
-                >
+                <label className={`provider-option ${fallbackProvider === null ? "selected" : ""}`}>
                   <input
                     type="radio"
                     name="fallbackProvider"
@@ -287,16 +314,18 @@ export function SearchSettings({ onStatusChange }: SearchSettingsProps) {
                   />
                   <div className="provider-option-content">
                     <span className="provider-name">None</span>
-                    <span className="provider-description">No fallback - fail if primary is unavailable</span>
+                    <span className="provider-description">
+                      No fallback - fail if primary is unavailable
+                    </span>
                   </div>
                 </label>
 
                 {configuredProviders
-                  .filter(p => p.type !== primaryProvider)
-                  .map(provider => (
+                  .filter((p) => p.type !== primaryProvider)
+                  .map((provider) => (
                     <label
                       key={provider.type}
-                      className={`provider-option ${fallbackProvider === provider.type ? 'selected' : ''}`}
+                      className={`provider-option ${fallbackProvider === provider.type ? "selected" : ""}`}
                     >
                       <input
                         type="radio"
@@ -307,7 +336,7 @@ export function SearchSettings({ onStatusChange }: SearchSettingsProps) {
                       <div className="provider-option-content">
                         <span className="provider-name">{provider.name}</span>
                         <span className="provider-types">
-                          Supports: {provider.supportedTypes.join(', ')}
+                          Supports: {provider.supportedTypes.join(", ")}
                         </span>
                       </div>
                     </label>
@@ -319,12 +348,8 @@ export function SearchSettings({ onStatusChange }: SearchSettingsProps) {
       )}
 
       <div className="settings-actions">
-        <button
-          className="button-primary"
-          onClick={handleSave}
-          disabled={saving}
-        >
-          {saving ? 'Saving...' : 'Save Settings'}
+        <button className="button-primary" onClick={handleSave} disabled={saving}>
+          {saving ? "Saving..." : "Save Settings"}
         </button>
       </div>
     </div>

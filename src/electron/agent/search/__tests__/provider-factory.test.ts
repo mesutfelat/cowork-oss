@@ -2,17 +2,17 @@
  * Tests for SearchProviderFactory - retry and fallback logic
  */
 
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 
 // Mock electron
-vi.mock('electron', () => ({
+vi.mock("electron", () => ({
   app: {
-    getPath: vi.fn().mockReturnValue('/mock/user/data'),
+    getPath: vi.fn().mockReturnValue("/mock/user/data"),
   },
 }));
 
 // Mock fs
-vi.mock('fs', () => ({
+vi.mock("fs", () => ({
   existsSync: vi.fn().mockReturnValue(false),
   readFileSync: vi.fn(),
   writeFileSync: vi.fn(),
@@ -21,7 +21,7 @@ vi.mock('fs', () => ({
 }));
 
 // Mock SecureSettingsRepository
-vi.mock('../../../database/SecureSettingsRepository', () => ({
+vi.mock("../../../database/SecureSettingsRepository", () => ({
   SecureSettingsRepository: {
     isInitialized: vi.fn().mockReturnValue(true),
     getInstance: vi.fn().mockReturnValue({
@@ -33,9 +33,9 @@ vi.mock('../../../database/SecureSettingsRepository', () => ({
 }));
 
 // Import after mocking
-import { SearchProviderFactory } from '../provider-factory';
+import { SearchProviderFactory } from "../provider-factory";
 
-describe('SearchProviderFactory', () => {
+describe("SearchProviderFactory", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     SearchProviderFactory.clearCache();
@@ -45,49 +45,50 @@ describe('SearchProviderFactory', () => {
     vi.restoreAllMocks();
   });
 
-  describe('isTransientSearchError', () => {
+  describe("isTransientSearchError", () => {
     // Access the private method through any cast
-    const isTransient = (error: any) => (SearchProviderFactory as any).isTransientSearchError(error);
+    const isTransient = (error: any) =>
+      (SearchProviderFactory as any).isTransientSearchError(error);
 
-    it('should detect rate limit errors', () => {
-      expect(isTransient({ message: 'Rate limit exceeded' })).toBe(true);
-      expect(isTransient({ message: 'Error 429: Too many requests' })).toBe(true);
-      expect(isTransient({ message: 'too many requests' })).toBe(true);
+    it("should detect rate limit errors", () => {
+      expect(isTransient({ message: "Rate limit exceeded" })).toBe(true);
+      expect(isTransient({ message: "Error 429: Too many requests" })).toBe(true);
+      expect(isTransient({ message: "too many requests" })).toBe(true);
     });
 
-    it('should detect timeout errors', () => {
-      expect(isTransient({ message: 'Request timeout' })).toBe(true);
-      expect(isTransient({ message: 'ETIMEDOUT' })).toBe(true);
+    it("should detect timeout errors", () => {
+      expect(isTransient({ message: "Request timeout" })).toBe(true);
+      expect(isTransient({ message: "ETIMEDOUT" })).toBe(true);
     });
 
-    it('should detect connection errors', () => {
-      expect(isTransient({ message: 'ECONNRESET' })).toBe(true);
-      expect(isTransient({ message: 'EAI_AGAIN' })).toBe(true);
+    it("should detect connection errors", () => {
+      expect(isTransient({ message: "ECONNRESET" })).toBe(true);
+      expect(isTransient({ message: "EAI_AGAIN" })).toBe(true);
     });
 
-    it('should detect server errors', () => {
-      expect(isTransient({ message: 'Error 503' })).toBe(true);
-      expect(isTransient({ message: 'Error 502' })).toBe(true);
-      expect(isTransient({ message: 'Error 504' })).toBe(true);
-      expect(isTransient({ message: 'Service unavailable' })).toBe(true);
+    it("should detect server errors", () => {
+      expect(isTransient({ message: "Error 503" })).toBe(true);
+      expect(isTransient({ message: "Error 502" })).toBe(true);
+      expect(isTransient({ message: "Error 504" })).toBe(true);
+      expect(isTransient({ message: "Service unavailable" })).toBe(true);
     });
 
-    it('should not detect permanent errors', () => {
-      expect(isTransient({ message: 'Invalid API key' })).toBe(false);
-      expect(isTransient({ message: 'Authentication failed' })).toBe(false);
-      expect(isTransient({ message: 'Bad request' })).toBe(false);
-      expect(isTransient({ message: 'Not found' })).toBe(false);
+    it("should not detect permanent errors", () => {
+      expect(isTransient({ message: "Invalid API key" })).toBe(false);
+      expect(isTransient({ message: "Authentication failed" })).toBe(false);
+      expect(isTransient({ message: "Bad request" })).toBe(false);
+      expect(isTransient({ message: "Not found" })).toBe(false);
     });
 
-    it('should handle null or undefined errors', () => {
+    it("should handle null or undefined errors", () => {
       expect(isTransient(null)).toBe(false);
       expect(isTransient(undefined)).toBe(false);
       expect(isTransient({})).toBe(false);
     });
   });
 
-  describe('sleep', () => {
-    it('should delay for specified milliseconds', async () => {
+  describe("sleep", () => {
+    it("should delay for specified milliseconds", async () => {
       const start = Date.now();
       await (SearchProviderFactory as any).sleep(100);
       const elapsed = Date.now() - start;
@@ -98,134 +99,143 @@ describe('SearchProviderFactory', () => {
     });
   });
 
-  describe('searchWithRetry', () => {
-    it('should return result on first success', async () => {
+  describe("searchWithRetry", () => {
+    it("should return result on first success", async () => {
       const mockProvider = {
         search: vi.fn().mockResolvedValue({
-          query: 'test',
-          searchType: 'web',
-          results: [{ title: 'Result', url: 'https://example.com' }],
-          provider: 'tavily',
+          query: "test",
+          searchType: "web",
+          results: [{ title: "Result", url: "https://example.com" }],
+          provider: "tavily",
         }),
       };
 
-      const result = await (SearchProviderFactory as any).searchWithRetry(
-        mockProvider,
-        { query: 'test', searchType: 'web' }
-      );
+      const result = await (SearchProviderFactory as any).searchWithRetry(mockProvider, {
+        query: "test",
+        searchType: "web",
+      });
 
       expect(result.results).toHaveLength(1);
       expect(mockProvider.search).toHaveBeenCalledTimes(1);
     });
 
-    it('should retry on transient errors', async () => {
+    it("should retry on transient errors", async () => {
       const mockProvider = {
-        search: vi.fn()
-          .mockRejectedValueOnce(new Error('Rate limit exceeded'))
+        search: vi
+          .fn()
+          .mockRejectedValueOnce(new Error("Rate limit exceeded"))
           .mockResolvedValueOnce({
-            query: 'test',
-            searchType: 'web',
+            query: "test",
+            searchType: "web",
             results: [],
-            provider: 'tavily',
+            provider: "tavily",
           }),
       };
 
-      const result = await (SearchProviderFactory as any).searchWithRetry(
-        mockProvider,
-        { query: 'test', searchType: 'web' }
-      );
+      const result = await (SearchProviderFactory as any).searchWithRetry(mockProvider, {
+        query: "test",
+        searchType: "web",
+      });
 
       expect(result).toBeDefined();
       expect(mockProvider.search).toHaveBeenCalledTimes(2);
     });
 
-    it('should not retry on permanent errors', async () => {
+    it("should not retry on permanent errors", async () => {
       const mockProvider = {
-        search: vi.fn().mockRejectedValue(new Error('Invalid API key')),
+        search: vi.fn().mockRejectedValue(new Error("Invalid API key")),
       };
 
-      await expect((SearchProviderFactory as any).searchWithRetry(
-        mockProvider,
-        { query: 'test', searchType: 'web' }
-      )).rejects.toThrow('Invalid API key');
+      await expect(
+        (SearchProviderFactory as any).searchWithRetry(mockProvider, {
+          query: "test",
+          searchType: "web",
+        }),
+      ).rejects.toThrow("Invalid API key");
 
       expect(mockProvider.search).toHaveBeenCalledTimes(1);
     });
 
-    it('should throw after max retry attempts', async () => {
+    it("should throw after max retry attempts", async () => {
       const mockProvider = {
-        search: vi.fn().mockRejectedValue(new Error('Rate limit exceeded')),
+        search: vi.fn().mockRejectedValue(new Error("Rate limit exceeded")),
       };
 
-      await expect((SearchProviderFactory as any).searchWithRetry(
-        mockProvider,
-        { query: 'test', searchType: 'web' },
-        2
-      )).rejects.toThrow('Rate limit exceeded');
+      await expect(
+        (SearchProviderFactory as any).searchWithRetry(
+          mockProvider,
+          { query: "test", searchType: "web" },
+          2,
+        ),
+      ).rejects.toThrow("Rate limit exceeded");
 
       expect(mockProvider.search).toHaveBeenCalledTimes(2);
     });
 
-    it('should use exponential backoff delay', async () => {
-      const sleepSpy = vi.spyOn(SearchProviderFactory as any, 'sleep').mockResolvedValue(undefined);
-      const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0);
+    it("should use exponential backoff delay", async () => {
+      const sleepSpy = vi.spyOn(SearchProviderFactory as any, "sleep").mockResolvedValue(undefined);
+      const randomSpy = vi.spyOn(Math, "random").mockReturnValue(0);
 
       const mockProvider = {
-        search: vi.fn()
-          .mockRejectedValueOnce(new Error('Rate limit exceeded'))
+        search: vi
+          .fn()
+          .mockRejectedValueOnce(new Error("Rate limit exceeded"))
           .mockResolvedValueOnce({
-            query: 'test',
-            searchType: 'web',
+            query: "test",
+            searchType: "web",
             results: [],
-            provider: 'tavily',
+            provider: "tavily",
           }),
       };
 
-      await (SearchProviderFactory as any).searchWithRetry(
-        mockProvider,
-        { query: 'test', searchType: 'web' }
-      );
+      await (SearchProviderFactory as any).searchWithRetry(mockProvider, {
+        query: "test",
+        searchType: "web",
+      });
 
       // First retry should use 1000ms delay (1000 * 1) with zero jitter
       expect(sleepSpy).toHaveBeenCalledWith(1000);
       randomSpy.mockRestore();
     });
 
-    it('should not retry when maxAttempts is 1', async () => {
+    it("should not retry when maxAttempts is 1", async () => {
       const mockProvider = {
-        search: vi.fn().mockRejectedValue(new Error('Rate limit exceeded')),
+        search: vi.fn().mockRejectedValue(new Error("Rate limit exceeded")),
       };
 
-      await expect((SearchProviderFactory as any).searchWithRetry(
-        mockProvider,
-        { query: 'test', searchType: 'web' },
-        1
-      )).rejects.toThrow('Rate limit exceeded');
+      await expect(
+        (SearchProviderFactory as any).searchWithRetry(
+          mockProvider,
+          { query: "test", searchType: "web" },
+          1,
+        ),
+      ).rejects.toThrow("Rate limit exceeded");
 
       // Should only attempt once with maxAttempts = 1
       expect(mockProvider.search).toHaveBeenCalledTimes(1);
     });
 
-    it('should increase delay on subsequent retries', async () => {
-      const sleepSpy = vi.spyOn(SearchProviderFactory as any, 'sleep').mockResolvedValue(undefined);
-      const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0);
+    it("should increase delay on subsequent retries", async () => {
+      const sleepSpy = vi.spyOn(SearchProviderFactory as any, "sleep").mockResolvedValue(undefined);
+      const randomSpy = vi.spyOn(Math, "random").mockReturnValue(0);
 
       const mockProvider = {
-        search: vi.fn()
-          .mockRejectedValueOnce(new Error('Rate limit exceeded'))
-          .mockRejectedValueOnce(new Error('Rate limit exceeded'))
+        search: vi
+          .fn()
+          .mockRejectedValueOnce(new Error("Rate limit exceeded"))
+          .mockRejectedValueOnce(new Error("Rate limit exceeded"))
           .mockResolvedValueOnce({
-            query: 'test',
-            searchType: 'web',
+            query: "test",
+            searchType: "web",
             results: [],
-            provider: 'tavily',
+            provider: "tavily",
           }),
       };
 
       await (SearchProviderFactory as any).searchWithRetry(
         mockProvider,
-        { query: 'test', searchType: 'web' },
-        3
+        { query: "test", searchType: "web" },
+        3,
       );
 
       // First retry: 1000 * 1 = 1000ms, Second retry: 1000 * 2 = 2000ms (zero jitter)
@@ -234,23 +244,25 @@ describe('SearchProviderFactory', () => {
       randomSpy.mockRestore();
     });
 
-    it('should throw fallback error when lastError is undefined', async () => {
+    it("should throw fallback error when lastError is undefined", async () => {
       const mockProvider = {
         search: vi.fn().mockRejectedValue(undefined),
       };
 
-      await expect((SearchProviderFactory as any).searchWithRetry(
-        mockProvider,
-        { query: 'test', searchType: 'web' },
-        1
-      )).rejects.toThrow('Search failed');
+      await expect(
+        (SearchProviderFactory as any).searchWithRetry(
+          mockProvider,
+          { query: "test", searchType: "web" },
+          1,
+        ),
+      ).rejects.toThrow("Search failed");
     });
   });
 
-  describe('clearCache', () => {
-    it('should clear cached settings', () => {
+  describe("clearCache", () => {
+    it("should clear cached settings", () => {
       // Access private cachedSettings
-      (SearchProviderFactory as any).cachedSettings = { primaryProvider: 'tavily' };
+      (SearchProviderFactory as any).cachedSettings = { primaryProvider: "tavily" };
 
       SearchProviderFactory.clearCache();
 
@@ -258,150 +270,156 @@ describe('SearchProviderFactory', () => {
     });
   });
 
-  describe('provider execution order', () => {
-    it('should prefer Brave when multiple providers are configured', () => {
+  describe("provider execution order", () => {
+    it("should prefer Brave when multiple providers are configured", () => {
       const settings = {
-        primaryProvider: 'tavily',
-        fallbackProvider: 'google',
-        tavily: { apiKey: 'tavily' },
-        brave: { apiKey: 'brave' },
-        serpapi: { apiKey: 'serpapi' },
-        google: { apiKey: 'google', searchEngineId: 'id' },
+        primaryProvider: "tavily",
+        fallbackProvider: "google",
+        tavily: { apiKey: "tavily" },
+        brave: { apiKey: "brave" },
+        serpapi: { apiKey: "serpapi" },
+        google: { apiKey: "google", searchEngineId: "id" },
       } as any;
 
       const order = (SearchProviderFactory as any).getProviderExecutionOrder(settings);
 
-      expect(order).toEqual(['brave', 'tavily', 'google', 'serpapi']);
+      expect(order).toEqual(["brave", "tavily", "google", "serpapi"]);
     });
 
-    it('should not change order when Brave is not configured', () => {
+    it("should not change order when Brave is not configured", () => {
       const settings = {
-        primaryProvider: 'tavily',
-        fallbackProvider: 'google',
-        tavily: { apiKey: 'tavily' },
-        google: { apiKey: 'google', searchEngineId: 'id' },
+        primaryProvider: "tavily",
+        fallbackProvider: "google",
+        tavily: { apiKey: "tavily" },
+        google: { apiKey: "google", searchEngineId: "id" },
       } as any;
 
       const order = (SearchProviderFactory as any).getProviderExecutionOrder(settings);
 
-      expect(order).toEqual(['tavily', 'google']);
+      expect(order).toEqual(["tavily", "google"]);
     });
   });
 
-  describe('searchWithFallback', () => {
-    it('should try providers in order and stop on first successful result', async () => {
-      const braveProvider = { search: vi.fn().mockResolvedValue({ provider: 'brave' }) };
-      const tavilyProvider = { search: vi.fn().mockResolvedValue({ provider: 'tavily' }) };
+  describe("searchWithFallback", () => {
+    it("should try providers in order and stop on first successful result", async () => {
+      const braveProvider = { search: vi.fn().mockResolvedValue({ provider: "brave" }) };
+      const tavilyProvider = { search: vi.fn().mockResolvedValue({ provider: "tavily" }) };
 
-      vi.spyOn(SearchProviderFactory, 'loadSettings').mockReturnValue({
-        primaryProvider: 'tavily',
-        fallbackProvider: 'google',
-        tavily: { apiKey: 'tavily' },
-        brave: { apiKey: 'brave' },
+      vi.spyOn(SearchProviderFactory, "loadSettings").mockReturnValue({
+        primaryProvider: "tavily",
+        fallbackProvider: "google",
+        tavily: { apiKey: "tavily" },
+        brave: { apiKey: "brave" },
       } as any);
 
-      vi.spyOn(SearchProviderFactory as any, 'getProviderExecutionOrder').mockReturnValue([
-        'brave',
-        'tavily',
+      vi.spyOn(SearchProviderFactory as any, "getProviderExecutionOrder").mockReturnValue([
+        "brave",
+        "tavily",
       ]);
 
-      const getConfigSpy = vi.spyOn(SearchProviderFactory as any, 'getProviderConfig');
+      const getConfigSpy = vi.spyOn(SearchProviderFactory as any, "getProviderConfig");
       getConfigSpy.mockImplementation((providerType: string) => ({ type: providerType }));
 
-      const createProviderSpy = vi.spyOn(SearchProviderFactory as any, 'createProviderFromConfig');
+      const createProviderSpy = vi.spyOn(SearchProviderFactory as any, "createProviderFromConfig");
       createProviderSpy.mockImplementation((config: any) => {
-        if (config.type === 'brave') return braveProvider;
+        if (config.type === "brave") return braveProvider;
         return tavilyProvider;
       });
 
-      const searchRetrySpy = vi.spyOn(SearchProviderFactory as any, 'searchWithRetry');
+      const searchRetrySpy = vi.spyOn(SearchProviderFactory as any, "searchWithRetry");
       searchRetrySpy.mockImplementation(async (provider: any) => provider.search());
 
       const response = await SearchProviderFactory.searchWithFallback({
-        query: 'f1 latest',
-        searchType: 'web',
+        query: "f1 latest",
+        searchType: "web",
       });
 
       expect(searchRetrySpy).toHaveBeenCalledTimes(1);
-      expect(response.provider).toBe('brave');
+      expect(response.provider).toBe("brave");
       expect(braveProvider.search).toHaveBeenCalledTimes(1);
       expect(tavilyProvider.search).not.toHaveBeenCalled();
     });
 
-    it('should fallback to next configured provider when prior provider fails', async () => {
-      const braveProvider = { search: vi.fn().mockRejectedValue(new Error('Brave failed')) };
-      const tavilyProvider = { search: vi.fn().mockResolvedValue({ provider: 'tavily' }) };
+    it("should fallback to next configured provider when prior provider fails", async () => {
+      const braveProvider = { search: vi.fn().mockRejectedValue(new Error("Brave failed")) };
+      const tavilyProvider = { search: vi.fn().mockResolvedValue({ provider: "tavily" }) };
 
-      vi.spyOn(SearchProviderFactory, 'loadSettings').mockReturnValue({
-        primaryProvider: 'tavily',
-        fallbackProvider: 'google',
-        tavily: { apiKey: 'tavily' },
-        brave: { apiKey: 'brave' },
+      vi.spyOn(SearchProviderFactory, "loadSettings").mockReturnValue({
+        primaryProvider: "tavily",
+        fallbackProvider: "google",
+        tavily: { apiKey: "tavily" },
+        brave: { apiKey: "brave" },
       } as any);
 
-      vi.spyOn(SearchProviderFactory as any, 'getProviderExecutionOrder').mockReturnValue([
-        'brave',
-        'tavily',
+      vi.spyOn(SearchProviderFactory as any, "getProviderExecutionOrder").mockReturnValue([
+        "brave",
+        "tavily",
       ]);
 
-      vi.spyOn(SearchProviderFactory as any, 'getProviderConfig').mockImplementation((providerType: string) => ({
-        type: providerType,
-      }));
+      vi.spyOn(SearchProviderFactory as any, "getProviderConfig").mockImplementation(
+        (providerType: string) => ({
+          type: providerType,
+        }),
+      );
 
-      vi.spyOn(SearchProviderFactory as any, 'createProviderFromConfig').mockImplementation((config: any) => {
-        if (config.type === 'brave') return braveProvider;
-        return tavilyProvider;
-      });
+      vi.spyOn(SearchProviderFactory as any, "createProviderFromConfig").mockImplementation(
+        (config: any) => {
+          if (config.type === "brave") return braveProvider;
+          return tavilyProvider;
+        },
+      );
 
-      vi.spyOn(SearchProviderFactory as any, 'searchWithRetry').mockImplementation(async (provider: any) => {
-        return provider.search();
-      });
+      vi.spyOn(SearchProviderFactory as any, "searchWithRetry").mockImplementation(
+        async (provider: any) => {
+          return provider.search();
+        },
+      );
 
       const response = await SearchProviderFactory.searchWithFallback({
-        query: 'f1 latest',
-        searchType: 'web',
+        query: "f1 latest",
+        searchType: "web",
       });
 
-      expect(response.provider).toBe('tavily');
+      expect(response.provider).toBe("tavily");
       expect(braveProvider.search).toHaveBeenCalledTimes(1);
       expect(tavilyProvider.search).toHaveBeenCalledTimes(1);
     });
 
-    it('should honor explicit provider and not attempt fallback', async () => {
-      const braveProvider = { search: vi.fn().mockResolvedValue({ provider: 'brave' }) };
-      const tavilyProvider = { search: vi.fn().mockResolvedValue({ provider: 'tavily' }) };
+    it("should honor explicit provider and not attempt fallback", async () => {
+      const braveProvider = { search: vi.fn().mockResolvedValue({ provider: "brave" }) };
+      const tavilyProvider = { search: vi.fn().mockResolvedValue({ provider: "tavily" }) };
 
-      vi.spyOn(SearchProviderFactory, 'loadSettings').mockReturnValue({
-        primaryProvider: 'tavily',
-        fallbackProvider: 'google',
-        tavily: { apiKey: 'tavily' },
-        brave: { apiKey: 'brave' },
+      vi.spyOn(SearchProviderFactory, "loadSettings").mockReturnValue({
+        primaryProvider: "tavily",
+        fallbackProvider: "google",
+        tavily: { apiKey: "tavily" },
+        brave: { apiKey: "brave" },
       } as any);
 
-      vi.spyOn(SearchProviderFactory as any, 'getProviderExecutionOrder').mockReturnValue([
-        'brave',
-        'tavily',
+      vi.spyOn(SearchProviderFactory as any, "getProviderExecutionOrder").mockReturnValue([
+        "brave",
+        "tavily",
       ]);
 
-      const getConfigSpy = vi.spyOn(SearchProviderFactory as any, 'getProviderConfig');
+      const getConfigSpy = vi.spyOn(SearchProviderFactory as any, "getProviderConfig");
       getConfigSpy.mockImplementation((providerType: string) => ({ type: providerType }));
 
-      const createProviderSpy = vi.spyOn(SearchProviderFactory as any, 'createProviderFromConfig');
+      const createProviderSpy = vi.spyOn(SearchProviderFactory as any, "createProviderFromConfig");
       createProviderSpy.mockImplementation((config: any) => {
-        if (config.type === 'brave') return braveProvider;
+        if (config.type === "brave") return braveProvider;
         return tavilyProvider;
       });
 
-      const searchRetrySpy = vi.spyOn(SearchProviderFactory as any, 'searchWithRetry');
+      const searchRetrySpy = vi.spyOn(SearchProviderFactory as any, "searchWithRetry");
       searchRetrySpy.mockImplementation(async (provider: any) => provider.search());
 
       const response = await SearchProviderFactory.searchWithFallback({
-        query: 'f1 latest',
-        searchType: 'web',
-        provider: 'tavily',
+        query: "f1 latest",
+        searchType: "web",
+        provider: "tavily",
       });
 
-      expect(response.provider).toBe('tavily');
+      expect(response.provider).toBe("tavily");
       expect(searchRetrySpy).toHaveBeenCalledTimes(1);
       expect(tavilyProvider.search).toHaveBeenCalledTimes(1);
       expect(braveProvider.search).not.toHaveBeenCalled();

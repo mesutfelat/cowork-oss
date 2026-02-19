@@ -1,14 +1,14 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from "react";
 import {
   TaskBoardColumn as ColumnType,
   TaskLabelData,
   AgentRoleData,
   TaskBoardEvent,
-} from '../../electron/preload';
-import { TaskBoardColumn } from './TaskBoardColumn';
-import { TaskLabelManager } from './TaskLabelManager';
-import { TaskQuickActions } from './TaskQuickActions';
-import { useAgentContext } from '../hooks/useAgentContext';
+} from "../../electron/preload";
+import { TaskBoardColumn } from "./TaskBoardColumn";
+import { TaskLabelManager } from "./TaskLabelManager";
+import { TaskQuickActions } from "./TaskQuickActions";
+import { useAgentContext } from "../hooks/useAgentContext";
 
 interface Task {
   id: string;
@@ -29,11 +29,11 @@ interface TaskBoardProps {
 }
 
 const COLUMNS: { id: ColumnType; title: string; color: string }[] = [
-  { id: 'backlog', title: 'Backlog', color: '#6b7280' },
-  { id: 'todo', title: 'To Do', color: '#8b5cf6' },
-  { id: 'in_progress', title: 'In Progress', color: '#3b82f6' },
-  { id: 'review', title: 'Review', color: '#f59e0b' },
-  { id: 'done', title: 'Done', color: '#22c55e' },
+  { id: "backlog", title: "Backlog", color: "#6b7280" },
+  { id: "todo", title: "To Do", color: "#8b5cf6" },
+  { id: "in_progress", title: "In Progress", color: "#3b82f6" },
+  { id: "review", title: "Review", color: "#f59e0b" },
+  { id: "done", title: "Done", color: "#22c55e" },
 ];
 
 export function TaskBoard({ workspaceId, onTaskSelect }: TaskBoardProps) {
@@ -43,9 +43,9 @@ export function TaskBoard({ workspaceId, onTaskSelect }: TaskBoardProps) {
   const [loading, setLoading] = useState(true);
   const [showLabelManager, setShowLabelManager] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [filterAgent, setFilterAgent] = useState<string>('');
-  const [filterLabel, setFilterLabel] = useState<string>('');
-  const [filterPriority, setFilterPriority] = useState<string>('');
+  const [filterAgent, setFilterAgent] = useState<string>("");
+  const [filterLabel, setFilterLabel] = useState<string>("");
+  const [filterPriority, setFilterPriority] = useState<string>("");
   const agentContext = useAgentContext();
 
   // Load all data
@@ -61,9 +61,7 @@ export function TaskBoard({ workspaceId, onTaskSelect }: TaskBoardProps) {
       ]);
 
       // Filter tasks by workspace
-      const workspaceTasks = tasksResult.filter(
-        (t: any) => t.workspaceId === workspaceId
-      );
+      const workspaceTasks = tasksResult.filter((t: any) => t.workspaceId === workspaceId);
       setTasks(workspaceTasks);
       setLabels(labelsResult);
 
@@ -74,7 +72,7 @@ export function TaskBoard({ workspaceId, onTaskSelect }: TaskBoardProps) {
       });
       setAgents(agentMap);
     } catch (err) {
-      console.error('Failed to load task board data:', err);
+      console.error("Failed to load task board data:", err);
     } finally {
       setLoading(false);
     }
@@ -92,23 +90,25 @@ export function TaskBoard({ workspaceId, onTaskSelect }: TaskBoardProps) {
           if (t.id !== event.taskId) return t;
 
           switch (event.type) {
-            case 'moved':
+            case "moved":
               return { ...t, boardColumn: event.data?.column };
-            case 'priorityChanged':
+            case "priorityChanged":
               return { ...t, priority: event.data?.priority };
-            case 'labelAdded':
+            case "labelAdded":
               return {
                 ...t,
-                labels: [...(t.labels || []), event.data?.labelId].filter((l): l is string => Boolean(l)),
+                labels: [...(t.labels || []), event.data?.labelId].filter((l): l is string =>
+                  Boolean(l),
+                ),
               };
-            case 'labelRemoved':
+            case "labelRemoved":
               return {
                 ...t,
                 labels: (t.labels || []).filter((l) => l !== event.data?.labelId),
               };
-            case 'dueDateChanged':
+            case "dueDateChanged":
               return { ...t, dueDate: event.data?.dueDate ?? undefined };
-            case 'estimateChanged':
+            case "estimateChanged":
               return { ...t, estimatedMinutes: event.data?.estimatedMinutes ?? undefined };
             default:
               return t;
@@ -123,13 +123,11 @@ export function TaskBoard({ workspaceId, onTaskSelect }: TaskBoardProps) {
   // Subscribe to task events for new tasks and status changes
   useEffect(() => {
     const unsubscribe = window.electronAPI.onTaskEvent((event: any) => {
-      if (event.type === 'created' && event.task?.workspaceId === workspaceId) {
+      if (event.type === "created" && event.task?.workspaceId === workspaceId) {
         setTasks((prev) => [event.task, ...prev]);
-      } else if (event.type === 'updated' && event.task) {
-        setTasks((prev) =>
-          prev.map((t) => (t.id === event.task.id ? { ...t, ...event.task } : t))
-        );
-      } else if (event.type === 'deleted' && event.taskId) {
+      } else if (event.type === "updated" && event.task) {
+        setTasks((prev) => prev.map((t) => (t.id === event.task.id ? { ...t, ...event.task } : t)));
+      } else if (event.type === "deleted" && event.taskId) {
         setTasks((prev) => prev.filter((t) => t.id !== event.taskId));
       }
     });
@@ -141,22 +139,18 @@ export function TaskBoard({ workspaceId, onTaskSelect }: TaskBoardProps) {
     try {
       await window.electronAPI.moveTaskToColumn(taskId, column);
       // Optimistic update
-      setTasks((prev) =>
-        prev.map((t) => (t.id === taskId ? { ...t, boardColumn: column } : t))
-      );
+      setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, boardColumn: column } : t)));
     } catch (err) {
-      console.error('Failed to move task:', err);
+      console.error("Failed to move task:", err);
     }
   };
 
   const handleTaskPriorityChange = async (taskId: string, priority: number) => {
     try {
       await window.electronAPI.setTaskPriority(taskId, priority);
-      setTasks((prev) =>
-        prev.map((t) => (t.id === taskId ? { ...t, priority } : t))
-      );
+      setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, priority } : t)));
     } catch (err) {
-      console.error('Failed to set priority:', err);
+      console.error("Failed to set priority:", err);
     }
   };
 
@@ -170,15 +164,11 @@ export function TaskBoard({ workspaceId, onTaskSelect }: TaskBoardProps) {
     try {
       await window.electronAPI.setTaskDueDate(selectedTask.id, dueDate);
       setTasks((prev) =>
-        prev.map((t) =>
-          t.id === selectedTask.id ? { ...t, dueDate: dueDate ?? undefined } : t
-        )
+        prev.map((t) => (t.id === selectedTask.id ? { ...t, dueDate: dueDate ?? undefined } : t)),
       );
-      setSelectedTask((prev) =>
-        prev ? { ...prev, dueDate: dueDate ?? undefined } : null
-      );
+      setSelectedTask((prev) => (prev ? { ...prev, dueDate: dueDate ?? undefined } : null));
     } catch (err) {
-      console.error('Failed to set due date:', err);
+      console.error("Failed to set due date:", err);
     }
   };
 
@@ -188,16 +178,14 @@ export function TaskBoard({ workspaceId, onTaskSelect }: TaskBoardProps) {
       await window.electronAPI.setTaskEstimate(selectedTask.id, minutes);
       setTasks((prev) =>
         prev.map((t) =>
-          t.id === selectedTask.id
-            ? { ...t, estimatedMinutes: minutes ?? undefined }
-            : t
-        )
+          t.id === selectedTask.id ? { ...t, estimatedMinutes: minutes ?? undefined } : t,
+        ),
       );
       setSelectedTask((prev) =>
-        prev ? { ...prev, estimatedMinutes: minutes ?? undefined } : null
+        prev ? { ...prev, estimatedMinutes: minutes ?? undefined } : null,
       );
     } catch (err) {
-      console.error('Failed to set estimate:', err);
+      console.error("Failed to set estimate:", err);
     }
   };
 
@@ -207,13 +195,11 @@ export function TaskBoard({ workspaceId, onTaskSelect }: TaskBoardProps) {
       await window.electronAPI.addTaskLabel(selectedTask.id, labelId);
       const newLabels = [...(selectedTask.labels || []), labelId];
       setTasks((prev) =>
-        prev.map((t) =>
-          t.id === selectedTask.id ? { ...t, labels: newLabels } : t
-        )
+        prev.map((t) => (t.id === selectedTask.id ? { ...t, labels: newLabels } : t)),
       );
       setSelectedTask((prev) => (prev ? { ...prev, labels: newLabels } : null));
     } catch (err) {
-      console.error('Failed to add label:', err);
+      console.error("Failed to add label:", err);
     }
   };
 
@@ -223,13 +209,11 @@ export function TaskBoard({ workspaceId, onTaskSelect }: TaskBoardProps) {
       await window.electronAPI.removeTaskLabel(selectedTask.id, labelId);
       const newLabels = (selectedTask.labels || []).filter((l) => l !== labelId);
       setTasks((prev) =>
-        prev.map((t) =>
-          t.id === selectedTask.id ? { ...t, labels: newLabels } : t
-        )
+        prev.map((t) => (t.id === selectedTask.id ? { ...t, labels: newLabels } : t)),
       );
       setSelectedTask((prev) => (prev ? { ...prev, labels: newLabels } : null));
     } catch (err) {
-      console.error('Failed to remove label:', err);
+      console.error("Failed to remove label:", err);
     }
   };
 
@@ -239,16 +223,14 @@ export function TaskBoard({ workspaceId, onTaskSelect }: TaskBoardProps) {
       await window.electronAPI.assignAgentRoleToTask(selectedTask.id, agentRoleId);
       setTasks((prev) =>
         prev.map((t) =>
-          t.id === selectedTask.id
-            ? { ...t, assignedAgentRoleId: agentRoleId ?? undefined }
-            : t
-        )
+          t.id === selectedTask.id ? { ...t, assignedAgentRoleId: agentRoleId ?? undefined } : t,
+        ),
       );
       setSelectedTask((prev) =>
-        prev ? { ...prev, assignedAgentRoleId: agentRoleId ?? undefined } : null
+        prev ? { ...prev, assignedAgentRoleId: agentRoleId ?? undefined } : null,
       );
     } catch (err) {
-      console.error('Failed to assign agent:', err);
+      console.error("Failed to assign agent:", err);
     }
   };
 
@@ -270,7 +252,7 @@ export function TaskBoard({ workspaceId, onTaskSelect }: TaskBoardProps) {
   };
 
   filteredTasks.forEach((task) => {
-    const column = (task.boardColumn as ColumnType) || 'backlog';
+    const column = (task.boardColumn as ColumnType) || "backlog";
     if (tasksByColumn[column]) {
       tasksByColumn[column].push(task);
     }
@@ -279,7 +261,7 @@ export function TaskBoard({ workspaceId, onTaskSelect }: TaskBoardProps) {
   if (loading) {
     return (
       <div className="task-board-loading">
-        <p>{agentContext.getUiCopy('taskBoardLoading')}</p>
+        <p>{agentContext.getUiCopy("taskBoardLoading")}</p>
       </div>
     );
   }
@@ -290,18 +272,15 @@ export function TaskBoard({ workspaceId, onTaskSelect }: TaskBoardProps) {
     <div className="task-board">
       <div className="board-header">
         <div className="board-title">
-          <h2>{agentContext.getUiCopy('taskBoardTitle')}</h2>
+          <h2>{agentContext.getUiCopy("taskBoardTitle")}</h2>
           <span className="task-count">
-            {agentContext.getUiCopy('taskBoardCount', { count: tasks.length })}
+            {agentContext.getUiCopy("taskBoardCount", { count: tasks.length })}
           </span>
         </div>
 
         <div className="board-filters">
-          <select
-            value={filterAgent}
-            onChange={(e) => setFilterAgent(e.target.value)}
-          >
-            <option value="">{agentContext.getUiCopy('taskBoardAllAgents')}</option>
+          <select value={filterAgent} onChange={(e) => setFilterAgent(e.target.value)}>
+            <option value="">{agentContext.getUiCopy("taskBoardAllAgents")}</option>
             {agentList.map((agent) => (
               <option key={agent.id} value={agent.id}>
                 {agent.icon} {agent.displayName}
@@ -309,11 +288,8 @@ export function TaskBoard({ workspaceId, onTaskSelect }: TaskBoardProps) {
             ))}
           </select>
 
-          <select
-            value={filterLabel}
-            onChange={(e) => setFilterLabel(e.target.value)}
-          >
-            <option value="">{agentContext.getUiCopy('taskBoardAllLabels')}</option>
+          <select value={filterLabel} onChange={(e) => setFilterLabel(e.target.value)}>
+            <option value="">{agentContext.getUiCopy("taskBoardAllLabels")}</option>
             {labels.map((label) => (
               <option key={label.id} value={label.id}>
                 {label.name}
@@ -321,11 +297,8 @@ export function TaskBoard({ workspaceId, onTaskSelect }: TaskBoardProps) {
             ))}
           </select>
 
-          <select
-            value={filterPriority}
-            onChange={(e) => setFilterPriority(e.target.value)}
-          >
-            <option value="">{agentContext.getUiCopy('taskBoardAllPriorities')}</option>
+          <select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)}>
+            <option value="">{agentContext.getUiCopy("taskBoardAllPriorities")}</option>
             <option value="4">Urgent</option>
             <option value="3">High</option>
             <option value="2">Medium</option>
@@ -333,11 +306,8 @@ export function TaskBoard({ workspaceId, onTaskSelect }: TaskBoardProps) {
             <option value="0">None</option>
           </select>
 
-          <button
-            className="manage-labels-btn"
-            onClick={() => setShowLabelManager(true)}
-          >
-            {agentContext.getUiCopy('taskBoardManageLabels')}
+          <button className="manage-labels-btn" onClick={() => setShowLabelManager(true)}>
+            {agentContext.getUiCopy("taskBoardManageLabels")}
           </button>
         </div>
       </div>
@@ -365,10 +335,7 @@ export function TaskBoard({ workspaceId, onTaskSelect }: TaskBoardProps) {
           onClose={() => {
             setShowLabelManager(false);
             // Reload labels
-            window.electronAPI
-              .listTaskLabels({ workspaceId })
-              .then(setLabels)
-              .catch(console.error);
+            window.electronAPI.listTaskLabels({ workspaceId }).then(setLabels).catch(console.error);
           }}
         />
       )}

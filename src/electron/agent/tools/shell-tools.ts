@@ -1,9 +1,9 @@
-import { spawn, ChildProcess, execSync } from 'child_process';
-import { existsSync } from 'fs';
-import { Workspace, CommandTerminationReason } from '../../../shared/types';
-import { AgentDaemon } from '../daemon';
-import { GuardrailManager } from '../../guardrails/guardrail-manager';
-import { BuiltinToolsSettingsManager, type RunCommandApprovalMode } from './builtin-settings';
+import { spawn, ChildProcess, execSync } from "child_process";
+import { existsSync } from "fs";
+import { Workspace, CommandTerminationReason } from "../../../shared/types";
+import { AgentDaemon } from "../daemon";
+import { GuardrailManager } from "../../guardrails/guardrail-manager";
+import { BuiltinToolsSettingsManager, type RunCommandApprovalMode } from "./builtin-settings";
 
 // Limits to prevent runaway commands
 const MAX_TIMEOUT = 5 * 60 * 1000; // 5 minutes max
@@ -13,22 +13,25 @@ const MAX_OUTPUT_SIZE = 100 * 1024; // 100KB max output
 const SHELL_OUTPUT_REDACTION_PATTERNS: Array<{ pattern: RegExp; replacement: string }> = [
   {
     // Solana and similar wallets often print a recovery phrase in this exact format.
-    pattern: /(Save this seed phrase to recover your new keypair:\s*\n)([a-z]+(?:\s+[a-z]+){11,23})(\s*\n?)/gi,
-    replacement: '$1[REDACTED_SEED_PHRASE]$3',
+    pattern:
+      /(Save this seed phrase to recover your new keypair:\s*\n)([a-z]+(?:\s+[a-z]+){11,23})(\s*\n?)/gi,
+    replacement: "$1[REDACTED_SEED_PHRASE]$3",
   },
   {
     // Generic "seed phrase:" / "mnemonic:" style output.
-    pattern: /((?:seed phrase|recovery phrase|mnemonic)[^:\n]{0,40}:\s*\n?)([a-z]+(?:\s+[a-z]+){11,23})(\s*\n?)/gi,
-    replacement: '$1[REDACTED_SEED_PHRASE]$3',
+    pattern:
+      /((?:seed phrase|recovery phrase|mnemonic)[^:\n]{0,40}:\s*\n?)([a-z]+(?:\s+[a-z]+){11,23})(\s*\n?)/gi,
+    replacement: "$1[REDACTED_SEED_PHRASE]$3",
   },
   {
-    pattern: /-----BEGIN(?: [A-Z]+)? PRIVATE KEY-----[\s\S]*?-----END(?: [A-Z]+)? PRIVATE KEY-----/g,
-    replacement: '[REDACTED_PRIVATE_KEY]',
+    pattern:
+      /-----BEGIN(?: [A-Z]+)? PRIVATE KEY-----[\s\S]*?-----END(?: [A-Z]+)? PRIVATE KEY-----/g,
+    replacement: "[REDACTED_PRIVATE_KEY]",
   },
   {
     // Common JSON-secret-key shape (e.g., Solana id.json).
     pattern: /\[(?:\s*\d{1,3}\s*,){31,}\s*\d{1,3}\s*\]/g,
-    replacement: '[REDACTED_SECRET_KEY_ARRAY]',
+    replacement: "[REDACTED_SECRET_KEY_ARRAY]",
   },
 ];
 
@@ -37,10 +40,7 @@ const SHELL_OUTPUT_REDACTION_PATTERNS: Array<{ pattern: RegExp; replacement: str
  * Prevents command injection if PID is somehow not a number
  */
 function isValidPid(pid: unknown): pid is number {
-  return typeof pid === 'number' &&
-    Number.isInteger(pid) &&
-    pid > 0 &&
-    pid <= 4194304; // Max PID on Linux (can be configured higher, but this is safe default)
+  return typeof pid === "number" && Number.isInteger(pid) && pid > 0 && pid <= 4194304; // Max PID on Linux (can be configured higher, but this is safe default)
 }
 
 /**
@@ -59,7 +59,7 @@ function isProcessOwnedByCurrentUser(pid: number): boolean {
   } catch (error: any) {
     // ESRCH = no such process (that's fine, process exited)
     // EPERM = permission denied (process exists but owned by another user - DON'T KILL)
-    if (error.code === 'EPERM') {
+    if (error.code === "EPERM") {
       console.warn(`[ShellTools] Process ${pid} exists but is owned by another user, skipping`);
       return false;
     }
@@ -84,11 +84,11 @@ function resolveShellForCommandExecution(): string {
   if (envShell && existsSync(envShell)) return envShell;
 
   // In minimal Linux containers (e.g., Alpine), /bin/bash may not exist.
-  if (existsSync('/bin/bash')) return '/bin/bash';
-  if (existsSync('/bin/sh')) return '/bin/sh';
+  if (existsSync("/bin/bash")) return "/bin/bash";
+  if (existsSync("/bin/sh")) return "/bin/sh";
 
   // Last resort: fall back to whatever is set (even if it doesn't exist).
-  return envShell || '/bin/sh';
+  return envShell || "/bin/sh";
 }
 
 /**
@@ -121,21 +121,21 @@ function getDescendantPids(parentPid: number): number[] {
     try {
       // pgrep -P finds direct children of the given PID
       // Add -U $USER to only find processes owned by current user (security)
-      const pgrepCmd = safeUser
-        ? `pgrep -P ${pid} -U ${safeUser}`
-        : `pgrep -P ${pid}`;
+      const pgrepCmd = safeUser ? `pgrep -P ${pid} -U ${safeUser}` : `pgrep -P ${pid}`;
 
       const output = execSync(pgrepCmd, {
-        encoding: 'utf-8',
+        encoding: "utf-8",
         timeout: 1000,
         // Don't inherit env to avoid any injection via environment
-        env: { PATH: '/usr/bin:/bin' },
+        env: { PATH: "/usr/bin:/bin" },
       });
 
-      const childPids = output.trim().split('\n')
-        .filter(line => line.length > 0)
-        .map(line => parseInt(line, 10))
-        .filter(childPid => isValidPid(childPid) && !seen.has(childPid));
+      const childPids = output
+        .trim()
+        .split("\n")
+        .filter((line) => line.length > 0)
+        .map((line) => parseInt(line, 10))
+        .filter((childPid) => isValidPid(childPid) && !seen.has(childPid));
 
       descendants.push(...childPids);
       toProcess.push(...childPids);
@@ -204,7 +204,7 @@ export class ShellTools {
   constructor(
     private workspace: Workspace,
     private daemon: AgentDaemon,
-    private taskId: string
+    private taskId: string,
   ) {}
 
   /**
@@ -236,13 +236,13 @@ export class ShellTools {
     try {
       this.activeProcess.stdin.write(input);
       // Echo the input to show it was sent
-      this.daemon.logEvent(this.taskId, 'command_output', {
-        type: 'stdin',
+      this.daemon.logEvent(this.taskId, "command_output", {
+        type: "stdin",
         output: input,
       });
       return true;
     } catch (error) {
-      console.error('Failed to write to stdin:', error);
+      console.error("Failed to write to stdin:", error);
       return false;
     }
   }
@@ -287,14 +287,14 @@ export class ShellTools {
       this.clearEscalationTimeouts();
 
       try {
-        killProcessTree(pid, 'SIGKILL');
-        this.daemon.logEvent(this.taskId, 'command_output', {
-          type: 'error',
-          output: '\n[Process tree force killed by user]\n',
+        killProcessTree(pid, "SIGKILL");
+        this.daemon.logEvent(this.taskId, "command_output", {
+          type: "error",
+          output: "\n[Process tree force killed by user]\n",
         });
         return true;
       } catch (error) {
-        console.error('Failed to force kill process tree:', error);
+        console.error("Failed to force kill process tree:", error);
         return false;
       }
     }
@@ -304,10 +304,10 @@ export class ShellTools {
 
     try {
       // Send SIGINT (Ctrl+C) to gracefully interrupt the process tree
-      killProcessTree(pid, 'SIGINT');
-      this.daemon.logEvent(this.taskId, 'command_output', {
-        type: 'error',
-        output: '\n^C [Process tree interrupted by user]\n',
+      killProcessTree(pid, "SIGINT");
+      this.daemon.logEvent(this.taskId, "command_output", {
+        type: "error",
+        output: "\n^C [Process tree interrupted by user]\n",
       });
 
       // Set up escalation: if still running after 2s, send SIGTERM to tree
@@ -324,16 +324,20 @@ export class ShellTools {
         if (childProcess && !childProcess.killed && childProcess.pid === pid) {
           // Additional safety: verify we own this process before killing
           if (!isProcessOwnedByCurrentUser(pid)) {
-            console.warn(`[ShellTools] Process ${pid} no longer owned by current user, skipping SIGTERM`);
+            console.warn(
+              `[ShellTools] Process ${pid} no longer owned by current user, skipping SIGTERM`,
+            );
             return;
           }
           try {
-            killProcessTree(pid, 'SIGTERM');
-            this.daemon.logEvent(this.taskId, 'command_output', {
-              type: 'error',
-              output: '[Escalating to SIGTERM for process tree...]\n',
+            killProcessTree(pid, "SIGTERM");
+            this.daemon.logEvent(this.taskId, "command_output", {
+              type: "error",
+              output: "[Escalating to SIGTERM for process tree...]\n",
             });
-          } catch { /* Process may have exited */ }
+          } catch {
+            /* Process may have exited */
+          }
         }
       }, 2000);
       this.escalationTimeouts.push(sigtermTimeout);
@@ -347,33 +351,37 @@ export class ShellTools {
         if (childProcess && !childProcess.killed && childProcess.pid === pid) {
           // Additional safety: verify we own this process before killing
           if (!isProcessOwnedByCurrentUser(pid)) {
-            console.warn(`[ShellTools] Process ${pid} no longer owned by current user, skipping SIGKILL`);
+            console.warn(
+              `[ShellTools] Process ${pid} no longer owned by current user, skipping SIGKILL`,
+            );
             return;
           }
           try {
-            killProcessTree(pid, 'SIGKILL');
-            this.daemon.logEvent(this.taskId, 'command_output', {
-              type: 'error',
-              output: '[Escalating to SIGKILL for process tree...]\n',
+            killProcessTree(pid, "SIGKILL");
+            this.daemon.logEvent(this.taskId, "command_output", {
+              type: "error",
+              output: "[Escalating to SIGKILL for process tree...]\n",
             });
-          } catch { /* Process may have exited */ }
+          } catch {
+            /* Process may have exited */
+          }
         }
       }, 4000);
       this.escalationTimeouts.push(sigkillTimeout);
 
       return true;
     } catch (error) {
-      console.error('Failed to kill process tree:', error);
+      console.error("Failed to kill process tree:", error);
       this.killInProgress = false;
 
       // Try SIGTERM as fallback
       try {
-        killProcessTree(pid, 'SIGTERM');
+        killProcessTree(pid, "SIGTERM");
         return true;
       } catch {
         // Last resort: SIGKILL
         try {
-          killProcessTree(pid, 'SIGKILL');
+          killProcessTree(pid, "SIGKILL");
           return true;
         } catch {
           return false;
@@ -393,7 +401,7 @@ export class ShellTools {
       cwd?: string;
       timeout?: number;
       env?: Record<string, string>;
-    }
+    },
   ): Promise<{
     success: boolean;
     stdout: string;
@@ -407,17 +415,18 @@ export class ShellTools {
     if (blockCheck.blocked) {
       throw new Error(
         `Command blocked by guardrails: "${command}"\n` +
-        `Matched pattern: ${blockCheck.pattern}\n` +
-        `This command has been blocked for safety. You can modify blocked patterns in Settings > Guardrails.`
+          `Matched pattern: ${blockCheck.pattern}\n` +
+          `This command has been blocked for safety. You can modify blocked patterns in Settings > Guardrails.`,
       );
     }
 
     // Check if command is trusted (auto-approve without user confirmation)
     const trustCheck = GuardrailManager.isCommandTrusted(command);
-    const autoApproveEnabled = BuiltinToolsSettingsManager.getToolAutoApprove('run_command');
-    const approvalMode: RunCommandApprovalMode = BuiltinToolsSettingsManager.getRunCommandApprovalMode();
+    const autoApproveEnabled = BuiltinToolsSettingsManager.getToolAutoApprove("run_command");
+    const approvalMode: RunCommandApprovalMode =
+      BuiltinToolsSettingsManager.getRunCommandApprovalMode();
     const safeForAutoApproval = this.isAutoApprovalSafe(command);
-    const bundleEligible = approvalMode === 'single_bundle' && safeForAutoApproval;
+    const bundleEligible = approvalMode === "single_bundle" && safeForAutoApproval;
     let approved = false;
     const signature = this.getCommandSignature(command);
     const now = Date.now();
@@ -425,20 +434,20 @@ export class ShellTools {
     if (bundleEligible && this.isBundleApprovalActive(now)) {
       approved = true;
       this.recordBundleApproval(now);
-      this.daemon.logEvent(this.taskId, 'log', {
+      this.daemon.logEvent(this.taskId, "log", {
         message: `Auto-approved command via single bundle (${this.bundleApproval?.count || 1} approved in current bundle)`,
         command,
       });
     } else if (autoApproveEnabled && safeForAutoApproval) {
       approved = true;
-      this.daemon.logEvent(this.taskId, 'log', {
-        message: 'Auto-approved command (user setting enabled)',
+      this.daemon.logEvent(this.taskId, "log", {
+        message: "Auto-approved command (user setting enabled)",
         command,
       });
     } else if (trustCheck.trusted) {
       // Auto-approve trusted commands
       approved = true;
-      this.daemon.logEvent(this.taskId, 'log', {
+      this.daemon.logEvent(this.taskId, "log", {
         message: `Auto-approved trusted command (matched: ${trustCheck.pattern})`,
         command,
       });
@@ -455,7 +464,7 @@ export class ShellTools {
         previousApproval.count += 1;
         previousApproval.approvedAt = now;
         this.recentApprovals.set(signature, previousApproval);
-        this.daemon.logEvent(this.taskId, 'log', {
+        this.daemon.logEvent(this.taskId, "log", {
           message: `Auto-approved similar command (approved ${previousApproval.count}x in last ${Math.round(this.approvalWindowMs / 1000)}s)`,
           command,
         });
@@ -463,7 +472,7 @@ export class ShellTools {
         // Request user approval before executing
         approved = await this.daemon.requestApproval(
           this.taskId,
-          'run_command',
+          "run_command",
           bundleEligible
             ? `Run command (single approval bundle for this task): ${command}`
             : `Run command: ${command}`,
@@ -472,8 +481,8 @@ export class ShellTools {
             cwd: options?.cwd || this.workspace.path,
             timeout: options?.timeout || DEFAULT_TIMEOUT,
             approvalMode,
-            bundleScope: bundleEligible ? 'safe_commands_in_this_task' : undefined,
-          }
+            bundleScope: bundleEligible ? "safe_commands_in_this_task" : undefined,
+          },
         );
 
         if (approved && signature) {
@@ -481,8 +490,8 @@ export class ShellTools {
         }
         if (approved && bundleEligible) {
           this.recordBundleApproval(now);
-          this.daemon.logEvent(this.taskId, 'log', {
-            message: 'Single approval bundle activated for safe shell commands in this task',
+          this.daemon.logEvent(this.taskId, "log", {
+            message: "Single approval bundle activated for safe shell commands in this task",
             command,
           });
         }
@@ -490,12 +499,12 @@ export class ShellTools {
     }
 
     if (!approved) {
-      throw new Error('User denied command execution');
+      throw new Error("User denied command execution");
     }
 
     // Log the command execution attempt
-    this.daemon.logEvent(this.taskId, 'tool_call', {
-      tool: 'run_command',
+    this.daemon.logEvent(this.taskId, "tool_call", {
+      tool: "run_command",
       command,
       cwd: options?.cwd || this.workspace.path,
     });
@@ -506,13 +515,13 @@ export class ShellTools {
     const resolvedShell = resolveShellForCommandExecution();
     const safeEnv: Record<string, string> = {
       // Essential system variables only
-      PATH: process.env.PATH || '/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin',
-      HOME: process.env.HOME || '',
-      USER: process.env.USER || '',
+      PATH: process.env.PATH || "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+      HOME: process.env.HOME || "",
+      USER: process.env.USER || "",
       SHELL: resolvedShell,
-      LANG: process.env.LANG || 'en_US.UTF-8',
-      TERM: process.env.TERM || 'xterm-256color',
-      TMPDIR: process.env.TMPDIR || '/tmp',
+      LANG: process.env.LANG || "en_US.UTF-8",
+      TERM: process.env.TERM || "xterm-256color",
+      TMPDIR: process.env.TMPDIR || "/tmp",
       // Add any user-provided env vars (explicitly passed by caller)
       ...options?.env,
     };
@@ -520,16 +529,16 @@ export class ShellTools {
     const cwd = options?.cwd || this.workspace.path;
 
     // Emit the command being executed
-    this.daemon.logEvent(this.taskId, 'command_output', {
+    this.daemon.logEvent(this.taskId, "command_output", {
       command,
       cwd,
-      type: 'start',
+      type: "start",
       output: `$ ${command}\n`,
     });
 
     return new Promise((resolve) => {
-      let stdout = '';
-      let stderr = '';
+      let stdout = "";
+      let stderr = "";
       let killed = false;
 
       // Increment session ID to invalidate any pending escalation timeouts from previous commands
@@ -538,10 +547,10 @@ export class ShellTools {
       this.clearEscalationTimeouts();
 
       // Use a shell to handle complex commands with pipes, redirects, etc.
-      const child = spawn(resolvedShell, ['-c', command], {
+      const child = spawn(resolvedShell, ["-c", command], {
         cwd,
         env: safeEnv,
-        stdio: ['pipe', 'pipe', 'pipe'],  // Enable stdin for interactive commands
+        stdio: ["pipe", "pipe", "pipe"], // Enable stdin for interactive commands
       });
 
       // Store reference to active process for stdin support
@@ -550,78 +559,79 @@ export class ShellTools {
       // Set timeout
       const timeoutId = setTimeout(() => {
         killed = true;
-        child.kill('SIGTERM');
-        this.daemon.logEvent(this.taskId, 'command_output', {
+        child.kill("SIGTERM");
+        this.daemon.logEvent(this.taskId, "command_output", {
           command,
-          type: 'error',
+          type: "error",
           output: `\n[Command timed out after ${timeout / 1000}s]\n`,
         });
       }, timeout);
 
       // Stream stdout
-      child.stdout.on('data', (data: Buffer) => {
-        const chunk = this.sanitizeCommandOutput(data.toString('utf-8'));
+      child.stdout.on("data", (data: Buffer) => {
+        const chunk = this.sanitizeCommandOutput(data.toString("utf-8"));
         stdout += chunk;
         // Emit live output
-        this.daemon.logEvent(this.taskId, 'command_output', {
+        this.daemon.logEvent(this.taskId, "command_output", {
           command,
-          type: 'stdout',
+          type: "stdout",
           output: chunk,
         });
       });
 
       // Stream stderr
-      child.stderr.on('data', (data: Buffer) => {
-        const chunk = this.sanitizeCommandOutput(data.toString('utf-8'));
+      child.stderr.on("data", (data: Buffer) => {
+        const chunk = this.sanitizeCommandOutput(data.toString("utf-8"));
         stderr += chunk;
         // Emit live output
-        this.daemon.logEvent(this.taskId, 'command_output', {
+        this.daemon.logEvent(this.taskId, "command_output", {
           command,
-          type: 'stderr',
+          type: "stderr",
           output: chunk,
         });
       });
 
-      child.on('close', (code: number | null) => {
+      child.on("close", (code: number | null) => {
         clearTimeout(timeoutId);
-        this.activeProcess = null;  // Clear active process reference
+        this.activeProcess = null; // Clear active process reference
         // Clear any pending escalation timeouts to prevent killing reused PIDs
         this.clearEscalationTimeouts();
 
         // Determine termination reason to signal the agent
-        let terminationReason: CommandTerminationReason = 'normal';
+        let terminationReason: CommandTerminationReason = "normal";
         if (this.userKillRequested) {
-          terminationReason = 'user_stopped';
+          terminationReason = "user_stopped";
         } else if (killed) {
-          terminationReason = 'timeout';
+          terminationReason = "timeout";
         }
 
         // Reset for next command
         this.userKillRequested = false;
 
-        const success = terminationReason === 'normal' && code === 0;
+        const success = terminationReason === "normal" && code === 0;
         const truncatedStdout = this.truncateOutput(stdout);
         const truncatedStderr = this.truncateOutput(stderr);
-        const exitCodeLabel = code === null ? 'unknown' : String(code);
-        const errorMessage = terminationReason === 'timeout'
-          ? 'Command timed out'
-          : terminationReason === 'user_stopped'
-            ? 'Command stopped by user'
-            : !success
-              ? `Command exited with code ${exitCodeLabel}`
-              : undefined;
+        const exitCodeLabel = code === null ? "unknown" : String(code);
+        const errorMessage =
+          terminationReason === "timeout"
+            ? "Command timed out"
+            : terminationReason === "user_stopped"
+              ? "Command stopped by user"
+              : !success
+                ? `Command exited with code ${exitCodeLabel}`
+                : undefined;
 
         // Emit command completion with termination reason
-        this.daemon.logEvent(this.taskId, 'command_output', {
+        this.daemon.logEvent(this.taskId, "command_output", {
           command,
-          type: 'end',
+          type: "end",
           exitCode: code,
           success,
           terminationReason,
         });
 
-        this.daemon.logEvent(this.taskId, 'tool_result', {
-          tool: 'run_command',
+        this.daemon.logEvent(this.taskId, "tool_result", {
+          tool: "run_command",
           success,
           exitCode: code,
           terminationReason,
@@ -638,25 +648,25 @@ export class ShellTools {
         });
       });
 
-      child.on('error', (error: Error) => {
+      child.on("error", (error: Error) => {
         clearTimeout(timeoutId);
-        this.activeProcess = null;  // Clear active process reference
+        this.activeProcess = null; // Clear active process reference
         // Clear any pending escalation timeouts to prevent killing reused PIDs
         this.clearEscalationTimeouts();
         // Reset user kill flag
         this.userKillRequested = false;
 
-        const terminationReason: CommandTerminationReason = 'error';
+        const terminationReason: CommandTerminationReason = "error";
 
-        this.daemon.logEvent(this.taskId, 'command_output', {
+        this.daemon.logEvent(this.taskId, "command_output", {
           command,
-          type: 'error',
+          type: "error",
           output: `\n[Error: ${error.message}]\n`,
           terminationReason,
         });
 
-        this.daemon.logEvent(this.taskId, 'tool_result', {
-          tool: 'run_command',
+        this.daemon.logEvent(this.taskId, "tool_result", {
+          tool: "run_command",
           success: false,
           error: error.message,
           terminationReason,
@@ -677,14 +687,14 @@ export class ShellTools {
    * Generate a normalized signature for a command to detect similar repeats
    */
   private getCommandSignature(command: string): string {
-    if (!command) return '';
+    if (!command) return "";
     let signature = command.trim();
-    signature = signature.replace(/\s+/g, ' ');
+    signature = signature.replace(/\s+/g, " ");
     signature = signature.replace(/"(?:[^"\\]|\\.)*"/g, '"<arg>"');
     signature = signature.replace(/'(?:[^'\\]|\\.)*'/g, "'<arg>'");
-    signature = signature.replace(/(?:\/Users\/[^\s]+|~\/[^\s]+|\/[^\s]+)/g, '<path>');
-    signature = signature.replace(/\b\d+(?:\.\d+)?\b/g, '<num>');
-    signature = signature.replace(/\b[A-Za-z0-9_-]{20,}\b/g, '<id>');
+    signature = signature.replace(/(?:\/Users\/[^\s]+|~\/[^\s]+|\/[^\s]+)/g, "<path>");
+    signature = signature.replace(/\b\d+(?:\.\d+)?\b/g, "<num>");
+    signature = signature.replace(/\b[A-Za-z0-9_-]{20,}\b/g, "<id>");
     return signature;
   }
 
@@ -700,8 +710,7 @@ export class ShellTools {
    */
   private isBundleApprovalActive(now: number): boolean {
     return Boolean(
-      this.bundleApproval &&
-      now - this.bundleApproval.approvedAt <= this.bundleApprovalWindowMs
+      this.bundleApproval && now - this.bundleApproval.approvedAt <= this.bundleApprovalWindowMs,
     );
   }
 
@@ -709,7 +718,10 @@ export class ShellTools {
    * Refresh bundle approval bookkeeping.
    */
   private recordBundleApproval(now: number): void {
-    if (this.bundleApproval && now - this.bundleApproval.approvedAt <= this.bundleApprovalWindowMs) {
+    if (
+      this.bundleApproval &&
+      now - this.bundleApproval.approvedAt <= this.bundleApprovalWindowMs
+    ) {
       this.bundleApproval.approvedAt = now;
       this.bundleApproval.count += 1;
       return;
@@ -734,7 +746,7 @@ export class ShellTools {
    * Redact sensitive output before it reaches task logs or model context.
    */
   private sanitizeCommandOutput(output: string): string {
-    if (!output) return '';
+    if (!output) return "";
     let sanitized = output;
     for (const { pattern, replacement } of SHELL_OUTPUT_REDACTION_PATTERNS) {
       sanitized = sanitized.replace(pattern, replacement);

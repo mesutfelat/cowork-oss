@@ -1,14 +1,23 @@
-import type { Task, TaskEvent, TaskExportItem, TaskExportJson, TaskExportQuery, TaskFileChanges, TaskUsageTotals, Workspace } from '../../shared/types';
+import type {
+  Task,
+  TaskEvent,
+  TaskExportItem,
+  TaskExportJson,
+  TaskExportQuery,
+  TaskFileChanges,
+  TaskUsageTotals,
+  Workspace,
+} from "../../shared/types";
 
 function asTrimmedString(value: unknown): string | undefined {
-  if (typeof value !== 'string') return undefined;
+  if (typeof value !== "string") return undefined;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
 function asNumber(value: unknown): number | undefined {
-  if (typeof value === 'number' && Number.isFinite(value)) return value;
-  if (typeof value === 'string') {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
     const parsed = Number(value);
     if (Number.isFinite(parsed)) return parsed;
   }
@@ -35,9 +44,9 @@ export function extractFileChanges(events: TaskEvent[]): TaskFileChanges | undef
     const path = getFileEventPath(event?.payload);
     if (!path) continue;
 
-    if (event.type === 'file_created') created.add(path);
-    else if (event.type === 'file_modified') modified.add(path);
-    else if (event.type === 'file_deleted') deleted.add(path);
+    if (event.type === "file_created") created.add(path);
+    else if (event.type === "file_modified") modified.add(path);
+    else if (event.type === "file_deleted") deleted.add(path);
   }
 
   if (created.size === 0 && modified.size === 0 && deleted.size === 0) return undefined;
@@ -54,7 +63,7 @@ export function extractLatestUsage(events: TaskEvent[]): TaskUsageTotals | undef
 
   let latest: TaskUsageTotals | undefined;
   for (const event of events) {
-    if (event.type !== 'llm_usage') continue;
+    if (event.type !== "llm_usage") continue;
 
     const payload = event.payload ?? {};
     const totalsSource = payload?.totals ?? payload ?? {};
@@ -74,7 +83,7 @@ export function extractLatestUsage(events: TaskEvent[]): TaskUsageTotals | undef
       cost,
       ...(modelId ? { modelId } : {}),
       ...(modelKey ? { modelKey } : {}),
-      ...(typeof updatedAt === 'number' ? { updatedAt } : {}),
+      ...(typeof updatedAt === "number" ? { updatedAt } : {}),
     };
   }
 
@@ -107,7 +116,8 @@ export function buildTaskExportItem(params: {
   const usage = extractLatestUsage(events);
   const files = extractFileChanges(events);
   const completedAt = task.completedAt;
-  const durationMs = typeof completedAt === 'number' ? completedAt - task.createdAt : exportedAt - task.createdAt;
+  const durationMs =
+    typeof completedAt === "number" ? completedAt - task.createdAt : exportedAt - task.createdAt;
 
   return {
     taskId: task.id,
@@ -117,10 +127,10 @@ export function buildTaskExportItem(params: {
     ...(workspaceName ? { workspaceName } : {}),
     ...(task.parentTaskId ? { parentTaskId: task.parentTaskId } : {}),
     ...(task.agentType ? { agentType: task.agentType } : {}),
-    ...(typeof task.depth === 'number' ? { depth: task.depth } : {}),
+    ...(typeof task.depth === "number" ? { depth: task.depth } : {}),
     createdAt: task.createdAt,
     updatedAt: task.updatedAt,
-    ...(typeof task.completedAt === 'number' ? { completedAt: task.completedAt } : {}),
+    ...(typeof task.completedAt === "number" ? { completedAt: task.completedAt } : {}),
     durationMs,
     ...(usage ? { usage } : {}),
     ...(files ? { files } : {}),
@@ -136,7 +146,7 @@ export function buildTaskExportJson(params: {
   events: TaskEvent[];
   exportedAt?: number;
 }): TaskExportJson {
-  const exportedAt = typeof params.exportedAt === 'number' ? params.exportedAt : Date.now();
+  const exportedAt = typeof params.exportedAt === "number" ? params.exportedAt : Date.now();
   const workspacesById = new Map(params.workspaces.map((ws) => [ws.id, ws]));
   const eventsByTaskId = indexEventsByTaskId(params.events);
 
@@ -153,4 +163,3 @@ export function buildTaskExportJson(params: {
     tasks: items,
   };
 }
-

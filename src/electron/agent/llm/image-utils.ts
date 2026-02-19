@@ -3,18 +3,18 @@
  * Handles validation, token estimation, and fallback for unsupported providers.
  */
 
-import * as fs from 'fs/promises';
-import * as path from 'path';
+import * as fs from "fs/promises";
+import * as path from "path";
 import {
   LLMImageContent,
   LLMImageMimeType,
   LLMMessage,
   LLMProviderImageCaps,
   PROVIDER_IMAGE_CAPS,
-} from './types';
-import type { LLMProviderType } from '../../../shared/types';
+} from "./types";
+import type { LLMProviderType } from "../../../shared/types";
 
-const SUPPORTED_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp']);
+const SUPPORTED_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp"]);
 
 /**
  * Guess the image MIME type from a file path extension.
@@ -23,11 +23,11 @@ const SUPPORTED_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp'])
 export function guessImageMimeType(filePath: string): LLMImageMimeType | null {
   const ext = path.extname(filePath).toLowerCase();
   const map: Record<string, LLMImageMimeType> = {
-    '.png': 'image/png',
-    '.jpg': 'image/jpeg',
-    '.jpeg': 'image/jpeg',
-    '.webp': 'image/webp',
-    '.gif': 'image/gif',
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".webp": "image/webp",
+    ".gif": "image/gif",
   };
   return map[ext] ?? null;
 }
@@ -39,7 +39,13 @@ export function isSupportedImageFile(filePath: string): boolean {
 
 /** Get the image capability limits for a given provider type. */
 export function getProviderImageCaps(providerType: LLMProviderType): LLMProviderImageCaps {
-  return PROVIDER_IMAGE_CAPS[providerType] ?? { supportsImages: false, maxImageBytes: 0, supportedMimeTypes: [] };
+  return (
+    PROVIDER_IMAGE_CAPS[providerType] ?? {
+      supportsImages: false,
+      maxImageBytes: 0,
+      supportedMimeTypes: [],
+    }
+  );
 }
 
 /**
@@ -54,7 +60,7 @@ export function validateImageForProvider(
   if (!caps.supportsImages) {
     return `Provider "${providerType}" does not support inline images.`;
   }
-  const rawSize = image.originalSizeBytes ?? Math.ceil(image.data.length * 3 / 4);
+  const rawSize = image.originalSizeBytes ?? Math.ceil((image.data.length * 3) / 4);
   if (rawSize > caps.maxImageBytes) {
     const sizeMB = (rawSize / (1024 * 1024)).toFixed(1);
     const limitMB = (caps.maxImageBytes / (1024 * 1024)).toFixed(0);
@@ -76,8 +82,8 @@ export async function loadImageFromFile(filePath: string): Promise<LLMImageConte
   }
   const buffer = await fs.readFile(filePath);
   return {
-    type: 'image',
-    data: buffer.toString('base64'),
+    type: "image",
+    data: buffer.toString("base64"),
     mimeType,
     originalSizeBytes: buffer.length,
   };
@@ -86,10 +92,13 @@ export async function loadImageFromFile(filePath: string): Promise<LLMImageConte
 /**
  * Create an LLMImageContent from a base64 string and MIME type (for UI uploads).
  */
-export function createImageContent(base64Data: string, mimeType: LLMImageMimeType): LLMImageContent {
-  const rawSize = Math.ceil(base64Data.length * 3 / 4);
+export function createImageContent(
+  base64Data: string,
+  mimeType: LLMImageMimeType,
+): LLMImageContent {
+  const rawSize = Math.ceil((base64Data.length * 3) / 4);
   return {
-    type: 'image',
+    type: "image",
     data: base64Data,
     mimeType,
     originalSizeBytes: rawSize,
@@ -106,10 +115,10 @@ export function createImageContent(base64Data: string, mimeType: LLMImageMimeTyp
  * Without actual image dimensions we use file-size heuristics.
  */
 export function estimateImageTokens(image: LLMImageContent, providerType?: string): number {
-  if (providerType === 'gemini') {
+  if (providerType === "gemini") {
     return 258;
   }
-  const sizeBytes = image.originalSizeBytes ?? Math.ceil(image.data.length * 3 / 4);
+  const sizeBytes = image.originalSizeBytes ?? Math.ceil((image.data.length * 3) / 4);
   const sizeMB = sizeBytes / (1024 * 1024);
   if (sizeMB <= 0.5) return 1000;
   if (sizeMB <= 2) return 2000;
@@ -121,7 +130,7 @@ export function estimateImageTokens(image: LLMImageContent, providerType?: strin
  * Produce a text description as a fallback for providers that do not support images.
  */
 export function imageToTextFallback(image: LLMImageContent): string {
-  const sizeBytes = image.originalSizeBytes ?? Math.ceil(image.data.length * 3 / 4);
+  const sizeBytes = image.originalSizeBytes ?? Math.ceil((image.data.length * 3) / 4);
   const sizeMB = (sizeBytes / (1024 * 1024)).toFixed(1);
   return `[Image attached: ${image.mimeType}, ${sizeMB}MB — this provider does not support inline images. Use the "analyze_image" tool to process this image, or switch to a vision-capable provider.]`;
 }
@@ -139,10 +148,10 @@ export function stripImagesForUnsupportedProvider(
   if (caps.supportsImages) return messages;
 
   return messages.map((msg) => {
-    if (typeof msg.content === 'string') return msg;
+    if (typeof msg.content === "string") return msg;
     const newContent = (msg.content as any[]).map((item: any) => {
-      if (item.type === 'image') {
-        return { type: 'text' as const, text: imageToTextFallback(item) };
+      if (item.type === "image") {
+        return { type: "text" as const, text: imageToTextFallback(item) };
       }
       return item;
     });

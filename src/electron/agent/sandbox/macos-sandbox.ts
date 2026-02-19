@@ -8,17 +8,17 @@
  * - Network access control
  */
 
-import { spawn, ChildProcess, SpawnOptions } from 'child_process';
-import * as path from 'path';
-import * as fs from 'fs';
-import * as os from 'os';
-import { Workspace } from '../../../shared/types';
-import { ISandbox, SandboxType, SandboxOptions, SandboxResult } from './sandbox-factory';
+import { spawn, ChildProcess, SpawnOptions } from "child_process";
+import * as path from "path";
+import * as fs from "fs";
+import * as os from "os";
+import { Workspace } from "../../../shared/types";
+import { ISandbox, SandboxType, SandboxOptions, SandboxResult } from "./sandbox-factory";
 import {
   createSecureTempFile,
   escapeSandboxProfileString,
   validatePathForSandboxProfile,
-} from './security-utils';
+} from "./security-utils";
 
 /**
  * Default sandbox options
@@ -30,14 +30,14 @@ const DEFAULT_OPTIONS: Required<SandboxOptions> = {
   allowNetwork: false,
   allowedReadPaths: [],
   allowedWritePaths: [],
-  envPassthrough: ['PATH', 'HOME', 'USER', 'SHELL', 'LANG', 'TERM', 'TMPDIR'],
+  envPassthrough: ["PATH", "HOME", "USER", "SHELL", "LANG", "TERM", "TMPDIR"],
 };
 
 /**
  * macOS sandbox-exec based sandbox implementation
  */
 export class MacOSSandbox implements ISandbox {
-  readonly type: SandboxType = 'macos';
+  readonly type: SandboxType = "macos";
   private workspace: Workspace;
   private sandboxProfile?: string;
 
@@ -49,8 +49,8 @@ export class MacOSSandbox implements ISandbox {
    * Initialize sandbox environment
    */
   async initialize(): Promise<void> {
-    if (process.platform !== 'darwin') {
-      throw new Error('MacOSSandbox can only be used on macOS');
+    if (process.platform !== "darwin") {
+      throw new Error("MacOSSandbox can only be used on macOS");
     }
     this.sandboxProfile = this.generateSandboxProfile();
   }
@@ -61,20 +61,20 @@ export class MacOSSandbox implements ISandbox {
   async execute(
     command: string,
     args: string[] = [],
-    options: SandboxOptions = {}
+    options: SandboxOptions = {},
   ): Promise<SandboxResult> {
     const opts = { ...DEFAULT_OPTIONS, ...options };
     const cwd = opts.cwd || this.workspace.path;
 
     // Validate working directory is within allowed paths
-    if (!this.isPathAllowed(cwd, 'read')) {
+    if (!this.isPathAllowed(cwd, "read")) {
       return {
         exitCode: 1,
-        stdout: '',
+        stdout: "",
         stderr: `Working directory not allowed: ${cwd}`,
         killed: false,
         timedOut: false,
-        error: 'Path access denied',
+        error: "Path access denied",
       };
     }
 
@@ -86,55 +86,55 @@ export class MacOSSandbox implements ISandbox {
       cwd,
       env,
       shell: true,
-      stdio: ['ignore', 'pipe', 'pipe'],
+      stdio: ["ignore", "pipe", "pipe"],
     };
 
     if (this.sandboxProfile) {
       // Use sandbox-exec on macOS
       const profilePath = this.writeTempProfile();
       proc = spawn(
-        'sandbox-exec',
-        ['-f', profilePath, '/bin/sh', '-c', `${command} ${args.join(' ')}`],
-        spawnOptions
+        "sandbox-exec",
+        ["-f", profilePath, "/bin/sh", "-c", `${command} ${args.join(" ")}`],
+        spawnOptions,
       );
     } else {
       // Fallback without sandbox profile
-      proc = spawn('/bin/sh', ['-c', `${command} ${args.join(' ')}`], spawnOptions);
+      proc = spawn("/bin/sh", ["-c", `${command} ${args.join(" ")}`], spawnOptions);
     }
 
     return new Promise((resolve) => {
-      let stdout = '';
-      let stderr = '';
+      let stdout = "";
+      let stderr = "";
       let killed = false;
       let timedOut = false;
 
       const timeoutHandle = setTimeout(() => {
         timedOut = true;
         killed = true;
-        proc.kill('SIGKILL');
+        proc.kill("SIGKILL");
       }, opts.timeout);
 
-      proc.stdout?.on('data', (data: Buffer) => {
+      proc.stdout?.on("data", (data: Buffer) => {
         const chunk = data.toString();
         if (stdout.length + chunk.length <= opts.maxOutputSize) {
           stdout += chunk;
         } else if (stdout.length < opts.maxOutputSize) {
           stdout += chunk.slice(0, opts.maxOutputSize - stdout.length);
-          stdout += '\n[Output truncated]';
+          stdout += "\n[Output truncated]";
         }
       });
 
-      proc.stderr?.on('data', (data: Buffer) => {
+      proc.stderr?.on("data", (data: Buffer) => {
         const chunk = data.toString();
         if (stderr.length + chunk.length <= opts.maxOutputSize) {
           stderr += chunk;
         } else if (stderr.length < opts.maxOutputSize) {
           stderr += chunk.slice(0, opts.maxOutputSize - stderr.length);
-          stderr += '\n[Output truncated]';
+          stderr += "\n[Output truncated]";
         }
       });
 
-      proc.on('close', (code) => {
+      proc.on("close", (code) => {
         clearTimeout(timeoutHandle);
         resolve({
           exitCode: code ?? 1,
@@ -145,7 +145,7 @@ export class MacOSSandbox implements ISandbox {
         });
       });
 
-      proc.on('error', (err) => {
+      proc.on("error", (err) => {
         clearTimeout(timeoutHandle);
         resolve({
           exitCode: 1,
@@ -162,15 +162,12 @@ export class MacOSSandbox implements ISandbox {
   /**
    * Execute code in sandbox
    */
-  async executeCode(
-    code: string,
-    language: 'python' | 'javascript'
-  ): Promise<SandboxResult> {
-    const ext = language === 'python' ? '.py' : '.js';
+  async executeCode(code: string, language: "python" | "javascript"): Promise<SandboxResult> {
+    const ext = language === "python" ? ".py" : ".js";
     const { filePath, cleanup } = createSecureTempFile(ext, code);
 
     try {
-      const interpreter = language === 'python' ? 'python3' : 'node';
+      const interpreter = language === "python" ? "python3" : "node";
       return await this.execute(interpreter, [filePath], {
         timeout: 60 * 1000,
         allowNetwork: false,
@@ -191,9 +188,9 @@ export class MacOSSandbox implements ISandbox {
    * Check if a path is allowed based on workspace permissions
    * Resolves symlinks to prevent symlink-based path traversal attacks
    */
-  private isPathAllowed(targetPath: string, mode: 'read' | 'write'): boolean {
+  private isPathAllowed(targetPath: string, mode: "read" | "write"): boolean {
     // Reject paths with null bytes
-    if (targetPath.includes('\0')) {
+    if (targetPath.includes("\0")) {
       return false;
     }
 
@@ -243,13 +240,13 @@ export class MacOSSandbox implements ISandbox {
     }
 
     // System paths for read-only access
-    if (mode === 'read') {
+    if (mode === "read") {
       const systemReadPaths = [
-        '/usr/bin',
-        '/usr/local/bin',
-        '/bin',
-        '/usr/lib',
-        '/System',
+        "/usr/bin",
+        "/usr/local/bin",
+        "/bin",
+        "/usr/lib",
+        "/System",
         os.tmpdir(),
       ];
       for (const sysPath of systemReadPaths) {
@@ -265,9 +262,7 @@ export class MacOSSandbox implements ISandbox {
   /**
    * Build a minimal, safe environment for command execution
    */
-  private buildSafeEnvironment(
-    passthrough: string[]
-  ): Record<string, string | undefined> {
+  private buildSafeEnvironment(passthrough: string[]): Record<string, string | undefined> {
     const safeEnv: Record<string, string | undefined> = {};
 
     for (const key of passthrough) {
@@ -278,20 +273,20 @@ export class MacOSSandbox implements ISandbox {
 
     safeEnv.HOME = process.env.HOME || os.homedir();
     safeEnv.USER = process.env.USER || os.userInfo().username;
-    safeEnv.SHELL = process.env.SHELL || '/bin/bash';
-    safeEnv.TERM = 'xterm-256color';
-    safeEnv.LANG = process.env.LANG || 'en_US.UTF-8';
+    safeEnv.SHELL = process.env.SHELL || "/bin/bash";
+    safeEnv.TERM = "xterm-256color";
+    safeEnv.LANG = process.env.LANG || "en_US.UTF-8";
     safeEnv.TMPDIR = os.tmpdir();
 
     safeEnv.PATH = [
-      '/opt/homebrew/bin',
-      '/opt/homebrew/sbin',
-      '/usr/local/bin',
-      '/usr/bin',
-      '/bin',
-      '/usr/sbin',
-      '/sbin',
-    ].join(':');
+      "/opt/homebrew/bin",
+      "/opt/homebrew/sbin",
+      "/usr/local/bin",
+      "/usr/bin",
+      "/bin",
+      "/usr/sbin",
+      "/sbin",
+    ].join(":");
 
     return safeEnv;
   }
@@ -412,14 +407,17 @@ export class MacOSSandbox implements ISandbox {
    * Uses secure temp file creation to prevent TOCTOU attacks
    */
   private writeTempProfile(): string {
-    const { filePath, cleanup } = createSecureTempFile('.sb', this.sandboxProfile!);
+    const { filePath, cleanup } = createSecureTempFile(".sb", this.sandboxProfile!);
 
     // Store cleanup function for later use
     // Schedule cleanup after a longer delay to ensure process completes
     // Note: The profile is needed for the entire duration of the sandbox process
-    setTimeout(() => {
-      cleanup();
-    }, 5 * 60 * 1000); // 5 minutes - longer than typical execution
+    setTimeout(
+      () => {
+        cleanup();
+      },
+      5 * 60 * 1000,
+    ); // 5 minutes - longer than typical execution
 
     return filePath;
   }

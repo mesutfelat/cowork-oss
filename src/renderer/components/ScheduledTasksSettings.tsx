@@ -1,17 +1,17 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useAgentContext } from '../hooks/useAgentContext';
+import { useState, useEffect, useCallback } from "react";
+import { useAgentContext } from "../hooks/useAgentContext";
 
 // Types from preload (duplicated for renderer use)
 type CronSchedule =
-  | { kind: 'at'; atMs: number }
-  | { kind: 'every'; everyMs: number; anchorMs?: number }
-  | { kind: 'cron'; expr: string; tz?: string };
+  | { kind: "at"; atMs: number }
+  | { kind: "every"; everyMs: number; anchorMs?: number }
+  | { kind: "cron"; expr: string; tz?: string };
 
 interface CronJobState {
   nextRunAtMs?: number;
   runningAtMs?: number;
   lastRunAtMs?: number;
-  lastStatus?: 'ok' | 'error' | 'skipped' | 'timeout';
+  lastStatus?: "ok" | "error" | "skipped" | "timeout";
   lastError?: string;
   lastDurationMs?: number;
   lastTaskId?: string;
@@ -50,33 +50,42 @@ interface Workspace {
 
 // Schedule presets
 const SCHEDULE_PRESETS = [
-  { label: 'Every 5 minutes', schedule: { kind: 'every' as const, everyMs: 5 * 60 * 1000 } },
-  { label: 'Every 15 minutes', schedule: { kind: 'every' as const, everyMs: 15 * 60 * 1000 } },
-  { label: 'Every 30 minutes', schedule: { kind: 'every' as const, everyMs: 30 * 60 * 1000 } },
-  { label: 'Every hour', schedule: { kind: 'every' as const, everyMs: 60 * 60 * 1000 } },
-  { label: 'Every 2 hours', schedule: { kind: 'every' as const, everyMs: 2 * 60 * 60 * 1000 } },
-  { label: 'Every 6 hours', schedule: { kind: 'every' as const, everyMs: 6 * 60 * 60 * 1000 } },
-  { label: 'Every 12 hours', schedule: { kind: 'every' as const, everyMs: 12 * 60 * 60 * 1000 } },
-  { label: 'Daily', schedule: { kind: 'every' as const, everyMs: 24 * 60 * 60 * 1000 } },
+  { label: "Every 5 minutes", schedule: { kind: "every" as const, everyMs: 5 * 60 * 1000 } },
+  { label: "Every 15 minutes", schedule: { kind: "every" as const, everyMs: 15 * 60 * 1000 } },
+  { label: "Every 30 minutes", schedule: { kind: "every" as const, everyMs: 30 * 60 * 1000 } },
+  { label: "Every hour", schedule: { kind: "every" as const, everyMs: 60 * 60 * 1000 } },
+  { label: "Every 2 hours", schedule: { kind: "every" as const, everyMs: 2 * 60 * 60 * 1000 } },
+  { label: "Every 6 hours", schedule: { kind: "every" as const, everyMs: 6 * 60 * 60 * 1000 } },
+  { label: "Every 12 hours", schedule: { kind: "every" as const, everyMs: 12 * 60 * 60 * 1000 } },
+  { label: "Daily", schedule: { kind: "every" as const, everyMs: 24 * 60 * 60 * 1000 } },
 ];
 
 const CRON_PRESETS = [
-  { label: 'Every minute', value: '* * * * *', desc: 'Runs every minute' },
-  { label: 'Every 5 minutes', value: '*/5 * * * *', desc: 'At minutes 0, 5, 10...' },
-  { label: 'Every 15 minutes', value: '*/15 * * * *', desc: 'At :00, :15, :30, :45' },
-  { label: 'Every hour', value: '0 * * * *', desc: 'At the start of each hour' },
-  { label: 'Daily at midnight', value: '0 0 * * *', desc: '12:00 AM every day' },
-  { label: 'Daily at 9:00 AM', value: '0 9 * * *', desc: '9:00 AM every day' },
-  { label: 'Daily at 6:00 PM', value: '0 18 * * *', desc: '6:00 PM every day' },
-  { label: 'Weekdays at 9:00 AM', value: '0 9 * * 1-5', desc: 'Mon-Fri at 9:00 AM' },
-  { label: 'Weekly on Monday', value: '0 0 * * 1', desc: 'Every Monday at midnight' },
-  { label: 'Monthly on the 1st', value: '0 0 1 * *', desc: '1st day of month at midnight' },
+  { label: "Every minute", value: "* * * * *", desc: "Runs every minute" },
+  { label: "Every 5 minutes", value: "*/5 * * * *", desc: "At minutes 0, 5, 10..." },
+  { label: "Every 15 minutes", value: "*/15 * * * *", desc: "At :00, :15, :30, :45" },
+  { label: "Every hour", value: "0 * * * *", desc: "At the start of each hour" },
+  { label: "Daily at midnight", value: "0 0 * * *", desc: "12:00 AM every day" },
+  { label: "Daily at 9:00 AM", value: "0 9 * * *", desc: "9:00 AM every day" },
+  { label: "Daily at 6:00 PM", value: "0 18 * * *", desc: "6:00 PM every day" },
+  { label: "Weekdays at 9:00 AM", value: "0 9 * * 1-5", desc: "Mon-Fri at 9:00 AM" },
+  { label: "Weekly on Monday", value: "0 0 * * 1", desc: "Every Monday at midnight" },
+  { label: "Monthly on the 1st", value: "0 0 1 * *", desc: "1st day of month at midnight" },
 ];
 
 // Icons as inline SVGs
 const Icons = {
   clock: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <circle cx="12" cy="12" r="10" />
       <polyline points="12 6 12 12 16 14" />
     </svg>
@@ -93,36 +102,90 @@ const Icons = {
     </svg>
   ),
   edit: (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
       <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
     </svg>
   ),
   trash: (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <polyline points="3 6 5 6 21 6" />
       <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
     </svg>
   ),
   plus: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <line x1="12" y1="5" x2="12" y2="19" />
       <line x1="5" y1="12" x2="19" y2="12" />
     </svg>
   ),
   check: (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <polyline points="20 6 9 17 4 12" />
     </svg>
   ),
   x: (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <line x1="18" y1="6" x2="6" y2="18" />
       <line x1="6" y1="6" x2="18" y2="18" />
     </svg>
   ),
   calendar: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
       <line x1="16" y1="2" x2="16" y2="6" />
       <line x1="8" y1="2" x2="8" y2="6" />
@@ -130,7 +193,16 @@ const Icons = {
     </svg>
   ),
   repeat: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <polyline points="17 1 21 5 17 9" />
       <path d="M3 11V9a4 4 0 0 1 4-4h14" />
       <polyline points="7 23 3 19 7 15" />
@@ -138,17 +210,44 @@ const Icons = {
     </svg>
   ),
   chevronDown: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <polyline points="6 9 12 15 18 9" />
     </svg>
   ),
   zap: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
     </svg>
   ),
   activity: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
     </svg>
   ),
@@ -156,27 +255,27 @@ const Icons = {
 
 function describeSchedule(schedule: CronSchedule): string {
   switch (schedule.kind) {
-    case 'at': {
+    case "at": {
       const date = new Date(schedule.atMs);
       return `Once at ${date.toLocaleString()}`;
     }
-    case 'every': {
+    case "every": {
       const ms = schedule.everyMs;
       if (ms >= 86400000) {
         const days = Math.round(ms / 86400000);
-        return `Every ${days} day${days > 1 ? 's' : ''}`;
+        return `Every ${days} day${days > 1 ? "s" : ""}`;
       }
       if (ms >= 3600000) {
         const hours = Math.round(ms / 3600000);
-        return `Every ${hours} hour${hours > 1 ? 's' : ''}`;
+        return `Every ${hours} hour${hours > 1 ? "s" : ""}`;
       }
       if (ms >= 60000) {
         const minutes = Math.round(ms / 60000);
-        return `Every ${minutes} minute${minutes > 1 ? 's' : ''}`;
+        return `Every ${minutes} minute${minutes > 1 ? "s" : ""}`;
       }
       return `Every ${Math.round(ms / 1000)} seconds`;
     }
-    case 'cron': {
+    case "cron": {
       // Try to find a matching preset for friendly name
       const preset = CRON_PRESETS.find((p) => p.value === schedule.expr);
       return preset ? preset.label : schedule.expr;
@@ -185,7 +284,7 @@ function describeSchedule(schedule: CronSchedule): string {
 }
 
 function getScheduleIcon(schedule: CronSchedule) {
-  if (schedule.kind === 'at') return Icons.calendar;
+  if (schedule.kind === "at") return Icons.calendar;
   return Icons.repeat;
 }
 
@@ -196,7 +295,7 @@ function formatRelativeTime(ms: number): string {
   const isPast = diff < 0;
 
   if (absDiff < 60000) {
-    return isPast ? 'just now' : 'in < 1 min';
+    return isPast ? "just now" : "in < 1 min";
   }
   if (absDiff < 3600000) {
     const minutes = Math.round(absDiff / 60000);
@@ -222,54 +321,54 @@ function formatDuration(ms: number): string {
 const styles = {
   container: {
     padding: 0,
-    maxWidth: '100%',
-    width: '100%',
+    maxWidth: "100%",
+    width: "100%",
   } as React.CSSProperties,
   statsGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-    gap: '12px',
-    marginBottom: '24px',
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+    gap: "12px",
+    marginBottom: "24px",
   } as React.CSSProperties,
   statCard: {
-    backgroundColor: 'var(--color-bg-glass)',
-    border: '1px solid var(--color-border-subtle)',
-    borderRadius: 'var(--radius-md)',
-    padding: '16px',
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: '4px',
+    backgroundColor: "var(--color-bg-glass)",
+    border: "1px solid var(--color-border-subtle)",
+    borderRadius: "var(--radius-md)",
+    padding: "16px",
+    display: "flex",
+    flexDirection: "column" as const,
+    gap: "4px",
   } as React.CSSProperties,
   statLabel: {
-    fontSize: '12px',
-    color: 'var(--color-text-muted)',
-    textTransform: 'uppercase' as const,
-    letterSpacing: '0.5px',
+    fontSize: "12px",
+    color: "var(--color-text-muted)",
+    textTransform: "uppercase" as const,
+    letterSpacing: "0.5px",
   } as React.CSSProperties,
   statValue: {
-    fontSize: '24px',
+    fontSize: "24px",
     fontWeight: 600,
-    color: 'var(--color-text-primary)',
+    color: "var(--color-text-primary)",
   } as React.CSSProperties,
   jobCard: {
-    backgroundColor: 'var(--color-bg-glass)',
-    border: '1px solid var(--color-border-subtle)',
-    borderRadius: 'var(--radius-md)',
-    marginBottom: '12px',
-    overflow: 'hidden',
-    transition: 'all 0.2s ease',
+    backgroundColor: "var(--color-bg-glass)",
+    border: "1px solid var(--color-border-subtle)",
+    borderRadius: "var(--radius-md)",
+    marginBottom: "12px",
+    overflow: "hidden",
+    transition: "all 0.2s ease",
   } as React.CSSProperties,
   jobHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    padding: '16px',
-    gap: '12px',
-    cursor: 'pointer',
+    display: "flex",
+    alignItems: "center",
+    padding: "16px",
+    gap: "12px",
+    cursor: "pointer",
   } as React.CSSProperties,
   statusDot: {
-    width: '10px',
-    height: '10px',
-    borderRadius: '50%',
+    width: "10px",
+    height: "10px",
+    borderRadius: "50%",
     flexShrink: 0,
   } as React.CSSProperties,
   jobInfo: {
@@ -277,117 +376,117 @@ const styles = {
     minWidth: 0,
   } as React.CSSProperties,
   jobName: {
-    fontSize: '15px',
+    fontSize: "15px",
     fontWeight: 500,
-    color: 'var(--color-text-primary)',
-    marginBottom: '4px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
+    color: "var(--color-text-primary)",
+    marginBottom: "4px",
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
   } as React.CSSProperties,
   jobMeta: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    fontSize: '13px',
-    color: 'var(--color-text-muted)',
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    fontSize: "13px",
+    color: "var(--color-text-muted)",
   } as React.CSSProperties,
   scheduleTag: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '4px',
-    padding: '2px 8px',
-    backgroundColor: 'var(--color-bg-secondary)',
-    borderRadius: '4px',
-    fontSize: '12px',
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "4px",
+    padding: "2px 8px",
+    backgroundColor: "var(--color-bg-secondary)",
+    borderRadius: "4px",
+    fontSize: "12px",
   } as React.CSSProperties,
   nextRun: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    padding: '6px 12px',
-    backgroundColor: 'var(--color-accent-subtle)',
-    color: 'var(--color-accent)',
-    borderRadius: '6px',
-    fontSize: '13px',
+    display: "flex",
+    alignItems: "center",
+    gap: "6px",
+    padding: "6px 12px",
+    backgroundColor: "var(--color-accent-subtle)",
+    color: "var(--color-accent)",
+    borderRadius: "6px",
+    fontSize: "13px",
     fontWeight: 500,
   } as React.CSSProperties,
   actions: {
-    display: 'flex',
-    gap: '4px',
+    display: "flex",
+    gap: "4px",
   } as React.CSSProperties,
   actionBtn: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '32px',
-    height: '32px',
-    backgroundColor: 'transparent',
-    border: '1px solid var(--color-border-subtle)',
-    borderRadius: '6px',
-    color: 'var(--color-text-secondary)',
-    cursor: 'pointer',
-    transition: 'all 0.15s ease',
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: "32px",
+    height: "32px",
+    backgroundColor: "transparent",
+    border: "1px solid var(--color-border-subtle)",
+    borderRadius: "6px",
+    color: "var(--color-text-secondary)",
+    cursor: "pointer",
+    transition: "all 0.15s ease",
   } as React.CSSProperties,
   expandedContent: {
-    borderTop: '1px solid var(--color-border-subtle)',
-    padding: '16px',
-    backgroundColor: 'var(--color-bg-darker)',
+    borderTop: "1px solid var(--color-border-subtle)",
+    padding: "16px",
+    backgroundColor: "var(--color-bg-darker)",
   } as React.CSSProperties,
   detailGrid: {
-    display: 'grid',
-    gridTemplateColumns: '120px 1fr',
-    gap: '8px 16px',
-    fontSize: '13px',
+    display: "grid",
+    gridTemplateColumns: "120px 1fr",
+    gap: "8px 16px",
+    fontSize: "13px",
   } as React.CSSProperties,
   detailLabel: {
-    color: 'var(--color-text-muted)',
+    color: "var(--color-text-muted)",
   } as React.CSSProperties,
   detailValue: {
-    color: 'var(--color-text-primary)',
-    wordBreak: 'break-word' as const,
+    color: "var(--color-text-primary)",
+    wordBreak: "break-word" as const,
   } as React.CSSProperties,
   emptyState: {
-    textAlign: 'center' as const,
-    padding: '60px 20px',
-    color: 'var(--color-text-muted)',
+    textAlign: "center" as const,
+    padding: "60px 20px",
+    color: "var(--color-text-muted)",
   } as React.CSSProperties,
   emptyIcon: {
-    width: '64px',
-    height: '64px',
-    margin: '0 auto 16px',
+    width: "64px",
+    height: "64px",
+    margin: "0 auto 16px",
     opacity: 0.3,
   } as React.CSSProperties,
   emptyTitle: {
-    fontSize: '18px',
+    fontSize: "18px",
     fontWeight: 500,
-    color: 'var(--color-text-secondary)',
-    marginBottom: '8px',
+    color: "var(--color-text-secondary)",
+    marginBottom: "8px",
   } as React.CSSProperties,
   emptyDesc: {
-    fontSize: '14px',
-    maxWidth: '400px',
-    margin: '0 auto',
+    fontSize: "14px",
+    maxWidth: "400px",
+    margin: "0 auto",
   } as React.CSSProperties,
   errorBanner: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    padding: '12px 16px',
-    backgroundColor: 'var(--color-error-subtle)',
-    border: '1px solid var(--color-error)',
-    borderRadius: 'var(--radius-md)',
-    marginBottom: '16px',
-    color: 'var(--color-error)',
-    fontSize: '14px',
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    padding: "12px 16px",
+    backgroundColor: "var(--color-error-subtle)",
+    border: "1px solid var(--color-error)",
+    borderRadius: "var(--radius-md)",
+    marginBottom: "16px",
+    color: "var(--color-error)",
+    fontSize: "14px",
   } as React.CSSProperties,
   lastRunBadge: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '4px',
-    padding: '2px 6px',
-    borderRadius: '4px',
-    fontSize: '11px',
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "4px",
+    padding: "2px 6px",
+    borderRadius: "4px",
+    fontSize: "11px",
     fontWeight: 500,
   } as React.CSSProperties,
 };
@@ -415,7 +514,7 @@ export function ScheduledTasksSettings() {
       setJobs(jobsResult);
       setWorkspaces(workspacesResult);
     } catch (err: any) {
-      setError(err.message || 'Failed to load scheduled tasks');
+      setError(err.message || "Failed to load scheduled tasks");
     } finally {
       setLoading(false);
     }
@@ -426,7 +525,7 @@ export function ScheduledTasksSettings() {
 
     // Subscribe to cron events
     const unsubscribe = window.electronAPI.onCronEvent((event) => {
-      console.log('[ScheduledTasks] Cron event:', event);
+      console.log("[ScheduledTasks] Cron event:", event);
       loadData();
     });
 
@@ -454,7 +553,7 @@ export function ScheduledTasksSettings() {
     try {
       const result = await window.electronAPI.removeCronJob(job.id);
       if (!result.ok) {
-        setError((result as any).error || 'Failed to delete job');
+        setError((result as any).error || "Failed to delete job");
         return;
       }
       await loadData();
@@ -466,7 +565,7 @@ export function ScheduledTasksSettings() {
   const handleRunNow = async (job: CronJob, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      const result = await window.electronAPI.runCronJob(job.id, 'force');
+      const result = await window.electronAPI.runCronJob(job.id, "force");
       if (!result.ok) {
         setError(result.error);
         return;
@@ -515,11 +614,11 @@ export function ScheduledTasksSettings() {
           <button
             onClick={() => setError(null)}
             style={{
-              background: 'none',
-              border: 'none',
-              color: 'inherit',
-              cursor: 'pointer',
-              padding: '4px',
+              background: "none",
+              border: "none",
+              color: "inherit",
+              cursor: "pointer",
+              padding: "4px",
             }}
           >
             {Icons.x}
@@ -535,20 +634,20 @@ export function ScheduledTasksSettings() {
         </div>
         <div style={styles.statCard}>
           <span style={styles.statLabel}>Active</span>
-          <span style={{ ...styles.statValue, color: 'var(--color-success)' }}>
+          <span style={{ ...styles.statValue, color: "var(--color-success)" }}>
             {status?.enabledJobCount || 0}
           </span>
         </div>
         <div style={styles.statCard}>
           <span style={styles.statLabel}>Next Run</span>
-          <span style={{ ...styles.statValue, fontSize: '16px' }}>
-            {status?.nextWakeAtMs ? formatRelativeTime(status.nextWakeAtMs) : '-'}
+          <span style={{ ...styles.statValue, fontSize: "16px" }}>
+            {status?.nextWakeAtMs ? formatRelativeTime(status.nextWakeAtMs) : "-"}
           </span>
         </div>
         <div style={styles.statCard}>
           <span style={styles.statLabel}>Last Run</span>
-          <span style={{ ...styles.statValue, fontSize: '16px' }}>
-            {lastRunJob?.state.lastRunAtMs ? formatRelativeTime(lastRunJob.state.lastRunAtMs) : '-'}
+          <span style={{ ...styles.statValue, fontSize: "16px" }}>
+            {lastRunJob?.state.lastRunAtMs ? formatRelativeTime(lastRunJob.state.lastRunAtMs) : "-"}
           </span>
         </div>
       </div>
@@ -576,8 +675,8 @@ export function ScheduledTasksSettings() {
           </div>
           <div style={styles.emptyTitle}>No scheduled tasks yet</div>
           <div style={styles.emptyDesc}>
-            Create a scheduled task to automatically run prompts on a schedule.
-            Great for daily reports, periodic checks, and automated workflows.
+            Create a scheduled task to automatically run prompts on a schedule. Great for daily
+            reports, periodic checks, and automated workflows.
           </div>
         </div>
       ) : (
@@ -592,7 +691,7 @@ export function ScheduledTasksSettings() {
                 key={job.id}
                 style={{
                   ...styles.jobCard,
-                  borderColor: job.enabled ? 'var(--color-border-subtle)' : 'transparent',
+                  borderColor: job.enabled ? "var(--color-border-subtle)" : "transparent",
                   opacity: job.enabled ? 1 : 0.6,
                 }}
               >
@@ -606,15 +705,16 @@ export function ScheduledTasksSettings() {
                     style={{
                       ...styles.statusDot,
                       backgroundColor: !job.enabled
-                        ? 'var(--color-text-muted)'
+                        ? "var(--color-text-muted)"
                         : job.state.runningAtMs
-                          ? 'var(--color-warning)'
-                          : lastStatus === 'error'
-                            ? 'var(--color-error)'
-                            : 'var(--color-success)',
-                      boxShadow: job.enabled && !job.state.runningAtMs
-                        ? `0 0 8px ${lastStatus === 'error' ? 'var(--color-error)' : 'var(--color-success)'}`
-                        : 'none',
+                          ? "var(--color-warning)"
+                          : lastStatus === "error"
+                            ? "var(--color-error)"
+                            : "var(--color-success)",
+                      boxShadow:
+                        job.enabled && !job.state.runningAtMs
+                          ? `0 0 8px ${lastStatus === "error" ? "var(--color-error)" : "var(--color-success)"}`
+                          : "none",
                     }}
                   />
 
@@ -627,13 +727,14 @@ export function ScheduledTasksSettings() {
                           style={{
                             ...styles.lastRunBadge,
                             backgroundColor:
-                              lastStatus === 'ok'
-                                ? 'var(--color-success-subtle)'
-                                : 'var(--color-error-subtle)',
-                            color: lastStatus === 'ok' ? 'var(--color-success)' : 'var(--color-error)',
+                              lastStatus === "ok"
+                                ? "var(--color-success-subtle)"
+                                : "var(--color-error-subtle)",
+                            color:
+                              lastStatus === "ok" ? "var(--color-success)" : "var(--color-error)",
                           }}
                         >
-                          {lastStatus === 'ok' ? Icons.check : Icons.x}
+                          {lastStatus === "ok" ? Icons.check : Icons.x}
                           {lastStatus}
                         </span>
                       )}
@@ -643,9 +744,7 @@ export function ScheduledTasksSettings() {
                         {getScheduleIcon(job.schedule)}
                         {describeSchedule(job.schedule)}
                       </span>
-                      {workspace && (
-                        <span style={{ opacity: 0.7 }}>{workspace.name}</span>
-                      )}
+                      {workspace && <span style={{ opacity: 0.7 }}>{workspace.name}</span>}
                     </div>
                   </div>
 
@@ -662,11 +761,13 @@ export function ScheduledTasksSettings() {
                     <button
                       style={{
                         ...styles.actionBtn,
-                        backgroundColor: job.enabled ? 'var(--color-success-subtle)' : 'transparent',
-                        color: job.enabled ? 'var(--color-success)' : 'var(--color-text-muted)',
+                        backgroundColor: job.enabled
+                          ? "var(--color-success-subtle)"
+                          : "transparent",
+                        color: job.enabled ? "var(--color-success)" : "var(--color-text-muted)",
                       }}
                       onClick={(e) => handleToggleJob(job, e)}
-                      title={job.enabled ? 'Disable' : 'Enable'}
+                      title={job.enabled ? "Disable" : "Enable"}
                     >
                       {job.enabled ? Icons.pause : Icons.play}
                     </button>
@@ -687,7 +788,7 @@ export function ScheduledTasksSettings() {
                     <button
                       style={{
                         ...styles.actionBtn,
-                        color: 'var(--color-error)',
+                        color: "var(--color-error)",
                       }}
                       onClick={(e) => handleDeleteJob(job, e)}
                       title="Delete"
@@ -699,9 +800,9 @@ export function ScheduledTasksSettings() {
                   {/* Expand Arrow */}
                   <span
                     style={{
-                      color: 'var(--color-text-muted)',
-                      transform: isExpanded ? 'rotate(180deg)' : 'rotate(0)',
-                      transition: 'transform 0.2s ease',
+                      color: "var(--color-text-muted)",
+                      transform: isExpanded ? "rotate(180deg)" : "rotate(0)",
+                      transition: "transform 0.2s ease",
                     }}
                   >
                     {Icons.chevronDown}
@@ -714,12 +815,12 @@ export function ScheduledTasksSettings() {
                     {job.description && (
                       <div
                         style={{
-                          marginBottom: '16px',
-                          padding: '12px',
-                          backgroundColor: 'var(--color-bg-glass)',
-                          borderRadius: '6px',
-                          fontSize: '13px',
-                          color: 'var(--color-text-secondary)',
+                          marginBottom: "16px",
+                          padding: "12px",
+                          backgroundColor: "var(--color-bg-glass)",
+                          borderRadius: "6px",
+                          fontSize: "13px",
+                          color: "var(--color-text-secondary)",
                         }}
                       >
                         {job.description}
@@ -734,20 +835,20 @@ export function ScheduledTasksSettings() {
                       <span
                         style={{
                           ...styles.detailValue,
-                          fontFamily: 'monospace',
-                          fontSize: '12px',
-                          backgroundColor: 'var(--color-bg-glass)',
-                          padding: '8px',
-                          borderRadius: '4px',
+                          fontFamily: "monospace",
+                          fontSize: "12px",
+                          backgroundColor: "var(--color-bg-glass)",
+                          padding: "8px",
+                          borderRadius: "4px",
                         }}
                       >
                         {job.taskPrompt}
                       </span>
 
-                      {job.schedule.kind === 'cron' && (
+                      {job.schedule.kind === "cron" && (
                         <>
                           <span style={styles.detailLabel}>Cron Expression</span>
-                          <span style={{ ...styles.detailValue, fontFamily: 'monospace' }}>
+                          <span style={{ ...styles.detailValue, fontFamily: "monospace" }}>
                             {job.schedule.expr}
                           </span>
                         </>
@@ -771,7 +872,7 @@ export function ScheduledTasksSettings() {
                           <span style={styles.detailValue}>
                             {new Date(job.state.lastRunAtMs).toLocaleString()}
                             {job.state.lastDurationMs && (
-                              <span style={{ color: 'var(--color-text-muted)', marginLeft: '8px' }}>
+                              <span style={{ color: "var(--color-text-muted)", marginLeft: "8px" }}>
                                 ({formatDuration(job.state.lastDurationMs)})
                               </span>
                             )}
@@ -782,7 +883,7 @@ export function ScheduledTasksSettings() {
                       {job.state.lastError && (
                         <>
                           <span style={styles.detailLabel}>Last Error</span>
-                          <span style={{ ...styles.detailValue, color: 'var(--color-error)' }}>
+                          <span style={{ ...styles.detailValue, color: "var(--color-error)" }}>
                             {job.state.lastError}
                           </span>
                         </>
@@ -827,24 +928,26 @@ function JobModal({ job, workspaces, onClose, onSave }: JobModalProps) {
   const isEditing = job !== null;
   const agentContext = useAgentContext();
 
-  const [name, setName] = useState(job?.name || '');
-  const [description, setDescription] = useState(job?.description || '');
-  const [workspaceId, setWorkspaceId] = useState(job?.workspaceId || (workspaces[0]?.id || ''));
-  const [taskPrompt, setTaskPrompt] = useState(job?.taskPrompt || '');
-  const [taskTitle, setTaskTitle] = useState(job?.taskTitle || '');
+  const [name, setName] = useState(job?.name || "");
+  const [description, setDescription] = useState(job?.description || "");
+  const [workspaceId, setWorkspaceId] = useState(job?.workspaceId || workspaces[0]?.id || "");
+  const [taskPrompt, setTaskPrompt] = useState(job?.taskPrompt || "");
+  const [taskTitle, setTaskTitle] = useState(job?.taskTitle || "");
   const [enabled, setEnabled] = useState(job?.enabled ?? true);
   const [deleteAfterRun, setDeleteAfterRun] = useState(job?.deleteAfterRun ?? false);
 
   // Schedule type and values
-  const [scheduleType, setScheduleType] = useState<'every' | 'cron' | 'at'>(
-    job?.schedule.kind || 'every'
+  const [scheduleType, setScheduleType] = useState<"every" | "cron" | "at">(
+    job?.schedule.kind || "every",
   );
   const [everyMs, setEveryMs] = useState(
-    job?.schedule.kind === 'every' ? job.schedule.everyMs : 60 * 60 * 1000
+    job?.schedule.kind === "every" ? job.schedule.everyMs : 60 * 60 * 1000,
   );
-  const [cronExpr, setCronExpr] = useState(job?.schedule.kind === 'cron' ? job.schedule.expr : '0 9 * * *');
+  const [cronExpr, setCronExpr] = useState(
+    job?.schedule.kind === "cron" ? job.schedule.expr : "0 9 * * *",
+  );
   const [atDateTime, setAtDateTime] = useState(
-    job?.schedule.kind === 'at' ? new Date(job.schedule.atMs).toISOString().slice(0, 16) : ''
+    job?.schedule.kind === "at" ? new Date(job.schedule.atMs).toISOString().slice(0, 16) : "",
   );
 
   const [saving, setSaving] = useState(false);
@@ -852,30 +955,30 @@ function JobModal({ job, workspaces, onClose, onSave }: JobModalProps) {
 
   const handleSave = async () => {
     if (!name.trim()) {
-      setError('Name is required');
+      setError("Name is required");
       return;
     }
     if (!workspaceId) {
-      setError('Workspace is required');
+      setError("Workspace is required");
       return;
     }
     if (!taskPrompt.trim()) {
-      setError('Task prompt is required');
+      setError("Task prompt is required");
       return;
     }
 
     let schedule: CronSchedule;
-    if (scheduleType === 'every') {
-      schedule = { kind: 'every', everyMs, anchorMs: Date.now() };
-    } else if (scheduleType === 'cron') {
-      schedule = { kind: 'cron', expr: cronExpr };
+    if (scheduleType === "every") {
+      schedule = { kind: "every", everyMs, anchorMs: Date.now() };
+    } else if (scheduleType === "cron") {
+      schedule = { kind: "cron", expr: cronExpr };
     } else {
       const atMs = new Date(atDateTime).getTime();
       if (isNaN(atMs) || atMs < Date.now()) {
-        setError('Please select a future date and time');
+        setError("Please select a future date and time");
         return;
       }
-      schedule = { kind: 'at', atMs };
+      schedule = { kind: "at", atMs };
     }
 
     try {
@@ -924,143 +1027,143 @@ function JobModal({ job, workspaces, onClose, onSave }: JobModalProps) {
 
   const modalStyles = {
     overlay: {
-      position: 'fixed' as const,
+      position: "fixed" as const,
       top: 0,
       left: 0,
       right: 0,
       bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.6)',
-      backdropFilter: 'blur(4px)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
+      backgroundColor: "rgba(0, 0, 0, 0.6)",
+      backdropFilter: "blur(4px)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
       zIndex: 1000,
     },
     content: {
-      backgroundColor: 'var(--color-bg-elevated)',
-      border: '1px solid var(--color-border)',
-      borderRadius: 'var(--radius-lg)',
-      padding: '24px',
-      width: '560px',
-      maxWidth: '90vw',
-      maxHeight: '85vh',
-      overflow: 'auto',
-      boxShadow: 'var(--shadow-lg)',
+      backgroundColor: "var(--color-bg-elevated)",
+      border: "1px solid var(--color-border)",
+      borderRadius: "var(--radius-lg)",
+      padding: "24px",
+      width: "560px",
+      maxWidth: "90vw",
+      maxHeight: "85vh",
+      overflow: "auto",
+      boxShadow: "var(--shadow-lg)",
     },
     title: {
-      fontSize: '20px',
+      fontSize: "20px",
       fontWeight: 600,
-      color: 'var(--color-text-primary)',
-      marginBottom: '20px',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '10px',
+      color: "var(--color-text-primary)",
+      marginBottom: "20px",
+      display: "flex",
+      alignItems: "center",
+      gap: "10px",
     },
     field: {
-      marginBottom: '20px',
+      marginBottom: "20px",
     },
     label: {
-      display: 'block',
-      marginBottom: '6px',
-      fontSize: '13px',
+      display: "block",
+      marginBottom: "6px",
+      fontSize: "13px",
       fontWeight: 500,
-      color: 'var(--color-text-secondary)',
+      color: "var(--color-text-secondary)",
     },
     input: {
-      width: '100%',
-      padding: '10px 12px',
-      backgroundColor: 'var(--color-bg-input)',
-      border: '1px solid var(--color-border)',
-      borderRadius: 'var(--radius-sm)',
-      color: 'var(--color-text-primary)',
-      fontSize: '14px',
-      outline: 'none',
-      transition: 'border-color 0.2s',
+      width: "100%",
+      padding: "10px 12px",
+      backgroundColor: "var(--color-bg-input)",
+      border: "1px solid var(--color-border)",
+      borderRadius: "var(--radius-sm)",
+      color: "var(--color-text-primary)",
+      fontSize: "14px",
+      outline: "none",
+      transition: "border-color 0.2s",
     },
     textarea: {
-      width: '100%',
-      padding: '10px 12px',
-      backgroundColor: 'var(--color-bg-input)',
-      border: '1px solid var(--color-border)',
-      borderRadius: 'var(--radius-sm)',
-      color: 'var(--color-text-primary)',
-      fontSize: '14px',
-      outline: 'none',
-      resize: 'vertical' as const,
-      minHeight: '100px',
-      fontFamily: 'inherit',
+      width: "100%",
+      padding: "10px 12px",
+      backgroundColor: "var(--color-bg-input)",
+      border: "1px solid var(--color-border)",
+      borderRadius: "var(--radius-sm)",
+      color: "var(--color-text-primary)",
+      fontSize: "14px",
+      outline: "none",
+      resize: "vertical" as const,
+      minHeight: "100px",
+      fontFamily: "inherit",
     },
     select: {
-      width: '100%',
-      padding: '10px 12px',
-      backgroundColor: 'var(--color-bg-input)',
-      border: '1px solid var(--color-border)',
-      borderRadius: 'var(--radius-sm)',
-      color: 'var(--color-text-primary)',
-      fontSize: '14px',
-      outline: 'none',
+      width: "100%",
+      padding: "10px 12px",
+      backgroundColor: "var(--color-bg-input)",
+      border: "1px solid var(--color-border)",
+      borderRadius: "var(--radius-sm)",
+      color: "var(--color-text-primary)",
+      fontSize: "14px",
+      outline: "none",
     },
     scheduleToggle: {
-      display: 'flex',
-      gap: '8px',
-      marginBottom: '12px',
+      display: "flex",
+      gap: "8px",
+      marginBottom: "12px",
     },
     toggleBtn: (active: boolean) => ({
       flex: 1,
-      padding: '10px',
-      backgroundColor: active ? 'var(--color-accent-subtle)' : 'var(--color-bg-glass)',
-      border: `1px solid ${active ? 'var(--color-accent)' : 'var(--color-border-subtle)'}`,
-      borderRadius: 'var(--radius-sm)',
-      color: active ? 'var(--color-accent)' : 'var(--color-text-secondary)',
-      fontSize: '13px',
+      padding: "10px",
+      backgroundColor: active ? "var(--color-accent-subtle)" : "var(--color-bg-glass)",
+      border: `1px solid ${active ? "var(--color-accent)" : "var(--color-border-subtle)"}`,
+      borderRadius: "var(--radius-sm)",
+      color: active ? "var(--color-accent)" : "var(--color-text-secondary)",
+      fontSize: "13px",
       fontWeight: 500,
-      cursor: 'pointer',
-      transition: 'all 0.15s ease',
+      cursor: "pointer",
+      transition: "all 0.15s ease",
     }),
     checkbox: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: '8px',
-      cursor: 'pointer',
-      fontSize: '14px',
-      color: 'var(--color-text-secondary)',
+      display: "flex",
+      alignItems: "center",
+      gap: "8px",
+      cursor: "pointer",
+      fontSize: "14px",
+      color: "var(--color-text-secondary)",
     },
     actions: {
-      display: 'flex',
-      gap: '12px',
-      justifyContent: 'flex-end',
-      marginTop: '24px',
-      paddingTop: '20px',
-      borderTop: '1px solid var(--color-border-subtle)',
+      display: "flex",
+      gap: "12px",
+      justifyContent: "flex-end",
+      marginTop: "24px",
+      paddingTop: "20px",
+      borderTop: "1px solid var(--color-border-subtle)",
     },
     cancelBtn: {
-      padding: '10px 20px',
-      backgroundColor: 'transparent',
-      border: '1px solid var(--color-border)',
-      borderRadius: 'var(--radius-sm)',
-      color: 'var(--color-text-secondary)',
-      fontSize: '14px',
+      padding: "10px 20px",
+      backgroundColor: "transparent",
+      border: "1px solid var(--color-border)",
+      borderRadius: "var(--radius-sm)",
+      color: "var(--color-text-secondary)",
+      fontSize: "14px",
       fontWeight: 500,
-      cursor: 'pointer',
+      cursor: "pointer",
     },
     saveBtn: {
-      padding: '10px 24px',
-      backgroundColor: 'var(--color-accent)',
-      border: 'none',
-      borderRadius: 'var(--radius-sm)',
-      color: '#000',
-      fontSize: '14px',
+      padding: "10px 24px",
+      backgroundColor: "var(--color-accent)",
+      border: "none",
+      borderRadius: "var(--radius-sm)",
+      color: "#000",
+      fontSize: "14px",
       fontWeight: 600,
-      cursor: 'pointer',
+      cursor: "pointer",
     },
     error: {
-      padding: '10px 12px',
-      backgroundColor: 'var(--color-error-subtle)',
-      border: '1px solid var(--color-error)',
-      borderRadius: 'var(--radius-sm)',
-      color: 'var(--color-error)',
-      fontSize: '13px',
-      marginBottom: '16px',
+      padding: "10px 12px",
+      backgroundColor: "var(--color-error-subtle)",
+      border: "1px solid var(--color-error)",
+      borderRadius: "var(--radius-sm)",
+      color: "var(--color-error)",
+      fontSize: "13px",
+      marginBottom: "16px",
     },
   };
 
@@ -1074,7 +1177,7 @@ function JobModal({ job, workspaces, onClose, onSave }: JobModalProps) {
       <div style={modalStyles.content}>
         <div style={modalStyles.title}>
           {Icons.clock}
-          {isEditing ? 'Edit Scheduled Task' : 'New Scheduled Task'}
+          {isEditing ? "Edit Scheduled Task" : "New Scheduled Task"}
         </div>
 
         {error && <div style={modalStyles.error}>{error}</div>}
@@ -1112,7 +1215,7 @@ function JobModal({ job, workspaces, onClose, onSave }: JobModalProps) {
             style={modalStyles.select}
           >
             {workspaces.length === 0 && (
-              <option value="">{agentContext.getUiCopy('scheduledNoWorkspaces')}</option>
+              <option value="">{agentContext.getUiCopy("scheduledNoWorkspaces")}</option>
             )}
             {workspaces.map((w) => (
               <option key={w.id} value={w.id}>
@@ -1151,32 +1254,32 @@ function JobModal({ job, workspaces, onClose, onSave }: JobModalProps) {
           <div style={modalStyles.scheduleToggle}>
             <button
               type="button"
-              style={modalStyles.toggleBtn(scheduleType === 'every')}
-              onClick={() => setScheduleType('every')}
+              style={modalStyles.toggleBtn(scheduleType === "every")}
+              onClick={() => setScheduleType("every")}
             >
               {Icons.repeat}
-              <span style={{ marginLeft: '6px' }}>Interval</span>
+              <span style={{ marginLeft: "6px" }}>Interval</span>
             </button>
             <button
               type="button"
-              style={modalStyles.toggleBtn(scheduleType === 'cron')}
-              onClick={() => setScheduleType('cron')}
+              style={modalStyles.toggleBtn(scheduleType === "cron")}
+              onClick={() => setScheduleType("cron")}
             >
               {Icons.activity}
-              <span style={{ marginLeft: '6px' }}>Cron</span>
+              <span style={{ marginLeft: "6px" }}>Cron</span>
             </button>
             <button
               type="button"
-              style={modalStyles.toggleBtn(scheduleType === 'at')}
-              onClick={() => setScheduleType('at')}
+              style={modalStyles.toggleBtn(scheduleType === "at")}
+              onClick={() => setScheduleType("at")}
             >
               {Icons.calendar}
-              <span style={{ marginLeft: '6px' }}>One-time</span>
+              <span style={{ marginLeft: "6px" }}>One-time</span>
             </button>
           </div>
 
           {/* Interval Schedule */}
-          {scheduleType === 'every' && (
+          {scheduleType === "every" && (
             <select
               value={everyMs}
               onChange={(e) => setEveryMs(Number(e.target.value))}
@@ -1191,16 +1294,16 @@ function JobModal({ job, workspaces, onClose, onSave }: JobModalProps) {
           )}
 
           {/* Cron Schedule */}
-          {scheduleType === 'cron' && (
+          {scheduleType === "cron" && (
             <div>
               <select
-                value={CRON_PRESETS.find((p) => p.value === cronExpr)?.value || 'custom'}
+                value={CRON_PRESETS.find((p) => p.value === cronExpr)?.value || "custom"}
                 onChange={(e) => {
-                  if (e.target.value !== 'custom') {
+                  if (e.target.value !== "custom") {
                     setCronExpr(e.target.value);
                   }
                 }}
-                style={{ ...modalStyles.select, marginBottom: '8px' }}
+                style={{ ...modalStyles.select, marginBottom: "8px" }}
               >
                 {CRON_PRESETS.map((preset) => (
                   <option key={preset.value} value={preset.value}>
@@ -1214,13 +1317,13 @@ function JobModal({ job, workspaces, onClose, onSave }: JobModalProps) {
                 value={cronExpr}
                 onChange={(e) => setCronExpr(e.target.value)}
                 placeholder="minute hour day month weekday (e.g., 0 9 * * 1-5)"
-                style={{ ...modalStyles.input, fontFamily: 'monospace' }}
+                style={{ ...modalStyles.input, fontFamily: "monospace" }}
               />
               <div
                 style={{
-                  marginTop: '6px',
-                  fontSize: '12px',
-                  color: 'var(--color-text-muted)',
+                  marginTop: "6px",
+                  fontSize: "12px",
+                  color: "var(--color-text-muted)",
                 }}
               >
                 Format: minute (0-59) hour (0-23) day (1-31) month (1-12) weekday (0-6, 0=Sun)
@@ -1229,7 +1332,7 @@ function JobModal({ job, workspaces, onClose, onSave }: JobModalProps) {
           )}
 
           {/* One-time Schedule */}
-          {scheduleType === 'at' && (
+          {scheduleType === "at" && (
             <input
               type="datetime-local"
               value={atDateTime}
@@ -1249,8 +1352,8 @@ function JobModal({ job, workspaces, onClose, onSave }: JobModalProps) {
             />
             Enable immediately after saving
           </label>
-          {scheduleType === 'at' && (
-            <label style={{ ...modalStyles.checkbox, marginTop: '8px' }}>
+          {scheduleType === "at" && (
+            <label style={{ ...modalStyles.checkbox, marginTop: "8px" }}>
               <input
                 type="checkbox"
                 checked={deleteAfterRun}
@@ -1267,7 +1370,7 @@ function JobModal({ job, workspaces, onClose, onSave }: JobModalProps) {
             Cancel
           </button>
           <button style={modalStyles.saveBtn} onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving...' : isEditing ? 'Save Changes' : 'Create Task'}
+            {saving ? "Saving..." : isEditing ? "Save Changes" : "Create Task"}
           </button>
         </div>
       </div>

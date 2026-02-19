@@ -28,9 +28,9 @@ import {
   ColorResolvable,
   StringSelectMenuBuilder,
   StringSelectMenuInteraction,
-} from 'discord.js';
-import * as fs from 'fs';
-import * as path from 'path';
+} from "discord.js";
+import * as fs from "fs";
+import * as path from "path";
 import {
   ChannelAdapter,
   ChannelStatus,
@@ -48,25 +48,25 @@ import {
   Poll,
   SelectMenu,
   SelectMenuHandler,
-} from './types';
+} from "./types";
 
 /**
  * Embed color constants for different message types
  */
 const EMBED_COLORS = {
-  pending: 0xffa500 as ColorResolvable,   // Orange
-  success: 0x57f287 as ColorResolvable,   // Green
-  error: 0xed4245 as ColorResolvable,     // Red
-  info: 0x5865f2 as ColorResolvable,      // Blue (Discord blurple)
-  warning: 0xfee75c as ColorResolvable,   // Yellow
-  neutral: 0x99aab5 as ColorResolvable,   // Gray
+  pending: 0xffa500 as ColorResolvable, // Orange
+  success: 0x57f287 as ColorResolvable, // Green
+  error: 0xed4245 as ColorResolvable, // Red
+  info: 0x5865f2 as ColorResolvable, // Blue (Discord blurple)
+  warning: 0xfee75c as ColorResolvable, // Yellow
+  neutral: 0x99aab5 as ColorResolvable, // Gray
 } as const;
 
 export class DiscordAdapter implements ChannelAdapter {
-  readonly type = 'discord' as const;
+  readonly type = "discord" as const;
 
   private client: Client | null = null;
-  private _status: ChannelStatus = 'disconnected';
+  private _status: ChannelStatus = "disconnected";
   private _botUsername?: string;
   private _botId?: string;
   private messageHandlers: MessageHandler[] = [];
@@ -80,7 +80,10 @@ export class DiscordAdapter implements ChannelAdapter {
   private pendingInteractions: Map<string, ChatInputCommandInteraction> = new Map();
 
   // Track thread starters for context (threadId -> starter info)
-  private threadStarterCache: Map<string, { authorId: string; authorName: string; content: string }> = new Map();
+  private threadStarterCache: Map<
+    string,
+    { authorId: string; authorName: string; content: string }
+  > = new Map();
 
   constructor(config: DiscordConfig) {
     this.config = config;
@@ -98,11 +101,11 @@ export class DiscordAdapter implements ChannelAdapter {
    * Connect to Discord
    */
   async connect(): Promise<void> {
-    if (this._status === 'connected' || this._status === 'connecting') {
+    if (this._status === "connected" || this._status === "connecting") {
       return;
     }
 
-    this.setStatus('connecting');
+    this.setStatus("connecting");
 
     try {
       // Create client instance with required intents and partials
@@ -129,7 +132,7 @@ export class DiscordAdapter implements ChannelAdapter {
         // Register slash commands
         await this.registerSlashCommands();
 
-        this.setStatus('connected');
+        this.setStatus("connected");
       });
 
       // Handle regular messages (for conversations)
@@ -142,11 +145,15 @@ export class DiscordAdapter implements ChannelAdapter {
         const isMentioned = message.mentions.has(this.client!.user!);
         const isThread = message.channel.isThread();
 
-        console.log(`Discord message received: isDM=${isDM}, isMentioned=${isMentioned}, isThread=${isThread}, content="${message.content.slice(0, 50)}"`);
+        console.log(
+          `Discord message received: isDM=${isDM}, isMentioned=${isMentioned}, isThread=${isThread}, content="${message.content.slice(0, 50)}"`,
+        );
 
         if (isDM || isMentioned) {
           const incomingMessage = this.mapMessageToIncoming(message);
-          console.log(`Processing Discord message from ${message.author.username}: ${incomingMessage.text.slice(0, 50)}`);
+          console.log(
+            `Processing Discord message from ${message.author.username}: ${incomingMessage.text.slice(0, 50)}`,
+          );
           await this.handleIncomingMessage(incomingMessage);
         }
       });
@@ -171,7 +178,7 @@ export class DiscordAdapter implements ChannelAdapter {
         try {
           await interaction.deferReply();
         } catch (error) {
-          console.error('Failed to defer reply:', error);
+          console.error("Failed to defer reply:", error);
           return;
         }
 
@@ -180,9 +187,12 @@ export class DiscordAdapter implements ChannelAdapter {
           this.pendingInteractions.set(interaction.channelId, interaction);
 
           // Auto-clear after 14 minutes (interactions expire after 15 minutes)
-          setTimeout(() => {
-            this.pendingInteractions.delete(interaction.channelId!);
-          }, 14 * 60 * 1000);
+          setTimeout(
+            () => {
+              this.pendingInteractions.delete(interaction.channelId!);
+            },
+            14 * 60 * 1000,
+          );
         }
 
         // Convert slash command to message format
@@ -192,15 +202,15 @@ export class DiscordAdapter implements ChannelAdapter {
 
       // Handle errors
       this.client.on(Events.Error, (error) => {
-        console.error('Discord client error:', error);
-        this.handleError(error, 'client.error');
+        console.error("Discord client error:", error);
+        this.handleError(error, "client.error");
       });
 
       // Login
       await this.client.login(this.config.botToken);
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
-      this.setStatus('error', err);
+      this.setStatus("error", err);
       throw err;
     }
   }
@@ -228,10 +238,10 @@ export class DiscordAdapter implements ChannelAdapter {
       try {
         await handler(callbackQuery);
       } catch (error) {
-        console.error('Error in callback query handler:', error);
+        console.error("Error in callback query handler:", error);
         this.handleError(
           error instanceof Error ? error : new Error(String(error)),
-          'callbackQueryHandler'
+          "callbackQueryHandler",
         );
       }
     }
@@ -244,105 +254,85 @@ export class DiscordAdapter implements ChannelAdapter {
     if (!this.client?.user) return;
 
     const commands = [
+      new SlashCommandBuilder().setName("start").setDescription("Start the bot and get help"),
+      new SlashCommandBuilder().setName("help").setDescription("Show available commands"),
+      new SlashCommandBuilder().setName("workspaces").setDescription("List available workspaces"),
       new SlashCommandBuilder()
-        .setName('start')
-        .setDescription('Start the bot and get help'),
+        .setName("workspace")
+        .setDescription("Select or show current workspace")
+        .addStringOption((option) =>
+          option.setName("path").setDescription("Workspace path to select").setRequired(false),
+        ),
       new SlashCommandBuilder()
-        .setName('help')
-        .setDescription('Show available commands'),
+        .setName("addworkspace")
+        .setDescription("Add a new workspace by path")
+        .addStringOption((option) =>
+          option.setName("path").setDescription("Path to the workspace folder").setRequired(true),
+        ),
       new SlashCommandBuilder()
-        .setName('workspaces')
-        .setDescription('List available workspaces'),
+        .setName("newtask")
+        .setDescription("Start a fresh task/conversation"),
       new SlashCommandBuilder()
-        .setName('workspace')
-        .setDescription('Select or show current workspace')
-        .addStringOption(option =>
-          option.setName('path')
-            .setDescription('Workspace path to select')
-            .setRequired(false)),
+        .setName("provider")
+        .setDescription("Change or show current LLM provider")
+        .addStringOption((option) =>
+          option
+            .setName("name")
+            .setDescription("Provider name (anthropic, gemini, openrouter, bedrock, ollama)")
+            .setRequired(false),
+        ),
+      new SlashCommandBuilder().setName("providers").setDescription("List all available providers"),
+      new SlashCommandBuilder().setName("models").setDescription("List available AI models"),
       new SlashCommandBuilder()
-        .setName('addworkspace')
-        .setDescription('Add a new workspace by path')
-        .addStringOption(option =>
-          option.setName('path')
-            .setDescription('Path to the workspace folder')
-            .setRequired(true)),
+        .setName("model")
+        .setDescription("Change or show current model")
+        .addStringOption((option) =>
+          option.setName("name").setDescription("Model name to use").setRequired(false),
+        ),
+      new SlashCommandBuilder().setName("status").setDescription("Check bot status"),
+      new SlashCommandBuilder().setName("cancel").setDescription("Cancel current task"),
       new SlashCommandBuilder()
-        .setName('newtask')
-        .setDescription('Start a fresh task/conversation'),
+        .setName("task")
+        .setDescription("Run a task")
+        .addStringOption((option) =>
+          option.setName("prompt").setDescription("Task description").setRequired(true),
+        ),
       new SlashCommandBuilder()
-        .setName('provider')
-        .setDescription('Change or show current LLM provider')
-        .addStringOption(option =>
-          option.setName('name')
-            .setDescription('Provider name (anthropic, gemini, openrouter, bedrock, ollama)')
-            .setRequired(false)),
-      new SlashCommandBuilder()
-        .setName('providers')
-        .setDescription('List all available providers'),
-      new SlashCommandBuilder()
-        .setName('models')
-        .setDescription('List available AI models'),
-      new SlashCommandBuilder()
-        .setName('model')
-        .setDescription('Change or show current model')
-        .addStringOption(option =>
-          option.setName('name')
-            .setDescription('Model name to use')
-            .setRequired(false)),
-      new SlashCommandBuilder()
-        .setName('status')
-        .setDescription('Check bot status'),
-      new SlashCommandBuilder()
-        .setName('cancel')
-        .setDescription('Cancel current task'),
-      new SlashCommandBuilder()
-        .setName('task')
-        .setDescription('Run a task')
-        .addStringOption(option =>
-          option.setName('prompt')
-            .setDescription('Task description')
-            .setRequired(true)),
-      new SlashCommandBuilder()
-        .setName('pair')
-        .setDescription('Pair with a pairing code to gain access')
-        .addStringOption(option =>
-          option.setName('code')
-            .setDescription('The pairing code from CoWork OS app')
-            .setRequired(true)),
-      new SlashCommandBuilder()
-        .setName('approve')
-        .setDescription('Approve the pending action'),
-      new SlashCommandBuilder()
-        .setName('deny')
-        .setDescription('Deny the pending action'),
+        .setName("pair")
+        .setDescription("Pair with a pairing code to gain access")
+        .addStringOption((option) =>
+          option
+            .setName("code")
+            .setDescription("The pairing code from CoWork OS app")
+            .setRequired(true),
+        ),
+      new SlashCommandBuilder().setName("approve").setDescription("Approve the pending action"),
+      new SlashCommandBuilder().setName("deny").setDescription("Deny the pending action"),
     ];
 
     const rest = new REST().setToken(this.config.botToken);
 
     try {
-      console.log('Registering Discord slash commands...');
+      console.log("Registering Discord slash commands...");
 
       // Register commands globally or to specific guilds
       if (this.config.guildIds && this.config.guildIds.length > 0) {
         // Register to specific guilds (faster for development)
         for (const guildId of this.config.guildIds) {
-          await rest.put(
-            Routes.applicationGuildCommands(this.config.applicationId, guildId),
-            { body: commands.map(c => c.toJSON()) }
-          );
+          await rest.put(Routes.applicationGuildCommands(this.config.applicationId, guildId), {
+            body: commands.map((c) => c.toJSON()),
+          });
         }
       } else {
         // Register globally (takes up to 1 hour to propagate)
-        await rest.put(
-          Routes.applicationCommands(this.config.applicationId),
-          { body: commands.map(c => c.toJSON()) }
-        );
+        await rest.put(Routes.applicationCommands(this.config.applicationId), {
+          body: commands.map((c) => c.toJSON()),
+        });
       }
 
-      console.log('Discord slash commands registered');
+      console.log("Discord slash commands registered");
     } catch (error) {
-      console.error('Failed to register Discord slash commands:', error);
+      console.error("Failed to register Discord slash commands:", error);
     }
   }
 
@@ -356,31 +346,32 @@ export class DiscordAdapter implements ChannelAdapter {
     }
     this._botUsername = undefined;
     this._botId = undefined;
-    this.setStatus('disconnected');
+    this.setStatus("disconnected");
   }
 
   /**
    * Send a message to a Discord channel
    */
   async sendMessage(message: OutgoingMessage): Promise<string> {
-    if (!this.client || this._status !== 'connected') {
-      throw new Error('Discord bot is not connected');
+    if (!this.client || this._status !== "connected") {
+      throw new Error("Discord bot is not connected");
     }
 
     // Process text for Discord compatibility
     let processedText = message.text;
-    if (message.parseMode === 'markdown') {
+    if (message.parseMode === "markdown") {
       processedText = this.convertMarkdownForDiscord(message.text);
     }
 
     // Build button components if inline keyboard is provided
-    const components = message.inlineKeyboard && message.inlineKeyboard.length > 0
-      ? this.buildButtonComponents(message.inlineKeyboard)
-      : [];
+    const components =
+      message.inlineKeyboard && message.inlineKeyboard.length > 0
+        ? this.buildButtonComponents(message.inlineKeyboard)
+        : [];
 
     // Use smart chunking that preserves code fences
     const chunks = this.splitMessageSmart(processedText, 2000);
-    let lastMessageId = '';
+    let lastMessageId = "";
 
     // Check if there's a pending interaction for this chat that needs reply
     const pendingInteraction = this.pendingInteractions.get(message.chatId);
@@ -406,13 +397,17 @@ export class DiscordAdapter implements ChannelAdapter {
               content: chunk,
               components: chunkComponents,
             });
-            lastMessageId = typeof reply === 'object' && 'id' in reply ? reply.id : pendingInteraction.id;
+            lastMessageId =
+              typeof reply === "object" && "id" in reply ? reply.id : pendingInteraction.id;
             // Clear the pending interaction after first reply
             this.pendingInteractions.delete(message.chatId);
             continue;
           } catch (interactionError) {
             // Interaction may have expired, fall back to channel.send
-            console.warn('Interaction reply failed, falling back to channel.send:', interactionError);
+            console.warn(
+              "Interaction reply failed, falling back to channel.send:",
+              interactionError,
+            );
             this.pendingInteractions.delete(message.chatId);
           }
         }
@@ -420,7 +415,7 @@ export class DiscordAdapter implements ChannelAdapter {
         // Regular channel message
         const channel = await this.client.channels.fetch(targetChannelId);
         if (!channel || !this.isTextBasedChannel(channel)) {
-          throw new Error('Invalid channel or channel is not text-based');
+          throw new Error("Invalid channel or channel is not text-based");
         }
 
         const sent = await (channel as TextChannel | DMChannel | ThreadChannel).send({
@@ -433,8 +428,8 @@ export class DiscordAdapter implements ChannelAdapter {
     } catch (error: unknown) {
       // If markdown parsing fails, retry without formatting
       const errorMessage = error instanceof Error ? error.message : String(error);
-      if (errorMessage.includes('parse') || errorMessage.includes('format')) {
-        console.log('Markdown parsing failed, retrying without formatting');
+      if (errorMessage.includes("parse") || errorMessage.includes("format")) {
+        console.log("Markdown parsing failed, retrying without formatting");
         return this.sendMessagePlain(targetChannelId, message.text, message.replyTo, components);
       }
       throw error;
@@ -456,10 +451,10 @@ export class DiscordAdapter implements ChannelAdapter {
       footer?: string;
       timestamp?: boolean;
     },
-    buttons?: InlineKeyboardButton[][]
+    buttons?: InlineKeyboardButton[][],
   ): Promise<string> {
-    if (!this.client || this._status !== 'connected') {
-      throw new Error('Discord bot is not connected');
+    if (!this.client || this._status !== "connected") {
+      throw new Error("Discord bot is not connected");
     }
 
     const embed = new EmbedBuilder();
@@ -479,7 +474,7 @@ export class DiscordAdapter implements ChannelAdapter {
 
     const channel = await this.client.channels.fetch(chatId);
     if (!channel || !this.isTextBasedChannel(channel)) {
-      throw new Error('Invalid channel');
+      throw new Error("Invalid channel");
     }
 
     const sent = await (channel as TextChannel | DMChannel | ThreadChannel).send({
@@ -493,7 +488,9 @@ export class DiscordAdapter implements ChannelAdapter {
   /**
    * Build Discord button components from our button format
    */
-  private buildButtonComponents(buttons: InlineKeyboardButton[][]): ActionRowBuilder<ButtonBuilder>[] {
+  private buildButtonComponents(
+    buttons: InlineKeyboardButton[][],
+  ): ActionRowBuilder<ButtonBuilder>[] {
     const rows: ActionRowBuilder<ButtonBuilder>[] = [];
 
     for (const rowButtons of buttons) {
@@ -505,17 +502,16 @@ export class DiscordAdapter implements ChannelAdapter {
       for (const button of rowButtons) {
         if (buttonCount >= 5) break; // Discord max 5 buttons per row
 
-        const discordButton = new ButtonBuilder()
-          .setLabel(button.text.substring(0, 80)); // Discord max 80 chars
+        const discordButton = new ButtonBuilder().setLabel(button.text.substring(0, 80)); // Discord max 80 chars
 
         if (button.url) {
           discordButton.setStyle(ButtonStyle.Link);
           discordButton.setURL(button.url);
         } else if (button.callbackData) {
           // Determine button style based on callback data
-          if (button.callbackData.startsWith('approve')) {
+          if (button.callbackData.startsWith("approve")) {
             discordButton.setStyle(ButtonStyle.Success);
-          } else if (button.callbackData.startsWith('deny')) {
+          } else if (button.callbackData.startsWith("deny")) {
             discordButton.setStyle(ButtonStyle.Danger);
           } else {
             discordButton.setStyle(ButtonStyle.Primary);
@@ -546,15 +542,15 @@ export class DiscordAdapter implements ChannelAdapter {
     chatId: string,
     text: string,
     replyTo?: string,
-    components: ActionRowBuilder<ButtonBuilder>[] = []
+    components: ActionRowBuilder<ButtonBuilder>[] = [],
   ): Promise<string> {
     const channel = await this.client!.channels.fetch(chatId);
     if (!channel || !this.isTextBasedChannel(channel)) {
-      throw new Error('Invalid channel');
+      throw new Error("Invalid channel");
     }
 
     const chunks = this.splitMessageSmart(text, 2000);
-    let lastMessageId = '';
+    let lastMessageId = "";
 
     for (let i = 0; i < chunks.length; i++) {
       const isLastChunk = i === chunks.length - 1;
@@ -576,10 +572,10 @@ export class DiscordAdapter implements ChannelAdapter {
     let result = text;
 
     // Convert markdown headers (## Header) to bold (**Header**)
-    result = result.replace(/^#{1,6}\s+(.+)$/gm, '**$1**');
+    result = result.replace(/^#{1,6}\s+(.+)$/gm, "**$1**");
 
     // Convert horizontal rules (---, ***) to a line
-    result = result.replace(/^[-*]{3,}$/gm, '───────────────────');
+    result = result.replace(/^[-*]{3,}$/gm, "───────────────────");
 
     return result;
   }
@@ -595,7 +591,7 @@ export class DiscordAdapter implements ChannelAdapter {
     const chunks: string[] = [];
     let remaining = text;
     let inCodeBlock = false;
-    let codeBlockLang = '';
+    let codeBlockLang = "";
 
     while (remaining.length > 0) {
       if (remaining.length <= maxLength) {
@@ -617,16 +613,16 @@ export class DiscordAdapter implements ChannelAdapter {
       for (const match of codeBlockMatches) {
         if (inCodeBlock) {
           inCodeBlock = false;
-          codeBlockLang = '';
+          codeBlockLang = "";
         } else {
           inCodeBlock = true;
-          codeBlockLang = match.replace('```', '');
+          codeBlockLang = match.replace("```", "");
         }
       }
 
       // If we're in a code block and the chunk doesn't close it, close it manually
-      if (inCodeBlock && !chunk.endsWith('```')) {
-        chunk += '\n```';
+      if (inCodeBlock && !chunk.endsWith("```")) {
+        chunk += "\n```";
       }
 
       chunks.push(chunk);
@@ -634,7 +630,7 @@ export class DiscordAdapter implements ChannelAdapter {
 
       // If we closed a code block, reopen it in the next chunk
       if (inCodeBlock && remaining.length > 0) {
-        remaining = '```' + codeBlockLang + '\n' + remaining;
+        remaining = "```" + codeBlockLang + "\n" + remaining;
       }
     }
 
@@ -650,13 +646,13 @@ export class DiscordAdapter implements ChannelAdapter {
     const effectiveMax = maxLength - reservedSpace;
 
     // Try to break at a newline
-    let breakIndex = text.lastIndexOf('\n', effectiveMax);
+    let breakIndex = text.lastIndexOf("\n", effectiveMax);
     if (breakIndex > effectiveMax / 2) {
       return breakIndex + 1;
     }
 
     // Try to break at a space
-    breakIndex = text.lastIndexOf(' ', effectiveMax);
+    breakIndex = text.lastIndexOf(" ", effectiveMax);
     if (breakIndex > effectiveMax / 2) {
       return breakIndex + 1;
     }
@@ -676,16 +672,18 @@ export class DiscordAdapter implements ChannelAdapter {
    * Edit an existing message
    */
   async editMessage(chatId: string, messageId: string, text: string): Promise<void> {
-    if (!this.client || this._status !== 'connected') {
-      throw new Error('Discord bot is not connected');
+    if (!this.client || this._status !== "connected") {
+      throw new Error("Discord bot is not connected");
     }
 
     const channel = await this.client.channels.fetch(chatId);
     if (!channel || !this.isTextBasedChannel(channel)) {
-      throw new Error('Invalid channel');
+      throw new Error("Invalid channel");
     }
 
-    const message = await (channel as TextChannel | DMChannel | ThreadChannel).messages.fetch(messageId);
+    const message = await (channel as TextChannel | DMChannel | ThreadChannel).messages.fetch(
+      messageId,
+    );
     await message.edit(text);
   }
 
@@ -693,16 +691,18 @@ export class DiscordAdapter implements ChannelAdapter {
    * Delete a message
    */
   async deleteMessage(chatId: string, messageId: string): Promise<void> {
-    if (!this.client || this._status !== 'connected') {
-      throw new Error('Discord bot is not connected');
+    if (!this.client || this._status !== "connected") {
+      throw new Error("Discord bot is not connected");
     }
 
     const channel = await this.client.channels.fetch(chatId);
     if (!channel || !this.isTextBasedChannel(channel)) {
-      throw new Error('Invalid channel');
+      throw new Error("Invalid channel");
     }
 
-    const message = await (channel as TextChannel | DMChannel | ThreadChannel).messages.fetch(messageId);
+    const message = await (channel as TextChannel | DMChannel | ThreadChannel).messages.fetch(
+      messageId,
+    );
     await message.delete();
   }
 
@@ -710,8 +710,8 @@ export class DiscordAdapter implements ChannelAdapter {
    * Send a document/file to a channel
    */
   async sendDocument(chatId: string, filePath: string, caption?: string): Promise<string> {
-    if (!this.client || this._status !== 'connected') {
-      throw new Error('Discord bot is not connected');
+    if (!this.client || this._status !== "connected") {
+      throw new Error("Discord bot is not connected");
     }
 
     // Check if file exists
@@ -721,7 +721,7 @@ export class DiscordAdapter implements ChannelAdapter {
 
     const channel = await this.client.channels.fetch(chatId);
     if (!channel || !this.isTextBasedChannel(channel)) {
-      throw new Error('Invalid channel');
+      throw new Error("Invalid channel");
     }
 
     const fileName = path.basename(filePath);
@@ -768,18 +768,20 @@ export class DiscordAdapter implements ChannelAdapter {
     chatId: string,
     messageId: string,
     text?: string,
-    inlineKeyboard?: InlineKeyboardButton[][]
+    inlineKeyboard?: InlineKeyboardButton[][],
   ): Promise<void> {
-    if (!this.client || this._status !== 'connected') {
-      throw new Error('Discord bot is not connected');
+    if (!this.client || this._status !== "connected") {
+      throw new Error("Discord bot is not connected");
     }
 
     const channel = await this.client.channels.fetch(chatId);
     if (!channel || !this.isTextBasedChannel(channel)) {
-      throw new Error('Invalid channel');
+      throw new Error("Invalid channel");
     }
 
-    const message = await (channel as TextChannel | DMChannel | ThreadChannel).messages.fetch(messageId);
+    const message = await (channel as TextChannel | DMChannel | ThreadChannel).messages.fetch(
+      messageId,
+    );
     const components = inlineKeyboard ? this.buildButtonComponents(inlineKeyboard) : [];
 
     await message.edit({
@@ -796,13 +798,13 @@ export class DiscordAdapter implements ChannelAdapter {
    * Send typing indicator
    */
   async sendTyping(chatId: string): Promise<void> {
-    if (!this.client || this._status !== 'connected') {
-      throw new Error('Discord bot is not connected');
+    if (!this.client || this._status !== "connected") {
+      throw new Error("Discord bot is not connected");
     }
 
     const channel = await this.client.channels.fetch(chatId);
     if (!channel || !this.isTextBasedChannel(channel)) {
-      throw new Error('Invalid channel');
+      throw new Error("Invalid channel");
     }
 
     await (channel as TextChannel | DMChannel | ThreadChannel).sendTyping();
@@ -812,16 +814,18 @@ export class DiscordAdapter implements ChannelAdapter {
    * Add reaction to a message
    */
   async addReaction(chatId: string, messageId: string, emoji: string): Promise<void> {
-    if (!this.client || this._status !== 'connected') {
-      throw new Error('Discord bot is not connected');
+    if (!this.client || this._status !== "connected") {
+      throw new Error("Discord bot is not connected");
     }
 
     const channel = await this.client.channels.fetch(chatId);
     if (!channel || !this.isTextBasedChannel(channel)) {
-      throw new Error('Invalid channel');
+      throw new Error("Invalid channel");
     }
 
-    const message = await (channel as TextChannel | DMChannel | ThreadChannel).messages.fetch(messageId);
+    const message = await (channel as TextChannel | DMChannel | ThreadChannel).messages.fetch(
+      messageId,
+    );
     await message.react(emoji);
   }
 
@@ -829,16 +833,18 @@ export class DiscordAdapter implements ChannelAdapter {
    * Remove reaction from a message
    */
   async removeReaction(chatId: string, messageId: string, emoji: string): Promise<void> {
-    if (!this.client || this._status !== 'connected') {
-      throw new Error('Discord bot is not connected');
+    if (!this.client || this._status !== "connected") {
+      throw new Error("Discord bot is not connected");
     }
 
     const channel = await this.client.channels.fetch(chatId);
     if (!channel || !this.isTextBasedChannel(channel)) {
-      throw new Error('Invalid channel');
+      throw new Error("Invalid channel");
     }
 
-    const message = await (channel as TextChannel | DMChannel | ThreadChannel).messages.fetch(messageId);
+    const message = await (channel as TextChannel | DMChannel | ThreadChannel).messages.fetch(
+      messageId,
+    );
     const reaction = message.reactions.cache.get(emoji);
     if (reaction && this._botId) {
       await reaction.users.remove(this._botId);
@@ -849,19 +855,19 @@ export class DiscordAdapter implements ChannelAdapter {
    * Send a poll (Discord native polls)
    */
   async sendPoll(chatId: string, poll: Poll): Promise<string> {
-    if (!this.client || this._status !== 'connected') {
-      throw new Error('Discord bot is not connected');
+    if (!this.client || this._status !== "connected") {
+      throw new Error("Discord bot is not connected");
     }
 
     const channel = await this.client.channels.fetch(chatId);
     if (!channel || !this.isTextBasedChannel(channel)) {
-      throw new Error('Invalid channel');
+      throw new Error("Invalid channel");
     }
 
     // Discord polls require specific formatting
     const pollData = {
       question: { text: poll.question },
-      answers: poll.options.map(opt => ({ text: opt.text })),
+      answers: poll.options.map((opt) => ({ text: opt.text })),
       duration: poll.openPeriod ? Math.ceil(poll.openPeriod / 3600) : 24, // Convert seconds to hours
       allow_multiselect: poll.allowsMultipleAnswers ?? false,
     };
@@ -877,28 +883,28 @@ export class DiscordAdapter implements ChannelAdapter {
    * Send a message with a select menu (dropdown)
    */
   async sendWithSelectMenu(chatId: string, text: string, menu: SelectMenu): Promise<string> {
-    if (!this.client || this._status !== 'connected') {
-      throw new Error('Discord bot is not connected');
+    if (!this.client || this._status !== "connected") {
+      throw new Error("Discord bot is not connected");
     }
 
     const channel = await this.client.channels.fetch(chatId);
     if (!channel || !this.isTextBasedChannel(channel)) {
-      throw new Error('Invalid channel');
+      throw new Error("Invalid channel");
     }
 
     const selectMenu = new StringSelectMenuBuilder()
       .setCustomId(menu.customId)
-      .setPlaceholder(menu.placeholder || 'Select an option')
+      .setPlaceholder(menu.placeholder || "Select an option")
       .setMinValues(menu.minValues ?? 1)
       .setMaxValues(menu.maxValues ?? 1)
       .addOptions(
-        menu.options.map(opt => ({
+        menu.options.map((opt) => ({
           label: opt.label,
           value: opt.value,
           description: opt.description,
           emoji: opt.emoji ? { name: opt.emoji } : undefined,
           default: opt.default,
-        }))
+        })),
       );
 
     if (menu.disabled) {
@@ -925,7 +931,9 @@ export class DiscordAdapter implements ChannelAdapter {
   /**
    * Handle select menu interaction
    */
-  private async handleSelectMenuInteraction(interaction: StringSelectMenuInteraction): Promise<void> {
+  private async handleSelectMenuInteraction(
+    interaction: StringSelectMenuInteraction,
+  ): Promise<void> {
     const customId = interaction.customId;
     const values = interaction.values;
 
@@ -933,7 +941,7 @@ export class DiscordAdapter implements ChannelAdapter {
     try {
       await interaction.deferUpdate();
     } catch (error) {
-      console.error('Failed to defer select menu update:', error);
+      console.error("Failed to defer select menu update:", error);
     }
 
     // Notify all registered handlers
@@ -945,13 +953,13 @@ export class DiscordAdapter implements ChannelAdapter {
           interaction.user.id,
           interaction.channelId!,
           interaction.message.id,
-          interaction
+          interaction,
         );
       } catch (error) {
-        console.error('Error in select menu handler:', error);
+        console.error("Error in select menu handler:", error);
         this.handleError(
           error instanceof Error ? error : new Error(String(error)),
-          'selectMenuHandler'
+          "selectMenuHandler",
         );
       }
     }
@@ -980,7 +988,7 @@ export class DiscordAdapter implements ChannelAdapter {
    */
   async getInfo(): Promise<ChannelInfo> {
     return {
-      type: 'discord',
+      type: "discord",
       status: this._status,
       botId: this._botId,
       botUsername: this._botUsername,
@@ -994,20 +1002,20 @@ export class DiscordAdapter implements ChannelAdapter {
 
   // Private methods
 
-  private inferAttachmentType(mimeType?: string, fileName?: string): MessageAttachment['type'] {
-    const mime = (mimeType || '').toLowerCase();
-    if (mime.startsWith('image/')) return 'image';
-    if (mime.startsWith('audio/')) return 'audio';
-    if (mime.startsWith('video/')) return 'video';
-    if (mime === 'application/pdf') return 'document';
+  private inferAttachmentType(mimeType?: string, fileName?: string): MessageAttachment["type"] {
+    const mime = (mimeType || "").toLowerCase();
+    if (mime.startsWith("image/")) return "image";
+    if (mime.startsWith("audio/")) return "audio";
+    if (mime.startsWith("video/")) return "video";
+    if (mime === "application/pdf") return "document";
 
-    const ext = (fileName ? path.extname(fileName) : '').toLowerCase();
-    if (['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp'].includes(ext)) return 'image';
-    if (['.mp3', '.wav', '.ogg', '.m4a', '.flac'].includes(ext)) return 'audio';
-    if (['.mp4', '.mov', '.webm', '.mkv'].includes(ext)) return 'video';
-    if (ext === '.pdf') return 'document';
+    const ext = (fileName ? path.extname(fileName) : "").toLowerCase();
+    if ([".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp"].includes(ext)) return "image";
+    if ([".mp3", ".wav", ".ogg", ".m4a", ".flac"].includes(ext)) return "audio";
+    if ([".mp4", ".mov", ".webm", ".mkv"].includes(ext)) return "video";
+    if (ext === ".pdf") return "document";
 
-    return 'file';
+    return "file";
   }
 
   private extractAttachments(message: Message): MessageAttachment[] | undefined {
@@ -1015,15 +1023,15 @@ export class DiscordAdapter implements ChannelAdapter {
 
     const out: MessageAttachment[] = [];
     for (const att of message.attachments.values()) {
-      const url = typeof (att as any)?.url === 'string' ? String((att as any).url).trim() : '';
+      const url = typeof (att as any)?.url === "string" ? String((att as any).url).trim() : "";
       if (!url) continue;
 
-      const fileName = typeof (att as any)?.name === 'string' ? (att as any).name : undefined;
+      const fileName = typeof (att as any)?.name === "string" ? (att as any).name : undefined;
       const mimeType =
-        typeof (att as any)?.contentType === 'string' && (att as any).contentType.trim().length > 0
+        typeof (att as any)?.contentType === "string" && (att as any).contentType.trim().length > 0
           ? (att as any).contentType.trim()
           : undefined;
-      const size = typeof (att as any)?.size === 'number' ? (att as any).size : undefined;
+      const size = typeof (att as any)?.size === "number" ? (att as any).size : undefined;
 
       out.push({
         type: this.inferAttachmentType(mimeType, fileName),
@@ -1039,17 +1047,19 @@ export class DiscordAdapter implements ChannelAdapter {
 
   private isTextBasedChannel(channel: unknown): channel is TextChannel | DMChannel | ThreadChannel {
     const ch = channel as { type?: DiscordChannelType };
-    return ch.type === DiscordChannelType.GuildText ||
-           ch.type === DiscordChannelType.DM ||
-           ch.type === DiscordChannelType.PublicThread ||
-           ch.type === DiscordChannelType.PrivateThread;
+    return (
+      ch.type === DiscordChannelType.GuildText ||
+      ch.type === DiscordChannelType.DM ||
+      ch.type === DiscordChannelType.PublicThread ||
+      ch.type === DiscordChannelType.PrivateThread
+    );
   }
 
   private mapMessageToIncoming(message: Message): IncomingMessage {
     // Remove bot mention from the text if present
     let text = message.content;
     if (this._botId) {
-      text = text.replace(new RegExp(`<@!?${this._botId}>\\s*`, 'g'), '').trim();
+      text = text.replace(new RegExp(`<@!?${this._botId}>\\s*`, "g"), "").trim();
     }
 
     // Map Discord message to command format if it looks like a command
@@ -1060,11 +1070,13 @@ export class DiscordAdapter implements ChannelAdapter {
     const threadId = isThread ? message.channelId : undefined;
     const isGroup = message.channel.type !== DiscordChannelType.DM;
     const attachments = this.extractAttachments(message);
-    const finalText = (commandText || text || '').trim() || (attachments && attachments.length > 0 ? '<attachment>' : '');
+    const finalText =
+      (commandText || text || "").trim() ||
+      (attachments && attachments.length > 0 ? "<attachment>" : "");
 
     return {
       messageId: message.id,
-      channel: 'discord',
+      channel: "discord",
       userId: message.author.id,
       userName: message.author.displayName || message.author.username,
       chatId: isThread ? (message.channel as ThreadChannel).parentId! : message.channelId,
@@ -1088,33 +1100,33 @@ export class DiscordAdapter implements ChannelAdapter {
 
     // Handle specific commands with their options
     switch (commandName) {
-      case 'workspace': {
-        const wsPath = options.getString('path');
+      case "workspace": {
+        const wsPath = options.getString("path");
         if (wsPath) text += ` ${wsPath}`;
         break;
       }
-      case 'addworkspace': {
-        const addPath = options.getString('path');
+      case "addworkspace": {
+        const addPath = options.getString("path");
         if (addPath) text += ` ${addPath}`;
         break;
       }
-      case 'provider': {
-        const provider = options.getString('name');
+      case "provider": {
+        const provider = options.getString("name");
         if (provider) text += ` ${provider}`;
         break;
       }
-      case 'model': {
-        const model = options.getString('name');
+      case "model": {
+        const model = options.getString("name");
         if (model) text += ` ${model}`;
         break;
       }
-      case 'task': {
-        const prompt = options.getString('prompt');
+      case "task": {
+        const prompt = options.getString("prompt");
         if (prompt) text = prompt; // Task prompt becomes the text directly
         break;
       }
-      case 'pair': {
-        const code = options.getString('code');
+      case "pair": {
+        const code = options.getString("code");
         if (code) text += ` ${code}`;
         break;
       }
@@ -1126,7 +1138,7 @@ export class DiscordAdapter implements ChannelAdapter {
 
     return {
       messageId: interaction.id,
-      channel: 'discord',
+      channel: "discord",
       userId: interaction.user.id,
       userName: interaction.user.displayName || interaction.user.username,
       chatId: interaction.channelId!,
@@ -1156,10 +1168,10 @@ export class DiscordAdapter implements ChannelAdapter {
       try {
         await handler(message);
       } catch (error) {
-        console.error('Error in message handler:', error);
+        console.error("Error in message handler:", error);
         this.handleError(
           error instanceof Error ? error : new Error(String(error)),
-          'messageHandler'
+          "messageHandler",
         );
       }
     }
@@ -1170,7 +1182,7 @@ export class DiscordAdapter implements ChannelAdapter {
       try {
         handler(error, context);
       } catch (e) {
-        console.error('Error in error handler:', e);
+        console.error("Error in error handler:", e);
       }
     }
   }
@@ -1181,7 +1193,7 @@ export class DiscordAdapter implements ChannelAdapter {
       try {
         handler(status, error);
       } catch (e) {
-        console.error('Error in status handler:', e);
+        console.error("Error in status handler:", e);
       }
     }
   }
@@ -1192,10 +1204,10 @@ export class DiscordAdapter implements ChannelAdapter {
  */
 export function createDiscordAdapter(config: DiscordConfig): DiscordAdapter {
   if (!config.botToken) {
-    throw new Error('Discord bot token is required');
+    throw new Error("Discord bot token is required");
   }
   if (!config.applicationId) {
-    throw new Error('Discord application ID is required');
+    throw new Error("Discord application ID is required");
   }
   return new DiscordAdapter(config);
 }

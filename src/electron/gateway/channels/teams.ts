@@ -13,10 +13,10 @@ import {
   ActivityTypes,
   ConversationReference,
   MessageFactory,
-} from 'botbuilder';
-import * as http from 'http';
-import * as fs from 'fs';
-import * as path from 'path';
+} from "botbuilder";
+import * as http from "http";
+import * as fs from "fs";
+import * as path from "path";
 import {
   ChannelAdapter,
   ChannelStatus,
@@ -28,7 +28,7 @@ import {
   ChannelInfo,
   TeamsConfig,
   MessageAttachment,
-} from './types';
+} from "./types";
 
 /**
  * Simple TTL cache for message deduplication
@@ -68,11 +68,11 @@ class MessageDeduplicationCache {
 }
 
 export class TeamsAdapter implements ChannelAdapter {
-  readonly type = 'teams' as const;
+  readonly type = "teams" as const;
 
   private adapter: CloudAdapter | null = null;
   private server: http.Server | null = null;
-  private _status: ChannelStatus = 'disconnected';
+  private _status: ChannelStatus = "disconnected";
   private _botUsername?: string;
   private _botId?: string;
   private messageHandlers: MessageHandler[] = [];
@@ -101,11 +101,11 @@ export class TeamsAdapter implements ChannelAdapter {
    * Connect to Microsoft Teams via Bot Framework
    */
   async connect(): Promise<void> {
-    if (this._status === 'connected' || this._status === 'connecting') {
+    if (this._status === "connected" || this._status === "connecting") {
       return;
     }
 
-    this.setStatus('connecting');
+    this.setStatus("connecting");
 
     try {
       // Create Bot Framework authentication
@@ -113,7 +113,7 @@ export class TeamsAdapter implements ChannelAdapter {
         MicrosoftAppId: this.config.appId,
         MicrosoftAppPassword: this.config.appPassword,
         MicrosoftAppTenantId: this.config.tenantId,
-        MicrosoftAppType: this.config.tenantId ? 'SingleTenant' : 'MultiTenant',
+        MicrosoftAppType: this.config.tenantId ? "SingleTenant" : "MultiTenant",
       });
 
       // Create the adapter
@@ -121,29 +121,31 @@ export class TeamsAdapter implements ChannelAdapter {
 
       // Set up error handling for the adapter
       this.adapter.onTurnError = async (context: TurnContext, error: Error) => {
-        console.error('Teams adapter turn error:', error);
-        this.handleError(error, 'turnError');
+        console.error("Teams adapter turn error:", error);
+        this.handleError(error, "turnError");
 
         // Send error message to user
         try {
-          await context.sendActivity('Sorry, something went wrong processing your message.');
+          await context.sendActivity("Sorry, something went wrong processing your message.");
         } catch (sendError) {
-          console.error('Failed to send error message:', sendError);
+          console.error("Failed to send error message:", sendError);
         }
       };
 
       // Set bot info from config
-      this._botUsername = this.config.displayName || 'Teams Bot';
+      this._botUsername = this.config.displayName || "Teams Bot";
 
       // Start the HTTP server for receiving webhooks
       await this.startWebhookServer();
 
-      console.log(`Teams bot "${this._botUsername}" is connected on port ${this.config.webhookPort || 3978}`);
-      this.setStatus('connected');
+      console.log(
+        `Teams bot "${this._botUsername}" is connected on port ${this.config.webhookPort || 3978}`,
+      );
+      this.setStatus("connected");
       this.reconnectAttempts = 0;
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
-      this.setStatus('error', err);
+      this.setStatus("error", err);
       this.scheduleReconnect();
       throw err;
     }
@@ -157,34 +159,36 @@ export class TeamsAdapter implements ChannelAdapter {
 
     return new Promise((resolve, reject) => {
       this.server = http.createServer(async (req, res) => {
-        if (req.method === 'POST' && req.url === '/api/messages') {
-          let body = '';
-          req.on('data', chunk => {
+        if (req.method === "POST" && req.url === "/api/messages") {
+          let body = "";
+          req.on("data", (chunk) => {
             body += chunk.toString();
           });
-          req.on('end', async () => {
+          req.on("end", async () => {
             try {
               await this.processIncomingActivity(req, res, body);
             } catch (error) {
-              console.error('Error processing Teams message:', error);
+              console.error("Error processing Teams message:", error);
               res.writeHead(500);
-              res.end('Internal Server Error');
+              res.end("Internal Server Error");
             }
           });
-        } else if (req.method === 'GET' && req.url === '/api/health') {
+        } else if (req.method === "GET" && req.url === "/api/health") {
           // Health check endpoint
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ status: 'ok', bot: this._botUsername }));
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ status: "ok", bot: this._botUsername }));
         } else {
           res.writeHead(404);
-          res.end('Not Found');
+          res.end("Not Found");
         }
       });
 
-      this.server.on('error', (error: NodeJS.ErrnoException) => {
-        if (error.code === 'EADDRINUSE') {
-          reject(new Error(`Port ${port} is already in use. Please choose a different webhook port.`));
-        } else if (error.code === 'EACCES') {
+      this.server.on("error", (error: NodeJS.ErrnoException) => {
+        if (error.code === "EADDRINUSE") {
+          reject(
+            new Error(`Port ${port} is already in use. Please choose a different webhook port.`),
+          );
+        } else if (error.code === "EACCES") {
           reject(new Error(`Permission denied to use port ${port}. Try a port above 1024.`));
         } else {
           reject(error);
@@ -204,11 +208,11 @@ export class TeamsAdapter implements ChannelAdapter {
   private async processIncomingActivity(
     req: http.IncomingMessage,
     res: http.ServerResponse,
-    body: string
+    body: string,
   ): Promise<void> {
     if (!this.adapter) {
       res.writeHead(500);
-      res.end('Adapter not initialized');
+      res.end("Adapter not initialized");
       return;
     }
 
@@ -226,9 +230,9 @@ export class TeamsAdapter implements ChannelAdapter {
         await this.handleActivity(context);
       });
     } catch (error) {
-      console.error('Error parsing Teams activity:', error);
+      console.error("Error parsing Teams activity:", error);
       res.writeHead(400);
-      res.end('Bad Request');
+      res.end("Bad Request");
     }
   }
 
@@ -277,20 +281,20 @@ export class TeamsAdapter implements ChannelAdapter {
     const attachments = await this.extractAttachments(activity);
 
     // Remove bot mention from text (if any)
-    let text = activity.text || '';
+    let text = activity.text || "";
     if (activity.entities) {
       for (const entity of activity.entities) {
-        if (entity.type === 'mention' && entity.mentioned?.id === activity.recipient?.id) {
+        if (entity.type === "mention" && entity.mentioned?.id === activity.recipient?.id) {
           // Remove the mention from the text
-          const mentionText = entity.text || '';
-          text = text.replace(mentionText, '').trim();
+          const mentionText = entity.text || "";
+          text = text.replace(mentionText, "").trim();
         }
       }
     }
 
     // Allow attachment-only messages
     if (!text.trim() && attachments.length > 0) {
-      text = '<attachment>';
+      text = "<attachment>";
     }
 
     // Skip empty messages after removing mentions (and no attachments)
@@ -299,16 +303,16 @@ export class TeamsAdapter implements ChannelAdapter {
     }
 
     // Get user info
-    const userName = activity.from?.name || 'Unknown User';
-    const userId = activity.from?.id || '';
+    const userName = activity.from?.name || "Unknown User";
+    const userId = activity.from?.id || "";
 
     const conversationType = activity.conversation?.conversationType;
-    const isGroup = conversationType ? conversationType !== 'personal' : undefined;
+    const isGroup = conversationType ? conversationType !== "personal" : undefined;
 
     // Map to IncomingMessage format
     const incomingMessage: IncomingMessage = {
       messageId: messageId,
-      channel: 'teams',
+      channel: "teams",
       userId: userId,
       userName: userName,
       chatId: activity.conversation.id,
@@ -325,26 +329,29 @@ export class TeamsAdapter implements ChannelAdapter {
     await this.handleIncomingMessage(incomingMessage);
   }
 
-  private getAttachmentTypeFromMime(mimeType?: string): MessageAttachment['type'] {
-    const mime = (mimeType || '').toLowerCase();
-    if (mime.startsWith('image/')) return 'image';
-    if (mime.startsWith('audio/')) return 'audio';
-    if (mime.startsWith('video/')) return 'video';
-    if (mime.startsWith('application/')) return 'document';
-    return 'file';
+  private getAttachmentTypeFromMime(mimeType?: string): MessageAttachment["type"] {
+    const mime = (mimeType || "").toLowerCase();
+    if (mime.startsWith("image/")) return "image";
+    if (mime.startsWith("audio/")) return "audio";
+    if (mime.startsWith("video/")) return "video";
+    if (mime.startsWith("application/")) return "document";
+    return "file";
   }
 
-  private getAttachmentTypeFromFilename(fileName?: string): MessageAttachment['type'] {
-    const lower = (fileName || '').toLowerCase();
-    if (lower.match(/\.(png|jpe?g|gif|webp|bmp|tiff?)$/)) return 'image';
-    if (lower.match(/\.(mp3|wav|ogg|m4a|aac|flac)$/)) return 'audio';
-    if (lower.match(/\.(mp4|mov|mkv|webm|avi)$/)) return 'video';
-    if (lower.match(/\.(pdf|docx?|xlsx?|pptx?|txt|md|rtf|csv)$/)) return 'document';
-    return 'file';
+  private getAttachmentTypeFromFilename(fileName?: string): MessageAttachment["type"] {
+    const lower = (fileName || "").toLowerCase();
+    if (lower.match(/\.(png|jpe?g|gif|webp|bmp|tiff?)$/)) return "image";
+    if (lower.match(/\.(mp3|wav|ogg|m4a|aac|flac)$/)) return "audio";
+    if (lower.match(/\.(mp4|mov|mkv|webm|avi)$/)) return "video";
+    if (lower.match(/\.(pdf|docx?|xlsx?|pptx?|txt|md|rtf|csv)$/)) return "document";
+    return "file";
   }
 
-  private async downloadToBuffer(url: string, maxBytes = 25 * 1024 * 1024): Promise<{ data: Buffer; mimeType?: string } | null> {
-    if (!url.startsWith('https://') && !url.startsWith('http://')) return null;
+  private async downloadToBuffer(
+    url: string,
+    maxBytes = 25 * 1024 * 1024,
+  ): Promise<{ data: Buffer; mimeType?: string } | null> {
+    if (!url.startsWith("https://") && !url.startsWith("http://")) return null;
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 30_000);
@@ -352,7 +359,7 @@ export class TeamsAdapter implements ChannelAdapter {
       const res = await fetch(url, { signal: controller.signal });
       if (!res.ok) return null;
 
-      const contentLength = res.headers.get('content-length');
+      const contentLength = res.headers.get("content-length");
       if (contentLength) {
         const len = Number(contentLength);
         if (!isNaN(len) && len > maxBytes) return null;
@@ -362,7 +369,7 @@ export class TeamsAdapter implements ChannelAdapter {
       const buf = Buffer.from(arrayBuffer);
       if (buf.length > maxBytes) return null;
 
-      return { data: buf, mimeType: res.headers.get('content-type') || undefined };
+      return { data: buf, mimeType: res.headers.get("content-type") || undefined };
     } catch {
       return null;
     } finally {
@@ -377,28 +384,35 @@ export class TeamsAdapter implements ChannelAdapter {
     const out: MessageAttachment[] = [];
 
     for (const att of raw) {
-      const contentType = typeof att?.contentType === 'string' ? att.contentType : undefined;
-      const name = typeof att?.name === 'string' ? att.name : undefined;
+      const contentType = typeof att?.contentType === "string" ? att.contentType : undefined;
+      const name = typeof att?.name === "string" ? att.name : undefined;
 
       // Teams file attachments often arrive as "application/vnd.microsoft.teams.file.download.info"
       const downloadUrl =
-        (contentType === 'application/vnd.microsoft.teams.file.download.info' && typeof (att as any)?.content?.downloadUrl === 'string'
+        (contentType === "application/vnd.microsoft.teams.file.download.info" &&
+        typeof (att as any)?.content?.downloadUrl === "string"
           ? (att as any).content.downloadUrl
           : undefined) ||
-        (typeof (att as any)?.contentUrl === 'string' ? (att as any).contentUrl : undefined) ||
-        (typeof (att as any)?.thumbnailUrl === 'string' ? (att as any).thumbnailUrl : undefined);
+        (typeof (att as any)?.contentUrl === "string" ? (att as any).contentUrl : undefined) ||
+        (typeof (att as any)?.thumbnailUrl === "string" ? (att as any).thumbnailUrl : undefined);
 
       // Best-effort file name inference
       const inferredName = (() => {
         if (name && name.trim()) return name.trim();
-        const fileType = typeof (att as any)?.content?.fileType === 'string' ? (att as any).content.fileType.trim() : '';
-        const uniqueId = typeof (att as any)?.content?.uniqueId === 'string' ? (att as any).content.uniqueId.trim() : '';
+        const fileType =
+          typeof (att as any)?.content?.fileType === "string"
+            ? (att as any).content.fileType.trim()
+            : "";
+        const uniqueId =
+          typeof (att as any)?.content?.uniqueId === "string"
+            ? (att as any).content.uniqueId.trim()
+            : "";
         if (uniqueId && fileType) return `${uniqueId}.${fileType}`;
         if (downloadUrl) {
           try {
             const u = new URL(downloadUrl);
             const base = path.basename(u.pathname);
-            if (base && base !== '/' && base !== '.') return base;
+            if (base && base !== "/" && base !== ".") return base;
           } catch {
             // ignore
           }
@@ -475,7 +489,7 @@ export class TeamsAdapter implements ChannelAdapter {
       try {
         await this.connect();
       } catch (error) {
-        console.error('Teams reconnection failed:', error);
+        console.error("Teams reconnection failed:", error);
       }
     }, delay);
   }
@@ -500,15 +514,15 @@ export class TeamsAdapter implements ChannelAdapter {
     this._botUsername = undefined;
     this._botId = undefined;
     this.conversationReferences.clear();
-    this.setStatus('disconnected');
+    this.setStatus("disconnected");
   }
 
   /**
    * Send a message to a Teams conversation
    */
   async sendMessage(message: OutgoingMessage): Promise<string> {
-    if (!this.adapter || this._status !== 'connected') {
-      throw new Error('Teams bot is not connected');
+    if (!this.adapter || this._status !== "connected") {
+      throw new Error("Teams bot is not connected");
     }
 
     // Get conversation reference
@@ -519,13 +533,13 @@ export class TeamsAdapter implements ChannelAdapter {
 
     // Process text for Teams compatibility
     let processedText = message.text;
-    if (message.parseMode === 'markdown') {
+    if (message.parseMode === "markdown") {
       processedText = this.convertMarkdownForTeams(message.text);
     }
 
     // Teams has a 28KB limit per message, but practical limit is ~4000 chars for readability
     const chunks = this.splitMessage(processedText, 4000);
-    let lastMessageId = '';
+    let lastMessageId = "";
 
     try {
       for (const chunk of chunks) {
@@ -534,13 +548,13 @@ export class TeamsAdapter implements ChannelAdapter {
           conversationRef as ConversationReference,
           async (context: TurnContext) => {
             const response = await context.sendActivity(MessageFactory.text(chunk));
-            lastMessageId = response?.id || '';
-          }
+            lastMessageId = response?.id || "";
+          },
         );
       }
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error('Error sending Teams message:', errorMessage);
+      console.error("Error sending Teams message:", errorMessage);
       throw error;
     }
 
@@ -558,7 +572,7 @@ export class TeamsAdapter implements ChannelAdapter {
     // No conversion needed for these
 
     // Convert horizontal rules
-    result = result.replace(/^[-*]{3,}$/gm, '───────────────────');
+    result = result.replace(/^[-*]{3,}$/gm, "───────────────────");
 
     return result;
   }
@@ -581,9 +595,9 @@ export class TeamsAdapter implements ChannelAdapter {
       }
 
       // Find a good breaking point (newline or space)
-      let breakIndex = remaining.lastIndexOf('\n', maxLength);
+      let breakIndex = remaining.lastIndexOf("\n", maxLength);
       if (breakIndex === -1 || breakIndex < maxLength / 2) {
-        breakIndex = remaining.lastIndexOf(' ', maxLength);
+        breakIndex = remaining.lastIndexOf(" ", maxLength);
       }
       if (breakIndex === -1 || breakIndex < maxLength / 2) {
         breakIndex = maxLength;
@@ -600,8 +614,8 @@ export class TeamsAdapter implements ChannelAdapter {
    * Edit an existing message
    */
   async editMessage(chatId: string, messageId: string, text: string): Promise<void> {
-    if (!this.adapter || this._status !== 'connected') {
-      throw new Error('Teams bot is not connected');
+    if (!this.adapter || this._status !== "connected") {
+      throw new Error("Teams bot is not connected");
     }
 
     const conversationRef = this.conversationReferences.get(chatId);
@@ -616,7 +630,7 @@ export class TeamsAdapter implements ChannelAdapter {
         const activity = MessageFactory.text(text);
         activity.id = messageId;
         await context.updateActivity(activity);
-      }
+      },
     );
   }
 
@@ -624,8 +638,8 @@ export class TeamsAdapter implements ChannelAdapter {
    * Delete a message
    */
   async deleteMessage(chatId: string, messageId: string): Promise<void> {
-    if (!this.adapter || this._status !== 'connected') {
-      throw new Error('Teams bot is not connected');
+    if (!this.adapter || this._status !== "connected") {
+      throw new Error("Teams bot is not connected");
     }
 
     const conversationRef = this.conversationReferences.get(chatId);
@@ -638,7 +652,7 @@ export class TeamsAdapter implements ChannelAdapter {
       conversationRef as ConversationReference,
       async (context: TurnContext) => {
         await context.deleteActivity(messageId);
-      }
+      },
     );
   }
 
@@ -646,8 +660,8 @@ export class TeamsAdapter implements ChannelAdapter {
    * Send a document/file to a conversation
    */
   async sendDocument(chatId: string, filePath: string, caption?: string): Promise<string> {
-    if (!this.adapter || this._status !== 'connected') {
-      throw new Error('Teams bot is not connected');
+    if (!this.adapter || this._status !== "connected") {
+      throw new Error("Teams bot is not connected");
     }
 
     // Check if file exists
@@ -662,10 +676,10 @@ export class TeamsAdapter implements ChannelAdapter {
 
     const fileName = path.basename(filePath);
     const fileBuffer = fs.readFileSync(filePath);
-    const base64Content = fileBuffer.toString('base64');
+    const base64Content = fileBuffer.toString("base64");
     const contentType = this.getContentType(fileName);
 
-    let lastMessageId = '';
+    let lastMessageId = "";
 
     await this.adapter.continueConversationAsync(
       this.config.appId,
@@ -680,8 +694,8 @@ export class TeamsAdapter implements ChannelAdapter {
 
         const activity = MessageFactory.attachment(attachment, caption);
         const response = await context.sendActivity(activity);
-        lastMessageId = response?.id || '';
-      }
+        lastMessageId = response?.id || "";
+      },
     );
 
     return lastMessageId;
@@ -693,23 +707,23 @@ export class TeamsAdapter implements ChannelAdapter {
   private getContentType(fileName: string): string {
     const ext = path.extname(fileName).toLowerCase();
     const contentTypes: Record<string, string> = {
-      '.pdf': 'application/pdf',
-      '.doc': 'application/msword',
-      '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      '.xls': 'application/vnd.ms-excel',
-      '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      '.ppt': 'application/vnd.ms-powerpoint',
-      '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-      '.png': 'image/png',
-      '.jpg': 'image/jpeg',
-      '.jpeg': 'image/jpeg',
-      '.gif': 'image/gif',
-      '.txt': 'text/plain',
-      '.json': 'application/json',
-      '.xml': 'application/xml',
-      '.zip': 'application/zip',
+      ".pdf": "application/pdf",
+      ".doc": "application/msword",
+      ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      ".xls": "application/vnd.ms-excel",
+      ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      ".ppt": "application/vnd.ms-powerpoint",
+      ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      ".png": "image/png",
+      ".jpg": "image/jpeg",
+      ".jpeg": "image/jpeg",
+      ".gif": "image/gif",
+      ".txt": "text/plain",
+      ".json": "application/json",
+      ".xml": "application/xml",
+      ".zip": "application/zip",
     };
-    return contentTypes[ext] || 'application/octet-stream';
+    return contentTypes[ext] || "application/octet-stream";
   }
 
   /**
@@ -738,7 +752,7 @@ export class TeamsAdapter implements ChannelAdapter {
    */
   async getInfo(): Promise<ChannelInfo> {
     return {
-      type: 'teams',
+      type: "teams",
       status: this._status,
       botId: this.config.appId,
       botUsername: this._botUsername,
@@ -753,10 +767,10 @@ export class TeamsAdapter implements ChannelAdapter {
       try {
         await handler(message);
       } catch (error) {
-        console.error('Error in message handler:', error);
+        console.error("Error in message handler:", error);
         this.handleError(
           error instanceof Error ? error : new Error(String(error)),
-          'messageHandler'
+          "messageHandler",
         );
       }
     }
@@ -767,7 +781,7 @@ export class TeamsAdapter implements ChannelAdapter {
       try {
         handler(error, context);
       } catch (e) {
-        console.error('Error in error handler:', e);
+        console.error("Error in error handler:", e);
       }
     }
   }
@@ -778,7 +792,7 @@ export class TeamsAdapter implements ChannelAdapter {
       try {
         handler(status, error);
       } catch (e) {
-        console.error('Error in status handler:', e);
+        console.error("Error in status handler:", e);
       }
     }
   }
@@ -789,10 +803,10 @@ export class TeamsAdapter implements ChannelAdapter {
  */
 export function createTeamsAdapter(config: TeamsConfig): TeamsAdapter {
   if (!config.appId) {
-    throw new Error('Microsoft App ID is required');
+    throw new Error("Microsoft App ID is required");
   }
   if (!config.appPassword) {
-    throw new Error('Microsoft App Password is required');
+    throw new Error("Microsoft App Password is required");
   }
   return new TeamsAdapter(config);
 }

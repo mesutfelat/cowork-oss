@@ -10,29 +10,30 @@
  * - Send SMS (Android only)
  */
 
-import type { ToolDefinition, NodeToolResult } from '../../../shared/types';
-import { getNodeManager } from '../../control-plane';
+import type { ToolDefinition, NodeToolResult } from "../../../shared/types";
+import { getNodeManager } from "../../control-plane";
 
 /**
  * List connected mobile companion nodes
  */
 export const nodeListTool: ToolDefinition = {
-  name: 'node_list',
-  description: 'List connected mobile companion devices (nodes). Returns information about each connected device including its capabilities and available commands.',
+  name: "node_list",
+  description:
+    "List connected mobile companion devices (nodes). Returns information about each connected device including its capabilities and available commands.",
   inputSchema: {
-    type: 'object' as const,
+    type: "object" as const,
     properties: {},
     required: [],
   },
-  riskLevel: 'read' as const,
-  groups: ['read'] as const,
+  riskLevel: "read" as const,
+  groups: ["read"] as const,
   handler: async (): Promise<NodeToolResult> => {
     const nodeManager = getNodeManager();
 
     if (!nodeManager.isAttached) {
       return {
-        type: 'text',
-        content: 'No mobile companions are available. The Control Plane server is not running.',
+        type: "text",
+        content: "No mobile companions are available. The Control Plane server is not running.",
       };
     }
 
@@ -40,8 +41,8 @@ export const nodeListTool: ToolDefinition = {
 
     if (nodes.length === 0) {
       return {
-        type: 'text',
-        content: 'No mobile companion devices are currently connected.',
+        type: "text",
+        content: "No mobile companion devices are currently connected.",
       };
     }
 
@@ -55,7 +56,7 @@ export const nodeListTool: ToolDefinition = {
     }));
 
     return {
-      type: 'json',
+      type: "json",
       content: JSON.stringify({ nodes: nodeList }, null, 2),
     };
   },
@@ -65,27 +66,28 @@ export const nodeListTool: ToolDefinition = {
  * Get detailed info about a specific node
  */
 export const nodeDescribeTool: ToolDefinition = {
-  name: 'node_describe',
-  description: 'Get detailed information about a connected mobile companion device, including its capabilities, permissions, and connection status.',
+  name: "node_describe",
+  description:
+    "Get detailed information about a connected mobile companion device, including its capabilities, permissions, and connection status.",
   inputSchema: {
-    type: 'object' as const,
+    type: "object" as const,
     properties: {
       nodeId: {
-        type: 'string',
-        description: 'The ID or display name of the node to describe',
+        type: "string",
+        description: "The ID or display name of the node to describe",
       },
     },
-    required: ['nodeId'],
+    required: ["nodeId"],
   },
-  riskLevel: 'read' as const,
-  groups: ['read'] as const,
+  riskLevel: "read" as const,
+  groups: ["read"] as const,
   handler: async (params: { nodeId: string }): Promise<NodeToolResult> => {
     const nodeManager = getNodeManager();
 
     if (!nodeManager.isAttached) {
       return {
-        type: 'text',
-        content: 'Control Plane server is not running.',
+        type: "text",
+        content: "Control Plane server is not running.",
         isError: true,
       };
     }
@@ -94,14 +96,14 @@ export const nodeDescribeTool: ToolDefinition = {
 
     if (!node) {
       return {
-        type: 'text',
+        type: "text",
         content: `Node not found: ${params.nodeId}`,
         isError: true,
       };
     }
 
     return {
-      type: 'json',
+      type: "json",
       content: JSON.stringify(node, null, 2),
     };
   },
@@ -111,36 +113,39 @@ export const nodeDescribeTool: ToolDefinition = {
  * Take a photo using a node's camera
  */
 export const nodeCameraSnapTool: ToolDefinition = {
-  name: 'node_camera_snap',
-  description: 'Take a photo using a mobile companion\'s camera. Returns the image as base64-encoded JPEG. The node app must be in the foreground.',
+  name: "node_camera_snap",
+  description:
+    "Take a photo using a mobile companion's camera. Returns the image as base64-encoded JPEG. The node app must be in the foreground.",
   inputSchema: {
-    type: 'object' as const,
+    type: "object" as const,
     properties: {
       nodeId: {
-        type: 'string',
-        description: 'The ID or display name of the node to use. If omitted, uses the first available node.',
+        type: "string",
+        description:
+          "The ID or display name of the node to use. If omitted, uses the first available node.",
       },
       facing: {
-        type: 'string',
-        enum: ['front', 'back'],
-        description: 'Which camera to use: "front" (selfie) or "back" (main camera). Defaults to "back".',
+        type: "string",
+        enum: ["front", "back"],
+        description:
+          'Which camera to use: "front" (selfie) or "back" (main camera). Defaults to "back".',
       },
       maxWidth: {
-        type: 'number',
-        description: 'Maximum width in pixels for resizing. If omitted, uses original resolution.',
+        type: "number",
+        description: "Maximum width in pixels for resizing. If omitted, uses original resolution.",
       },
       quality: {
-        type: 'number',
-        description: 'JPEG quality from 0 to 1. Defaults to 0.8.',
+        type: "number",
+        description: "JPEG quality from 0 to 1. Defaults to 0.8.",
       },
     },
     required: [],
   },
-  riskLevel: 'read' as const,
-  groups: ['read'] as const,
+  riskLevel: "read" as const,
+  groups: ["read"] as const,
   handler: async (params: {
     nodeId?: string;
-    facing?: 'front' | 'back';
+    facing?: "front" | "back";
     maxWidth?: number;
     quality?: number;
   }): Promise<NodeToolResult> => {
@@ -148,8 +153,8 @@ export const nodeCameraSnapTool: ToolDefinition = {
 
     if (!nodeManager.isAttached) {
       return {
-        type: 'text',
-        content: 'Control Plane server is not running.',
+        type: "text",
+        content: "Control Plane server is not running.",
         isError: true,
       };
     }
@@ -160,8 +165,8 @@ export const nodeCameraSnapTool: ToolDefinition = {
       const defaultNode = nodeManager.getDefaultNode();
       if (!defaultNode) {
         return {
-          type: 'text',
-          content: 'No mobile companion devices are connected.',
+          type: "text",
+          content: "No mobile companion devices are connected.",
           isError: true,
         };
       }
@@ -172,15 +177,15 @@ export const nodeCameraSnapTool: ToolDefinition = {
     const node = nodeManager.getNode(nodeId);
     if (!node) {
       return {
-        type: 'text',
+        type: "text",
         content: `Node not found: ${nodeId}`,
         isError: true,
       };
     }
 
-    if (!node.capabilities.includes('camera')) {
+    if (!node.capabilities.includes("camera")) {
       return {
-        type: 'text',
+        type: "text",
         content: `Node "${node.displayName}" does not have camera capability.`,
         isError: true,
       };
@@ -195,16 +200,21 @@ export const nodeCameraSnapTool: ToolDefinition = {
 
     if (!result.ok) {
       return {
-        type: 'text',
-        content: `Failed to take photo: ${result.error?.message || 'Unknown error'}`,
+        type: "text",
+        content: `Failed to take photo: ${result.error?.message || "Unknown error"}`,
         isError: true,
       };
     }
 
-    const payload = result.payload as { format: string; base64: string; width?: number; height?: number };
+    const payload = result.payload as {
+      format: string;
+      base64: string;
+      width?: number;
+      height?: number;
+    };
 
     return {
-      type: 'image',
+      type: "image",
       content: payload.base64,
       mimeType: `image/${payload.format}`,
     };
@@ -215,35 +225,38 @@ export const nodeCameraSnapTool: ToolDefinition = {
  * Get location from a node
  */
 export const nodeLocationTool: ToolDefinition = {
-  name: 'node_location',
-  description: 'Get the current GPS location from a mobile companion device. Returns latitude, longitude, and accuracy.',
+  name: "node_location",
+  description:
+    "Get the current GPS location from a mobile companion device. Returns latitude, longitude, and accuracy.",
   inputSchema: {
-    type: 'object' as const,
+    type: "object" as const,
     properties: {
       nodeId: {
-        type: 'string',
-        description: 'The ID or display name of the node to use. If omitted, uses the first available node.',
+        type: "string",
+        description:
+          "The ID or display name of the node to use. If omitted, uses the first available node.",
       },
       accuracy: {
-        type: 'string',
-        enum: ['coarse', 'precise'],
-        description: 'Desired accuracy: "coarse" (faster, less battery) or "precise" (GPS). Defaults to "precise".',
+        type: "string",
+        enum: ["coarse", "precise"],
+        description:
+          'Desired accuracy: "coarse" (faster, less battery) or "precise" (GPS). Defaults to "precise".',
       },
     },
     required: [],
   },
-  riskLevel: 'read' as const,
-  groups: ['read'] as const,
+  riskLevel: "read" as const,
+  groups: ["read"] as const,
   handler: async (params: {
     nodeId?: string;
-    accuracy?: 'coarse' | 'precise';
+    accuracy?: "coarse" | "precise";
   }): Promise<NodeToolResult> => {
     const nodeManager = getNodeManager();
 
     if (!nodeManager.isAttached) {
       return {
-        type: 'text',
-        content: 'Control Plane server is not running.',
+        type: "text",
+        content: "Control Plane server is not running.",
         isError: true,
       };
     }
@@ -254,8 +267,8 @@ export const nodeLocationTool: ToolDefinition = {
       const defaultNode = nodeManager.getDefaultNode();
       if (!defaultNode) {
         return {
-          type: 'text',
-          content: 'No mobile companion devices are connected.',
+          type: "text",
+          content: "No mobile companion devices are connected.",
           isError: true,
         };
       }
@@ -266,15 +279,15 @@ export const nodeLocationTool: ToolDefinition = {
     const node = nodeManager.getNode(nodeId);
     if (!node) {
       return {
-        type: 'text',
+        type: "text",
         content: `Node not found: ${nodeId}`,
         isError: true,
       };
     }
 
-    if (!node.capabilities.includes('location')) {
+    if (!node.capabilities.includes("location")) {
       return {
-        type: 'text',
+        type: "text",
         content: `Node "${node.displayName}" does not have location capability.`,
         isError: true,
       };
@@ -287,8 +300,8 @@ export const nodeLocationTool: ToolDefinition = {
 
     if (!result.ok) {
       return {
-        type: 'text',
-        content: `Failed to get location: ${result.error?.message || 'Unknown error'}`,
+        type: "text",
+        content: `Failed to get location: ${result.error?.message || "Unknown error"}`,
         isError: true,
       };
     }
@@ -302,15 +315,19 @@ export const nodeLocationTool: ToolDefinition = {
     };
 
     return {
-      type: 'json',
-      content: JSON.stringify({
-        latitude: payload.latitude,
-        longitude: payload.longitude,
-        accuracy: `${payload.accuracy.toFixed(1)} meters`,
-        altitude: payload.altitude ? `${payload.altitude.toFixed(1)} meters` : undefined,
-        timestamp: new Date(payload.timestamp).toISOString(),
-        mapsUrl: `https://www.google.com/maps?q=${payload.latitude},${payload.longitude}`,
-      }, null, 2),
+      type: "json",
+      content: JSON.stringify(
+        {
+          latitude: payload.latitude,
+          longitude: payload.longitude,
+          accuracy: `${payload.accuracy.toFixed(1)} meters`,
+          altitude: payload.altitude ? `${payload.altitude.toFixed(1)} meters` : undefined,
+          timestamp: new Date(payload.timestamp).toISOString(),
+          mapsUrl: `https://www.google.com/maps?q=${payload.latitude},${payload.longitude}`,
+        },
+        null,
+        2,
+      ),
     };
   },
 };
@@ -319,28 +336,31 @@ export const nodeLocationTool: ToolDefinition = {
  * Record screen from a node
  */
 export const nodeScreenRecordTool: ToolDefinition = {
-  name: 'node_screen_record',
-  description: 'Record the screen of a mobile companion device. Returns the video as base64-encoded MP4. The node app must be in the foreground.',
+  name: "node_screen_record",
+  description:
+    "Record the screen of a mobile companion device. Returns the video as base64-encoded MP4. The node app must be in the foreground.",
   inputSchema: {
-    type: 'object' as const,
+    type: "object" as const,
     properties: {
       nodeId: {
-        type: 'string',
-        description: 'The ID or display name of the node to use. If omitted, uses the first available node.',
+        type: "string",
+        description:
+          "The ID or display name of the node to use. If omitted, uses the first available node.",
       },
       durationMs: {
-        type: 'number',
-        description: 'Recording duration in milliseconds. Maximum is 60000 (1 minute). Defaults to 5000.',
+        type: "number",
+        description:
+          "Recording duration in milliseconds. Maximum is 60000 (1 minute). Defaults to 5000.",
       },
       fps: {
-        type: 'number',
-        description: 'Frames per second. Defaults to 10.',
+        type: "number",
+        description: "Frames per second. Defaults to 10.",
       },
     },
     required: [],
   },
-  riskLevel: 'read' as const,
-  groups: ['read'] as const,
+  riskLevel: "read" as const,
+  groups: ["read"] as const,
   handler: async (params: {
     nodeId?: string;
     durationMs?: number;
@@ -350,8 +370,8 @@ export const nodeScreenRecordTool: ToolDefinition = {
 
     if (!nodeManager.isAttached) {
       return {
-        type: 'text',
-        content: 'Control Plane server is not running.',
+        type: "text",
+        content: "Control Plane server is not running.",
         isError: true,
       };
     }
@@ -362,8 +382,8 @@ export const nodeScreenRecordTool: ToolDefinition = {
       const defaultNode = nodeManager.getDefaultNode();
       if (!defaultNode) {
         return {
-          type: 'text',
-          content: 'No mobile companion devices are connected.',
+          type: "text",
+          content: "No mobile companion devices are connected.",
           isError: true,
         };
       }
@@ -374,15 +394,15 @@ export const nodeScreenRecordTool: ToolDefinition = {
     const node = nodeManager.getNode(nodeId);
     if (!node) {
       return {
-        type: 'text',
+        type: "text",
         content: `Node not found: ${nodeId}`,
         isError: true,
       };
     }
 
-    if (!node.capabilities.includes('screen')) {
+    if (!node.capabilities.includes("screen")) {
       return {
-        type: 'text',
+        type: "text",
         content: `Node "${node.displayName}" does not have screen recording capability.`,
         isError: true,
       };
@@ -398,8 +418,8 @@ export const nodeScreenRecordTool: ToolDefinition = {
 
     if (!result.ok) {
       return {
-        type: 'text',
-        content: `Failed to record screen: ${result.error?.message || 'Unknown error'}`,
+        type: "text",
+        content: `Failed to record screen: ${result.error?.message || "Unknown error"}`,
         isError: true,
       };
     }
@@ -407,7 +427,7 @@ export const nodeScreenRecordTool: ToolDefinition = {
     const payload = result.payload as { format: string; base64: string; durationMs?: number };
 
     return {
-      type: 'video',
+      type: "video",
       content: payload.base64,
       mimeType: `video/${payload.format}`,
     };
@@ -418,28 +438,30 @@ export const nodeScreenRecordTool: ToolDefinition = {
  * Send SMS from a node (Android only)
  */
 export const nodeSmsSendTool: ToolDefinition = {
-  name: 'node_sms_send',
-  description: 'Send an SMS message using an Android mobile companion device. Not available on iOS.',
+  name: "node_sms_send",
+  description:
+    "Send an SMS message using an Android mobile companion device. Not available on iOS.",
   inputSchema: {
-    type: 'object' as const,
+    type: "object" as const,
     properties: {
       nodeId: {
-        type: 'string',
-        description: 'The ID or display name of the Android node to use. If omitted, uses the first Android node.',
+        type: "string",
+        description:
+          "The ID or display name of the Android node to use. If omitted, uses the first Android node.",
       },
       to: {
-        type: 'string',
-        description: 'The phone number to send the SMS to.',
+        type: "string",
+        description: "The phone number to send the SMS to.",
       },
       message: {
-        type: 'string',
-        description: 'The message content to send.',
+        type: "string",
+        description: "The message content to send.",
       },
     },
-    required: ['to', 'message'],
+    required: ["to", "message"],
   },
-  riskLevel: 'write' as const,
-  groups: ['write', 'network'] as const,
+  riskLevel: "write" as const,
+  groups: ["write", "network"] as const,
   handler: async (params: {
     nodeId?: string;
     to: string;
@@ -449,8 +471,8 @@ export const nodeSmsSendTool: ToolDefinition = {
 
     if (!nodeManager.isAttached) {
       return {
-        type: 'text',
-        content: 'Control Plane server is not running.',
+        type: "text",
+        content: "Control Plane server is not running.",
         isError: true,
       };
     }
@@ -458,11 +480,12 @@ export const nodeSmsSendTool: ToolDefinition = {
     // Find an Android node
     let nodeId = params.nodeId;
     if (!nodeId) {
-      const androidNodes = nodeManager.getNodesByPlatform('android');
+      const androidNodes = nodeManager.getNodesByPlatform("android");
       if (androidNodes.length === 0) {
         return {
-          type: 'text',
-          content: 'No Android mobile companion devices are connected. SMS is only available on Android.',
+          type: "text",
+          content:
+            "No Android mobile companion devices are connected. SMS is only available on Android.",
           isError: true,
         };
       }
@@ -473,23 +496,23 @@ export const nodeSmsSendTool: ToolDefinition = {
     const node = nodeManager.getNode(nodeId);
     if (!node) {
       return {
-        type: 'text',
+        type: "text",
         content: `Node not found: ${nodeId}`,
         isError: true,
       };
     }
 
-    if (node.platform !== 'android') {
+    if (node.platform !== "android") {
       return {
-        type: 'text',
+        type: "text",
         content: `SMS is only available on Android devices. Node "${node.displayName}" is ${node.platform}.`,
         isError: true,
       };
     }
 
-    if (!node.capabilities.includes('sms')) {
+    if (!node.capabilities.includes("sms")) {
       return {
-        type: 'text',
+        type: "text",
         content: `Node "${node.displayName}" does not have SMS capability.`,
         isError: true,
       };
@@ -503,8 +526,8 @@ export const nodeSmsSendTool: ToolDefinition = {
 
     if (!result.ok) {
       return {
-        type: 'text',
-        content: `Failed to send SMS: ${result.error?.message || 'Unknown error'}`,
+        type: "text",
+        content: `Failed to send SMS: ${result.error?.message || "Unknown error"}`,
         isError: true,
       };
     }
@@ -513,14 +536,14 @@ export const nodeSmsSendTool: ToolDefinition = {
 
     if (!payload.sent) {
       return {
-        type: 'text',
-        content: `SMS was not sent: ${payload.error || 'Unknown error'}`,
+        type: "text",
+        content: `SMS was not sent: ${payload.error || "Unknown error"}`,
         isError: true,
       };
     }
 
     return {
-      type: 'text',
+      type: "text",
       content: `SMS sent successfully to ${params.to}`,
     };
   },
@@ -541,9 +564,7 @@ export const nodeTools = [
 /**
  * Register node tools with the tool registry
  */
-export function registerNodeTools(registry: {
-  register: (tool: ToolDefinition) => void;
-}): void {
+export function registerNodeTools(registry: { register: (tool: ToolDefinition) => void }): void {
   for (const tool of nodeTools) {
     registry.register(tool);
   }

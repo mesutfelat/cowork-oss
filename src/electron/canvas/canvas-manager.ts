@@ -12,12 +12,12 @@
  * - A2UI (Agent-to-UI) action handling
  */
 
-import type { BrowserWindow } from 'electron';
-import * as path from 'path';
-import * as fs from 'fs/promises';
-import { existsSync, readdirSync, statSync } from 'fs';
-import { randomUUID } from 'crypto';
-import chokidar, { type FSWatcher } from 'chokidar';
+import type { BrowserWindow } from "electron";
+import * as path from "path";
+import * as fs from "fs/promises";
+import { existsSync, readdirSync, statSync } from "fs";
+import { randomUUID } from "crypto";
+import chokidar, { type FSWatcher } from "chokidar";
 import type {
   CanvasSession,
   CanvasSessionMode,
@@ -25,17 +25,17 @@ import type {
   CanvasA2UIAction,
   CanvasSnapshot,
   CanvasCheckpoint,
-} from '../../shared/types';
-import { loadCanvasStore, saveCanvasStore } from './canvas-store';
-import { getUserDataDir } from '../utils/user-data-dir';
+} from "../../shared/types";
+import { loadCanvasStore, saveCanvasStore } from "./canvas-store";
+import { getUserDataDir } from "../utils/user-data-dir";
 
 function getElectronRuntime(): { BrowserWindow: any; screen: any; shell: any } | null {
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const electron = require('electron') as any;
+    const electron = require("electron") as any;
     // In plain Node.js, `require('electron')` resolves to the Electron binary path (string),
     // not the runtime API object. Only treat it as available when it looks like the API.
-    if (!electron || typeof electron !== 'object') return null;
+    if (!electron || typeof electron !== "object") return null;
     if (!electron.BrowserWindow || !electron.screen || !electron.shell) return null;
     return {
       BrowserWindow: electron.BrowserWindow,
@@ -50,7 +50,9 @@ function getElectronRuntime(): { BrowserWindow: any; screen: any; shell: any } |
 function requireElectronRuntime(): { BrowserWindow: any; screen: any; shell: any } {
   const rt = getElectronRuntime();
   if (!rt) {
-    throw new Error('Live Canvas requires the Electron desktop runtime and is not available in the Node-only daemon/headless mode.');
+    throw new Error(
+      "Live Canvas requires the Electron desktop runtime and is not available in the Node-only daemon/headless mode.",
+    );
   }
   return rt;
 }
@@ -131,7 +133,7 @@ export class CanvasManager {
   private constructor() {}
 
   private getSessionMode(session: CanvasSession): CanvasSessionMode {
-    return session.mode || 'html';
+    return session.mode || "html";
   }
 
   private getCanvasUrl(sessionId: string): string {
@@ -141,13 +143,13 @@ export class CanvasManager {
   private normalizeUrl(rawUrl: string): string {
     const trimmed = rawUrl.trim();
     if (!trimmed) {
-      throw new Error('URL cannot be empty');
+      throw new Error("URL cannot be empty");
     }
 
     const withScheme = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
     const parsed = new URL(withScheme);
-    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-      throw new Error('Only http and https URLs are supported for canvas browsing');
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      throw new Error("Only http and https URLs are supported for canvas browsing");
     }
     return parsed.toString();
   }
@@ -193,7 +195,7 @@ export class CanvasManager {
 
       for (const session of store.sessions) {
         // Only restore active sessions with valid directories
-        if (session.status === 'active' && existsSync(session.sessionDir)) {
+        if (session.status === "active" && existsSync(session.sessionDir)) {
           this.sessions.set(session.id, session);
         }
       }
@@ -202,7 +204,7 @@ export class CanvasManager {
         console.log(`[CanvasManager] Restored ${this.sessions.size} sessions from disk`);
       }
     } catch (error) {
-      console.error('[CanvasManager] Failed to restore sessions:', error);
+      console.error("[CanvasManager] Failed to restore sessions:", error);
     }
   }
 
@@ -215,7 +217,7 @@ export class CanvasManager {
       await saveCanvasStore({ version: 1, sessions });
       console.log(`[CanvasManager] Persisted ${sessions.length} sessions to disk`);
     } catch (error) {
-      console.error('[CanvasManager] Failed to persist sessions:', error);
+      console.error("[CanvasManager] Failed to persist sessions:", error);
     }
   }
 
@@ -226,35 +228,27 @@ export class CanvasManager {
     taskId: string,
     workspaceId: string,
     title?: string,
-    options?: { mode?: CanvasSessionMode; url?: string }
+    options?: { mode?: CanvasSessionMode; url?: string },
   ): Promise<CanvasSession> {
     const sessionId = randomUUID();
-    const sessionDir = path.join(
-      getUserDataDir(),
-      'canvas',
-      sessionId
-    );
+    const sessionDir = path.join(getUserDataDir(), "canvas", sessionId);
 
     // Create session directory
     await fs.mkdir(sessionDir, { recursive: true });
 
     // Write default HTML scaffold
-    await fs.writeFile(
-      path.join(sessionDir, 'index.html'),
-      DEFAULT_HTML,
-      'utf-8'
-    );
+    await fs.writeFile(path.join(sessionDir, "index.html"), DEFAULT_HTML, "utf-8");
 
     const normalizedUrl = options?.url ? this.normalizeUrl(options.url) : undefined;
-    const normalizedMode = options?.mode === 'browser' && normalizedUrl ? 'browser' : 'html';
+    const normalizedMode = options?.mode === "browser" && normalizedUrl ? "browser" : "html";
     const session: CanvasSession = {
       id: sessionId,
       taskId,
       workspaceId,
       sessionDir,
       mode: normalizedMode,
-      url: normalizedMode === 'browser' ? normalizedUrl : undefined,
-      status: 'active',
+      url: normalizedMode === "browser" ? normalizedUrl : undefined,
+      status: "active",
       title: title || `Canvas ${new Date().toLocaleTimeString()}`,
       createdAt: Date.now(),
       lastUpdatedAt: Date.now(),
@@ -267,7 +261,7 @@ export class CanvasManager {
 
     // Emit event
     this.emitEvent({
-      type: 'session_created',
+      type: "session_created",
       sessionId,
       taskId,
       timestamp: Date.now(),
@@ -296,9 +290,7 @@ export class CanvasManager {
    * List all sessions for a task
    */
   listSessionsForTask(taskId: string): CanvasSession[] {
-    return Array.from(this.sessions.values()).filter(
-      (s) => s.taskId === taskId
-    );
+    return Array.from(this.sessions.values()).filter((s) => s.taskId === taskId);
   }
 
   /**
@@ -314,33 +306,39 @@ export class CanvasManager {
   async pushContent(
     sessionId: string,
     content: string,
-    filename: string = 'index.html'
+    filename: string = "index.html",
   ): Promise<void> {
     const session = this.sessions.get(sessionId);
     if (!session) {
       const existingSessions = Array.from(this.sessions.keys());
       console.error(`[CanvasManager] Session not found: "${sessionId}"`);
-      console.error(`[CanvasManager] Existing sessions: ${existingSessions.length > 0 ? existingSessions.join(', ') : 'none'}`);
-      throw new Error(`Canvas session not found: "${sessionId}". Available sessions: ${existingSessions.join(', ') || 'none'}`);
+      console.error(
+        `[CanvasManager] Existing sessions: ${existingSessions.length > 0 ? existingSessions.join(", ") : "none"}`,
+      );
+      throw new Error(
+        `Canvas session not found: "${sessionId}". Available sessions: ${existingSessions.join(", ") || "none"}`,
+      );
     }
 
-    const wasBrowser = this.getSessionMode(session) === 'browser';
+    const wasBrowser = this.getSessionMode(session) === "browser";
 
     // Sanitize filename to prevent path traversal
     const safeFilename = path.basename(filename);
     const filePath = path.join(session.sessionDir, safeFilename);
 
-    await fs.writeFile(filePath, content, 'utf-8');
+    await fs.writeFile(filePath, content, "utf-8");
 
     // Switch back to HTML mode when content is pushed
-    session.mode = 'html';
+    session.mode = "html";
     session.url = undefined;
 
     // Update session timestamp
     session.lastUpdatedAt = Date.now();
 
     // Persist sessions to disk (in background, don't await to avoid blocking)
-    this.persistSessions().catch(err => console.error('[CanvasManager] Failed to persist after push:', err));
+    this.persistSessions().catch((err) =>
+      console.error("[CanvasManager] Failed to persist after push:", err),
+    );
 
     // Ensure a hidden window exists for snapshots (NOT shown to user)
     // The window will only be shown when user explicitly requests via showCanvas()
@@ -356,14 +354,14 @@ export class CanvasManager {
 
     // Emit event
     this.emitEvent({
-      type: 'content_pushed',
+      type: "content_pushed",
       sessionId,
       taskId: session.taskId,
       timestamp: Date.now(),
     });
 
     this.emitEvent({
-      type: 'session_updated',
+      type: "session_updated",
       sessionId,
       taskId: session.taskId,
       timestamp: Date.now(),
@@ -376,26 +374,28 @@ export class CanvasManager {
   /**
    * Open a remote URL inside the canvas window (browser mode)
    */
-  async openUrl(
-    sessionId: string,
-    rawUrl: string,
-    options?: { show?: boolean }
-  ): Promise<string> {
+  async openUrl(sessionId: string, rawUrl: string, options?: { show?: boolean }): Promise<string> {
     const session = this.sessions.get(sessionId);
     if (!session) {
       const existingSessions = Array.from(this.sessions.keys());
       console.error(`[CanvasManager] Session not found: "${sessionId}"`);
-      console.error(`[CanvasManager] Existing sessions: ${existingSessions.length > 0 ? existingSessions.join(', ') : 'none'}`);
-      throw new Error(`Canvas session not found: "${sessionId}". Available sessions: ${existingSessions.join(', ') || 'none'}`);
+      console.error(
+        `[CanvasManager] Existing sessions: ${existingSessions.length > 0 ? existingSessions.join(", ") : "none"}`,
+      );
+      throw new Error(
+        `Canvas session not found: "${sessionId}". Available sessions: ${existingSessions.join(", ") || "none"}`,
+      );
     }
 
     const normalizedUrl = this.normalizeUrl(rawUrl);
 
-    session.mode = 'browser';
+    session.mode = "browser";
     session.url = normalizedUrl;
     session.lastUpdatedAt = Date.now();
 
-    this.persistSessions().catch(err => console.error('[CanvasManager] Failed to persist after openUrl:', err));
+    this.persistSessions().catch((err) =>
+      console.error("[CanvasManager] Failed to persist after openUrl:", err),
+    );
 
     const window = await this.ensureWindowForSnapshots(sessionId);
     if (window && !window.isDestroyed()) {
@@ -406,7 +406,7 @@ export class CanvasManager {
     }
 
     this.emitEvent({
-      type: 'session_updated',
+      type: "session_updated",
       sessionId,
       taskId: session.taskId,
       timestamp: Date.now(),
@@ -430,7 +430,7 @@ export class CanvasManager {
     const { BrowserWindow: BrowserWindowCtor, screen: screenApi } = requireElectronRuntime();
     const session = this.sessions.get(sessionId);
     if (!session) {
-      throw new Error('Canvas session not found');
+      throw new Error("Canvas session not found");
     }
 
     let window = this.windows.get(sessionId);
@@ -462,43 +462,43 @@ export class CanvasManager {
         y: initialY,
         width: 900,
         height: initialHeight,
-        title: session.title || 'Live Canvas',
+        title: session.title || "Live Canvas",
         show: false, // Start hidden - only show when user explicitly requests
         // No parent - independent window that won't overlap main app
         webPreferences: {
-          preload: path.join(__dirname, 'canvas-preload.js'),
+          preload: path.join(__dirname, "canvas-preload.js"),
           contextIsolation: true,
           nodeIntegration: false,
           sandbox: false,
         },
-        backgroundColor: '#1a1a2e',
+        backgroundColor: "#1a1a2e",
       }) as BrowserWindow;
 
       this.windows.set(sessionId, window);
       this.windowToSession.set(window.id, sessionId);
 
       // Handle window close
-      window.on('closed', () => {
+      window.on("closed", () => {
         this.windows.delete(sessionId);
         this.windowToSession.delete(window!.id);
         this.stopWatcher(sessionId);
       });
 
       // Forward console messages from canvas to the renderer
-      window.webContents.on('console-message', (_event, level, message) => {
-        const levelMap: Record<number, 'log' | 'warn' | 'error' | 'info'> = {
-          0: 'log',   // Verbose/debug → log
-          1: 'info',
-          2: 'warn',
-          3: 'error',
+      window.webContents.on("console-message", (_event, level, message) => {
+        const levelMap: Record<number, "log" | "warn" | "error" | "info"> = {
+          0: "log", // Verbose/debug → log
+          1: "info",
+          2: "warn",
+          3: "error",
         };
         this.emitEvent({
-          type: 'console_message',
+          type: "console_message",
           sessionId,
           taskId: session.taskId,
           timestamp: Date.now(),
           console: {
-            level: levelMap[level] || 'log',
+            level: levelMap[level] || "log",
             message,
           },
         });
@@ -506,12 +506,15 @@ export class CanvasManager {
 
       const mode = this.getSessionMode(session);
       let targetUrl = this.getCanvasUrl(sessionId);
-      if (mode === 'browser' && session.url) {
+      if (mode === "browser" && session.url) {
         try {
           targetUrl = this.normalizeUrl(session.url);
         } catch (error) {
-          console.warn('[CanvasManager] Invalid stored URL, falling back to canvas content:', error);
-          session.mode = 'html';
+          console.warn(
+            "[CanvasManager] Invalid stored URL, falling back to canvas content:",
+            error,
+          );
+          session.mode = "html";
           session.url = undefined;
         }
       }
@@ -520,7 +523,7 @@ export class CanvasManager {
       await window.loadURL(targetUrl);
 
       // Start file watcher for auto-reload only in HTML mode
-      if (mode === 'html') {
+      if (mode === "html") {
         this.startWatcher(sessionId, session.sessionDir, window);
       }
     }
@@ -528,7 +531,7 @@ export class CanvasManager {
     // Ensure watcher state is correct for existing windows
     if (window && !window.isDestroyed()) {
       const mode = this.getSessionMode(session);
-      if (mode === 'html') {
+      if (mode === "html") {
         this.startWatcher(sessionId, session.sessionDir, window);
       } else {
         this.stopWatcher(sessionId);
@@ -589,7 +592,7 @@ export class CanvasManager {
     window.setBounds(bounds);
 
     this.emitEvent({
-      type: 'window_opened',
+      type: "window_opened",
       sessionId,
       taskId: this.sessions.get(sessionId)!.taskId,
       timestamp: Date.now(),
@@ -625,14 +628,14 @@ export class CanvasManager {
     this.stopWatcher(sessionId);
 
     // Update session status
-    session.status = 'closed';
+    session.status = "closed";
 
     // Persist sessions to disk (removes closed sessions)
     await this.persistSessions();
 
     // Emit event
     this.emitEvent({
-      type: 'session_closed',
+      type: "session_closed",
       sessionId,
       taskId: session.taskId,
       timestamp: Date.now(),
@@ -648,7 +651,7 @@ export class CanvasManager {
     // Ensure window exists (create hidden one if needed)
     const window = await this.ensureWindowForSnapshots(sessionId);
     if (!window || window.isDestroyed()) {
-      throw new Error('Canvas window could not be created');
+      throw new Error("Canvas window could not be created");
     }
 
     return window.webContents.executeJavaScript(script);
@@ -661,7 +664,7 @@ export class CanvasManager {
     // Ensure window exists (create hidden one if needed)
     const window = await this.ensureWindowForSnapshots(sessionId);
     if (!window || window.isDestroyed()) {
-      throw new Error('Canvas window could not be created');
+      throw new Error("Canvas window could not be created");
     }
 
     const image = await window.webContents.capturePage();
@@ -669,7 +672,7 @@ export class CanvasManager {
 
     return {
       sessionId,
-      imageBase64: image.toPNG().toString('base64'),
+      imageBase64: image.toPNG().toString("base64"),
       width: size.width,
       height: size.height,
     };
@@ -685,13 +688,13 @@ export class CanvasManager {
       throw new Error(`Canvas session not found: ${sessionId}`);
     }
 
-    const htmlPath = path.join(session.sessionDir, 'index.html');
+    const htmlPath = path.join(session.sessionDir, "index.html");
     if (!existsSync(htmlPath)) {
-      throw new Error('Canvas index.html not found');
+      throw new Error("Canvas index.html not found");
     }
 
-    const content = await fs.readFile(htmlPath, 'utf-8');
-    const filename = `canvas-${session.title?.replace(/[^a-z0-9]/gi, '-') || sessionId.slice(0, 8)}.html`;
+    const content = await fs.readFile(htmlPath, "utf-8");
+    const filename = `canvas-${session.title?.replace(/[^a-z0-9]/gi, "-") || sessionId.slice(0, 8)}.html`;
 
     console.log(`[CanvasManager] Exported HTML for session ${sessionId}`);
     return { content, filename };
@@ -700,14 +703,17 @@ export class CanvasManager {
   /**
    * Export all canvas files to a target directory
    */
-  async exportToFolder(sessionId: string, targetDir: string): Promise<{ files: string[]; targetDir: string }> {
+  async exportToFolder(
+    sessionId: string,
+    targetDir: string,
+  ): Promise<{ files: string[]; targetDir: string }> {
     const session = this.sessions.get(sessionId);
     if (!session) {
       throw new Error(`Canvas session not found: ${sessionId}`);
     }
 
     if (!existsSync(session.sessionDir)) {
-      throw new Error('Canvas session directory not found');
+      throw new Error("Canvas session directory not found");
     }
 
     // Create target directory if it doesn't exist
@@ -724,7 +730,9 @@ export class CanvasManager {
       copiedFiles.push(file);
     }
 
-    console.log(`[CanvasManager] Exported ${copiedFiles.length} files for session ${sessionId} to ${targetDir}`);
+    console.log(
+      `[CanvasManager] Exported ${copiedFiles.length} files for session ${sessionId} to ${targetDir}`,
+    );
     return { files: copiedFiles, targetDir };
   }
 
@@ -738,15 +746,15 @@ export class CanvasManager {
       throw new Error(`Canvas session not found: ${sessionId}`);
     }
 
-    if (this.getSessionMode(session) === 'browser' && session.url) {
+    if (this.getSessionMode(session) === "browser" && session.url) {
       await shellApi.openExternal(session.url);
       console.log(`[CanvasManager] Opened session ${sessionId} in browser: ${session.url}`);
       return { success: true, path: session.url };
     }
 
-    const htmlPath = path.join(session.sessionDir, 'index.html');
+    const htmlPath = path.join(session.sessionDir, "index.html");
     if (!existsSync(htmlPath)) {
-      throw new Error('Canvas index.html not found');
+      throw new Error("Canvas index.html not found");
     }
 
     // Open in default browser
@@ -769,7 +777,7 @@ export class CanvasManager {
    */
   handleA2UIAction(
     windowId: number,
-    action: { actionName: string; componentId?: string; context?: Record<string, unknown> }
+    action: { actionName: string; componentId?: string; context?: Record<string, unknown> },
   ): void {
     const sessionId = this.windowToSession.get(windowId);
     if (!sessionId) return;
@@ -787,7 +795,7 @@ export class CanvasManager {
 
     // Emit event for UI
     this.emitEvent({
-      type: 'a2ui_action',
+      type: "a2ui_action",
       sessionId,
       taskId: session.taskId,
       timestamp: Date.now(),
@@ -803,11 +811,7 @@ export class CanvasManager {
   /**
    * Start file watcher for a session
    */
-  private startWatcher(
-    sessionId: string,
-    sessionDir: string,
-    window: BrowserWindow
-  ): void {
+  private startWatcher(sessionId: string, sessionDir: string, window: BrowserWindow): void {
     if (this.watchers.has(sessionId)) {
       return;
     }
@@ -820,7 +824,7 @@ export class CanvasManager {
       },
     });
 
-    watcher.on('change', () => {
+    watcher.on("change", () => {
       if (!window.isDestroyed()) {
         window.webContents.reload();
       }
@@ -851,7 +855,7 @@ export class CanvasManager {
 
     // Broadcast to main window
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-      this.mainWindow.webContents.send('canvas:event', event);
+      this.mainWindow.webContents.send("canvas:event", event);
     }
   }
 
@@ -868,7 +872,7 @@ export class CanvasManager {
     }
 
     if (!existsSync(session.sessionDir)) {
-      throw new Error('Canvas session directory not found');
+      throw new Error("Canvas session directory not found");
     }
 
     // Read all files from the session directory (with size limits)
@@ -887,13 +891,13 @@ export class CanvasManager {
           skipped.push(`${fileName} (${(stat.size / 1024 / 1024).toFixed(1)} MB exceeds limit)`);
           continue;
         }
-        files[fileName] = await fs.readFile(filePath, 'utf-8');
+        files[fileName] = await fs.readFile(filePath, "utf-8");
       } catch {
         skipped.push(`${fileName} (read error)`);
       }
     }
     if (skipped.length > 0) {
-      console.warn(`[CanvasManager] Checkpoint skipped files: ${skipped.join(', ')}`);
+      console.warn(`[CanvasManager] Checkpoint skipped files: ${skipped.join(", ")}`);
     }
 
     const checkpoint: CanvasCheckpoint = {
@@ -919,14 +923,16 @@ export class CanvasManager {
 
     // Emit event
     this.emitEvent({
-      type: 'checkpoint_saved',
+      type: "checkpoint_saved",
       sessionId,
       taskId: session.taskId,
       timestamp: Date.now(),
       checkpoint: { id: checkpoint.id, label: checkpoint.label },
     });
 
-    console.log(`[CanvasManager] Saved checkpoint "${checkpoint.label}" for session ${sessionId} (${Object.keys(files).length} files)`);
+    console.log(
+      `[CanvasManager] Saved checkpoint "${checkpoint.label}" for session ${sessionId} (${Object.keys(files).length} files)`,
+    );
     return checkpoint;
   }
 
@@ -942,7 +948,7 @@ export class CanvasManager {
 
     const sessionCheckpoints = this.checkpoints.get(sessionId);
     if (!sessionCheckpoints) {
-      throw new Error('No checkpoints found for this session');
+      throw new Error("No checkpoints found for this session");
     }
 
     const checkpoint = sessionCheckpoints.find((cp) => cp.id === checkpointId);
@@ -959,12 +965,12 @@ export class CanvasManager {
     for (const [fileName, content] of Object.entries(checkpoint.files)) {
       const safeFilename = path.basename(fileName);
       const filePath = path.join(session.sessionDir, safeFilename);
-      await fs.writeFile(filePath, content, 'utf-8');
+      await fs.writeFile(filePath, content, "utf-8");
     }
 
     // Update session timestamp
     session.lastUpdatedAt = Date.now();
-    session.mode = 'html';
+    session.mode = "html";
     session.url = undefined;
 
     // Reload the canvas window if it exists
@@ -975,12 +981,12 @@ export class CanvasManager {
 
     // Persist sessions
     this.persistSessions().catch((err) =>
-      console.error('[CanvasManager] Failed to persist after restore:', err)
+      console.error("[CanvasManager] Failed to persist after restore:", err),
     );
 
     // Emit event
     this.emitEvent({
-      type: 'checkpoint_restored',
+      type: "checkpoint_restored",
       sessionId,
       taskId: session.taskId,
       timestamp: Date.now(),
@@ -988,14 +994,16 @@ export class CanvasManager {
     });
 
     this.emitEvent({
-      type: 'session_updated',
+      type: "session_updated",
       sessionId,
       taskId: session.taskId,
       timestamp: Date.now(),
       session,
     });
 
-    console.log(`[CanvasManager] Restored checkpoint "${checkpoint.label}" for session ${sessionId}`);
+    console.log(
+      `[CanvasManager] Restored checkpoint "${checkpoint.label}" for session ${sessionId}`,
+    );
     return checkpoint;
   }
 
@@ -1036,7 +1044,7 @@ export class CanvasManager {
     }
 
     if (!existsSync(session.sessionDir)) {
-      throw new Error('Canvas session directory not found');
+      throw new Error("Canvas session directory not found");
     }
 
     const fileNames = readdirSync(session.sessionDir);
@@ -1044,7 +1052,7 @@ export class CanvasManager {
     for (const fileName of fileNames) {
       const filePath = path.join(session.sessionDir, fileName);
       try {
-        files[fileName] = await fs.readFile(filePath, 'utf-8');
+        files[fileName] = await fs.readFile(filePath, "utf-8");
       } catch {
         // Skip unreadable files
       }
@@ -1070,6 +1078,6 @@ export class CanvasManager {
     this.windowToSession.clear();
     this.checkpoints.clear();
 
-    console.log('[CanvasManager] Cleanup complete');
+    console.log("[CanvasManager] Cleanup complete");
   }
 }

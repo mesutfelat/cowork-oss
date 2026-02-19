@@ -4,8 +4,8 @@
  * Stores Box integration settings in encrypted database.
  */
 
-import { SecureSettingsRepository } from '../database/SecureSettingsRepository';
-import { BoxSettingsData } from '../../shared/types';
+import { SecureSettingsRepository } from "../database/SecureSettingsRepository";
+import { BoxSettingsData } from "../../shared/types";
 
 const DEFAULT_SETTINGS: BoxSettingsData = {
   enabled: false,
@@ -25,13 +25,13 @@ export class BoxSettingsManager {
     try {
       if (SecureSettingsRepository.isInitialized()) {
         const repository = SecureSettingsRepository.getInstance();
-        const stored = repository.load<BoxSettingsData>('box');
+        const stored = repository.load<BoxSettingsData>("box");
         if (stored) {
           settings = { ...DEFAULT_SETTINGS, ...stored };
         }
       }
     } catch (error) {
-      console.error('[BoxSettingsManager] Failed to load settings:', error);
+      console.error("[BoxSettingsManager] Failed to load settings:", error);
     }
 
     this.cachedSettings = settings;
@@ -41,14 +41,14 @@ export class BoxSettingsManager {
   static saveSettings(settings: BoxSettingsData): void {
     try {
       if (!SecureSettingsRepository.isInitialized()) {
-        throw new Error('SecureSettingsRepository not initialized');
+        throw new Error("SecureSettingsRepository not initialized");
       }
       const repository = SecureSettingsRepository.getInstance();
-      repository.save('box', settings);
+      repository.save("box", settings);
       this.cachedSettings = settings;
-      console.log('[BoxSettingsManager] Settings saved');
+      console.log("[BoxSettingsManager] Settings saved");
     } catch (error) {
-      console.error('[BoxSettingsManager] Failed to save settings:', error);
+      console.error("[BoxSettingsManager] Failed to save settings:", error);
     }
   }
 

@@ -11,9 +11,9 @@
  * Settings are stored encrypted in the database using SecureSettingsRepository.
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
-import { EventEmitter } from 'events';
+import * as fs from "fs";
+import * as path from "path";
+import { EventEmitter } from "events";
 import {
   PersonalitySettings,
   PersonalityId,
@@ -31,20 +31,20 @@ import {
   DEFAULT_RELATIONSHIP,
   getPersonalityById,
   getPersonaById,
-} from '../../shared/types';
-import { SecureSettingsRepository } from '../database/SecureSettingsRepository';
-import { getUserDataDir } from '../utils/user-data-dir';
+} from "../../shared/types";
+import { SecureSettingsRepository } from "../database/SecureSettingsRepository";
+import { getUserDataDir } from "../utils/user-data-dir";
 
-const LEGACY_SETTINGS_FILE = 'personality-settings.json';
+const LEGACY_SETTINGS_FILE = "personality-settings.json";
 
-const DEFAULT_AGENT_NAME = 'CoWork';
+const DEFAULT_AGENT_NAME = "CoWork";
 
 const DEFAULT_SETTINGS: PersonalitySettings = {
-  activePersonality: 'professional',
-  customPrompt: '',
-  customName: 'Custom Assistant',
+  activePersonality: "professional",
+  customPrompt: "",
+  customName: "Custom Assistant",
   agentName: DEFAULT_AGENT_NAME,
-  activePersona: 'companion',
+  activePersona: "companion",
   responseStyle: DEFAULT_RESPONSE_STYLE,
   quirks: DEFAULT_QUIRKS,
   relationship: DEFAULT_RELATIONSHIP,
@@ -67,8 +67,8 @@ export class PersonalityManager {
    * The callback receives the updated settings.
    */
   static onSettingsChanged(callback: (settings: PersonalitySettings) => void): () => void {
-    personalityEvents.on('settingsChanged', callback);
-    return () => personalityEvents.off('settingsChanged', callback);
+    personalityEvents.on("settingsChanged", callback);
+    return () => personalityEvents.off("settingsChanged", callback);
   }
 
   /**
@@ -83,7 +83,7 @@ export class PersonalityManager {
    */
   private static emitSettingsChanged(): void {
     if (this.cachedSettings) {
-      personalityEvents.emit('settingsChanged', this.cachedSettings);
+      personalityEvents.emit("settingsChanged", this.cachedSettings);
     }
   }
 
@@ -97,7 +97,7 @@ export class PersonalityManager {
     const userDataPath = getUserDataDir();
     this.legacySettingsPath = path.join(userDataPath, LEGACY_SETTINGS_FILE);
     this.initialized = true;
-    console.log('[PersonalityManager] Initialized');
+    console.log("[PersonalityManager] Initialized");
 
     // Migrate from legacy JSON file to encrypted database
     this.migrateFromLegacyFile();
@@ -112,34 +112,38 @@ export class PersonalityManager {
     try {
       // Check if SecureSettingsRepository is initialized
       if (!SecureSettingsRepository.isInitialized()) {
-        console.log('[PersonalityManager] SecureSettingsRepository not yet initialized, skipping migration');
+        console.log(
+          "[PersonalityManager] SecureSettingsRepository not yet initialized, skipping migration",
+        );
         return;
       }
 
       const repository = SecureSettingsRepository.getInstance();
 
       // Check if already migrated to database
-      if (repository.exists('personality')) {
+      if (repository.exists("personality")) {
         this.migrationCompleted = true;
         return;
       }
 
       // Check if legacy file exists
       if (!fs.existsSync(this.legacySettingsPath)) {
-        console.log('[PersonalityManager] No legacy settings file found');
+        console.log("[PersonalityManager] No legacy settings file found");
         this.migrationCompleted = true;
         return;
       }
 
-      console.log('[PersonalityManager] Migrating settings from legacy JSON file to encrypted database...');
+      console.log(
+        "[PersonalityManager] Migrating settings from legacy JSON file to encrypted database...",
+      );
 
       // Create backup before migration
-      const backupPath = this.legacySettingsPath + '.migration-backup';
+      const backupPath = this.legacySettingsPath + ".migration-backup";
       fs.copyFileSync(this.legacySettingsPath, backupPath);
 
       try {
         // Read legacy settings
-        const data = fs.readFileSync(this.legacySettingsPath, 'utf-8');
+        const data = fs.readFileSync(this.legacySettingsPath, "utf-8");
         const parsed = JSON.parse(data);
         const legacySettings = {
           ...DEFAULT_SETTINGS,
@@ -150,21 +154,21 @@ export class PersonalityManager {
         };
 
         // Save to encrypted database
-        repository.save('personality', legacySettings);
-        console.log('[PersonalityManager] Settings migrated to encrypted database');
+        repository.save("personality", legacySettings);
+        console.log("[PersonalityManager] Settings migrated to encrypted database");
 
         // Migration successful - delete backup and original
         fs.unlinkSync(backupPath);
         fs.unlinkSync(this.legacySettingsPath);
-        console.log('[PersonalityManager] Migration complete, cleaned up legacy files');
+        console.log("[PersonalityManager] Migration complete, cleaned up legacy files");
 
         this.migrationCompleted = true;
       } catch (migrationError) {
-        console.error('[PersonalityManager] Migration failed, backup preserved at:', backupPath);
+        console.error("[PersonalityManager] Migration failed, backup preserved at:", backupPath);
         throw migrationError;
       }
     } catch (error) {
-      console.error('[PersonalityManager] Migration failed:', error);
+      console.error("[PersonalityManager] Migration failed:", error);
     }
   }
 
@@ -173,7 +177,9 @@ export class PersonalityManager {
    */
   private static ensureInitialized(): void {
     if (!this.initialized) {
-      throw new Error('[PersonalityManager] Not initialized. Call PersonalityManager.initialize() first.');
+      throw new Error(
+        "[PersonalityManager] Not initialized. Call PersonalityManager.initialize() first.",
+      );
     }
   }
 
@@ -199,7 +205,7 @@ export class PersonalityManager {
       // Try to load from encrypted database
       if (SecureSettingsRepository.isInitialized()) {
         const repository = SecureSettingsRepository.getInstance();
-        const stored = repository.load<PersonalitySettings>('personality');
+        const stored = repository.load<PersonalitySettings>("personality");
         if (stored) {
           settings = {
             ...DEFAULT_SETTINGS,
@@ -219,7 +225,7 @@ export class PersonalityManager {
         settings.activePersona = DEFAULT_SETTINGS.activePersona;
       }
     } catch (error) {
-      console.error('[PersonalityManager] Failed to load settings:', error);
+      console.error("[PersonalityManager] Failed to load settings:", error);
       // Deep copy DEFAULT_SETTINGS to avoid mutating the original constants
       settings = {
         ...DEFAULT_SETTINGS,
@@ -239,7 +245,7 @@ export class PersonalityManager {
   static saveSettings(settings: PersonalitySettings): void {
     try {
       if (!SecureSettingsRepository.isInitialized()) {
-        throw new Error('SecureSettingsRepository not initialized');
+        throw new Error("SecureSettingsRepository not initialized");
       }
 
       // Load existing settings to preserve fields not being updated
@@ -268,12 +274,12 @@ export class PersonalityManager {
       };
 
       const repository = SecureSettingsRepository.getInstance();
-      repository.save('personality', validatedSettings);
+      repository.save("personality", validatedSettings);
       this.cachedSettings = validatedSettings;
-      console.log('[PersonalityManager] Settings saved to encrypted database');
+      console.log("[PersonalityManager] Settings saved to encrypted database");
       this.emitSettingsChanged();
     } catch (error) {
-      console.error('[PersonalityManager] Failed to save settings:', error);
+      console.error("[PersonalityManager] Failed to save settings:", error);
       throw error;
     }
   }
@@ -296,7 +302,7 @@ export class PersonalityManager {
 
     // Optionally apply persona's suggested name and quirks
     const persona = getPersonaById(personaId);
-    if (persona && personaId !== 'none') {
+    if (persona && personaId !== "none") {
       if (persona.suggestedName && !settings.agentName) {
         settings.agentName = persona.suggestedName;
       }
@@ -330,7 +336,7 @@ export class PersonalityManager {
    */
   static getActivePersona(): PersonaDefinition | undefined {
     const settings = this.loadSettings();
-    return getPersonaById(settings.activePersona || 'none');
+    return getPersonaById(settings.activePersona || "none");
   }
 
   /**
@@ -362,7 +368,7 @@ export class PersonalityManager {
     const parts: string[] = [];
 
     // 1. Base personality prompt
-    if (settings.activePersonality === 'custom') {
+    if (settings.activePersonality === "custom") {
       if (settings.customPrompt) {
         parts.push(settings.customPrompt);
       }
@@ -374,7 +380,7 @@ export class PersonalityManager {
     }
 
     // 2. Persona overlay (if not 'none')
-    if (settings.activePersona && settings.activePersona !== 'none') {
+    if (settings.activePersona && settings.activePersona !== "none") {
       const persona = getPersonaById(settings.activePersona);
       if (persona?.promptTemplate) {
         parts.push(persona.promptTemplate);
@@ -393,84 +399,84 @@ export class PersonalityManager {
       parts.push(quirksPrompt);
     }
 
-    return parts.join('\n\n');
+    return parts.join("\n\n");
   }
 
   /**
    * Generate prompt section for response style preferences
    */
   private static getResponseStylePrompt(style?: ResponseStylePreferences): string {
-    if (!style) return '';
+    if (!style) return "";
 
-    const lines: string[] = ['RESPONSE STYLE PREFERENCES:'];
+    const lines: string[] = ["RESPONSE STYLE PREFERENCES:"];
 
     // Emoji usage
     switch (style.emojiUsage) {
-      case 'none':
-        lines.push('- Do NOT use emojis in responses');
+      case "none":
+        lines.push("- Do NOT use emojis in responses");
         break;
-      case 'minimal':
-        lines.push('- Use emojis sparingly, only when they add clear value');
+      case "minimal":
+        lines.push("- Use emojis sparingly, only when they add clear value");
         break;
-      case 'moderate':
-        lines.push('- Feel free to use emojis to enhance communication');
+      case "moderate":
+        lines.push("- Feel free to use emojis to enhance communication");
         break;
-      case 'expressive':
-        lines.push('- Use emojis liberally to make responses engaging and expressive');
+      case "expressive":
+        lines.push("- Use emojis liberally to make responses engaging and expressive");
         break;
     }
 
     // Response length
     switch (style.responseLength) {
-      case 'terse':
-        lines.push('- Keep responses very brief and to the point');
-        lines.push('- Omit explanations unless explicitly requested');
+      case "terse":
+        lines.push("- Keep responses very brief and to the point");
+        lines.push("- Omit explanations unless explicitly requested");
         break;
-      case 'balanced':
-        lines.push('- Provide balanced responses with appropriate detail');
+      case "balanced":
+        lines.push("- Provide balanced responses with appropriate detail");
         break;
-      case 'detailed':
-        lines.push('- Provide comprehensive, detailed responses');
-        lines.push('- Include context, explanations, and related information');
+      case "detailed":
+        lines.push("- Provide comprehensive, detailed responses");
+        lines.push("- Include context, explanations, and related information");
         break;
     }
 
     // Code comment style
     switch (style.codeCommentStyle) {
-      case 'minimal':
-        lines.push('- When writing code, use minimal comments (only for complex logic)');
+      case "minimal":
+        lines.push("- When writing code, use minimal comments (only for complex logic)");
         break;
-      case 'moderate':
-        lines.push('- When writing code, include helpful comments for key sections');
+      case "moderate":
+        lines.push("- When writing code, include helpful comments for key sections");
         break;
-      case 'verbose':
-        lines.push('- When writing code, include detailed comments explaining the approach');
+      case "verbose":
+        lines.push("- When writing code, include detailed comments explaining the approach");
         break;
     }
 
     // Explanation depth
     switch (style.explanationDepth) {
-      case 'expert':
-        lines.push('- Assume the user is an expert - skip basic explanations');
-        lines.push('- Focus on advanced considerations and edge cases');
+      case "expert":
+        lines.push("- Assume the user is an expert - skip basic explanations");
+        lines.push("- Focus on advanced considerations and edge cases");
         break;
-      case 'balanced':
-        lines.push('- Balance explanations for a competent but curious user');
+      case "balanced":
+        lines.push("- Balance explanations for a competent but curious user");
         break;
-      case 'teaching':
-        lines.push('- Explain concepts thoroughly as you would to a student');
+      case "teaching":
+        lines.push("- Explain concepts thoroughly as you would to a student");
         lines.push('- Include "why" explanations and learning opportunities');
         break;
     }
 
-    return lines.length > 1 ? lines.join('\n') : '';
+    return lines.length > 1 ? lines.join("\n") : "";
   }
 
   /**
    * Generate prompt section for personality quirks
    */
   private static getQuirksPrompt(quirks?: PersonalityQuirks, personaId?: PersonaId): string {
-    if (!quirks) return '';
+    if (!quirks) return "";
 
     const lines: string[] = [];
 
@@ -480,28 +486,28 @@ export class PersonalityManager {
 
     if (quirks.signOff) {
       const personaStyle: Partial<Record<PersonaId, string>> = {
-        companion: 'gentle and warm',
-        jarvis: 'refined and butler-like',
-        friday: 'brief and professionally supportive',
-        hal: 'calm and reassuring',
-        computer: 'formal and status-oriented',
-        alfred: 'wise and nurturing',
-        intern: 'upbeat and enthusiastic',
-        sensei: 'patient and reflective',
-        pirate: 'playful and nautical',
-        noir: 'noir and hard-boiled',
+        companion: "gentle and warm",
+        jarvis: "refined and butler-like",
+        friday: "brief and professionally supportive",
+        hal: "calm and reassuring",
+        computer: "formal and status-oriented",
+        alfred: "wise and nurturing",
+        intern: "upbeat and enthusiastic",
+        sensei: "patient and reflective",
+        pirate: "playful and nautical",
+        noir: "noir and hard-boiled",
       };
-      const style = (personaId && personaStyle[personaId]) ? personaStyle[personaId] : 'brief';
+      const style = personaId && personaStyle[personaId] ? personaStyle[personaId] : "brief";
 
       lines.push(
-        `- Only when it feels like a natural closing (not on most messages), you may end some longer responses with a ${style} sign-off`
+        `- Only when it feels like a natural closing (not on most messages), you may end some longer responses with a ${style} sign-off`,
       );
       lines.push(
-        `- Match the user's language; if needed, translate/adapt this signature sign-off: "${quirks.signOff}"`
+        `- Match the user's language; if needed, translate/adapt this signature sign-off: "${quirks.signOff}"`,
       );
     }
 
-    if (quirks.analogyDomain && quirks.analogyDomain !== 'none') {
+    if (quirks.analogyDomain && quirks.analogyDomain !== "none") {
       const domain = ANALOGY_DOMAINS[quirks.analogyDomain];
       lines.push(`- When using analogies, prefer ${domain.name.toLowerCase()}-themed examples`);
       if (domain.examples) {
@@ -509,7 +515,7 @@ export class PersonalityManager {
       }
     }
 
-    return lines.length > 0 ? 'PERSONALITY QUIRKS:\n' + lines.join('\n') : '';
+    return lines.length > 0 ? "PERSONALITY QUIRKS:\n" + lines.join("\n") : "";
   }
 
   /**
@@ -535,7 +541,7 @@ You are ${agentName}, an AI assistant built into CoWork OS.
 - The user's name is "${userName}"
 - You have completed ${tasksCompleted} tasks together`;
       if (projectsWorkedOn.length > 0) {
-        prompt += `\n- Projects worked on: ${projectsWorkedOn.slice(-5).join(', ')}`;
+        prompt += `\n- Projects worked on: ${projectsWorkedOn.slice(-5).join(", ")}`;
       }
       prompt += `\n\nIMPORTANT NAME RULES:
 - ALWAYS address the user as "${userName}" — this is their confirmed preferred name.
@@ -560,22 +566,36 @@ You are ${agentName}, an AI assistant built into CoWork OS.
    */
   static getGreeting(): string {
     const settings = this.loadSettings();
-    const agentName = settings.agentName || DEFAULT_AGENT_NAME;
     const userName = settings.relationship?.userName;
     const tasksCompleted = settings.relationship?.tasksCompleted || 0;
+    const lastInteraction = settings.relationship?.lastInteraction;
+
+    // Determine if the user interacted recently (within last 10 minutes)
+    const RECENT_THRESHOLD_MS = 10 * 60 * 1000;
+    const isRecentFollowUp = lastInteraction && Date.now() - lastInteraction < RECENT_THRESHOLD_MS;
 
     // Check for milestone
     const milestone = this.checkMilestone(tasksCompleted);
     if (milestone) {
       const congratsMessages = [
         `We've completed ${milestone} tasks together!`,
-        `${milestone} tasks and counting! Great working with you${userName ? `, ${userName}` : ''}!`,
+        `${milestone} tasks and counting! Great working with you${userName ? `, ${userName}` : ""}!`,
         `Milestone achieved: ${milestone} tasks completed together!`,
       ];
       return congratsMessages[Math.floor(Math.random() * congratsMessages.length)];
     }
 
-    // Regular greeting
+    // Recent follow-up: skip "welcome back" style greetings
+    if (isRecentFollowUp && userName) {
+      const recentGreetings = [
+        `Sure thing, ${userName}.`,
+        `On it, ${userName}.`,
+        `Got it, ${userName}.`,
+      ];
+      return recentGreetings[Math.floor(Math.random() * recentGreetings.length)];
+    }
+
+    // Regular greeting (returning after absence)
     if (userName) {
       const greetings = [
         `Welcome back, ${userName}!`,
@@ -586,7 +606,7 @@ You are ${agentName}, an AI assistant built into CoWork OS.
       return greetings[Math.floor(Math.random() * greetings.length)];
     }
 
-    return '';
+    return "";
   }
 
   /**
@@ -612,6 +632,7 @@ You are ${agentName}, an AI assistant built into CoWork OS.
     const relationship = settings.relationship || { ...DEFAULT_RELATIONSHIP };
 
     relationship.tasksCompleted = (relationship.tasksCompleted || 0) + 1;
+    relationship.lastInteraction = Date.now();
 
     if (!relationship.firstInteraction) {
       relationship.firstInteraction = Date.now();
@@ -779,10 +800,13 @@ You are ${agentName}, an AI assistant built into CoWork OS.
     // Save to encrypted database
     if (SecureSettingsRepository.isInitialized()) {
       const repository = SecureSettingsRepository.getInstance();
-      repository.save('personality', newSettings);
+      repository.save("personality", newSettings);
     }
     this.cachedSettings = newSettings;
-    console.log('[PersonalityManager] Settings reset to defaults', preserveRelationship ? '(preserved relationship)' : '');
+    console.log(
+      "[PersonalityManager] Settings reset to defaults",
+      preserveRelationship ? "(preserved relationship)" : "",
+    );
     this.emitSettingsChanged();
   }
 
@@ -796,30 +820,30 @@ You are ${agentName}, an AI assistant built into CoWork OS.
 
 function isValidPersonalityId(value: unknown): value is PersonalityId {
   const validIds: PersonalityId[] = [
-    'professional',
-    'friendly',
-    'concise',
-    'creative',
-    'technical',
-    'casual',
-    'custom',
+    "professional",
+    "friendly",
+    "concise",
+    "creative",
+    "technical",
+    "casual",
+    "custom",
   ];
   return validIds.includes(value as PersonalityId);
 }
 
 function isValidPersonaId(value: unknown): value is PersonaId {
   const validIds: PersonaId[] = [
-    'none',
-    'jarvis',
-    'friday',
-    'hal',
-    'computer',
-    'alfred',
-    'intern',
-    'sensei',
-    'pirate',
-    'noir',
-    'companion',
+    "none",
+    "jarvis",
+    "friday",
+    "hal",
+    "computer",
+    "alfred",
+    "intern",
+    "sensei",
+    "pirate",
+    "noir",
+    "companion",
   ];
   return validIds.includes(value as PersonaId);
 }

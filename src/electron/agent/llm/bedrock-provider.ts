@@ -8,8 +8,8 @@ import {
   ToolConfiguration,
   ToolInputSchema,
   StopReason,
-} from '@aws-sdk/client-bedrock-runtime';
-import { fromIni } from '@aws-sdk/credential-provider-ini';
+} from "@aws-sdk/client-bedrock-runtime";
+import { fromIni } from "@aws-sdk/credential-provider-ini";
 import {
   LLMProvider,
   LLMProviderConfig,
@@ -18,32 +18,32 @@ import {
   LLMContent,
   LLMMessage,
   LLMTool,
-} from './types';
+} from "./types";
 
 /**
  * AWS Bedrock provider implementation
  * Uses the Converse API for AI models
  */
 export class BedrockProvider implements LLMProvider {
-  readonly type = 'bedrock' as const;
+  readonly type = "bedrock" as const;
   private client: BedrockRuntimeClient;
   private model: string;
   private region: string;
   private credentials?: any;
   private resolvedModelCache = new Map<string, string>();
   private inferenceProfileCache?: { fetchedAt: number; profiles: InferenceProfileCandidate[] };
-  private static readonly CONTINUE_PLACEHOLDER_TEXT = 'I understand. Let me continue.';
+  private static readonly CONTINUE_PLACEHOLDER_TEXT = "I understand. Let me continue.";
 
   private static readonly toolNameRegex = /^[a-zA-Z0-9_-]+$/;
 
   constructor(config: LLMProviderConfig) {
     const clientConfig: BedrockRuntimeClientConfig = {
-      region: config.awsRegion || 'us-east-1',
+      region: config.awsRegion || "us-east-1",
     };
-    this.region = config.awsRegion || 'us-east-1';
+    this.region = config.awsRegion || "us-east-1";
 
     // Store the model for use in testConnection
-    this.model = config.model || 'anthropic.claude-3-5-sonnet-20241022-v2:0';
+    this.model = config.model || "anthropic.claude-3-5-sonnet-20241022-v2:0";
 
     // Use explicit credentials if provided
     if (config.awsAccessKeyId && config.awsSecretAccessKey) {
@@ -67,7 +67,10 @@ export class BedrockProvider implements LLMProvider {
 
   async createMessage(request: LLMRequest): Promise<LLMResponse> {
     const toolNameMap = request.tools ? this.buildToolNameMap(request.tools) : undefined;
-    const messages = this.convertMessages(this.ensureConversationEndsWithUserMessage(request.messages), toolNameMap);
+    const messages = this.convertMessages(
+      this.ensureConversationEndsWithUserMessage(request.messages),
+      toolNameMap,
+    );
     const system = this.convertSystem(request.system);
     const toolConfig = request.tools ? this.convertTools(request.tools, toolNameMap) : undefined;
 
@@ -90,22 +93,22 @@ export class BedrockProvider implements LLMProvider {
       const response = await this.client.send(
         command,
         // Pass abort signal to allow cancellation
-        request.signal ? { abortSignal: request.signal } : undefined
+        request.signal ? { abortSignal: request.signal } : undefined,
       );
       return this.convertResponse(response, toolNameMap);
     } catch (error: any) {
       // Handle abort errors gracefully
-      if (error.name === 'AbortError' || error.message?.includes('aborted')) {
+      if (error.name === "AbortError" || error.message?.includes("aborted")) {
         console.log(`[Bedrock] Request aborted`);
-        throw new Error('Request cancelled');
+        throw new Error("Request cancelled");
       }
 
-      const rawMessage = String(error?.message || '');
+      const rawMessage = String(error?.message || "");
       const lower = rawMessage.toLowerCase();
 
       // If Bedrock rejects the requested model for on-demand invocation, automatically
       // retry with an inference profile that the user has access to (when available).
-      if (lower.includes('inference profile') || lower.includes('on-demand throughput')) {
+      if (lower.includes("inference profile") || lower.includes("on-demand throughput")) {
         const fallback = await this.resolveInferenceProfileFallback(request.model);
         if (fallback && fallback !== resolvedModelId) {
           console.log(`[Bedrock] Retrying with inference profile: ${fallback}`);
@@ -117,7 +120,7 @@ export class BedrockProvider implements LLMProvider {
               inferenceConfig: { maxTokens: request.maxTokens },
               ...(toolConfig && { toolConfig }),
             }),
-            request.signal ? { abortSignal: request.signal } : undefined
+            request.signal ? { abortSignal: request.signal } : undefined,
           );
           // Cache for subsequent calls in this process.
           this.resolvedModelCache.set(request.model, fallback);
@@ -126,7 +129,7 @@ export class BedrockProvider implements LLMProvider {
 
         throw new Error(
           `Model ${request.model} requires an inference profile in AWS Bedrock, but none could be resolved automatically. ` +
-          `Select an inference profile ID/ARN (often starts with "us.") in Settings.`
+            `Select an inference profile ID/ARN (often starts with "us.") in Settings.`,
         );
       }
 
@@ -148,8 +151,8 @@ export class BedrockProvider implements LLMProvider {
         modelId: await this.resolveModelId(this.model),
         messages: [
           {
-            role: 'user',
-            content: [{ text: 'Hi' }],
+            role: "user",
+            content: [{ text: "Hi" }],
           },
         ],
         inferenceConfig: {
@@ -161,10 +164,13 @@ export class BedrockProvider implements LLMProvider {
       return { success: true };
     } catch (error: any) {
       // Provide helpful error message for common issues
-      let errorMessage = error.message || 'Failed to connect to AWS Bedrock';
+      let errorMessage = error.message || "Failed to connect to AWS Bedrock";
 
       // Check for inference profile requirement
-      if (errorMessage.includes('inference profile') || errorMessage.toLowerCase().includes('on-demand throughput')) {
+      if (
+        errorMessage.includes("inference profile") ||
+        errorMessage.toLowerCase().includes("on-demand throughput")
+      ) {
         const fallback = await this.resolveInferenceProfileFallback(this.model);
         if (fallback) {
           try {
@@ -173,12 +179,12 @@ export class BedrockProvider implements LLMProvider {
                 modelId: fallback,
                 messages: [
                   {
-                    role: 'user',
-                    content: [{ text: 'Hi' }],
+                    role: "user",
+                    content: [{ text: "Hi" }],
                   },
                 ],
                 inferenceConfig: { maxTokens: 10 },
-              })
+              }),
             );
             // Persist within this provider instance for subsequent tests.
             this.model = fallback;
@@ -188,7 +194,8 @@ export class BedrockProvider implements LLMProvider {
           }
         }
 
-        errorMessage = `Model ${this.model} requires an inference profile. ` +
+        errorMessage =
+          `Model ${this.model} requires an inference profile. ` +
           `Try selecting a different model or create/select an inference profile in AWS Console.`;
       }
 
@@ -200,14 +207,14 @@ export class BedrockProvider implements LLMProvider {
   }
 
   private async resolveModelId(requested: string): Promise<string> {
-    const trimmed = (requested || '').trim();
+    const trimmed = (requested || "").trim();
     if (!trimmed) return trimmed;
 
     const cached = this.resolvedModelCache.get(trimmed);
     if (cached) return cached;
 
     // If it's already an inference profile ID/ARN, use as-is.
-    if (trimmed.startsWith('us.') || trimmed.startsWith('arn:')) {
+    if (trimmed.startsWith("us.") || trimmed.startsWith("arn:")) {
       this.resolvedModelCache.set(trimmed, trimmed);
       return trimmed;
     }
@@ -237,8 +244,8 @@ export class BedrockProvider implements LLMProvider {
 
     for (const profile of profiles) {
       let score = 0;
-      if (profile.id.startsWith('us.')) score += 5;
-      if (profile.type === 'SYSTEM_DEFINED') score += 2;
+      if (profile.id.startsWith("us.")) score += 5;
+      if (profile.type === "SYSTEM_DEFINED") score += 2;
 
       if (token) {
         for (const modelArn of profile.modelArns) {
@@ -269,7 +276,8 @@ export class BedrockProvider implements LLMProvider {
     }
 
     try {
-      const { BedrockClient, ListInferenceProfilesCommand } = await import('@aws-sdk/client-bedrock');
+      const { BedrockClient, ListInferenceProfilesCommand } =
+        await import("@aws-sdk/client-bedrock");
       const client = new BedrockClient({
         region: this.region,
         ...(this.credentials && { credentials: this.credentials }),
@@ -285,21 +293,23 @@ export class BedrockProvider implements LLMProvider {
           new ListInferenceProfilesCommand({
             maxResults: 100,
             nextToken,
-          })
+          }),
         );
 
         const profiles = (response.inferenceProfileSummaries || []) as any[];
         for (const p of profiles) {
-          if (p?.status && p.status !== 'ACTIVE') continue;
+          if (p?.status && p.status !== "ACTIVE") continue;
 
-          const modelArns = Array.isArray(p?.models) ? p.models.map((m: any) => String(m?.modelArn || '')).filter(Boolean) : [];
+          const modelArns = Array.isArray(p?.models)
+            ? p.models.map((m: any) => String(m?.modelArn || "")).filter(Boolean)
+            : [];
           const hasClaude = modelArns.some((arn: string) => {
             const lower = arn.toLowerCase();
-            return lower.includes('anthropic') && lower.includes('claude');
+            return lower.includes("anthropic") && lower.includes("claude");
           });
           if (!hasClaude) continue;
 
-          const id = String((p?.inferenceProfileId || p?.inferenceProfileArn || '')).trim();
+          const id = String(p?.inferenceProfileId || p?.inferenceProfileArn || "").trim();
           if (!id) continue;
 
           results.push({
@@ -322,34 +332,34 @@ export class BedrockProvider implements LLMProvider {
   }
 
   private extractModelToken(input: string): string {
-    let s = (input || '').toLowerCase().trim();
-    if (!s) return '';
+    let s = (input || "").toLowerCase().trim();
+    if (!s) return "";
 
     // Support matching against ARNs like .../foundation-model/<modelId>
-    if (s.startsWith('arn:')) {
-      const idx = s.lastIndexOf('/');
+    if (s.startsWith("arn:")) {
+      const idx = s.lastIndexOf("/");
       if (idx !== -1 && idx + 1 < s.length) {
         s = s.slice(idx + 1);
       }
     }
 
-    if (s.startsWith('anthropic.')) s = s.slice('anthropic.'.length);
+    if (s.startsWith("anthropic.")) s = s.slice("anthropic.".length);
 
     // Drop trailing :N.
-    s = s.replace(/:\\d+$/, '');
+    s = s.replace(/:\\d+$/, "");
 
     // Drop trailing -vN.
-    s = s.replace(/-v\\d+$/, '');
+    s = s.replace(/-v\\d+$/, "");
 
     // Drop trailing -YYYYMMDD (common in Bedrock model IDs).
-    s = s.replace(/-20\\d{6,8}$/, '');
+    s = s.replace(/-20\\d{6,8}$/, "");
 
     return s;
   }
 
   private isClaudeModelId(modelId: string): boolean {
-    const lower = (modelId || '').toLowerCase();
-    return lower.includes('claude') || lower.includes('anthropic');
+    const lower = (modelId || "").toLowerCase();
+    return lower.includes("claude") || lower.includes("anthropic");
   }
 
   private convertSystem(system: string): SystemContentBlock[] {
@@ -362,27 +372,27 @@ export class BedrockProvider implements LLMProvider {
     }
 
     const last = messages[messages.length - 1];
-    if (last?.role !== 'assistant') return messages;
+    if (last?.role !== "assistant") return messages;
 
     if (!this.isSyntheticAssistantPlaceholder(last)) {
       return messages;
     }
 
     console.log(
-      `[Bedrock] Rewriting terminal assistant message as user message to satisfy Converse user-terminal format`
+      `[Bedrock] Rewriting terminal assistant message as user message to satisfy Converse user-terminal format`,
     );
 
     return [
       ...messages.slice(0, -1),
       {
-        role: 'user',
+        role: "user",
         content: last.content,
       },
     ];
   }
 
   private isSyntheticAssistantPlaceholder(message: LLMMessage): boolean {
-    if (typeof message?.content === 'string') {
+    if (typeof message?.content === "string") {
       return message.content.trim().length === 0;
     }
 
@@ -391,7 +401,7 @@ export class BedrockProvider implements LLMProvider {
 
     return (
       message.content.length === 1 &&
-      message.content[0]?.type === 'text' &&
+      message.content[0]?.type === "text" &&
       message.content[0].text === BedrockProvider.CONTINUE_PLACEHOLDER_TEXT
     );
   }
@@ -400,13 +410,13 @@ export class BedrockProvider implements LLMProvider {
     return messages.map((msg) => {
       const content: ContentBlock[] = [];
 
-      if (typeof msg.content === 'string') {
+      if (typeof msg.content === "string") {
         content.push({ text: msg.content });
       } else {
         for (const item of msg.content) {
-          if (item.type === 'text') {
+          if (item.type === "text") {
             content.push({ text: item.text });
-          } else if (item.type === 'tool_use') {
+          } else if (item.type === "tool_use") {
             const mappedName = toolNameMap?.toProvider.get(item.name) || item.name;
             content.push({
               toolUse: {
@@ -415,20 +425,20 @@ export class BedrockProvider implements LLMProvider {
                 input: item.input,
               },
             });
-          } else if (item.type === 'tool_result') {
+          } else if (item.type === "tool_result") {
             content.push({
               toolResult: {
                 toolUseId: item.tool_use_id,
                 content: [{ text: item.content }],
-                status: item.is_error ? 'error' : 'success',
+                status: item.is_error ? "error" : "success",
               },
             });
-          } else if (item.type === 'image') {
+          } else if (item.type === "image") {
             content.push({
               image: {
-                format: item.mimeType.split('/')[1] as 'jpeg' | 'png' | 'gif' | 'webp',
+                format: item.mimeType.split("/")[1] as "jpeg" | "png" | "gif" | "webp",
                 source: {
-                  bytes: new Uint8Array(Buffer.from(item.data, 'base64')),
+                  bytes: new Uint8Array(Buffer.from(item.data, "base64")),
                 },
               },
             });
@@ -464,13 +474,14 @@ export class BedrockProvider implements LLMProvider {
       for (const block of response.output.message.content) {
         if (block.text) {
           content.push({
-            type: 'text',
+            type: "text",
             text: block.text,
           });
         } else if (block.toolUse) {
-          const mappedName = toolNameMap?.fromProvider.get(block.toolUse.name) || block.toolUse.name;
+          const mappedName =
+            toolNameMap?.fromProvider.get(block.toolUse.name) || block.toolUse.name;
           content.push({
-            type: 'tool_use',
+            type: "tool_use",
             id: block.toolUse.toolUseId,
             name: mappedName,
             input: block.toolUse.input,
@@ -521,8 +532,8 @@ export class BedrockProvider implements LLMProvider {
   }
 
   private normalizeToolName(name: string): string {
-    const sanitized = name.replace(/[^a-zA-Z0-9_-]/g, '_');
-    return BedrockProvider.toolNameRegex.test(sanitized) ? sanitized : '';
+    const sanitized = name.replace(/[^a-zA-Z0-9_-]/g, "_");
+    return BedrockProvider.toolNameRegex.test(sanitized) ? sanitized : "";
   }
 
   private shortHash(input: string): string {
@@ -534,18 +545,18 @@ export class BedrockProvider implements LLMProvider {
     return (hash >>> 0).toString(36);
   }
 
-  private mapStopReason(reason: StopReason | undefined): LLMResponse['stopReason'] {
+  private mapStopReason(reason: StopReason | undefined): LLMResponse["stopReason"] {
     switch (reason) {
-      case 'end_turn':
-        return 'end_turn';
-      case 'tool_use':
-        return 'tool_use';
-      case 'max_tokens':
-        return 'max_tokens';
-      case 'stop_sequence':
-        return 'stop_sequence';
+      case "end_turn":
+        return "end_turn";
+      case "tool_use":
+        return "tool_use";
+      case "max_tokens":
+        return "max_tokens";
+      case "stop_sequence":
+        return "stop_sequence";
       default:
-        return 'end_turn';
+        return "end_turn";
     }
   }
 }

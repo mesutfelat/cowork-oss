@@ -1,9 +1,9 @@
-import { app, BrowserWindow } from 'electron';
-import { exec, spawn } from 'child_process';
-import { promisify } from 'util';
-import * as path from 'path';
-import * as fs from 'fs';
-import { UpdateInfo, UpdateProgress, AppVersionInfo, IPC_CHANNELS } from '../../shared/types';
+import { app, BrowserWindow } from "electron";
+import { exec, spawn } from "child_process";
+import { promisify } from "util";
+import * as path from "path";
+import * as fs from "fs";
+import { UpdateInfo, UpdateProgress, AppVersionInfo, IPC_CHANNELS } from "../../shared/types";
 
 const execAsync = promisify(exec);
 
@@ -22,8 +22,8 @@ interface GitHubRelease {
 
 export class UpdateManager {
   private mainWindow: BrowserWindow | null = null;
-  private repoOwner = 'CoWork-OS';
-  private repoName = 'cowork-os';
+  private repoOwner = "CoWork-OS";
+  private repoName = "cowork-os";
   private isUpdating = false;
 
   setMainWindow(window: BrowserWindow): void {
@@ -57,10 +57,14 @@ export class UpdateManager {
 
     if (isDev && !isNpmGlobal) {
       try {
-        const { stdout: branchOut } = await execAsync('git rev-parse --abbrev-ref HEAD', { cwd: appPath });
+        const { stdout: branchOut } = await execAsync("git rev-parse --abbrev-ref HEAD", {
+          cwd: appPath,
+        });
         gitBranch = branchOut.trim();
 
-        const { stdout: commitOut } = await execAsync('git rev-parse --short HEAD', { cwd: appPath });
+        const { stdout: commitOut } = await execAsync("git rev-parse --short HEAD", {
+          cwd: appPath,
+        });
         gitCommit = commitOut.trim();
 
         isGitRepo = true;
@@ -82,24 +86,24 @@ export class UpdateManager {
   private detectNpmGlobalInstall(appPath: string): boolean {
     // Check common npm global installation paths
     const npmGlobalPatterns = [
-      '/usr/local/lib/node_modules',
-      '/usr/lib/node_modules',
-      '/opt/homebrew/lib/node_modules',
-      'node_modules/cowork-os',
-      '.nvm/versions/node',
-      '.npm-global',
-      'AppData/Roaming/npm/node_modules', // Windows
+      "/usr/local/lib/node_modules",
+      "/usr/lib/node_modules",
+      "/opt/homebrew/lib/node_modules",
+      "node_modules/cowork-os",
+      ".nvm/versions/node",
+      ".npm-global",
+      "AppData/Roaming/npm/node_modules", // Windows
     ];
 
-    const normalizedPath = appPath.replace(/\\/g, '/');
-    return npmGlobalPatterns.some(pattern => normalizedPath.includes(pattern));
+    const normalizedPath = appPath.replace(/\\/g, "/");
+    return npmGlobalPatterns.some((pattern) => normalizedPath.includes(pattern));
   }
 
   async checkForUpdates(): Promise<UpdateInfo> {
     const versionInfo = await this.getVersionInfo();
     const currentVersion = versionInfo.version;
 
-    this.sendProgress({ phase: 'checking', message: 'Checking for updates...' });
+    this.sendProgress({ phase: "checking", message: "Checking for updates..." });
 
     try {
       // Fetch latest release from GitHub
@@ -107,10 +111,10 @@ export class UpdateManager {
         `https://api.github.com/repos/${this.repoOwner}/${this.repoName}/releases/latest`,
         {
           headers: {
-            'Accept': 'application/vnd.github.v3+json',
-            'User-Agent': 'CoWork-OS-Updater',
+            Accept: "application/vnd.github.v3+json",
+            "User-Agent": "CoWork-OS-Updater",
           },
-        }
+        },
       );
 
       if (!response.ok) {
@@ -125,8 +129,8 @@ export class UpdateManager {
         throw new Error(`GitHub API error: ${response.status}`);
       }
 
-      const release = await response.json() as GitHubRelease;
-      const latestVersion = release.tag_name.replace(/^v/, '');
+      const release = (await response.json()) as GitHubRelease;
+      const latestVersion = release.tag_name.replace(/^v/, "");
       const available = this.isNewerVersion(latestVersion, currentVersion);
 
       // Determine update mode based on installation type
@@ -143,9 +147,9 @@ export class UpdateManager {
               available: true,
               currentVersion: `${currentVersion} (${versionInfo.gitCommit})`,
               latestVersion: `${latestVersion} (new commits)`,
-              releaseNotes: 'New commits available on the main branch.',
+              releaseNotes: "New commits available on the main branch.",
               releaseUrl: `https://github.com/${this.repoOwner}/${this.repoName}`,
-              updateMode: 'git',
+              updateMode: "git",
             };
           }
         }
@@ -171,10 +175,12 @@ export class UpdateManager {
       const appPath = app.getAppPath();
 
       // Fetch latest from remote
-      await execAsync('git fetch origin', { cwd: appPath });
+      await execAsync("git fetch origin", { cwd: appPath });
 
       // Check if there are commits ahead on remote
-      const { stdout } = await execAsync('git rev-list HEAD..origin/main --count', { cwd: appPath });
+      const { stdout } = await execAsync("git rev-list HEAD..origin/main --count", {
+        cwd: appPath,
+      });
       const commitsAhead = parseInt(stdout.trim(), 10);
 
       return commitsAhead > 0;
@@ -187,8 +193,8 @@ export class UpdateManager {
     // Normalize versions: convert "0.3.9-1" to "0.3.9.1" for comparison
     const normalizeVersion = (v: string): number[] => {
       // Replace hyphens with dots for consistent parsing
-      const normalized = v.replace(/-/g, '.');
-      return normalized.split('.').map(n => parseInt(n, 10) || 0);
+      const normalized = v.replace(/-/g, ".");
+      return normalized.split(".").map((n) => parseInt(n, 10) || 0);
     };
 
     const latestParts = normalizeVersion(latest);
@@ -203,27 +209,27 @@ export class UpdateManager {
     return false;
   }
 
-  private getUpdateMode(versionInfo: AppVersionInfo): 'git' | 'npm' | 'electron-updater' {
+  private getUpdateMode(versionInfo: AppVersionInfo): "git" | "npm" | "electron-updater" {
     if (versionInfo.isNpmGlobal) {
-      return 'npm';
+      return "npm";
     }
     if (versionInfo.isGitRepo) {
-      return 'git';
+      return "git";
     }
-    return 'electron-updater';
+    return "electron-updater";
   }
 
   async downloadAndInstallUpdate(updateInfo: UpdateInfo): Promise<void> {
     if (this.isUpdating) {
-      throw new Error('Update already in progress');
+      throw new Error("Update already in progress");
     }
 
     this.isUpdating = true;
 
     try {
-      if (updateInfo.updateMode === 'npm') {
+      if (updateInfo.updateMode === "npm") {
         await this.npmUpdate();
-      } else if (updateInfo.updateMode === 'git') {
+      } else if (updateInfo.updateMode === "git") {
         await this.gitUpdate();
       } else {
         await this.electronUpdaterUpdate();
@@ -238,37 +244,57 @@ export class UpdateManager {
 
     try {
       // Step 1: Stash any local changes
-      this.sendProgress({ phase: 'downloading', percent: 10, message: 'Stashing local changes...' });
+      this.sendProgress({
+        phase: "downloading",
+        percent: 10,
+        message: "Stashing local changes...",
+      });
       try {
-        await execAsync('git stash', { cwd: appPath });
+        await execAsync("git stash", { cwd: appPath });
       } catch {
         // Ignore if nothing to stash
       }
 
       // Step 2: Fetch and pull latest
-      this.sendProgress({ phase: 'downloading', percent: 30, message: 'Pulling latest changes from GitHub...' });
-      await execAsync('git fetch origin', { cwd: appPath });
-      await execAsync('git pull origin main', { cwd: appPath });
+      this.sendProgress({
+        phase: "downloading",
+        percent: 30,
+        message: "Pulling latest changes from GitHub...",
+      });
+      await execAsync("git fetch origin", { cwd: appPath });
+      await execAsync("git pull origin main", { cwd: appPath });
 
       // Step 3: Install dependencies
-      this.sendProgress({ phase: 'installing', percent: 50, message: 'Installing dependencies (npm install)...' });
+      this.sendProgress({
+        phase: "installing",
+        percent: 50,
+        message: "Installing dependencies (npm install)...",
+      });
       await this.runNpmInstall(appPath);
 
       // Step 4: Rebuild
-      this.sendProgress({ phase: 'installing', percent: 80, message: 'Building application (npm run build)...' });
+      this.sendProgress({
+        phase: "installing",
+        percent: 80,
+        message: "Building application (npm run build)...",
+      });
       await this.runNpmBuild(appPath);
 
       // Step 5: Complete
-      this.sendProgress({ phase: 'complete', percent: 100, message: 'Update complete! Please restart the application.' });
+      this.sendProgress({
+        phase: "complete",
+        percent: 100,
+        message: "Update complete! Please restart the application.",
+      });
 
       if (this.mainWindow && !this.mainWindow.isDestroyed()) {
         this.mainWindow.webContents.send(IPC_CHANNELS.APP_UPDATE_DOWNLOADED, {
           requiresRestart: true,
-          message: 'Update complete! Please restart the application to apply changes.',
+          message: "Update complete! Please restart the application to apply changes.",
         });
       }
     } catch (error: any) {
-      this.sendProgress({ phase: 'error', message: `Update failed: ${error.message}` });
+      this.sendProgress({ phase: "error", message: `Update failed: ${error.message}` });
       this.sendError(error.message);
       throw error;
     }
@@ -277,20 +303,24 @@ export class UpdateManager {
   private async npmUpdate(): Promise<void> {
     try {
       // Step 1: Run npm update
-      this.sendProgress({ phase: 'downloading', percent: 20, message: 'Updating via npm...' });
+      this.sendProgress({ phase: "downloading", percent: 20, message: "Updating via npm..." });
       await this.runNpmGlobalUpdate();
 
       // Step 2: Complete
-      this.sendProgress({ phase: 'complete', percent: 100, message: 'Update complete! Please restart the application.' });
+      this.sendProgress({
+        phase: "complete",
+        percent: 100,
+        message: "Update complete! Please restart the application.",
+      });
 
       if (this.mainWindow && !this.mainWindow.isDestroyed()) {
         this.mainWindow.webContents.send(IPC_CHANNELS.APP_UPDATE_DOWNLOADED, {
           requiresRestart: true,
-          message: 'Update complete! Please restart the application to apply changes.',
+          message: "Update complete! Please restart the application to apply changes.",
         });
       }
     } catch (error: any) {
-      this.sendProgress({ phase: 'error', message: `Update failed: ${error.message}` });
+      this.sendProgress({ phase: "error", message: `Update failed: ${error.message}` });
       this.sendError(error.message);
       throw error;
     }
@@ -298,16 +328,16 @@ export class UpdateManager {
 
   private runNpmGlobalUpdate(): Promise<void> {
     return new Promise((resolve, reject) => {
-      const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-      const child = spawn(npm, ['install', '-g', 'cowork-os@latest'], { shell: true });
+      const npm = process.platform === "win32" ? "npm.cmd" : "npm";
+      const child = spawn(npm, ["install", "-g", "cowork-os@latest"], { shell: true });
 
-      let stderr = '';
+      let stderr = "";
 
-      child.stderr.on('data', (data) => {
+      child.stderr.on("data", (data) => {
         stderr += data.toString();
       });
 
-      child.on('close', (code) => {
+      child.on("close", (code) => {
         if (code === 0) {
           resolve();
         } else {
@@ -315,22 +345,22 @@ export class UpdateManager {
         }
       });
 
-      child.on('error', reject);
+      child.on("error", reject);
     });
   }
 
   private runNpmInstall(cwd: string): Promise<void> {
     return new Promise((resolve, reject) => {
-      const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-      const child = spawn(npm, ['install'], { cwd, shell: true });
+      const npm = process.platform === "win32" ? "npm.cmd" : "npm";
+      const child = spawn(npm, ["install"], { cwd, shell: true });
 
-      let stderr = '';
+      let stderr = "";
 
-      child.stderr.on('data', (data) => {
+      child.stderr.on("data", (data) => {
         stderr += data.toString();
       });
 
-      child.on('close', (code) => {
+      child.on("close", (code) => {
         if (code === 0) {
           resolve();
         } else {
@@ -338,22 +368,22 @@ export class UpdateManager {
         }
       });
 
-      child.on('error', reject);
+      child.on("error", reject);
     });
   }
 
   private runNpmBuild(cwd: string): Promise<void> {
     return new Promise((resolve, reject) => {
-      const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-      const child = spawn(npm, ['run', 'build'], { cwd, shell: true });
+      const npm = process.platform === "win32" ? "npm.cmd" : "npm";
+      const child = spawn(npm, ["run", "build"], { cwd, shell: true });
 
-      let stderr = '';
+      let stderr = "";
 
-      child.stderr.on('data', (data) => {
+      child.stderr.on("data", (data) => {
         stderr += data.toString();
       });
 
-      child.on('close', (code) => {
+      child.on("close", (code) => {
         if (code === 0) {
           resolve();
         } else {
@@ -361,7 +391,7 @@ export class UpdateManager {
         }
       });
 
-      child.on('error', reject);
+      child.on("error", reject);
     });
   }
 
@@ -370,32 +400,43 @@ export class UpdateManager {
     // This requires electron-updater to be installed and configured
     try {
       // Dynamic import to avoid issues when running in dev mode
-      const electronUpdater = await import('electron-updater').catch(() => null);
+      const electronUpdater = await import("electron-updater").catch(() => null);
       if (!electronUpdater) {
-        throw new Error('electron-updater not available');
+        throw new Error("electron-updater not available");
       }
       const { autoUpdater } = electronUpdater;
 
-      autoUpdater.on('checking-for-update', () => {
-        this.sendProgress({ phase: 'checking', message: 'Checking for updates...' });
+      autoUpdater.on("checking-for-update", () => {
+        this.sendProgress({ phase: "checking", message: "Checking for updates..." });
       });
 
-      autoUpdater.on('update-available', () => {
-        this.sendProgress({ phase: 'downloading', percent: 0, message: 'Update available, starting download...' });
-      });
-
-      autoUpdater.on('download-progress', (progress: { percent: number; transferred: number; total: number }) => {
+      autoUpdater.on("update-available", () => {
         this.sendProgress({
-          phase: 'downloading',
-          percent: Math.round(progress.percent),
-          message: `Downloading update... ${Math.round(progress.percent)}%`,
-          bytesDownloaded: progress.transferred,
-          bytesTotal: progress.total,
+          phase: "downloading",
+          percent: 0,
+          message: "Update available, starting download...",
         });
       });
 
-      autoUpdater.on('update-downloaded', () => {
-        this.sendProgress({ phase: 'complete', percent: 100, message: 'Update downloaded. Ready to install.' });
+      autoUpdater.on(
+        "download-progress",
+        (progress: { percent: number; transferred: number; total: number }) => {
+          this.sendProgress({
+            phase: "downloading",
+            percent: Math.round(progress.percent),
+            message: `Downloading update... ${Math.round(progress.percent)}%`,
+            bytesDownloaded: progress.transferred,
+            bytesTotal: progress.total,
+          });
+        },
+      );
+
+      autoUpdater.on("update-downloaded", () => {
+        this.sendProgress({
+          phase: "complete",
+          percent: 100,
+          message: "Update downloaded. Ready to install.",
+        });
         if (this.mainWindow && !this.mainWindow.isDestroyed()) {
           this.mainWindow.webContents.send(IPC_CHANNELS.APP_UPDATE_DOWNLOADED, {
             requiresRestart: true,
@@ -404,16 +445,21 @@ export class UpdateManager {
         }
       });
 
-      autoUpdater.on('error', (error: Error) => {
-        this.sendProgress({ phase: 'error', message: `Update error: ${error.message}` });
+      autoUpdater.on("error", (error: Error) => {
+        this.sendProgress({ phase: "error", message: `Update error: ${error.message}` });
         this.sendError(error.message);
       });
 
       await autoUpdater.downloadUpdate();
     } catch (error: any) {
       // If electron-updater is not available, fall back to manual download
-      this.sendProgress({ phase: 'error', message: 'electron-updater not available. Please download manually from GitHub.' });
-      throw new Error('Auto-update not available for packaged builds. Please download the latest release from GitHub.');
+      this.sendProgress({
+        phase: "error",
+        message: "electron-updater not available. Please download manually from GitHub.",
+      });
+      throw new Error(
+        "Auto-update not available for packaged builds. Please download the latest release from GitHub.",
+      );
     }
   }
 
@@ -427,7 +473,7 @@ export class UpdateManager {
     } else {
       // For electron-updater, quit and install
       try {
-        const electronUpdater = await import('electron-updater').catch(() => null);
+        const electronUpdater = await import("electron-updater").catch(() => null);
         if (electronUpdater) {
           electronUpdater.autoUpdater.quitAndInstall();
         } else {

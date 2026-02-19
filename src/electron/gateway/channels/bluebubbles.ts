@@ -31,14 +31,14 @@ import {
   StatusHandler,
   ChannelInfo,
   BlueBubblesConfig,
-} from './types';
-import { BlueBubblesClient, BlueBubblesMessage, BlueBubblesChat } from './bluebubbles-client';
+} from "./types";
+import { BlueBubblesClient, BlueBubblesMessage, BlueBubblesChat } from "./bluebubbles-client";
 
 export class BlueBubblesAdapter implements ChannelAdapter {
-  readonly type = 'bluebubbles' as const;
+  readonly type = "bluebubbles" as const;
 
   private client: BlueBubblesClient | null = null;
-  private _status: ChannelStatus = 'disconnected';
+  private _status: ChannelStatus = "disconnected";
   private _botUsername?: string;
   private messageHandlers: MessageHandler[] = [];
   private errorHandlers: ErrorHandler[] = [];
@@ -65,7 +65,7 @@ export class BlueBubblesAdapter implements ChannelAdapter {
     this.config = {
       enableWebhook: true,
       webhookPort: 3101,
-      webhookPath: '/bluebubbles/webhook',
+      webhookPath: "/bluebubbles/webhook",
       pollInterval: 5000,
       deduplicationEnabled: true,
       ...config,
@@ -84,11 +84,11 @@ export class BlueBubblesAdapter implements ChannelAdapter {
    * Connect to BlueBubbles
    */
   async connect(): Promise<void> {
-    if (this._status === 'connected' || this._status === 'connecting') {
+    if (this._status === "connected" || this._status === "connecting") {
       return;
     }
 
-    this.setStatus('connecting');
+    this.setStatus("connecting");
     this.shouldReconnect = true;
 
     try {
@@ -99,34 +99,34 @@ export class BlueBubblesAdapter implements ChannelAdapter {
         webhookPort: this.config.enableWebhook ? this.config.webhookPort : undefined,
         webhookPath: this.config.webhookPath,
         pollInterval: this.config.pollInterval,
-        verbose: process.env.NODE_ENV === 'development',
+        verbose: process.env.NODE_ENV === "development",
       });
 
       // Check connection
       const check = await this.client.checkConnection();
       if (!check.success) {
-        throw new Error(check.error || 'Failed to connect to BlueBubbles server');
+        throw new Error(check.error || "Failed to connect to BlueBubbles server");
       }
 
-      this._botUsername = `BlueBubbles (${check.serverVersion || 'Connected'})`;
+      this._botUsername = `BlueBubbles (${check.serverVersion || "Connected"})`;
 
       // Set up event handlers
-      this.client.on('message', (message: BlueBubblesMessage) => {
+      this.client.on("message", (message: BlueBubblesMessage) => {
         this.handleIncomingMessage(message);
       });
 
-      this.client.on('error', (error: Error) => {
-        this.handleError(error, 'client');
+      this.client.on("error", (error: Error) => {
+        this.handleError(error, "client");
       });
 
-      this.client.on('connected', () => {
-        console.log('BlueBubbles client connected');
+      this.client.on("connected", () => {
+        console.log("BlueBubbles client connected");
       });
 
-      this.client.on('disconnected', () => {
-        console.log('BlueBubbles client disconnected');
-        if (this._status === 'connected') {
-          this.setStatus('disconnected');
+      this.client.on("disconnected", () => {
+        console.log("BlueBubbles client disconnected");
+        if (this._status === "connected") {
+          this.setStatus("disconnected");
           // Attempt to reconnect if not intentionally disconnected
           this.scheduleReconnect();
         }
@@ -140,11 +140,11 @@ export class BlueBubblesAdapter implements ChannelAdapter {
         this.startDedupCleanup();
       }
 
-      this.setStatus('connected');
+      this.setStatus("connected");
       console.log(`BlueBubbles adapter connected to ${this.config.serverUrl}`);
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
-      this.setStatus('error', err);
+      this.setStatus("error", err);
       throw err;
     }
   }
@@ -178,7 +178,7 @@ export class BlueBubblesAdapter implements ChannelAdapter {
     }
 
     this._botUsername = undefined;
-    this.setStatus('disconnected');
+    this.setStatus("disconnected");
   }
 
   /**
@@ -186,12 +186,16 @@ export class BlueBubblesAdapter implements ChannelAdapter {
    */
   private scheduleReconnect(): void {
     if (!this.shouldReconnect || this.reconnectAttempts >= this.MAX_RECONNECT_ATTEMPTS) {
-      console.log(`BlueBubbles: Not reconnecting (shouldReconnect=${this.shouldReconnect}, attempts=${this.reconnectAttempts})`);
+      console.log(
+        `BlueBubbles: Not reconnecting (shouldReconnect=${this.shouldReconnect}, attempts=${this.reconnectAttempts})`,
+      );
       return;
     }
 
     const delay = this.RECONNECT_BASE_DELAY * Math.pow(2, this.reconnectAttempts);
-    console.log(`BlueBubbles: Scheduling reconnect attempt ${this.reconnectAttempts + 1}/${this.MAX_RECONNECT_ATTEMPTS} in ${delay}ms`);
+    console.log(
+      `BlueBubbles: Scheduling reconnect attempt ${this.reconnectAttempts + 1}/${this.MAX_RECONNECT_ATTEMPTS} in ${delay}ms`,
+    );
 
     this.reconnectTimer = setTimeout(async () => {
       this.reconnectAttempts++;
@@ -199,9 +203,9 @@ export class BlueBubblesAdapter implements ChannelAdapter {
         await this.connect();
         // Reset attempts on successful connection
         this.reconnectAttempts = 0;
-        console.log('BlueBubbles: Reconnected successfully');
+        console.log("BlueBubbles: Reconnected successfully");
       } catch (error) {
-        console.error('BlueBubbles: Reconnect failed:', error);
+        console.error("BlueBubbles: Reconnect failed:", error);
         // Schedule next attempt
         this.scheduleReconnect();
       }
@@ -212,8 +216,8 @@ export class BlueBubblesAdapter implements ChannelAdapter {
    * Send a message
    */
   async sendMessage(message: OutgoingMessage): Promise<string> {
-    if (!this.client || this._status !== 'connected') {
-      throw new Error('BlueBubbles client is not connected');
+    if (!this.client || this._status !== "connected") {
+      throw new Error("BlueBubbles client is not connected");
     }
 
     // Add response prefix if configured
@@ -231,28 +235,28 @@ export class BlueBubblesAdapter implements ChannelAdapter {
    * Edit a message (not supported by iMessage)
    */
   async editMessage(chatId: string, messageId: string, text: string): Promise<void> {
-    throw new Error('iMessage does not support message editing');
+    throw new Error("iMessage does not support message editing");
   }
 
   /**
    * Delete a message (not supported - iMessage unsend is time-limited)
    */
   async deleteMessage(chatId: string, messageId: string): Promise<void> {
-    throw new Error('iMessage message deletion not supported via BlueBubbles');
+    throw new Error("iMessage message deletion not supported via BlueBubbles");
   }
 
   /**
    * Send a document/file
    */
   async sendDocument(chatId: string, filePath: string, caption?: string): Promise<string> {
-    throw new Error('BlueBubbles file sending not implemented');
+    throw new Error("BlueBubbles file sending not implemented");
   }
 
   /**
    * Send a photo/image
    */
   async sendPhoto(chatId: string, filePath: string, caption?: string): Promise<string> {
-    throw new Error('BlueBubbles image sending not implemented');
+    throw new Error("BlueBubbles image sending not implemented");
   }
 
   /**
@@ -281,10 +285,10 @@ export class BlueBubblesAdapter implements ChannelAdapter {
    */
   async getInfo(): Promise<ChannelInfo> {
     return {
-      type: 'bluebubbles',
+      type: "bluebubbles",
       status: this._status,
       botUsername: this._botUsername,
-      botDisplayName: `BlueBubbles (${this._botUsername || 'Not connected'})`,
+      botDisplayName: `BlueBubbles (${this._botUsername || "Not connected"})`,
       extra: {
         serverUrl: this.config.serverUrl,
         webhookEnabled: this.config.enableWebhook,
@@ -301,7 +305,7 @@ export class BlueBubblesAdapter implements ChannelAdapter {
    * Get recent chats
    */
   async getChats(limit = 25): Promise<BlueBubblesChat[]> {
-    if (!this.client || this._status !== 'connected') {
+    if (!this.client || this._status !== "connected") {
       return [];
     }
     return this.client.getChats({ limit });
@@ -313,10 +317,10 @@ export class BlueBubblesAdapter implements ChannelAdapter {
   async sendToAddress(
     address: string,
     text: string,
-    service: 'iMessage' | 'SMS' = 'iMessage'
+    service: "iMessage" | "SMS" = "iMessage",
   ): Promise<string> {
-    if (!this.client || this._status !== 'connected') {
-      throw new Error('BlueBubbles client is not connected');
+    if (!this.client || this._status !== "connected") {
+      throw new Error("BlueBubbles client is not connected");
     }
 
     // Add response prefix if configured
@@ -333,7 +337,7 @@ export class BlueBubblesAdapter implements ChannelAdapter {
    * Mark chat as read
    */
   async markAsRead(chatGuid: string): Promise<void> {
-    if (!this.client || this._status !== 'connected') {
+    if (!this.client || this._status !== "connected") {
       return;
     }
     await this.client.markChatRead(chatGuid);
@@ -343,7 +347,7 @@ export class BlueBubblesAdapter implements ChannelAdapter {
    * Send typing indicator
    */
   async sendTyping(chatGuid: string): Promise<void> {
-    if (!this.client || this._status !== 'connected') {
+    if (!this.client || this._status !== "connected") {
       return;
     }
     await this.client.sendTypingIndicator(chatGuid);
@@ -383,12 +387,14 @@ export class BlueBubblesAdapter implements ChannelAdapter {
 
     // Check allowlist if configured (skip for self-ingested messages)
     if (!isFromMe && this.config.allowedContacts && this.config.allowedContacts.length > 0) {
-      const senderAddress = bbMessage.handle?.address || '';
+      const senderAddress = bbMessage.handle?.address || "";
       const isAllowed = this.config.allowedContacts.some((allowed) => {
-        const normalizedAllowed = allowed.replace(/[^0-9+@.]/g, '');
-        const normalizedSender = senderAddress.replace(/[^0-9+@.]/g, '');
-        return normalizedSender.includes(normalizedAllowed) ||
-               normalizedAllowed.includes(normalizedSender);
+        const normalizedAllowed = allowed.replace(/[^0-9+@.]/g, "");
+        const normalizedSender = senderAddress.replace(/[^0-9+@.]/g, "");
+        return (
+          normalizedSender.includes(normalizedAllowed) ||
+          normalizedAllowed.includes(normalizedSender)
+        );
       });
       if (!isAllowed) {
         console.log(`BlueBubbles: Ignoring message from non-allowed contact: ${senderAddress}`);
@@ -397,7 +403,7 @@ export class BlueBubblesAdapter implements ChannelAdapter {
     }
 
     // Get user display name
-    let userName = bbMessage.handle?.address || 'Unknown';
+    let userName = bbMessage.handle?.address || "Unknown";
     // Try to get from cached chat info
     const chat = this.chatCache.get(bbMessage.chatGuid);
     if (chat?.displayName) {
@@ -407,13 +413,13 @@ export class BlueBubblesAdapter implements ChannelAdapter {
     // Convert to IncomingMessage
     const message: IncomingMessage = {
       messageId: bbMessage.guid,
-      channel: 'bluebubbles',
+      channel: "bluebubbles",
       userId: bbMessage.handle?.address || String(bbMessage.handleId),
       userName,
       chatId: bbMessage.chatGuid,
       text: bbMessage.text,
       timestamp: new Date(bbMessage.dateCreated),
-      ...(isFromMe ? { direction: 'outgoing_user' as const, ingestOnly: true } : {}),
+      ...(isFromMe ? { direction: "outgoing_user" as const, ingestOnly: true } : {}),
       raw: bbMessage,
     };
 
@@ -422,10 +428,10 @@ export class BlueBubblesAdapter implements ChannelAdapter {
       try {
         await handler(message);
       } catch (error) {
-        console.error('Error in BlueBubbles message handler:', error);
+        console.error("Error in BlueBubbles message handler:", error);
         this.handleError(
           error instanceof Error ? error : new Error(String(error)),
-          'messageHandler'
+          "messageHandler",
         );
       }
     }
@@ -479,7 +485,7 @@ export class BlueBubblesAdapter implements ChannelAdapter {
       try {
         handler(error, context);
       } catch (e) {
-        console.error('Error in error handler:', e);
+        console.error("Error in error handler:", e);
       }
     }
   }
@@ -493,7 +499,7 @@ export class BlueBubblesAdapter implements ChannelAdapter {
       try {
         handler(status, error);
       } catch (e) {
-        console.error('Error in status handler:', e);
+        console.error("Error in status handler:", e);
       }
     }
   }
@@ -504,10 +510,10 @@ export class BlueBubblesAdapter implements ChannelAdapter {
  */
 export function createBlueBubblesAdapter(config: BlueBubblesConfig): BlueBubblesAdapter {
   if (!config.serverUrl) {
-    throw new Error('BlueBubbles server URL is required');
+    throw new Error("BlueBubbles server URL is required");
   }
   if (!config.password) {
-    throw new Error('BlueBubbles server password is required');
+    throw new Error("BlueBubbles server password is required");
   }
   return new BlueBubblesAdapter(config);
 }

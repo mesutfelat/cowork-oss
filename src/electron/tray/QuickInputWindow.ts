@@ -8,7 +8,7 @@
  * - Frameless, minimal design
  */
 
-import { BrowserWindow, screen, ipcMain, clipboard } from 'electron';
+import { BrowserWindow, screen, ipcMain, clipboard } from "electron";
 
 export class QuickInputWindow {
   private window: BrowserWindow | null = null;
@@ -17,7 +17,7 @@ export class QuickInputWindow {
   private isExpanded: boolean = false;
   private isProcessing: boolean = false;
   private hasResponse: boolean = false; // Track if there's a response to preserve
-  private currentQuestion: string = ''; // Store the user's question
+  private currentQuestion: string = ""; // Store the user's question
 
   constructor() {
     this.setupIpcHandlers();
@@ -55,12 +55,10 @@ export class QuickInputWindow {
     }
 
     // Escape text for JavaScript string
-    const escapedText = text
-      .replace(/\\/g, '\\\\')
-      .replace(/`/g, '\\`')
-      .replace(/\$/g, '\\$');
+    const escapedText = text.replace(/\\/g, "\\\\").replace(/`/g, "\\`").replace(/\$/g, "\\$");
 
-    this.window.webContents.executeJavaScript(`
+    this.window.webContents
+      .executeJavaScript(`
       (function() {
         const responseArea = document.getElementById('responseArea');
         const loadingIndicator = document.getElementById('loadingIndicator');
@@ -73,12 +71,17 @@ export class QuickInputWindow {
         if (loadingIndicator) {
           loadingIndicator.style.display = ${isComplete ? "'none'" : "'flex'"};
         }
-        ${isComplete ? `
+        ${
+          isComplete
+            ? `
         if (taskInput) { taskInput.disabled = false; taskInput.placeholder = 'Ask anything...'; taskInput.focus(); }
         if (copyBtn) copyBtn.disabled = false;
-        ` : ''}
+        `
+            : ""
+        }
       })();
-    `).catch(() => {});
+    `)
+      .catch(() => {});
   }
 
   /**
@@ -96,11 +99,12 @@ export class QuickInputWindow {
 
     // Show loading and the user's question
     const escapedQuestion = this.currentQuestion
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;');
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
 
-    this.window.webContents.executeJavaScript(`
+    this.window.webContents
+      .executeJavaScript(`
       (function() {
         const responseArea = document.getElementById('responseArea');
         const loadingIndicator = document.getElementById('loadingIndicator');
@@ -115,7 +119,8 @@ export class QuickInputWindow {
         }
         if (loadingIndicator) loadingIndicator.style.display = 'flex';
       })();
-    `).catch(() => {});
+    `)
+      .catch(() => {});
   }
 
   /**
@@ -143,10 +148,12 @@ export class QuickInputWindow {
     });
 
     // Show response container and add expanded class
-    this.window.webContents.executeJavaScript(`
+    this.window.webContents
+      .executeJavaScript(`
       document.querySelector('.main-container').classList.add('expanded');
       document.getElementById('responseContainer').style.display = 'flex';
-    `).catch(() => {});
+    `)
+      .catch(() => {});
 
     this.isExpanded = true;
   }
@@ -169,11 +176,13 @@ export class QuickInputWindow {
     });
 
     // Hide response container and remove expanded class
-    this.window.webContents.executeJavaScript(`
+    this.window.webContents
+      .executeJavaScript(`
       document.querySelector('.main-container').classList.remove('expanded');
       document.getElementById('responseContainer').style.display = 'none';
       document.getElementById('responseArea').innerHTML = '';
-    `).catch(() => {});
+    `)
+      .catch(() => {});
 
     this.isExpanded = false;
   }
@@ -186,9 +195,11 @@ export class QuickInputWindow {
       this.window.show();
       this.window.focus();
       // Focus the input field
-      this.window.webContents.executeJavaScript(`
+      this.window.webContents
+        .executeJavaScript(`
         document.getElementById('taskInput').focus();
-      `).catch(() => {});
+      `)
+        .catch(() => {});
       return;
     }
 
@@ -204,7 +215,7 @@ export class QuickInputWindow {
       // Reset state for next time
       this.isProcessing = false;
       this.hasResponse = false;
-      this.currentQuestion = '';
+      this.currentQuestion = "";
       // Collapse the window back
       if (this.isExpanded) {
         this.collapseWindow();
@@ -257,9 +268,9 @@ export class QuickInputWindow {
       alwaysOnTop: true,
       skipTaskbar: true,
       hasShadow: true,
-      vibrancy: 'under-window',
-      visualEffectState: 'active',
-      backgroundColor: '#00000000',
+      vibrancy: "under-window",
+      visualEffectState: "active",
+      backgroundColor: "#00000000",
       show: false,
       fullscreenable: false,
       webPreferences: {
@@ -427,52 +438,58 @@ export class QuickInputWindow {
     this.window.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`);
 
     // Show when ready
-    this.window.once('ready-to-show', () => {
+    this.window.once("ready-to-show", () => {
       this.window?.show();
       this.window?.focus();
     });
 
     // Hide on blur (clicking outside) - but not while processing or viewing response
-    this.window.on('blur', () => {
+    this.window.on("blur", () => {
       // Small delay to allow for click events to process
       setTimeout(() => {
         // Don't auto-hide if processing, viewing a response, or already focused back
-        if (this.window && !this.window.isDestroyed() && !this.window.isFocused() &&
-            !this.isProcessing && !this.hasResponse) {
+        if (
+          this.window &&
+          !this.window.isDestroyed() &&
+          !this.window.isFocused() &&
+          !this.isProcessing &&
+          !this.hasResponse
+        ) {
           this.hide();
         }
       }, 100);
     });
 
     // Handle keyboard events since data URLs don't load preload scripts
-    this.window.webContents.on('before-input-event', (event, input) => {
-      if (input.key === 'Escape') {
+    this.window.webContents.on("before-input-event", (event, input) => {
+      if (input.key === "Escape") {
         this.hide();
-      } else if (input.key === 'Enter' && input.type === 'keyDown' && !this.isProcessing) {
+      } else if (input.key === "Enter" && input.type === "keyDown" && !this.isProcessing) {
         // Get the input value and submit (only if not already processing)
         this.submitFromWindow();
       }
     });
 
     // Handle click on buttons via console message (since we can't use IPC with data URLs)
-    this.window.webContents.on('console-message', (_event, _level, message) => {
-      if (message === '__QUICK_INPUT_SUBMIT__') {
+    this.window.webContents.on("console-message", (_event, _level, message) => {
+      if (message === "__QUICK_INPUT_SUBMIT__") {
         this.submitFromWindow();
-      } else if (message === '__QUICK_INPUT_CLOSE__') {
+      } else if (message === "__QUICK_INPUT_CLOSE__") {
         this.hide();
-      } else if (message === '__QUICK_INPUT_COPY__') {
+      } else if (message === "__QUICK_INPUT_COPY__") {
         this.copyResponse();
-      } else if (message === '__QUICK_INPUT_OPEN_MAIN__') {
+      } else if (message === "__QUICK_INPUT_OPEN_MAIN__") {
         if (this.onOpenMain) this.onOpenMain();
-      } else if (message === '__QUICK_INPUT_NEW_WINDOW__') {
+      } else if (message === "__QUICK_INPUT_NEW_WINDOW__") {
         // Reset the window for a new task
         this.resetForNewTask();
       }
     });
 
     // Inject click handlers for all buttons
-    this.window.webContents.on('did-finish-load', () => {
-      this.window?.webContents.executeJavaScript(`
+    this.window.webContents.on("did-finish-load", () => {
+      this.window?.webContents
+        .executeJavaScript(`
         document.getElementById('submitBtn').addEventListener('click', () => {
           console.log('__QUICK_INPUT_SUBMIT__');
         });
@@ -488,7 +505,8 @@ export class QuickInputWindow {
         document.getElementById('newWindowBtn').addEventListener('click', () => {
           console.log('__QUICK_INPUT_NEW_WINDOW__');
         });
-      `).catch(() => {});
+      `)
+        .catch(() => {});
     });
   }
 
@@ -500,7 +518,7 @@ export class QuickInputWindow {
 
     // Reset state
     this.hasResponse = false;
-    this.currentQuestion = '';
+    this.currentQuestion = "";
 
     // Collapse if expanded
     if (this.isExpanded) {
@@ -508,12 +526,14 @@ export class QuickInputWindow {
     }
 
     // Clear the input and response, reset states
-    this.window.webContents.executeJavaScript(`
+    this.window.webContents
+      .executeJavaScript(`
       const taskInput = document.getElementById('taskInput');
       const copyBtn = document.getElementById('copyBtn');
       if (taskInput) { taskInput.value = ''; taskInput.disabled = false; taskInput.placeholder = 'Ask anything...'; taskInput.focus(); }
       if (copyBtn) copyBtn.disabled = true;
-    `).catch(() => {});
+    `)
+      .catch(() => {});
   }
 
   /**
@@ -525,14 +545,15 @@ export class QuickInputWindow {
     try {
       // Get the text content from the response area
       const text = await this.window.webContents.executeJavaScript(
-        `document.getElementById('responseArea').innerText`
+        `document.getElementById('responseArea').innerText`,
       );
 
       if (text) {
         clipboard.writeText(text);
 
         // Show visual feedback
-        this.window.webContents.executeJavaScript(`
+        this.window.webContents
+          .executeJavaScript(`
           (function() {
             const btn = document.getElementById('copyBtn');
             btn.classList.add('copied');
@@ -542,10 +563,11 @@ export class QuickInputWindow {
               btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>';
             }, 1500);
           })();
-        `).catch(() => {});
+        `)
+          .catch(() => {});
       }
     } catch (error) {
-      console.error('[QuickInputWindow] Failed to copy response:', error);
+      console.error("[QuickInputWindow] Failed to copy response:", error);
     }
   }
 
@@ -558,7 +580,7 @@ export class QuickInputWindow {
 
     try {
       const task = await this.window.webContents.executeJavaScript(
-        `document.getElementById('taskInput').value.trim()`
+        `document.getElementById('taskInput').value.trim()`,
       );
 
       if (task && this.onSubmit) {
@@ -568,14 +590,16 @@ export class QuickInputWindow {
 
         // Don't hide - keep window visible to show response
         // Clear the input and show submit feedback
-        this.window?.webContents.executeJavaScript(`
+        this.window?.webContents
+          .executeJavaScript(`
           document.getElementById('taskInput').value = '';
           document.getElementById('submitBtn').classList.add('submitting');
-        `).catch(() => {});
+        `)
+          .catch(() => {});
         this.onSubmit(task);
       }
     } catch (error) {
-      console.error('[QuickInputWindow] Failed to get input value:', error);
+      console.error("[QuickInputWindow] Failed to get input value:", error);
     }
   }
 
@@ -583,16 +607,16 @@ export class QuickInputWindow {
    * Setup IPC handlers for the quick input window
    */
   private setupIpcHandlers(): void {
-    ipcMain.handle('quick-input:submit', (_event, task: string, workspaceId?: string) => {
-      console.log('[QuickInputWindow] Received submit:', task);
+    ipcMain.handle("quick-input:submit", (_event, task: string, workspaceId?: string) => {
+      console.log("[QuickInputWindow] Received submit:", task);
       this.hide();
       if (this.onSubmit && task.trim()) {
-        console.log('[QuickInputWindow] Calling onSubmit callback');
+        console.log("[QuickInputWindow] Calling onSubmit callback");
         this.onSubmit(task.trim(), workspaceId);
       }
     });
 
-    ipcMain.handle('quick-input:close', () => {
+    ipcMain.handle("quick-input:close", () => {
       this.hide();
     });
   }

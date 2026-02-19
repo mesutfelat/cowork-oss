@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { ThemeMode, AccentColor, ACCENT_COLORS, LLMSettingsData } from '../../shared/types';
+import React, { useState, useEffect } from "react";
+import { ThemeMode, AccentColor, ACCENT_COLORS, LLMSettingsData } from "../../shared/types";
 
 interface OnboardingModalProps {
   onComplete: (dontShowAgain: boolean) => void;
@@ -9,19 +9,19 @@ interface OnboardingModalProps {
   onAccentChange: (accent: AccentColor) => void;
 }
 
-type OnboardingStep = 'welcome' | 'llm' | 'channels';
+type OnboardingStep = "welcome" | "llm" | "channels";
 
 // LLM Provider types for the simplified setup
 type LLMProviderType =
-  | 'anthropic'
-  | 'openai'
-  | 'gemini'
-  | 'ollama'
-  | 'openrouter'
-  | 'bedrock'
-  | 'groq'
-  | 'xai'
-  | 'kimi';
+  | "anthropic"
+  | "openai"
+  | "gemini"
+  | "ollama"
+  | "openrouter"
+  | "bedrock"
+  | "groq"
+  | "xai"
+  | "kimi";
 
 interface ProviderOption {
   type: LLMProviderType;
@@ -35,64 +35,92 @@ interface ProviderOption {
 }
 
 // Channel types for messaging connectors
-type ChannelType = 'telegram' | 'whatsapp' | 'discord' | 'slack' | 'imessage' | 'signal';
+type ChannelType = "telegram" | "whatsapp" | "discord" | "slack" | "imessage" | "signal";
 
 interface ChannelOption {
   type: ChannelType;
   name: string;
   description: string;
   icon: React.ReactNode;
-  requiresSetup: 'easy' | 'moderate' | 'advanced';
+  requiresSetup: "easy" | "moderate" | "advanced";
   setupHint: string;
 }
 
 const PROVIDER_OPTIONS: ProviderOption[] = [
   {
-    type: 'anthropic',
-    name: 'Anthropic',
-    description: 'Claude models (Recommended)',
+    type: "anthropic",
+    name: "Anthropic",
+    description: "Claude models (Recommended)",
     icon: (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <svg
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      >
         <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
       </svg>
     ),
     requiresApiKey: true,
-    apiKeyPlaceholder: 'sk-ant-...',
-    apiKeyLink: 'https://console.anthropic.com/',
+    apiKeyPlaceholder: "sk-ant-...",
+    apiKeyLink: "https://console.anthropic.com/",
   },
   {
-    type: 'openai',
-    name: 'OpenAI',
-    description: 'GPT-5.2 and other models',
+    type: "openai",
+    name: "OpenAI",
+    description: "GPT-5.2 and other models",
     icon: (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <svg
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      >
         <circle cx="12" cy="12" r="10" />
         <path d="M12 6v6l4 2" />
       </svg>
     ),
     requiresApiKey: true,
-    apiKeyPlaceholder: 'sk-...',
-    apiKeyLink: 'https://platform.openai.com/api-keys',
+    apiKeyPlaceholder: "sk-...",
+    apiKeyLink: "https://platform.openai.com/api-keys",
   },
   {
-    type: 'gemini',
-    name: 'Google Gemini',
-    description: 'Gemini 2.0 and other models',
+    type: "gemini",
+    name: "Google Gemini",
+    description: "Gemini 2.0 and other models",
     icon: (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <svg
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      >
         <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
       </svg>
     ),
     requiresApiKey: true,
-    apiKeyPlaceholder: 'AIza...',
-    apiKeyLink: 'https://aistudio.google.com/apikey',
+    apiKeyPlaceholder: "AIza...",
+    apiKeyLink: "https://aistudio.google.com/apikey",
   },
   {
-    type: 'ollama',
-    name: 'Ollama',
-    description: 'Run models locally (Free)',
+    type: "ollama",
+    name: "Ollama",
+    description: "Run models locally (Free)",
     icon: (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <svg
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      >
         <rect x="4" y="4" width="16" height="16" rx="2" />
         <path d="M9 9h6v6H9z" />
       </svg>
@@ -101,67 +129,102 @@ const PROVIDER_OPTIONS: ProviderOption[] = [
     freeOption: true,
   },
   {
-    type: 'openrouter',
-    name: 'OpenRouter',
-    description: 'Access 200+ models',
+    type: "openrouter",
+    name: "OpenRouter",
+    description: "Access 200+ models",
     icon: (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <svg
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      >
         <circle cx="12" cy="12" r="10" />
         <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
       </svg>
     ),
     requiresApiKey: true,
-    apiKeyPlaceholder: 'sk-or-...',
-    apiKeyLink: 'https://openrouter.ai/keys',
+    apiKeyPlaceholder: "sk-or-...",
+    apiKeyLink: "https://openrouter.ai/keys",
   },
   {
-    type: 'groq',
-    name: 'Groq',
-    description: 'Fast, low-latency models',
+    type: "groq",
+    name: "Groq",
+    description: "Fast, low-latency models",
     icon: (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <svg
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      >
         <path d="M4 12h16" />
         <path d="M12 4v16" />
         <circle cx="12" cy="12" r="9" />
       </svg>
     ),
     requiresApiKey: true,
-    apiKeyPlaceholder: 'gsk_...',
-    apiKeyLink: 'https://console.groq.com/keys',
+    apiKeyPlaceholder: "gsk_...",
+    apiKeyLink: "https://console.groq.com/keys",
   },
   {
-    type: 'xai',
-    name: 'xAI (Grok)',
-    description: 'Grok models from xAI',
+    type: "xai",
+    name: "xAI (Grok)",
+    description: "Grok models from xAI",
     icon: (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <svg
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      >
         <path d="M4 4l16 16" />
         <path d="M20 4L4 20" />
       </svg>
     ),
     requiresApiKey: true,
-    apiKeyPlaceholder: 'xai-...',
-    apiKeyLink: 'https://console.x.ai/',
+    apiKeyPlaceholder: "xai-...",
+    apiKeyLink: "https://console.x.ai/",
   },
   {
-    type: 'kimi',
-    name: 'Kimi',
-    description: 'Kimi models via Moonshot',
+    type: "kimi",
+    name: "Kimi",
+    description: "Kimi models via Moonshot",
     icon: (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <svg
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      >
         <path d="M12 2l3 7 7 3-7 3-3 7-3-7-7-3 7-3 3-7z" />
       </svg>
     ),
     requiresApiKey: true,
-    apiKeyPlaceholder: 'sk-...',
-    apiKeyLink: 'https://platform.moonshot.ai/',
+    apiKeyPlaceholder: "sk-...",
+    apiKeyLink: "https://platform.moonshot.ai/",
   },
   {
-    type: 'bedrock',
-    name: 'AWS Bedrock',
-    description: 'Claude via AWS',
+    type: "bedrock",
+    name: "AWS Bedrock",
+    description: "Claude via AWS",
     icon: (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <svg
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      >
         <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
       </svg>
     ),
@@ -171,35 +234,56 @@ const PROVIDER_OPTIONS: ProviderOption[] = [
 
 const CHANNEL_OPTIONS: ChannelOption[] = [
   {
-    type: 'telegram',
-    name: 'Telegram',
-    description: 'Chat with your agent via Telegram bot',
+    type: "telegram",
+    name: "Telegram",
+    description: "Chat with your agent via Telegram bot",
     icon: (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <svg
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      >
         <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
       </svg>
     ),
-    requiresSetup: 'easy',
-    setupHint: 'Create a bot with @BotFather',
+    requiresSetup: "easy",
+    setupHint: "Create a bot with @BotFather",
   },
   {
-    type: 'whatsapp',
-    name: 'WhatsApp',
-    description: 'Connect via QR code scan',
+    type: "whatsapp",
+    name: "WhatsApp",
+    description: "Connect via QR code scan",
     icon: (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <svg
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      >
         <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
       </svg>
     ),
-    requiresSetup: 'easy',
-    setupHint: 'Scan QR code with your phone',
+    requiresSetup: "easy",
+    setupHint: "Scan QR code with your phone",
   },
   {
-    type: 'discord',
-    name: 'Discord',
-    description: 'Add a bot to your Discord server',
+    type: "discord",
+    name: "Discord",
+    description: "Add a bot to your Discord server",
     icon: (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <svg
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      >
         <circle cx="9" cy="12" r="1" />
         <circle cx="15" cy="12" r="1" />
         <path d="M7.5 7.5c3.5-1 5.5-1 9 0M7 16.5c3.5 1 6.5 1 10 0" />
@@ -207,15 +291,22 @@ const CHANNEL_OPTIONS: ChannelOption[] = [
         <path d="M8.5 17c0 1-1.356 3-1.832 3-1.429 0-2.698-1.667-3.333-3-.635-1.333-.476-5.833 1.428-11.5C6.151 4.485 7.545 4.16 9 4l1 2-1 1" />
       </svg>
     ),
-    requiresSetup: 'moderate',
-    setupHint: 'Create app in Discord Developer Portal',
+    requiresSetup: "moderate",
+    setupHint: "Create app in Discord Developer Portal",
   },
   {
-    type: 'slack',
-    name: 'Slack',
-    description: 'Connect to your Slack workspace',
+    type: "slack",
+    name: "Slack",
+    description: "Connect to your Slack workspace",
     icon: (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <svg
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      >
         <rect x="13" y="2" width="3" height="8" rx="1.5" />
         <path d="M19 8.5V10h1.5A1.5 1.5 0 0019 8.5" />
         <rect x="8" y="14" width="3" height="8" rx="1.5" />
@@ -226,32 +317,46 @@ const CHANNEL_OPTIONS: ChannelOption[] = [
         <path d="M8.5 5H10V3.5A1.5 1.5 0 008.5 5" />
       </svg>
     ),
-    requiresSetup: 'moderate',
-    setupHint: 'Create a Slack App with Socket Mode',
+    requiresSetup: "moderate",
+    setupHint: "Create a Slack App with Socket Mode",
   },
   {
-    type: 'imessage',
-    name: 'iMessage',
-    description: 'Use iMessage on macOS',
+    type: "imessage",
+    name: "iMessage",
+    description: "Use iMessage on macOS",
     icon: (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <svg
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      >
         <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
       </svg>
     ),
-    requiresSetup: 'advanced',
-    setupHint: 'Requires macOS permissions',
+    requiresSetup: "advanced",
+    setupHint: "Requires macOS permissions",
   },
   {
-    type: 'signal',
-    name: 'Signal',
-    description: 'Private messaging via Signal',
+    type: "signal",
+    name: "Signal",
+    description: "Private messaging via Signal",
     icon: (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <svg
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      >
         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
       </svg>
     ),
-    requiresSetup: 'advanced',
-    setupHint: 'Requires signal-cli setup',
+    requiresSetup: "advanced",
+    setupHint: "Requires signal-cli setup",
   },
 ];
 
@@ -262,10 +367,10 @@ export function OnboardingModal({
   onThemeChange,
   onAccentChange,
 }: OnboardingModalProps) {
-  const [step, setStep] = useState<OnboardingStep>('welcome');
+  const [step, setStep] = useState<OnboardingStep>("welcome");
   const [selectedProvider, setSelectedProvider] = useState<LLMProviderType | null>(null);
-  const [apiKey, setApiKey] = useState('');
-  const [ollamaUrl, setOllamaUrl] = useState('http://localhost:11434');
+  const [apiKey, setApiKey] = useState("");
+  const [ollamaUrl, setOllamaUrl] = useState("http://localhost:11434");
   const [saving, setSaving] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; error?: string } | null>(null);
   const [selectedChannels, setSelectedChannels] = useState<Set<ChannelType>>(new Set());
@@ -273,7 +378,7 @@ export function OnboardingModal({
 
   // Check if Ollama is available locally when selected
   useEffect(() => {
-    if (selectedProvider === 'ollama') {
+    if (selectedProvider === "ollama") {
       checkOllamaAvailability();
     }
   }, [selectedProvider]);
@@ -291,7 +396,7 @@ export function OnboardingModal({
 
   const handleProviderSelect = (provider: LLMProviderType) => {
     setSelectedProvider(provider);
-    setApiKey('');
+    setApiKey("");
     setTestResult(null);
   };
 
@@ -304,28 +409,28 @@ export function OnboardingModal({
         providerType: selectedProvider,
       };
 
-      if (selectedProvider === 'anthropic') {
+      if (selectedProvider === "anthropic") {
         testConfig.anthropic = { apiKey };
-      } else if (selectedProvider === 'openai') {
-        testConfig.openai = { apiKey, authMethod: 'api_key' };
-      } else if (selectedProvider === 'gemini') {
+      } else if (selectedProvider === "openai") {
+        testConfig.openai = { apiKey, authMethod: "api_key" };
+      } else if (selectedProvider === "gemini") {
         testConfig.gemini = { apiKey };
-      } else if (selectedProvider === 'openrouter') {
+      } else if (selectedProvider === "openrouter") {
         testConfig.openrouter = { apiKey };
-      } else if (selectedProvider === 'ollama') {
+      } else if (selectedProvider === "ollama") {
         testConfig.ollama = { baseUrl: ollamaUrl };
-      } else if (selectedProvider === 'groq') {
+      } else if (selectedProvider === "groq") {
         testConfig.groq = { apiKey };
-      } else if (selectedProvider === 'xai') {
+      } else if (selectedProvider === "xai") {
         testConfig.xai = { apiKey };
-      } else if (selectedProvider === 'kimi') {
+      } else if (selectedProvider === "kimi") {
         testConfig.kimi = { apiKey };
       }
 
       const result = await window.electronAPI.testLLMProvider(testConfig);
       setTestResult(result);
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
       setTestResult({ success: false, error: errorMessage });
     }
   };
@@ -340,38 +445,38 @@ export function OnboardingModal({
           modelKey: getDefaultModel(selectedProvider),
         };
 
-        if (selectedProvider === 'anthropic') {
+        if (selectedProvider === "anthropic") {
           settings.anthropic = { apiKey };
-        } else if (selectedProvider === 'openai') {
-          settings.openai = { apiKey, authMethod: 'api_key', model: 'gpt-4o-mini' };
-        } else if (selectedProvider === 'gemini') {
-          settings.gemini = { apiKey, model: 'gemini-2.0-flash' };
-        } else if (selectedProvider === 'openrouter') {
-          settings.openrouter = { apiKey, model: 'anthropic/claude-3.5-sonnet' };
-        } else if (selectedProvider === 'ollama') {
-          settings.ollama = { baseUrl: ollamaUrl, model: 'llama3.2' };
-        } else if (selectedProvider === 'bedrock') {
-          settings.bedrock = { region: 'us-east-1', useDefaultCredentials: true };
-        } else if (selectedProvider === 'groq') {
-          settings.groq = { apiKey, model: 'llama-3.1-8b-instant' };
-        } else if (selectedProvider === 'xai') {
-          settings.xai = { apiKey, model: 'grok-4-fast-non-reasoning' };
-        } else if (selectedProvider === 'kimi') {
-          settings.kimi = { apiKey, model: 'kimi-k2.5' };
+        } else if (selectedProvider === "openai") {
+          settings.openai = { apiKey, authMethod: "api_key", model: "gpt-4o-mini" };
+        } else if (selectedProvider === "gemini") {
+          settings.gemini = { apiKey, model: "gemini-2.0-flash" };
+        } else if (selectedProvider === "openrouter") {
+          settings.openrouter = { apiKey, model: "anthropic/claude-3.5-sonnet" };
+        } else if (selectedProvider === "ollama") {
+          settings.ollama = { baseUrl: ollamaUrl, model: "llama3.2" };
+        } else if (selectedProvider === "bedrock") {
+          settings.bedrock = { region: "us-east-1", useDefaultCredentials: true };
+        } else if (selectedProvider === "groq") {
+          settings.groq = { apiKey, model: "llama-3.1-8b-instant" };
+        } else if (selectedProvider === "xai") {
+          settings.xai = { apiKey, model: "grok-4-fast-non-reasoning" };
+        } else if (selectedProvider === "kimi") {
+          settings.kimi = { apiKey, model: "kimi-k2.5" };
         }
 
         await window.electronAPI.saveLLMSettings(settings);
       } catch (error) {
-        console.error('Failed to save LLM settings:', error);
+        console.error("Failed to save LLM settings:", error);
       } finally {
         setSaving(false);
       }
     }
-    setStep('channels');
+    setStep("channels");
   };
 
   const handleChannelToggle = (channel: ChannelType) => {
-    setSelectedChannels(prev => {
+    setSelectedChannels((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(channel)) {
         newSet.delete(channel);
@@ -390,45 +495,45 @@ export function OnboardingModal({
 
   const getDefaultModel = (provider: LLMProviderType): string => {
     switch (provider) {
-      case 'anthropic':
-        return 'sonnet-4';
-      case 'openai':
-        return 'gpt-4o-mini';
-      case 'gemini':
-        return 'gemini-2.0-flash';
-      case 'ollama':
-        return 'llama3.2';
-      case 'openrouter':
-        return 'anthropic/claude-3.5-sonnet';
-      case 'bedrock':
-        return 'sonnet-4-5';
-      case 'groq':
-        return 'llama-3.1-8b-instant';
-      case 'xai':
-        return 'grok-4-fast-non-reasoning';
-      case 'kimi':
-        return 'kimi-k2.5';
+      case "anthropic":
+        return "sonnet-4";
+      case "openai":
+        return "gpt-4o-mini";
+      case "gemini":
+        return "gemini-2.0-flash";
+      case "ollama":
+        return "llama3.2";
+      case "openrouter":
+        return "anthropic/claude-3.5-sonnet";
+      case "bedrock":
+        return "sonnet-4-5";
+      case "groq":
+        return "llama-3.1-8b-instant";
+      case "xai":
+        return "grok-4-fast-non-reasoning";
+      case "kimi":
+        return "kimi-k2.5";
       default:
-        return 'sonnet-4';
+        return "sonnet-4";
     }
   };
 
   const canProceedLLM = () => {
     if (!selectedProvider) return true; // Can skip
-    if (selectedProvider === 'ollama' || selectedProvider === 'bedrock') return true;
+    if (selectedProvider === "ollama" || selectedProvider === "bedrock") return true;
     return apiKey.length > 0;
   };
 
-  const selectedProviderInfo = PROVIDER_OPTIONS.find(p => p.type === selectedProvider);
+  const selectedProviderInfo = PROVIDER_OPTIONS.find((p) => p.type === selectedProvider);
 
-  const getSetupBadgeClass = (level: 'easy' | 'moderate' | 'advanced') => {
+  const getSetupBadgeClass = (level: "easy" | "moderate" | "advanced") => {
     switch (level) {
-      case 'easy':
-        return 'setup-easy';
-      case 'moderate':
-        return 'setup-moderate';
-      case 'advanced':
-        return 'setup-advanced';
+      case "easy":
+        return "setup-easy";
+      case "moderate":
+        return "setup-moderate";
+      case "advanced":
+        return "setup-advanced";
     }
   };
 
@@ -437,24 +542,28 @@ export function OnboardingModal({
       <div className="onboarding-container">
         {/* Progress indicator */}
         <div className="onboarding-progress">
-          <div className={`onboarding-progress-step ${step === 'welcome' ? 'active' : 'completed'}`}>
+          <div
+            className={`onboarding-progress-step ${step === "welcome" ? "active" : "completed"}`}
+          >
             <span className="onboarding-progress-dot" />
             <span className="onboarding-progress-label">Welcome</span>
           </div>
           <div className="onboarding-progress-line" />
-          <div className={`onboarding-progress-step ${step === 'llm' ? 'active' : step === 'channels' ? 'completed' : ''}`}>
+          <div
+            className={`onboarding-progress-step ${step === "llm" ? "active" : step === "channels" ? "completed" : ""}`}
+          >
             <span className="onboarding-progress-dot" />
             <span className="onboarding-progress-label">AI Setup</span>
           </div>
           <div className="onboarding-progress-line" />
-          <div className={`onboarding-progress-step ${step === 'channels' ? 'active' : ''}`}>
+          <div className={`onboarding-progress-step ${step === "channels" ? "active" : ""}`}>
             <span className="onboarding-progress-dot" />
             <span className="onboarding-progress-label">Channels</span>
           </div>
         </div>
 
         {/* Step Content */}
-        {step === 'welcome' && (
+        {step === "welcome" && (
           <div className="onboarding-step">
             <div className="onboarding-header">
               <h1>Welcome to CoWork OS</h1>
@@ -465,8 +574,8 @@ export function OnboardingModal({
               <h3>Choose your theme</h3>
               <div className="onboarding-theme-options">
                 <button
-                  className={`onboarding-theme-option ${themeMode === 'light' ? 'selected' : ''}`}
-                  onClick={() => onThemeChange('light')}
+                  className={`onboarding-theme-option ${themeMode === "light" ? "selected" : ""}`}
+                  onClick={() => onThemeChange("light")}
                 >
                   <div className="onboarding-theme-preview light">
                     <div className="preview-line" />
@@ -476,8 +585,8 @@ export function OnboardingModal({
                   <span>Light</span>
                 </button>
                 <button
-                  className={`onboarding-theme-option ${themeMode === 'dark' ? 'selected' : ''}`}
-                  onClick={() => onThemeChange('dark')}
+                  className={`onboarding-theme-option ${themeMode === "dark" ? "selected" : ""}`}
+                  onClick={() => onThemeChange("dark")}
                 >
                   <div className="onboarding-theme-preview dark">
                     <div className="preview-line" />
@@ -487,8 +596,8 @@ export function OnboardingModal({
                   <span>Dark</span>
                 </button>
                 <button
-                  className={`onboarding-theme-option ${themeMode === 'system' ? 'selected' : ''}`}
-                  onClick={() => onThemeChange('system')}
+                  className={`onboarding-theme-option ${themeMode === "system" ? "selected" : ""}`}
+                  onClick={() => onThemeChange("system")}
                 >
                   <div className="onboarding-theme-preview system" />
                   <span>System</span>
@@ -502,7 +611,7 @@ export function OnboardingModal({
                 {ACCENT_COLORS.map((color) => (
                   <button
                     key={color.id}
-                    className={`onboarding-color-option ${accentColor === color.id ? 'selected' : ''}`}
+                    className={`onboarding-color-option ${accentColor === color.id ? "selected" : ""}`}
                     onClick={() => onAccentChange(color.id)}
                     title={color.label}
                   >
@@ -513,9 +622,16 @@ export function OnboardingModal({
             </div>
 
             <div className="onboarding-actions">
-              <button className="onboarding-btn-primary" onClick={() => setStep('llm')}>
+              <button className="onboarding-btn-primary" onClick={() => setStep("llm")}>
                 Continue
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
                   <path d="M5 12h14M12 5l7 7-7 7" />
                 </svg>
               </button>
@@ -523,7 +639,7 @@ export function OnboardingModal({
           </div>
         )}
 
-        {step === 'llm' && (
+        {step === "llm" && (
           <div className="onboarding-step">
             <div className="onboarding-header">
               <h1>Connect an AI Provider</h1>
@@ -534,7 +650,7 @@ export function OnboardingModal({
               {PROVIDER_OPTIONS.map((provider) => (
                 <button
                   key={provider.type}
-                  className={`onboarding-provider-card ${selectedProvider === provider.type ? 'selected' : ''}`}
+                  className={`onboarding-provider-card ${selectedProvider === provider.type ? "selected" : ""}`}
                   onClick={() => handleProviderSelect(provider.type)}
                 >
                   <div className="onboarding-provider-icon">{provider.icon}</div>
@@ -546,7 +662,15 @@ export function OnboardingModal({
                     <span className="onboarding-provider-desc">{provider.description}</span>
                   </div>
                   {selectedProvider === provider.type && (
-                    <svg className="onboarding-check" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <svg
+                      className="onboarding-check"
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
                       <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
                       <path d="M22 4L12 14.01l-3-3" />
                     </svg>
@@ -588,10 +712,19 @@ export function OnboardingModal({
                   </button>
                 </div>
                 {testResult && (
-                  <div className={`onboarding-test-result ${testResult.success ? 'success' : 'error'}`}>
+                  <div
+                    className={`onboarding-test-result ${testResult.success ? "success" : "error"}`}
+                  >
                     {testResult.success ? (
                       <>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
                           <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
                           <path d="M22 4L12 14.01l-3-3" />
                         </svg>
@@ -599,12 +732,19 @@ export function OnboardingModal({
                       </>
                     ) : (
                       <>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
                           <circle cx="12" cy="12" r="10" />
                           <line x1="15" y1="9" x2="9" y2="15" />
                           <line x1="9" y1="9" x2="15" y2="15" />
                         </svg>
-                        {testResult.error || 'Connection failed'}
+                        {testResult.error || "Connection failed"}
                       </>
                     )}
                   </div>
@@ -613,7 +753,7 @@ export function OnboardingModal({
             )}
 
             {/* Ollama-specific section */}
-            {selectedProvider === 'ollama' && (
+            {selectedProvider === "ollama" && (
               <div className="onboarding-apikey-section">
                 <label>Ollama Server URL</label>
                 <div className="onboarding-apikey-row">
@@ -629,32 +769,43 @@ export function OnboardingModal({
                   </button>
                 </div>
                 <p className="onboarding-hint">
-                  Make sure Ollama is running. Download from{' '}
+                  Make sure Ollama is running. Download from{" "}
                   <a href="https://ollama.ai" target="_blank" rel="noopener noreferrer">
                     ollama.ai
                   </a>
                 </p>
                 {testResult && (
-                  <div className={`onboarding-test-result ${testResult.success ? 'success' : 'error'}`}>
-                    {testResult.success ? 'Ollama server detected!' : 'Ollama not detected. You can set it up later.'}
+                  <div
+                    className={`onboarding-test-result ${testResult.success ? "success" : "error"}`}
+                  >
+                    {testResult.success
+                      ? "Ollama server detected!"
+                      : "Ollama not detected. You can set it up later."}
                   </div>
                 )}
               </div>
             )}
 
             {/* Bedrock-specific section */}
-            {selectedProvider === 'bedrock' && (
+            {selectedProvider === "bedrock" && (
               <div className="onboarding-apikey-section">
                 <p className="onboarding-hint">
-                  AWS Bedrock uses your AWS credentials from ~/.aws/credentials or environment variables.
-                  You can configure this in detail in Settings after setup.
+                  AWS Bedrock uses your AWS credentials from ~/.aws/credentials or environment
+                  variables. You can configure this in detail in Settings after setup.
                 </p>
               </div>
             )}
 
             <div className="onboarding-actions">
-              <button className="onboarding-btn-secondary" onClick={() => setStep('welcome')}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <button className="onboarding-btn-secondary" onClick={() => setStep("welcome")}>
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
                   <path d="M19 12H5M12 19l-7-7 7-7" />
                 </svg>
                 Back
@@ -664,22 +815,27 @@ export function OnboardingModal({
                 onClick={handleSaveLLMAndContinue}
                 disabled={saving || !canProceedLLM()}
               >
-                {saving ? 'Saving...' : 'Continue'}
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                {saving ? "Saving..." : "Continue"}
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
                   <path d="M5 12h14M12 5l7 7-7 7" />
                 </svg>
               </button>
             </div>
 
             {!selectedProvider && (
-              <p className="onboarding-skip-hint">
-                You can configure this later in Settings
-              </p>
+              <p className="onboarding-skip-hint">You can configure this later in Settings</p>
             )}
           </div>
         )}
 
-        {step === 'channels' && (
+        {step === "channels" && (
           <div className="onboarding-step">
             <div className="onboarding-header">
               <h1>Connect Messaging Channels</h1>
@@ -690,21 +846,35 @@ export function OnboardingModal({
               {CHANNEL_OPTIONS.map((channel) => (
                 <button
                   key={channel.type}
-                  className={`onboarding-channel-card ${selectedChannels.has(channel.type) ? 'selected' : ''}`}
+                  className={`onboarding-channel-card ${selectedChannels.has(channel.type) ? "selected" : ""}`}
                   onClick={() => handleChannelToggle(channel.type)}
                 >
                   <div className="onboarding-channel-icon">{channel.icon}</div>
                   <div className="onboarding-channel-info">
                     <span className="onboarding-channel-name">
                       {channel.name}
-                      <span className={`onboarding-setup-badge ${getSetupBadgeClass(channel.requiresSetup)}`}>
-                        {channel.requiresSetup === 'easy' ? 'Easy' : channel.requiresSetup === 'moderate' ? 'Moderate' : 'Advanced'}
+                      <span
+                        className={`onboarding-setup-badge ${getSetupBadgeClass(channel.requiresSetup)}`}
+                      >
+                        {channel.requiresSetup === "easy"
+                          ? "Easy"
+                          : channel.requiresSetup === "moderate"
+                            ? "Moderate"
+                            : "Advanced"}
                       </span>
                     </span>
                     <span className="onboarding-channel-desc">{channel.description}</span>
                   </div>
                   {selectedChannels.has(channel.type) && (
-                    <svg className="onboarding-check" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <svg
+                      className="onboarding-check"
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
                       <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
                       <path d="M22 4L12 14.01l-3-3" />
                     </svg>
@@ -715,12 +885,20 @@ export function OnboardingModal({
 
             {selectedChannels.size > 0 && (
               <div className="onboarding-channel-note">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
                   <circle cx="12" cy="12" r="10" />
                   <path d="M12 16v-4M12 8h.01" />
                 </svg>
                 <span>
-                  You can configure {selectedChannels.size === 1 ? 'this channel' : 'these channels'} in{' '}
+                  You can configure{" "}
+                  {selectedChannels.size === 1 ? "this channel" : "these channels"} in{" "}
                   <strong>Settings &gt; Channels</strong> after setup.
                 </span>
               </div>
@@ -741,15 +919,29 @@ export function OnboardingModal({
             </div>
 
             <div className="onboarding-actions">
-              <button className="onboarding-btn-secondary" onClick={() => setStep('llm')}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <button className="onboarding-btn-secondary" onClick={() => setStep("llm")}>
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
                   <path d="M19 12H5M12 19l-7-7 7-7" />
                 </svg>
                 Back
               </button>
               <button className="onboarding-btn-primary" onClick={handleFinish}>
-                {selectedChannels.size > 0 ? 'Finish Setup' : 'Skip & Finish'}
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                {selectedChannels.size > 0 ? "Finish Setup" : "Skip & Finish"}
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
                   <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
                   <path d="M22 4L12 14.01l-3-3" />
                 </svg>

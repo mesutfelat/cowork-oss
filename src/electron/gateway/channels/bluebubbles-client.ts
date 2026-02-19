@@ -20,9 +20,9 @@
  * - https://docs.bluebubbles.app/server/guides/using-the-api
  */
 
-import { EventEmitter } from 'events';
-import * as http from 'http';
-import * as https from 'https';
+import { EventEmitter } from "events";
+import * as http from "http";
+import * as https from "https";
 
 /**
  * BlueBubbles message
@@ -160,11 +160,11 @@ export class BlueBubblesClient extends EventEmitter {
     this.options = {
       pollInterval: 5000,
       webhookPort: 3101,
-      webhookPath: '/bluebubbles/webhook',
+      webhookPath: "/bluebubbles/webhook",
       ...options,
     };
     // Remove trailing slash from server URL
-    this.options.serverUrl = this.options.serverUrl.replace(/\/$/, '');
+    this.options.serverUrl = this.options.serverUrl.replace(/\/$/, "");
   }
 
   /**
@@ -172,7 +172,7 @@ export class BlueBubblesClient extends EventEmitter {
    */
   async checkConnection(): Promise<{ success: boolean; serverVersion?: string; error?: string }> {
     try {
-      const response = await this.apiRequest('GET', '/server/info');
+      const response = await this.apiRequest("GET", "/server/info");
       const data = response.data as { os_version?: string; server_version?: string } | undefined;
       return {
         success: true,
@@ -181,7 +181,7 @@ export class BlueBubblesClient extends EventEmitter {
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error.message : "Unknown error",
       };
     }
   }
@@ -197,7 +197,7 @@ export class BlueBubblesClient extends EventEmitter {
     // Check connection first
     const check = await this.checkConnection();
     if (!check.success) {
-      throw new Error(check.error || 'Failed to connect to BlueBubbles server');
+      throw new Error(check.error || "Failed to connect to BlueBubbles server");
     }
 
     // Initialize last message date
@@ -208,11 +208,11 @@ export class BlueBubblesClient extends EventEmitter {
       try {
         await this.startWebhookServer();
         this.connected = true;
-        this.emit('connected');
+        this.emit("connected");
         return;
       } catch (error) {
         if (this.options.verbose) {
-          console.warn('BlueBubbles webhook server failed, falling back to polling:', error);
+          console.warn("BlueBubbles webhook server failed, falling back to polling:", error);
         }
       }
     }
@@ -220,7 +220,7 @@ export class BlueBubblesClient extends EventEmitter {
     // Fall back to polling
     this.startPolling();
     this.connected = true;
-    this.emit('connected');
+    this.emit("connected");
   }
 
   /**
@@ -232,25 +232,25 @@ export class BlueBubblesClient extends EventEmitter {
         this.handleWebhook(req, res);
       });
 
-      this.webhookServer.on('error', (error: NodeJS.ErrnoException) => {
+      this.webhookServer.on("error", (error: NodeJS.ErrnoException) => {
         let enhancedError = error;
         // Provide better error messages for common issues
-        if (error.code === 'EADDRINUSE') {
+        if (error.code === "EADDRINUSE") {
           enhancedError = new Error(
             `Port ${this.options.webhookPort} is already in use. ` +
-            `Another application or BlueBubbles channel may be using this port. ` +
-            `Try a different webhook port in settings.`
+              `Another application or BlueBubbles channel may be using this port. ` +
+              `Try a different webhook port in settings.`,
           ) as NodeJS.ErrnoException;
-          enhancedError.code = 'EADDRINUSE';
-        } else if (error.code === 'EACCES') {
+          enhancedError.code = "EADDRINUSE";
+        } else if (error.code === "EACCES") {
           enhancedError = new Error(
             `Permission denied to use port ${this.options.webhookPort}. ` +
-            `Try a port number above 1024.`
+              `Try a port number above 1024.`,
           ) as NodeJS.ErrnoException;
-          enhancedError.code = 'EACCES';
+          enhancedError.code = "EACCES";
         }
         if (this.options.verbose) {
-          console.error('BlueBubbles webhook server error:', enhancedError);
+          console.error("BlueBubbles webhook server error:", enhancedError);
         }
         reject(enhancedError);
       });
@@ -258,7 +258,7 @@ export class BlueBubblesClient extends EventEmitter {
       this.webhookServer.listen(this.options.webhookPort, () => {
         if (this.options.verbose) {
           console.log(
-            `BlueBubbles webhook server listening on port ${this.options.webhookPort}${this.options.webhookPath}`
+            `BlueBubbles webhook server listening on port ${this.options.webhookPort}${this.options.webhookPath}`,
           );
         }
         resolve();
@@ -270,25 +270,25 @@ export class BlueBubblesClient extends EventEmitter {
    * Handle webhook notification
    */
   private handleWebhook(req: http.IncomingMessage, res: http.ServerResponse): void {
-    if (req.method !== 'POST' || req.url !== this.options.webhookPath) {
+    if (req.method !== "POST" || req.url !== this.options.webhookPath) {
       res.writeHead(404);
       res.end();
       return;
     }
 
-    let body = '';
-    req.on('data', (chunk) => {
+    let body = "";
+    req.on("data", (chunk) => {
       body += chunk.toString();
     });
 
-    req.on('end', () => {
+    req.on("end", () => {
       try {
         const data = JSON.parse(body);
         this.processWebhookEvent(data);
         res.writeHead(200);
         res.end();
       } catch (error) {
-        console.error('BlueBubbles webhook error:', error);
+        console.error("BlueBubbles webhook error:", error);
         res.writeHead(500);
         res.end();
       }
@@ -302,25 +302,25 @@ export class BlueBubblesClient extends EventEmitter {
     const type = data.type as string;
 
     switch (type) {
-      case 'new-message':
+      case "new-message":
         {
           const message = data.data as BlueBubblesMessage;
           if (message && !message.isFromMe) {
-            this.emit('message', this.normalizeMessage(message));
+            this.emit("message", this.normalizeMessage(message));
           }
         }
         break;
 
-      case 'updated-message':
+      case "updated-message":
         {
           const message = data.data as BlueBubblesMessage;
           if (message) {
-            this.emit('messageUpdated', this.normalizeMessage(message));
+            this.emit("messageUpdated", this.normalizeMessage(message));
           }
         }
         break;
 
-      case 'typing-indicator':
+      case "typing-indicator":
         // Could emit typing event
         break;
 
@@ -344,7 +344,7 @@ export class BlueBubblesClient extends EventEmitter {
         await this.pollMessages();
       } catch (error) {
         if (this.options.verbose) {
-          console.error('BlueBubbles poll error:', error);
+          console.error("BlueBubbles poll error:", error);
         }
       }
     }, this.options.pollInterval);
@@ -358,9 +358,9 @@ export class BlueBubblesClient extends EventEmitter {
    * Poll for new messages
    */
   private async pollMessages(): Promise<void> {
-    const response = await this.apiRequest('POST', '/message/query', {
-      with: ['chat', 'handle'],
-      sort: 'DESC',
+    const response = await this.apiRequest("POST", "/message/query", {
+      with: ["chat", "handle"],
+      sort: "DESC",
       after: this.lastMessageDate,
       limit: 50,
     });
@@ -370,7 +370,7 @@ export class BlueBubblesClient extends EventEmitter {
     // Process messages in chronological order
     for (const msg of messages.reverse()) {
       if (!msg.isFromMe && msg.dateCreated > this.lastMessageDate) {
-        this.emit('message', this.normalizeMessage(msg));
+        this.emit("message", this.normalizeMessage(msg));
         this.lastMessageDate = Math.max(this.lastMessageDate, msg.dateCreated);
       }
     }
@@ -400,14 +400,14 @@ export class BlueBubblesClient extends EventEmitter {
         this.webhookServer!.close(() => {
           this.webhookServer = undefined;
           this.connected = false;
-          this.emit('disconnected');
+          this.emit("disconnected");
           resolve();
         });
       });
     }
 
     this.connected = false;
-    this.emit('disconnected');
+    this.emit("disconnected");
   }
 
   /**
@@ -416,13 +416,13 @@ export class BlueBubblesClient extends EventEmitter {
   async sendMessage(
     chatGuid: string,
     message: string,
-    options?: { subject?: string; method?: 'private-api' | 'apple-script' }
+    options?: { subject?: string; method?: "private-api" | "apple-script" },
   ): Promise<BlueBubblesMessage> {
-    const response = await this.apiRequest('POST', '/message/text', {
+    const response = await this.apiRequest("POST", "/message/text", {
       chatGuid,
       message,
       subject: options?.subject,
-      method: options?.method || 'private-api',
+      method: options?.method || "private-api",
     });
 
     return response.data as BlueBubblesMessage;
@@ -434,17 +434,17 @@ export class BlueBubblesClient extends EventEmitter {
   async sendMessageToAddress(
     address: string,
     message: string,
-    service: 'iMessage' | 'SMS' = 'iMessage'
+    service: "iMessage" | "SMS" = "iMessage",
   ): Promise<BlueBubblesMessage> {
     // First, get or create chat
-    const chatResponse = await this.apiRequest('POST', '/chat/new', {
+    const chatResponse = await this.apiRequest("POST", "/chat/new", {
       addresses: [address],
       service,
     });
 
     const chat = chatResponse.data as BlueBubblesChat;
     if (!chat || !chat.guid) {
-      throw new Error('Failed to create chat');
+      throw new Error("Failed to create chat");
     }
 
     // Then send message
@@ -455,9 +455,9 @@ export class BlueBubblesClient extends EventEmitter {
    * Get chats
    */
   async getChats(options?: { limit?: number; offset?: number }): Promise<BlueBubblesChat[]> {
-    const response = await this.apiRequest('POST', '/chat/query', {
-      with: ['lastMessage', 'participants'],
-      sort: 'lastmessage',
+    const response = await this.apiRequest("POST", "/chat/query", {
+      with: ["lastMessage", "participants"],
+      sort: "lastmessage",
       limit: options?.limit || 25,
       offset: options?.offset || 0,
     });
@@ -469,8 +469,8 @@ export class BlueBubblesClient extends EventEmitter {
    * Get chat by GUID
    */
   async getChat(chatGuid: string): Promise<BlueBubblesChat> {
-    const response = await this.apiRequest('GET', `/chat/${encodeURIComponent(chatGuid)}`, {
-      with: ['participants', 'lastMessage'],
+    const response = await this.apiRequest("GET", `/chat/${encodeURIComponent(chatGuid)}`, {
+      with: ["participants", "lastMessage"],
     });
 
     return response.data as BlueBubblesChat;
@@ -481,20 +481,16 @@ export class BlueBubblesClient extends EventEmitter {
    */
   async getMessages(
     chatGuid: string,
-    options?: { limit?: number; offset?: number; after?: number; before?: number }
+    options?: { limit?: number; offset?: number; after?: number; before?: number },
   ): Promise<BlueBubblesMessage[]> {
-    const response = await this.apiRequest(
-      'GET',
-      `/chat/${encodeURIComponent(chatGuid)}/message`,
-      {
-        with: ['handle', 'attachment'],
-        sort: 'DESC',
-        limit: options?.limit || 25,
-        offset: options?.offset || 0,
-        after: options?.after,
-        before: options?.before,
-      }
-    );
+    const response = await this.apiRequest("GET", `/chat/${encodeURIComponent(chatGuid)}/message`, {
+      with: ["handle", "attachment"],
+      sort: "DESC",
+      limit: options?.limit || 25,
+      offset: options?.offset || 0,
+      after: options?.after,
+      before: options?.before,
+    });
 
     return (response.data || []) as BlueBubblesMessage[];
   }
@@ -503,21 +499,24 @@ export class BlueBubblesClient extends EventEmitter {
    * Mark chat as read
    */
   async markChatRead(chatGuid: string): Promise<void> {
-    await this.apiRequest('POST', `/chat/${encodeURIComponent(chatGuid)}/read`);
+    await this.apiRequest("POST", `/chat/${encodeURIComponent(chatGuid)}/read`);
   }
 
   /**
    * Send typing indicator
    */
   async sendTypingIndicator(chatGuid: string): Promise<void> {
-    await this.apiRequest('POST', `/chat/${encodeURIComponent(chatGuid)}/typing`);
+    await this.apiRequest("POST", `/chat/${encodeURIComponent(chatGuid)}/typing`);
   }
 
   /**
    * Get attachment data
    */
   async getAttachment(attachmentGuid: string): Promise<Buffer> {
-    return this.apiRequestBinary('GET', `/attachment/${encodeURIComponent(attachmentGuid)}/download`);
+    return this.apiRequestBinary(
+      "GET",
+      `/attachment/${encodeURIComponent(attachmentGuid)}/download`,
+    );
   }
 
   /**
@@ -526,16 +525,16 @@ export class BlueBubblesClient extends EventEmitter {
   private async apiRequest(
     method: string,
     path: string,
-    body?: Record<string, unknown>
+    body?: Record<string, unknown>,
   ): Promise<Record<string, unknown>> {
     return new Promise((resolve, reject) => {
       const url = new URL(`${this.options.serverUrl}/api/v1${path}`);
 
       // Add password to query params
-      url.searchParams.set('password', this.options.password);
+      url.searchParams.set("password", this.options.password);
 
       // Add body params to query for GET requests
-      if (method === 'GET' && body) {
+      if (method === "GET" && body) {
         for (const [key, value] of Object.entries(body)) {
           if (value !== undefined) {
             url.searchParams.set(key, String(value));
@@ -543,7 +542,7 @@ export class BlueBubblesClient extends EventEmitter {
         }
       }
 
-      const isHttps = url.protocol === 'https:';
+      const isHttps = url.protocol === "https:";
       const requestModule = isHttps ? https : http;
 
       const options: http.RequestOptions = {
@@ -552,16 +551,16 @@ export class BlueBubblesClient extends EventEmitter {
         path: url.pathname + url.search,
         method,
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
       };
 
       const req = requestModule.request(options, (res) => {
-        let data = '';
-        res.on('data', (chunk) => {
+        let data = "";
+        res.on("data", (chunk) => {
           data += chunk;
         });
-        res.on('end', () => {
+        res.on("end", () => {
           if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
             try {
               resolve(JSON.parse(data));
@@ -581,9 +580,9 @@ export class BlueBubblesClient extends EventEmitter {
         });
       });
 
-      req.on('error', reject);
+      req.on("error", reject);
 
-      if (method !== 'GET' && body) {
+      if (method !== "GET" && body) {
         req.write(JSON.stringify(body));
       }
       req.end();
@@ -596,9 +595,9 @@ export class BlueBubblesClient extends EventEmitter {
   private async apiRequestBinary(method: string, path: string): Promise<Buffer> {
     return new Promise((resolve, reject) => {
       const url = new URL(`${this.options.serverUrl}/api/v1${path}`);
-      url.searchParams.set('password', this.options.password);
+      url.searchParams.set("password", this.options.password);
 
-      const isHttps = url.protocol === 'https:';
+      const isHttps = url.protocol === "https:";
       const requestModule = isHttps ? https : http;
 
       const options: http.RequestOptions = {
@@ -610,8 +609,8 @@ export class BlueBubblesClient extends EventEmitter {
 
       const req = requestModule.request(options, (res) => {
         const chunks: Buffer[] = [];
-        res.on('data', (chunk) => chunks.push(chunk));
-        res.on('end', () => {
+        res.on("data", (chunk) => chunks.push(chunk));
+        res.on("end", () => {
           if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
             resolve(Buffer.concat(chunks));
           } else {
@@ -620,7 +619,7 @@ export class BlueBubblesClient extends EventEmitter {
         });
       });
 
-      req.on('error', reject);
+      req.on("error", reject);
       req.end();
     });
   }

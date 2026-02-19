@@ -1,8 +1,8 @@
-import { EventEmitter } from 'events';
-import * as fs from 'fs';
-import * as crypto from 'crypto';
-import { DatabaseManager } from '../database/schema';
-import type Database from 'better-sqlite3';
+import { EventEmitter } from "events";
+import * as fs from "fs";
+import * as crypto from "crypto";
+import { DatabaseManager } from "../database/schema";
+import type Database from "better-sqlite3";
 import {
   TaskRepository,
   TaskEventRepository,
@@ -10,23 +10,44 @@ import {
   ApprovalRepository,
   ArtifactRepository,
   MemoryType,
-} from '../database/repositories';
-import { ActivityRepository } from '../activity/ActivityRepository';
-import { AgentRoleRepository } from '../agents/AgentRoleRepository';
-import { MentionRepository } from '../agents/MentionRepository';
-import { buildAgentDispatchPrompt } from '../agents/agent-dispatch';
-import { extractMentionedRoles } from '../agents/mentions';
-import { Task, TaskStatus, TaskEvent, IPC_CHANNELS, QueueSettings, QueueStatus, Workspace, WorkspacePermissions, AgentConfig, AgentType, ActivityActorType, ActivityType, CreateActivityRequest, Plan, BoardColumn, Activity, AgentMention, AgentRole, isTempWorkspaceId, ImageAttachment } from '../../shared/types';
-import { TaskExecutor } from './executor';
-import { TaskQueueManager } from './queue-manager';
-import { approvalIdempotency, taskIdempotency, IdempotencyManager } from '../security/concurrency';
-import { MemoryService } from '../memory/MemoryService';
-import { UserProfileService } from '../memory/UserProfileService';
-import { RelationshipMemoryService } from '../memory/RelationshipMemoryService';
-import { PersonalityManager } from '../settings/personality-manager';
-import { IntentRoute, IntentRouter } from './strategy/IntentRouter';
-import { DerivedTaskStrategy, TaskStrategyService } from './strategy/TaskStrategyService';
-import type { AgentTeamOrchestrator } from '../agents/AgentTeamOrchestrator';
+} from "../database/repositories";
+import { ActivityRepository } from "../activity/ActivityRepository";
+import { AgentRoleRepository } from "../agents/AgentRoleRepository";
+import { MentionRepository } from "../agents/MentionRepository";
+import { buildAgentDispatchPrompt } from "../agents/agent-dispatch";
+import { extractMentionedRoles } from "../agents/mentions";
+import {
+  Task,
+  TaskStatus,
+  TaskEvent,
+  IPC_CHANNELS,
+  QueueSettings,
+  QueueStatus,
+  Workspace,
+  WorkspacePermissions,
+  AgentConfig,
+  AgentType,
+  ActivityActorType,
+  ActivityType,
+  CreateActivityRequest,
+  Plan,
+  BoardColumn,
+  Activity,
+  AgentMention,
+  AgentRole,
+  isTempWorkspaceId,
+  ImageAttachment,
+} from "../../shared/types";
+import { TaskExecutor } from "./executor";
+import { TaskQueueManager } from "./queue-manager";
+import { approvalIdempotency, taskIdempotency, IdempotencyManager } from "../security/concurrency";
+import { MemoryService } from "../memory/MemoryService";
+import { UserProfileService } from "../memory/UserProfileService";
+import { RelationshipMemoryService } from "../memory/RelationshipMemoryService";
+import { PersonalityManager } from "../settings/personality-manager";
+import { IntentRoute, IntentRouter } from "./strategy/IntentRouter";
+import { DerivedTaskStrategy, TaskStrategyService } from "./strategy/TaskStrategyService";
+import type { AgentTeamOrchestrator } from "../agents/AgentTeamOrchestrator";
 
 // Memory management constants
 const MAX_CACHED_EXECUTORS = 10; // Maximum number of completed task executors to keep in memory
@@ -34,18 +55,23 @@ const EXECUTOR_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes - time before comple
 
 // Activity throttling constants
 const ACTIVITY_THROTTLE_WINDOW_MS = 2000; // 2 seconds - window for deduping similar activities
-const THROTTLED_ACTIVITY_TYPES = new Set(['tool_call', 'file_created', 'file_modified', 'file_deleted']);
+const THROTTLED_ACTIVITY_TYPES = new Set([
+  "tool_call",
+  "file_created",
+  "file_modified",
+  "file_deleted",
+]);
 
 interface CachedExecutor {
   executor: TaskExecutor;
   lastAccessed: number;
-  status: 'active' | 'completed';
+  status: "active" | "completed";
 }
 
 function getAllElectronWindows(): any[] {
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const electron = require('electron') as any;
+    const electron = require("electron") as any;
     const BrowserWindow = electron?.BrowserWindow;
     if (BrowserWindow?.getAllWindows) {
       return BrowserWindow.getAllWindows();
@@ -71,7 +97,16 @@ export class AgentDaemon extends EventEmitter {
   private mentionRepo: MentionRepository;
   private teamOrchestrator: AgentTeamOrchestrator | null = null;
   private activeTasks: Map<string, CachedExecutor> = new Map();
-  private pendingApprovals: Map<string, { taskId: string; resolve: (value: boolean) => void; reject: (reason?: unknown) => void; resolved: boolean; timeoutHandle: ReturnType<typeof setTimeout> }> = new Map();
+  private pendingApprovals: Map<
+    string,
+    {
+      taskId: string;
+      resolve: (value: boolean) => void;
+      reject: (reason?: unknown) => void;
+      resolved: boolean;
+      timeoutHandle: ReturnType<typeof setTimeout>;
+    }
+  > = new Map();
   private cleanupIntervalHandle?: ReturnType<typeof setInterval>;
   private queueManager: TaskQueueManager;
   // Activity throttle: Map<taskId:eventType, lastTimestamp>
@@ -102,7 +137,8 @@ export class AgentDaemon extends EventEmitter {
       startTaskImmediate: (task: Task) => this.startTaskImmediate(task),
       emitQueueUpdate: (status: QueueStatus) => this.emitQueueUpdate(status),
       getTaskById: (taskId: string) => this.taskRepo.findById(taskId),
-      updateTaskStatus: (taskId: string, status: TaskStatus) => this.taskRepo.update(taskId, { status }),
+      updateTaskStatus: (taskId: string, status: TaskStatus) =>
+        this.taskRepo.update(taskId, { status }),
       onTaskTimeout: (taskId: string) => this.handleTaskTimeout(taskId),
     });
 
@@ -138,17 +174,29 @@ export class AgentDaemon extends EventEmitter {
     let changed = false;
 
     // Apply provider/model/personality defaults only when the task didn't override them.
-    if (!nextAgentConfig.providerType && typeof role.providerType === 'string' && role.providerType.trim().length > 0) {
+    if (
+      !nextAgentConfig.providerType &&
+      typeof role.providerType === "string" &&
+      role.providerType.trim().length > 0
+    ) {
       nextAgentConfig.providerType = role.providerType.trim() as any;
       changed = true;
     }
 
-    if (!nextAgentConfig.modelKey && typeof role.modelKey === 'string' && role.modelKey.trim().length > 0) {
+    if (
+      !nextAgentConfig.modelKey &&
+      typeof role.modelKey === "string" &&
+      role.modelKey.trim().length > 0
+    ) {
       nextAgentConfig.modelKey = role.modelKey.trim();
       changed = true;
     }
 
-    if (!nextAgentConfig.personalityId && typeof role.personalityId === 'string' && role.personalityId.trim().length > 0) {
+    if (
+      !nextAgentConfig.personalityId &&
+      typeof role.personalityId === "string" &&
+      role.personalityId.trim().length > 0
+    ) {
       nextAgentConfig.personalityId = role.personalityId.trim() as any;
       changed = true;
     }
@@ -163,7 +211,7 @@ export class AgentDaemon extends EventEmitter {
     const addAll = (values: unknown) => {
       if (!Array.isArray(values)) return;
       for (const raw of values) {
-        const value = typeof raw === 'string' ? raw.trim() : '';
+        const value = typeof raw === "string" ? raw.trim() : "";
         if (!value) continue;
         merged.add(value);
       }
@@ -182,8 +230,12 @@ export class AgentDaemon extends EventEmitter {
 
   private maybeCaptureMentionedAgentRoleIds(task: Task): void {
     if (task.parentTaskId) return;
-    if ((task.agentType ?? 'main') !== 'main') return;
-    if (Array.isArray(task.mentionedAgentRoleIds) && task.mentionedAgentRoleIds.filter(Boolean).length > 0) return;
+    if ((task.agentType ?? "main") !== "main") return;
+    if (
+      Array.isArray(task.mentionedAgentRoleIds) &&
+      task.mentionedAgentRoleIds.filter(Boolean).length > 0
+    )
+      return;
 
     try {
       const activeRoles = this.agentRoleRepo.findAll(false).filter((role) => role.isActive);
@@ -196,7 +248,7 @@ export class AgentDaemon extends EventEmitter {
       this.taskRepo.update(task.id, { mentionedAgentRoleIds: ids });
       task.mentionedAgentRoleIds = ids;
     } catch (error) {
-      console.warn('[AgentDaemon] Failed to capture mentioned agent roles:', error);
+      console.warn("[AgentDaemon] Failed to capture mentioned agent roles:", error);
     }
   }
 
@@ -204,11 +256,7 @@ export class AgentDaemon extends EventEmitter {
     return JSON.stringify(a ?? {}) === JSON.stringify(b ?? {});
   }
 
-  private deriveTaskStrategy(input: {
-    title: string;
-    prompt: string;
-    agentConfig?: AgentConfig;
-  }): {
+  private deriveTaskStrategy(input: { title: string; prompt: string; agentConfig?: AgentConfig }): {
     route: IntentRoute;
     strategy: DerivedTaskStrategy;
     prompt: string;
@@ -223,7 +271,12 @@ export class AgentDaemon extends EventEmitter {
       maxPerLayer: 2,
       maxChars: 1200,
     });
-    const prompt = TaskStrategyService.decoratePrompt(input.prompt, route, strategy, relationshipContext);
+    const prompt = TaskStrategyService.decoratePrompt(
+      input.prompt,
+      route,
+      strategy,
+      relationshipContext,
+    );
     return {
       route,
       strategy,
@@ -265,18 +318,20 @@ export class AgentDaemon extends EventEmitter {
    */
   async initialize(): Promise<void> {
     // Find queued tasks from database for queue recovery
-    const queuedTasks = this.taskRepo.findByStatus('queued');
+    const queuedTasks = this.taskRepo.findByStatus("queued");
 
     // Find "running" tasks from previous session - these are orphaned since we lost their executors
-    const orphanedTasks = this.taskRepo.findByStatus(['planning', 'executing']);
+    const orphanedTasks = this.taskRepo.findByStatus(["planning", "executing"]);
 
     // Mark orphaned tasks as failed - they can't be resumed since we lost their state
     if (orphanedTasks.length > 0) {
-      console.log(`[AgentDaemon] Found ${orphanedTasks.length} orphaned tasks from previous session, marking as failed`);
+      console.log(
+        `[AgentDaemon] Found ${orphanedTasks.length} orphaned tasks from previous session, marking as failed`,
+      );
       for (const task of orphanedTasks) {
         this.taskRepo.update(task.id, {
-          status: 'failed',
-          error: 'Task interrupted - application was restarted while task was running',
+          status: "failed",
+          error: "Task interrupted - application was restarted while task was running",
         });
       }
     }
@@ -295,7 +350,7 @@ export class AgentDaemon extends EventEmitter {
 
     // Find executors to clean up
     this.activeTasks.forEach((cached, taskId) => {
-      if (cached.status === 'completed') {
+      if (cached.status === "completed") {
         completedCount++;
         // Remove if older than TTL
         if (now - cached.lastAccessed > EXECUTOR_CACHE_TTL_MS) {
@@ -307,7 +362,7 @@ export class AgentDaemon extends EventEmitter {
     // Also remove oldest completed executors if we have too many
     if (completedCount > MAX_CACHED_EXECUTORS) {
       const completedTasks = Array.from(this.activeTasks.entries())
-        .filter(([_, cached]) => cached.status === 'completed')
+        .filter(([_, cached]) => cached.status === "completed")
         .sort((a, b) => a[1].lastAccessed - b[1].lastAccessed);
 
       const excessCount = completedCount - MAX_CACHED_EXECUTORS;
@@ -326,7 +381,9 @@ export class AgentDaemon extends EventEmitter {
     }
 
     if (toDelete.length > 0) {
-      console.log(`[AgentDaemon] Cleaned up ${toDelete.length} old executor(s). Active: ${this.activeTasks.size}`);
+      console.log(
+        `[AgentDaemon] Cleaned up ${toDelete.length} old executor(s). Active: ${this.activeTasks.size}`,
+      );
     }
   }
 
@@ -341,16 +398,16 @@ export class AgentDaemon extends EventEmitter {
     // remote gateways (WhatsApp/Telegram/etc) can inform the user instead of
     // appearing to "hang" silently.
     const refreshed = this.taskRepo.findById(task.id);
-    if (refreshed?.status === 'queued') {
+    if (refreshed?.status === "queued") {
       const status = this.queueManager.getStatus();
       const idx = status.queuedTaskIds.indexOf(task.id);
       const position = idx >= 0 ? idx + 1 : undefined;
       const message = position
         ? `⏳ Queued (position ${position}). I’ll start as soon as a slot is free.`
-        : '⏳ Queued. I’ll start as soon as a slot is free.';
-      this.logEvent(task.id, 'task_queued', {
+        : "⏳ Queued. I’ll start as soon as a slot is free.";
+      this.logEvent(task.id, "task_queued", {
         position,
-        reason: 'concurrency',
+        reason: "concurrency",
         message,
       });
     }
@@ -361,12 +418,13 @@ export class AgentDaemon extends EventEmitter {
    */
   async startTaskImmediate(task: Task): Promise<void> {
     console.log(`[AgentDaemon] Starting task ${task.id}: ${task.title}`);
-    const { task: effectiveTask, changed: roleOverridesChanged } = this.applyAgentRoleOverrides(task);
+    const { task: effectiveTask, changed: roleOverridesChanged } =
+      this.applyAgentRoleOverrides(task);
     if (roleOverridesChanged) {
       try {
         this.taskRepo.update(effectiveTask.id, { agentConfig: effectiveTask.agentConfig });
       } catch (error) {
-        console.warn('[AgentDaemon] Failed to persist agent role overrides:', error);
+        console.warn("[AgentDaemon] Failed to persist agent role overrides:", error);
       }
     }
 
@@ -378,21 +436,23 @@ export class AgentDaemon extends EventEmitter {
       try {
         this.taskRepo.update(effectiveTask.id, { agentConfig: executionTask.agentConfig });
       } catch (error) {
-        console.warn('[AgentDaemon] Failed to persist runtime strategy agent config:', error);
+        console.warn("[AgentDaemon] Failed to persist runtime strategy agent config:", error);
       }
     }
     if (runtimeStrategy.promptChanged || runtimeStrategy.agentConfigChanged) {
-      this.logEvent(effectiveTask.id, 'log', {
+      this.logEvent(effectiveTask.id, "log", {
         message: `Execution strategy active: intent=${runtimeStrategy.route.intent}, mode=${runtimeStrategy.strategy.conversationMode}, answerFirst=${runtimeStrategy.strategy.answerFirst}`,
       });
     }
 
-    const wasQueued = effectiveTask.status === 'queued';
+    const wasQueued = effectiveTask.status === "queued";
     if (wasQueued) {
       const isRetry = this.retryCounts.has(effectiveTask.id);
       const count = this.retryCounts.get(effectiveTask.id) ?? 0;
-      const retrySuffix = isRetry ? ` (retry ${count}/${this.maxTaskRetries})` : '';
-      this.logEvent(effectiveTask.id, 'task_dequeued', { message: `▶️ Starting now${retrySuffix}.` });
+      const retrySuffix = isRetry ? ` (retry ${count}/${this.maxTaskRetries})` : "";
+      this.logEvent(effectiveTask.id, "task_dequeued", {
+        message: `▶️ Starting now${retrySuffix}.`,
+      });
     }
 
     // Get workspace details
@@ -411,12 +471,12 @@ export class AgentDaemon extends EventEmitter {
     } catch (error: any) {
       console.error(`[AgentDaemon] Task ${effectiveTask.id} failed to initialize:`, error);
       this.taskRepo.update(effectiveTask.id, {
-        status: 'failed',
-        error: error.message || 'Failed to initialize task executor',
+        status: "failed",
+        error: error.message || "Failed to initialize task executor",
         completedAt: Date.now(),
       });
       this.clearRetryState(effectiveTask.id);
-      this.logEvent(effectiveTask.id, 'error', { error: error.message });
+      this.logEvent(effectiveTask.id, "error", { error: error.message });
       // Notify queue manager so it can start next task
       this.queueManager.onTaskFinished(effectiveTask.id);
       return;
@@ -425,24 +485,24 @@ export class AgentDaemon extends EventEmitter {
     this.activeTasks.set(effectiveTask.id, {
       executor,
       lastAccessed: Date.now(),
-      status: 'active',
+      status: "active",
     });
 
     // Update task status
-    this.taskRepo.update(effectiveTask.id, { status: 'planning', error: undefined });
-    this.logEvent(effectiveTask.id, 'task_created', { task: executionTask });
+    this.taskRepo.update(effectiveTask.id, { status: "planning", error: undefined });
+    this.logEvent(effectiveTask.id, "task_created", { task: executionTask });
     console.log(`[AgentDaemon] Task status updated to 'planning', starting execution...`);
 
     // Start execution (non-blocking)
-    executor.execute().catch(error => {
+    executor.execute().catch((error) => {
       console.error(`[AgentDaemon] Task ${effectiveTask.id} execution failed:`, error);
       this.taskRepo.update(effectiveTask.id, {
-        status: 'failed',
+        status: "failed",
         error: error.message,
         completedAt: Date.now(),
       });
       this.clearRetryState(effectiveTask.id);
-      this.logEvent(effectiveTask.id, 'error', { error: error.message });
+      this.logEvent(effectiveTask.id, "error", { error: error.message });
       this.activeTasks.delete(effectiveTask.id);
       // Notify queue manager so it can start next task
       this.queueManager.onTaskFinished(effectiveTask.id);
@@ -469,13 +529,13 @@ export class AgentDaemon extends EventEmitter {
     const task = this.taskRepo.create({
       title: params.title,
       prompt: derived.prompt,
-      status: 'pending',
+      status: "pending",
       workspaceId: params.workspaceId,
       agentConfig: derived.agentConfig,
       budgetTokens: params.budgetTokens,
       budgetCost: params.budgetCost,
     });
-    this.logEvent(task.id, 'log', {
+    this.logEvent(task.id, "log", {
       message: `Intent routed: ${derived.route.intent} (${derived.strategy.conversationMode})`,
       confidence: Number(derived.route.confidence.toFixed(2)),
       signals: derived.route.signals,
@@ -522,21 +582,22 @@ export class AgentDaemon extends EventEmitter {
     const parentGatewayContext = parent?.agentConfig?.gatewayContext;
     const childGatewayContext = params.agentConfig?.gatewayContext;
     const parentAutonomousMode = parent?.agentConfig?.autonomousMode === true;
-    const mergedAutonomousMode = parentAutonomousMode || params.agentConfig?.autonomousMode === true;
+    const mergedAutonomousMode =
+      parentAutonomousMode || params.agentConfig?.autonomousMode === true;
     const mergedAllowUserInput = mergedAutonomousMode
       ? false
-      : params.agentConfig?.allowUserInput ?? parent?.agentConfig?.allowUserInput;
+      : (params.agentConfig?.allowUserInput ?? parent?.agentConfig?.allowUserInput);
 
     // Prevent privilege escalation: a child task may not become "more private" than its parent.
-    const mergedGatewayContext: AgentConfig['gatewayContext'] | undefined = (() => {
-      const rank: Record<NonNullable<AgentConfig['gatewayContext']>, number> = {
+    const mergedGatewayContext: AgentConfig["gatewayContext"] | undefined = (() => {
+      const rank: Record<NonNullable<AgentConfig["gatewayContext"]>, number> = {
         private: 0,
         group: 1,
         public: 2,
       };
       const contexts = [parentGatewayContext, childGatewayContext].filter(
-        (value): value is NonNullable<AgentConfig['gatewayContext']> =>
-          value === 'private' || value === 'group' || value === 'public'
+        (value): value is NonNullable<AgentConfig["gatewayContext"]> =>
+          value === "private" || value === "group" || value === "public",
       );
       if (contexts.length === 0) return undefined;
       return contexts.sort((a, b) => rank[b] - rank[a])[0];
@@ -548,7 +609,7 @@ export class AgentDaemon extends EventEmitter {
       const addAll = (values: unknown) => {
         if (!Array.isArray(values)) return;
         for (const raw of values) {
-          const value = typeof raw === 'string' ? raw.trim() : '';
+          const value = typeof raw === "string" ? raw.trim() : "";
           if (!value) continue;
           merged.add(value);
         }
@@ -578,7 +639,7 @@ export class AgentDaemon extends EventEmitter {
     const task = this.taskRepo.create({
       title: params.title,
       prompt: params.prompt,
-      status: 'pending',
+      status: "pending",
       workspaceId: params.workspaceId,
       parentTaskId: params.parentTaskId,
       agentType: params.agentType,
@@ -590,13 +651,16 @@ export class AgentDaemon extends EventEmitter {
 
     // Apply agent squad metadata before starting so role context is available immediately.
     const initialUpdates: Partial<Task> = {};
-    if (typeof params.assignedAgentRoleId === 'string' && params.assignedAgentRoleId.trim().length > 0) {
+    if (
+      typeof params.assignedAgentRoleId === "string" &&
+      params.assignedAgentRoleId.trim().length > 0
+    ) {
       initialUpdates.assignedAgentRoleId = params.assignedAgentRoleId.trim();
     }
-    if (typeof params.boardColumn === 'string' && params.boardColumn.trim().length > 0) {
+    if (typeof params.boardColumn === "string" && params.boardColumn.trim().length > 0) {
       initialUpdates.boardColumn = params.boardColumn as BoardColumn;
     }
-    if (typeof params.priority === 'number' && Number.isFinite(params.priority)) {
+    if (typeof params.priority === "number" && Number.isFinite(params.priority)) {
       initialUpdates.priority = params.priority;
     }
     if (Object.keys(initialUpdates).length > 0) {
@@ -617,40 +681,38 @@ export class AgentDaemon extends EventEmitter {
       lines.push(`Plan: ${plan.description}`);
     }
     if (plan.steps && plan.steps.length > 0) {
-      lines.push('Steps:');
-      const stepLines = plan.steps
-        .slice(0, 7)
-        .map((step) => `- ${step.description}`);
+      lines.push("Steps:");
+      const stepLines = plan.steps.slice(0, 7).map((step) => `- ${step.description}`);
       lines.push(...stepLines);
       if (plan.steps.length > 7) {
         lines.push(`- …and ${plan.steps.length - 7} more steps`);
       }
     }
-    return lines.length > 0 ? lines.join('\n') : undefined;
+    return lines.length > 0 ? lines.join("\n") : undefined;
   }
 
   private emitActivityEvent(activity: Activity): void {
     const windows = getAllElectronWindows();
-    windows.forEach(window => {
+    windows.forEach((window) => {
       try {
         if (!window.isDestroyed() && window.webContents && !window.webContents.isDestroyed()) {
-          window.webContents.send(IPC_CHANNELS.ACTIVITY_EVENT, { type: 'created', activity });
+          window.webContents.send(IPC_CHANNELS.ACTIVITY_EVENT, { type: "created", activity });
         }
       } catch (error) {
-        console.error('[AgentDaemon] Error sending activity IPC:', error);
+        console.error("[AgentDaemon] Error sending activity IPC:", error);
       }
     });
   }
 
   private emitMentionEvent(mention: AgentMention): void {
     const windows = getAllElectronWindows();
-    windows.forEach(window => {
+    windows.forEach((window) => {
       try {
         if (!window.isDestroyed() && window.webContents && !window.webContents.isDestroyed()) {
-          window.webContents.send(IPC_CHANNELS.MENTION_EVENT, { type: 'created', mention });
+          window.webContents.send(IPC_CHANNELS.MENTION_EVENT, { type: "created", mention });
         }
       } catch (error) {
-        console.error('[AgentDaemon] Error sending mention IPC:', error);
+        console.error("[AgentDaemon] Error sending mention IPC:", error);
       }
     });
   }
@@ -666,21 +728,21 @@ export class AgentDaemon extends EventEmitter {
     const mentionedRoleIds = (task.mentionedAgentRoleIds || []).filter(Boolean);
     if (mentionedRoleIds.length === 0) return;
 
-    const activeRoles = this.agentRoleRepo.findAll(false).filter(role => role.isActive);
-    const mentionedRoles = activeRoles.filter(role => mentionedRoleIds.includes(role.id));
+    const activeRoles = this.agentRoleRepo.findAll(false).filter((role) => role.isActive);
+    const mentionedRoles = activeRoles.filter((role) => mentionedRoleIds.includes(role.id));
     if (mentionedRoles.length === 0) return;
 
     const existingChildren = this.taskRepo.findByParent(taskId);
     const assignedRoleIds = new Set(
       existingChildren
-        .map(child => child.assignedAgentRoleId)
-        .filter((id): id is string => typeof id === 'string' && id.length > 0)
+        .map((child) => child.assignedAgentRoleId)
+        .filter((id): id is string => typeof id === "string" && id.length > 0),
     );
 
-    const rolesToDispatch = mentionedRoles.filter(role => !assignedRoleIds.has(role.id));
+    const rolesToDispatch = mentionedRoles.filter((role) => !assignedRoleIds.has(role.id));
     if (rolesToDispatch.length === 0) return;
 
-      const planSummary = this.buildPlanSummary(plan);
+    const planSummary = this.buildPlanSummary(plan);
 
     for (const role of rolesToDispatch) {
       const workspacePath = task.workspaceId
@@ -695,21 +757,22 @@ export class AgentDaemon extends EventEmitter {
           includeRoleDetails: false,
           includeRoleProfile: true,
           workspacePath,
-        }
+        },
       );
       const childTask = await this.createChildTask({
         title: `@${role.displayName}: ${task.title}`,
         prompt: childPrompt,
         workspaceId: task.workspaceId,
         parentTaskId: task.id,
-        agentType: 'sub',
+        agentType: "sub",
         assignedAgentRoleId: role.id,
-        boardColumn: 'todo' as BoardColumn,
+        boardColumn: "todo" as BoardColumn,
         agentConfig: {
           ...(role.providerType ? { providerType: role.providerType } : {}),
           ...(role.modelKey ? { modelKey: role.modelKey } : {}),
           ...(role.personalityId ? { personalityId: role.personalityId } : {}),
-          ...(Array.isArray(role.toolRestrictions?.deniedTools) && role.toolRestrictions!.deniedTools.length > 0
+          ...(Array.isArray(role.toolRestrictions?.deniedTools) &&
+          role.toolRestrictions!.deniedTools.length > 0
             ? { toolRestrictions: role.toolRestrictions!.deniedTools }
             : {}),
           retainMemory: false,
@@ -720,8 +783,8 @@ export class AgentDaemon extends EventEmitter {
         workspaceId: task.workspaceId,
         taskId: task.id,
         agentRoleId: role.id,
-        actorType: 'system',
-        activityType: 'agent_assigned',
+        actorType: "system",
+        activityType: "agent_assigned",
         title: `Dispatched to ${role.displayName}`,
         description: childTask.title,
       });
@@ -731,7 +794,7 @@ export class AgentDaemon extends EventEmitter {
         workspaceId: task.workspaceId,
         taskId: task.id,
         toAgentRoleId: role.id,
-        mentionType: 'request',
+        mentionType: "request",
         context: `New task: ${task.title}`,
       });
       this.emitMentionEvent(mention);
@@ -740,8 +803,8 @@ export class AgentDaemon extends EventEmitter {
         workspaceId: task.workspaceId,
         taskId: task.id,
         agentRoleId: role.id,
-        actorType: 'user',
-        activityType: 'mention',
+        actorType: "user",
+        activityType: "mention",
         title: `@${role.displayName} mentioned`,
         description: mention.context,
         metadata: { mentionId: mention.id, mentionType: mention.mentionType },
@@ -759,16 +822,20 @@ export class AgentDaemon extends EventEmitter {
       throw new Error(`Task ${taskId} not found`);
     }
     // Don't clobber terminal states.
-    if (existing.status === 'completed' || existing.status === 'failed' || existing.status === 'cancelled') {
+    if (
+      existing.status === "completed" ||
+      existing.status === "failed" ||
+      existing.status === "cancelled"
+    ) {
       return;
     }
 
     // Check if task is queued (not yet started)
     if (this.queueManager.cancelQueuedTask(taskId)) {
-      this.taskRepo.update(taskId, { status: 'cancelled', completedAt: Date.now() });
+      this.taskRepo.update(taskId, { status: "cancelled", completedAt: Date.now() });
       this.clearRetryState(taskId);
-      this.logEvent(taskId, 'task_cancelled', {
-        message: 'Task removed from queue',
+      this.logEvent(taskId, "task_cancelled", {
+        message: "Task removed from queue",
       });
       if (this.teamOrchestrator) {
         void this.teamOrchestrator.onTaskTerminal(taskId).catch(() => {});
@@ -779,12 +846,12 @@ export class AgentDaemon extends EventEmitter {
     // Task is running - cancel it
     const cached = this.activeTasks.get(taskId);
     if (cached) {
-      await cached.executor.cancel('user');
+      await cached.executor.cancel("user");
       this.activeTasks.delete(taskId);
     }
 
     // Persist cancellation for running tasks too (important for remote clients querying task status).
-    this.taskRepo.update(taskId, { status: 'cancelled', completedAt: Date.now() });
+    this.taskRepo.update(taskId, { status: "cancelled", completedAt: Date.now() });
     if (this.teamOrchestrator) {
       void this.teamOrchestrator.onTaskTerminal(taskId).catch(() => {});
     }
@@ -795,8 +862,8 @@ export class AgentDaemon extends EventEmitter {
 
     // Always emit cancelled event so UI updates
     this.clearRetryState(taskId);
-    this.logEvent(taskId, 'task_cancelled', {
-      message: 'Task was stopped by user',
+    this.logEvent(taskId, "task_cancelled", {
+      message: "Task was stopped by user",
     });
   }
 
@@ -804,7 +871,11 @@ export class AgentDaemon extends EventEmitter {
    * Handle transient provider errors by scheduling a retry instead of failing.
    * Returns true if a retry was scheduled, false if retries are exhausted.
    */
-  handleTransientTaskFailure(taskId: string, reason: string, delayMs: number = this.retryDelayMs): boolean {
+  handleTransientTaskFailure(
+    taskId: string,
+    reason: string,
+    delayMs: number = this.retryDelayMs,
+  ): boolean {
     const currentCount = this.retryCounts.get(taskId) ?? 0;
     const nextCount = currentCount + 1;
     if (nextCount > this.maxTaskRetries) {
@@ -821,16 +892,16 @@ export class AgentDaemon extends EventEmitter {
     const retrySeconds = Math.ceil(delayMs / 1000);
     const queuedError = `Transient provider error. Retry ${nextCount}/${this.maxTaskRetries} in ${retrySeconds}s.`;
     this.taskRepo.update(taskId, {
-      status: 'queued',
+      status: "queued",
       error: queuedError,
     });
 
-    this.logEvent(taskId, 'task_queued', {
-      reason: 'transient_retry',
+    this.logEvent(taskId, "task_queued", {
+      reason: "transient_retry",
       message: `⏳ Temporary provider error. Retrying ${nextCount}/${this.maxTaskRetries} in ${retrySeconds}s.`,
     });
 
-    this.logEvent(taskId, 'log', {
+    this.logEvent(taskId, "log", {
       message: `Transient provider error detected. Scheduling retry ${nextCount}/${this.maxTaskRetries} in ${Math.ceil(delayMs / 1000)}s.`,
       reason,
     });
@@ -846,8 +917,12 @@ export class AgentDaemon extends EventEmitter {
         this.retryCounts.delete(taskId);
         return;
       }
-      if (task.status !== 'queued') return;
-      if (this.activeTasks.has(taskId) || this.queueManager.isRunning(taskId) || this.queueManager.isQueued(taskId)) {
+      if (task.status !== "queued") return;
+      if (
+        this.activeTasks.has(taskId) ||
+        this.queueManager.isRunning(taskId) ||
+        this.queueManager.isQueued(taskId)
+      ) {
         return;
       }
       await this.startTask(task);
@@ -875,9 +950,9 @@ export class AgentDaemon extends EventEmitter {
     const cached = this.activeTasks.get(taskId);
     if (cached) {
       cached.lastAccessed = Date.now();
-      cached.status = 'active';
-      this.updateTaskStatus(taskId, 'executing');
-      this.logEvent(taskId, 'task_resumed', { message: 'Task resumed' });
+      cached.status = "active";
+      this.updateTaskStatus(taskId, "executing");
+      this.logEvent(taskId, "task_resumed", { message: "Task resumed" });
       await cached.executor.resume();
       return true;
     }
@@ -913,7 +988,7 @@ export class AgentDaemon extends EventEmitter {
    */
   setSessionAutoApproveAll(enabled: boolean): void {
     this.sessionAutoApproveAll = enabled;
-    console.log(`[AgentDaemon] Session auto-approve ${enabled ? 'ENABLED' : 'DISABLED'}`);
+    console.log(`[AgentDaemon] Session auto-approve ${enabled ? "ENABLED" : "DISABLED"}`);
   }
 
   getSessionAutoApproveAll(): boolean {
@@ -924,7 +999,7 @@ export class AgentDaemon extends EventEmitter {
     taskId: string,
     type: string,
     description: string,
-    details: any
+    details: any,
   ): Promise<boolean> {
     // Session-level auto-approve (set via "Approve all" UI button)
     if (this.sessionAutoApproveAll) {
@@ -933,18 +1008,18 @@ export class AgentDaemon extends EventEmitter {
         type: type as any,
         description,
         details,
-        status: 'approved',
+        status: "approved",
         requestedAt: Date.now(),
       });
-      this.approvalRepo.update(approval.id, 'approved');
-      this.logEvent(taskId, 'approval_requested', {
+      this.approvalRepo.update(approval.id, "approved");
+      this.logEvent(taskId, "approval_requested", {
         approval,
         autoApproved: true,
       });
-      this.logEvent(taskId, 'approval_granted', {
+      this.logEvent(taskId, "approval_granted", {
         approvalId: approval.id,
         autoApproved: true,
-        reason: 'session_auto_approve',
+        reason: "session_auto_approve",
       });
       return true;
     }
@@ -956,15 +1031,15 @@ export class AgentDaemon extends EventEmitter {
         type: type as any,
         description,
         details,
-        status: 'approved',
+        status: "approved",
         requestedAt: Date.now(),
       });
-      this.approvalRepo.update(approval.id, 'approved');
-      this.logEvent(taskId, 'approval_requested', {
+      this.approvalRepo.update(approval.id, "approved");
+      this.logEvent(taskId, "approval_requested", {
         approval,
         autoApproved: true,
       });
-      this.logEvent(taskId, 'approval_granted', {
+      this.logEvent(taskId, "approval_granted", {
         approvalId: approval.id,
         autoApproved: true,
       });
@@ -976,28 +1051,40 @@ export class AgentDaemon extends EventEmitter {
       type: type as any,
       description,
       details,
-      status: 'pending',
+      status: "pending",
       requestedAt: Date.now(),
     });
 
     // Emit event to UI
-    this.logEvent(taskId, 'approval_requested', { approval });
+    this.logEvent(taskId, "approval_requested", { approval });
 
     // Wait for user response
     return new Promise((resolve, reject) => {
       // Timeout after 5 minutes
-      const timeoutHandle = setTimeout(() => {
-        const pending = this.pendingApprovals.get(approval.id);
-        if (pending && !pending.resolved) {
-          pending.resolved = true;
-          this.pendingApprovals.delete(approval.id);
-          this.approvalRepo.update(approval.id, 'denied');
-          this.logEvent(taskId, 'approval_denied', { approvalId: approval.id, reason: 'timeout' });
-          reject(new Error('Approval request timed out'));
-        }
-      }, 5 * 60 * 1000);
+      const timeoutHandle = setTimeout(
+        () => {
+          const pending = this.pendingApprovals.get(approval.id);
+          if (pending && !pending.resolved) {
+            pending.resolved = true;
+            this.pendingApprovals.delete(approval.id);
+            this.approvalRepo.update(approval.id, "denied");
+            this.logEvent(taskId, "approval_denied", {
+              approvalId: approval.id,
+              reason: "timeout",
+            });
+            reject(new Error("Approval request timed out"));
+          }
+        },
+        5 * 60 * 1000,
+      );
 
-      this.pendingApprovals.set(approval.id, { taskId, resolve, reject, resolved: false, timeoutHandle });
+      this.pendingApprovals.set(approval.id, {
+        taskId,
+        resolve,
+        reject,
+        resolved: false,
+        timeoutHandle,
+      });
     });
   }
 
@@ -1008,26 +1095,26 @@ export class AgentDaemon extends EventEmitter {
    */
   async respondToApproval(
     approvalId: string,
-    approved: boolean
-  ): Promise<'handled' | 'duplicate' | 'not_found' | 'in_progress'> {
+    approved: boolean,
+  ): Promise<"handled" | "duplicate" | "not_found" | "in_progress"> {
     // Generate idempotency key for this approval response
     const idempotencyKey = IdempotencyManager.generateKey(
-      'approval:respond',
+      "approval:respond",
       approvalId,
-      approved ? 'approve' : 'deny'
+      approved ? "approve" : "deny",
     );
 
     // Check if this exact response was already processed
     const existing = approvalIdempotency.check(idempotencyKey);
     if (existing.exists) {
       console.log(`[AgentDaemon] Duplicate approval response ignored: ${approvalId}`);
-      return 'duplicate';
+      return "duplicate";
     }
 
     // Start tracking this operation
     if (!approvalIdempotency.start(idempotencyKey)) {
       console.log(`[AgentDaemon] Concurrent approval response in progress: ${approvalId}`);
-      return 'in_progress';
+      return "in_progress";
     }
 
     try {
@@ -1040,24 +1127,24 @@ export class AgentDaemon extends EventEmitter {
         clearTimeout(pending.timeoutHandle);
 
         this.pendingApprovals.delete(approvalId);
-        this.approvalRepo.update(approvalId, approved ? 'approved' : 'denied');
+        this.approvalRepo.update(approvalId, approved ? "approved" : "denied");
 
         // Emit event so UI knows the approval has been handled
-        const eventType = approved ? 'approval_granted' : 'approval_denied';
+        const eventType = approved ? "approval_granted" : "approval_denied";
         this.logEvent(pending.taskId, eventType, { approvalId });
 
         if (approved) {
           pending.resolve(true);
         } else {
-          pending.reject(new Error('User denied approval'));
+          pending.reject(new Error("User denied approval"));
         }
 
-        approvalIdempotency.complete(idempotencyKey, { success: true, status: 'handled' });
-        return 'handled';
+        approvalIdempotency.complete(idempotencyKey, { success: true, status: "handled" });
+        return "handled";
       }
 
-      approvalIdempotency.complete(idempotencyKey, { success: true, status: 'not_found' });
-      return 'not_found';
+      approvalIdempotency.complete(idempotencyKey, { success: true, status: "not_found" });
+      return "not_found";
     } catch (error) {
       approvalIdempotency.fail(idempotencyKey, error);
       throw error;
@@ -1080,7 +1167,7 @@ export class AgentDaemon extends EventEmitter {
     // Capture to memory system (async, don't block)
     this.captureToMemory(taskId, type, payload).catch((error) => {
       // Silently log - memory capture is optional enhancement
-      console.debug('[AgentDaemon] Memory capture failed:', error);
+      console.debug("[AgentDaemon] Memory capture failed:", error);
     });
   }
 
@@ -1090,22 +1177,22 @@ export class AgentDaemon extends EventEmitter {
   private async captureToMemory(taskId: string, type: string, payload: any): Promise<void> {
     // Map event types to memory types
     const memoryTypeMap: Record<string, MemoryType> = {
-      tool_call: 'observation',
-      tool_result: 'observation',
-      tool_error: 'error',
-      step_started: 'observation',
-      step_completed: 'observation',
-      step_failed: 'error',
-      assistant_message: 'observation',
-      user_message: 'observation',
-      user_feedback: 'decision',
-      plan_created: 'decision',
-      plan_revised: 'decision',
-      error: 'error',
-      verification_passed: 'insight',
-      verification_failed: 'error',
-      file_created: 'observation',
-      file_modified: 'observation',
+      tool_call: "observation",
+      tool_result: "observation",
+      tool_error: "error",
+      step_started: "observation",
+      step_completed: "observation",
+      step_failed: "error",
+      assistant_message: "observation",
+      user_message: "observation",
+      user_feedback: "decision",
+      plan_created: "decision",
+      plan_revised: "decision",
+      error: "error",
+      verification_passed: "insight",
+      verification_failed: "error",
+      file_created: "observation",
+      file_modified: "observation",
     };
 
     const memoryType = memoryTypeMap[type];
@@ -1118,25 +1205,26 @@ export class AgentDaemon extends EventEmitter {
     // - Sub-agents (child tasks) default to retainMemory=false to avoid leaking sensitive
     //   private context into disposable agents.
     // - Shared gateway contexts (group/public) must never contribute injectable memories.
-    const isSubAgentTask = (task.agentType ?? 'main') === 'sub' || !!task.parentTaskId;
+    const isSubAgentTask = (task.agentType ?? "main") === "sub" || !!task.parentTaskId;
     const retainMemory = task.agentConfig?.retainMemory ?? !isSubAgentTask;
     if (!retainMemory) return;
     const gatewayContext = task.agentConfig?.gatewayContext;
-    const isSharedGatewayContext = gatewayContext === 'group' || gatewayContext === 'public';
-    const allowProfileIngest = !isSharedGatewayContext || task.agentConfig?.allowSharedContextMemory === true;
+    const isSharedGatewayContext = gatewayContext === "group" || gatewayContext === "public";
+    const allowProfileIngest =
+      !isSharedGatewayContext || task.agentConfig?.allowSharedContextMemory === true;
     if (allowProfileIngest) {
-      if (type === 'user_message') {
+      if (type === "user_message") {
         const text =
-          (typeof payload?.message === 'string' ? payload.message : '') ||
-          (typeof payload?.content === 'string' ? payload.content : '');
+          (typeof payload?.message === "string" ? payload.message : "") ||
+          (typeof payload?.content === "string" ? payload.content : "");
         if (text) {
           UserProfileService.ingestUserMessage(text, taskId);
         }
-      } else if (type === 'user_feedback') {
+      } else if (type === "user_feedback") {
         UserProfileService.ingestUserFeedback(
-          typeof payload?.decision === 'string' ? payload.decision : undefined,
-          typeof payload?.reason === 'string' ? payload.reason : undefined,
-          taskId
+          typeof payload?.decision === "string" ? payload.decision : undefined,
+          typeof payload?.reason === "string" ? payload.reason : undefined,
+          taskId,
         );
       }
     }
@@ -1145,45 +1233,45 @@ export class AgentDaemon extends EventEmitter {
     }
 
     // Build content string based on event type
-    let content = '';
-    if (type === 'tool_call') {
+    let content = "";
+    if (type === "tool_call") {
       content = `Tool called: ${payload.tool || payload.name}\nInput: ${JSON.stringify(payload.input, null, 2)}`;
-    } else if (type === 'tool_result') {
+    } else if (type === "tool_result") {
       const result =
-        typeof payload.result === 'string' ? payload.result : JSON.stringify(payload.result);
+        typeof payload.result === "string" ? payload.result : JSON.stringify(payload.result);
       content = `Tool result for ${payload.tool || payload.name}:\n${result}`;
-    } else if (type === 'tool_error') {
+    } else if (type === "tool_error") {
       content = `Tool error for ${payload.tool || payload.name}: ${payload.error}`;
-    } else if (type === 'assistant_message') {
+    } else if (type === "assistant_message") {
       content = payload.content || payload.message || JSON.stringify(payload);
-    } else if (type === 'user_message') {
+    } else if (type === "user_message") {
       content = payload.message || payload.content || JSON.stringify(payload);
-    } else if (type === 'user_feedback') {
-      const decision = payload?.decision ? `Decision: ${payload.decision}` : 'Feedback received';
-      const reason = payload?.reason ? `\nReason: ${payload.reason}` : '';
+    } else if (type === "user_feedback") {
+      const decision = payload?.decision ? `Decision: ${payload.decision}` : "Feedback received";
+      const reason = payload?.reason ? `\nReason: ${payload.reason}` : "";
       content = `${decision}${reason}`;
-    } else if (type === 'plan_created' || type === 'plan_revised') {
-      content = `Plan ${type === 'plan_revised' ? 'revised' : 'created'}:\n${JSON.stringify(payload.plan || payload, null, 2)}`;
-    } else if (type === 'step_completed') {
+    } else if (type === "plan_created" || type === "plan_revised") {
+      content = `Plan ${type === "plan_revised" ? "revised" : "created"}:\n${JSON.stringify(payload.plan || payload, null, 2)}`;
+    } else if (type === "step_completed") {
       content = `Step completed: ${payload.step?.description || JSON.stringify(payload)}`;
-    } else if (type === 'step_failed') {
-      content = `Step failed: ${payload.step?.description || ''}\nError: ${payload.error || 'Unknown error'}`;
-    } else if (type === 'file_created' || type === 'file_modified') {
-      content = `File ${type === 'file_created' ? 'created' : 'modified'}: ${payload.path}`;
-    } else if (type === 'verification_passed') {
-      content = `Verification passed: ${payload.message || 'Task completed successfully'}`;
-    } else if (type === 'verification_failed') {
-      content = `Verification failed: ${payload.message || payload.error || 'Unknown failure'}`;
+    } else if (type === "step_failed") {
+      content = `Step failed: ${payload.step?.description || ""}\nError: ${payload.error || "Unknown error"}`;
+    } else if (type === "file_created" || type === "file_modified") {
+      content = `File ${type === "file_created" ? "created" : "modified"}: ${payload.path}`;
+    } else if (type === "verification_passed") {
+      content = `Verification passed: ${payload.message || "Task completed successfully"}`;
+    } else if (type === "verification_failed") {
+      content = `Verification failed: ${payload.message || payload.error || "Unknown failure"}`;
     } else {
       content = JSON.stringify(payload);
     }
 
     // Truncate very long content
     if (content.length > 5000) {
-      content = content.slice(0, 5000) + '\n[... truncated]';
+      content = content.slice(0, 5000) + "\n[... truncated]";
     }
 
-    const forcePrivate = gatewayContext === 'group' || gatewayContext === 'public';
+    const forcePrivate = gatewayContext === "group" || gatewayContext === "public";
     await MemoryService.capture(task.workspaceId, taskId, memoryType, content, forcePrivate);
   }
 
@@ -1200,7 +1288,7 @@ export class AgentDaemon extends EventEmitter {
       const now = Date.now();
       const lastTime = this.activityThrottle.get(throttleKey);
 
-      if (lastTime && (now - lastTime) < ACTIVITY_THROTTLE_WINDOW_MS) {
+      if (lastTime && now - lastTime < ACTIVITY_THROTTLE_WINDOW_MS) {
         // Skip this activity - too soon after the last one of the same type
         return;
       }
@@ -1225,162 +1313,167 @@ export class AgentDaemon extends EventEmitter {
     this.emitActivityEvent(created);
   }
 
-  private buildActivityFromEvent(task: Task, type: string, payload: any): CreateActivityRequest | undefined {
-    const actorType: ActivityActorType = task.assignedAgentRoleId ? 'agent' : 'system';
+  private buildActivityFromEvent(
+    task: Task,
+    type: string,
+    payload: any,
+  ): CreateActivityRequest | undefined {
+    const actorType: ActivityActorType = task.assignedAgentRoleId ? "agent" : "system";
     const agentRoleId = task.assignedAgentRoleId;
     const activityType = type as ActivityType;
 
     switch (type) {
-      case 'task_created':
+      case "task_created":
         return {
           workspaceId: task.workspaceId,
           taskId: task.id,
           agentRoleId,
           actorType,
           activityType,
-          title: 'Task created',
+          title: "Task created",
           description: task.title,
         };
-      case 'task_completed':
+      case "task_completed":
         return {
           workspaceId: task.workspaceId,
           taskId: task.id,
           agentRoleId,
           actorType,
           activityType,
-          title: 'Task completed',
+          title: "Task completed",
           description: task.title,
         };
-      case 'executing':
+      case "executing":
         return {
           workspaceId: task.workspaceId,
           taskId: task.id,
           agentRoleId,
           actorType,
-          activityType: 'task_started',
-          title: 'Task started',
+          activityType: "task_started",
+          title: "Task started",
           description: task.title,
         };
-      case 'task_cancelled':
+      case "task_cancelled":
         return {
           workspaceId: task.workspaceId,
           taskId: task.id,
           agentRoleId,
           actorType,
-          activityType: 'info',
-          title: 'Task cancelled',
+          activityType: "info",
+          title: "Task cancelled",
           description: task.title,
         };
-      case 'task_paused':
-        return {
-          workspaceId: task.workspaceId,
-          taskId: task.id,
-          agentRoleId,
-          actorType,
-          activityType,
-          title: 'Task paused',
-          description: task.title,
-        };
-      case 'task_resumed':
+      case "task_paused":
         return {
           workspaceId: task.workspaceId,
           taskId: task.id,
           agentRoleId,
           actorType,
           activityType,
-          title: 'Task resumed',
+          title: "Task paused",
           description: task.title,
         };
-      case 'approval_requested':
+      case "task_resumed":
         return {
           workspaceId: task.workspaceId,
           taskId: task.id,
           agentRoleId,
           actorType,
-          activityType: 'info',
-          title: 'Approval requested',
+          activityType,
+          title: "Task resumed",
+          description: task.title,
+        };
+      case "approval_requested":
+        return {
+          workspaceId: task.workspaceId,
+          taskId: task.id,
+          agentRoleId,
+          actorType,
+          activityType: "info",
+          title: "Approval requested",
           description: payload?.approval?.description || task.title,
         };
-      case 'approval_granted':
+      case "approval_granted":
         return {
           workspaceId: task.workspaceId,
           taskId: task.id,
           agentRoleId,
           actorType,
-          activityType: 'info',
-          title: 'Approval granted',
+          activityType: "info",
+          title: "Approval granted",
           description: task.title,
         };
-      case 'approval_denied':
+      case "approval_denied":
         return {
           workspaceId: task.workspaceId,
           taskId: task.id,
           agentRoleId,
           actorType,
-          activityType: 'info',
-          title: 'Approval denied',
+          activityType: "info",
+          title: "Approval denied",
           description: payload?.reason || task.title,
         };
-      case 'error':
-      case 'step_failed':
-      case 'verification_failed':
+      case "error":
+      case "step_failed":
+      case "verification_failed":
         return {
           workspaceId: task.workspaceId,
           taskId: task.id,
           agentRoleId,
           actorType,
-          activityType: 'error',
-          title: type === 'error' ? 'Task error' : 'Execution issue',
-          description: payload?.error || payload?.message || payload?.step?.description || task.title,
+          activityType: "error",
+          title: type === "error" ? "Task error" : "Execution issue",
+          description:
+            payload?.error || payload?.message || payload?.step?.description || task.title,
         };
-      case 'verification_passed':
+      case "verification_passed":
         return {
           workspaceId: task.workspaceId,
           taskId: task.id,
           agentRoleId,
           actorType,
-          activityType: 'info',
-          title: 'Verification passed',
+          activityType: "info",
+          title: "Verification passed",
           description: payload?.message || task.title,
         };
-      case 'file_created':
+      case "file_created":
         return {
           workspaceId: task.workspaceId,
           taskId: task.id,
           agentRoleId,
           actorType,
           activityType,
-          title: 'File created',
+          title: "File created",
           description: payload?.path || task.title,
         };
-      case 'file_modified':
+      case "file_modified":
         return {
           workspaceId: task.workspaceId,
           taskId: task.id,
           agentRoleId,
           actorType,
           activityType,
-          title: 'File modified',
+          title: "File modified",
           description: payload?.path || task.title,
         };
-      case 'file_deleted':
+      case "file_deleted":
         return {
           workspaceId: task.workspaceId,
           taskId: task.id,
           agentRoleId,
           actorType,
           activityType,
-          title: 'File deleted',
+          title: "File deleted",
           description: payload?.path || task.title,
         };
-      case 'tool_call':
+      case "tool_call":
         return {
           workspaceId: task.workspaceId,
           taskId: task.id,
           agentRoleId,
           actorType,
-          activityType: 'tool_used',
-          title: 'Tool used',
+          activityType: "tool_used",
+          title: "Tool used",
           description: payload?.tool || payload?.name || task.title,
         };
       default:
@@ -1401,7 +1494,7 @@ export class AgentDaemon extends EventEmitter {
 
       const stats = fs.statSync(filePath);
       const fileBuffer = fs.readFileSync(filePath);
-      const sha256 = crypto.createHash('sha256').update(fileBuffer).digest('hex');
+      const sha256 = crypto.createHash("sha256").update(fileBuffer).digest("hex");
 
       this.artifactRepo.create({
         taskId,
@@ -1431,7 +1524,7 @@ export class AgentDaemon extends EventEmitter {
 
     // Emit to renderer process via IPC
     const windows = getAllElectronWindows();
-    windows.forEach(window => {
+    windows.forEach((window) => {
       // Check if window is still valid before sending
       try {
         if (!window.isDestroyed() && window.webContents && !window.webContents.isDestroyed()) {
@@ -1452,10 +1545,10 @@ export class AgentDaemon extends EventEmitter {
   /**
    * Update task status
    */
-  updateTaskStatus(taskId: string, status: Task['status']): void {
+  updateTaskStatus(taskId: string, status: Task["status"]): void {
     const existing = this.taskRepo.findById(taskId);
     this.taskRepo.update(taskId, { status });
-    if (status === 'completed' || status === 'failed' || status === 'cancelled') {
+    if (status === "completed" || status === "failed" || status === "cancelled") {
       this.clearRetryState(taskId);
       if (this.teamOrchestrator && existing?.status !== status) {
         void this.teamOrchestrator.onTaskTerminal(taskId).catch(() => {});
@@ -1479,12 +1572,18 @@ export class AgentDaemon extends EventEmitter {
 
   getTaskEvents(taskId: string, options?: { limit?: number; types?: string[] }): TaskEvent[] {
     const all = this.eventRepo.findByTaskId(taskId);
-    const normalizedTypes = (options?.types || []).map((t) => (typeof t === 'string' ? t.trim() : '')).filter(Boolean);
-    const filtered = normalizedTypes.length > 0 ? all.filter((event) => normalizedTypes.includes(event.type)) : all;
-    const limit = typeof options?.limit === 'number' && Number.isFinite(options.limit)
-      ? Math.min(Math.max(options.limit, 1), 200)
-      : undefined;
-    if (typeof limit !== 'number') {
+    const normalizedTypes = (options?.types || [])
+      .map((t) => (typeof t === "string" ? t.trim() : ""))
+      .filter(Boolean);
+    const filtered =
+      normalizedTypes.length > 0
+        ? all.filter((event) => normalizedTypes.includes(event.type))
+        : all;
+    const limit =
+      typeof options?.limit === "number" && Number.isFinite(options.limit)
+        ? Math.min(Math.max(options.limit, 1), 200)
+        : undefined;
+    if (typeof limit !== "number") {
       return filtered;
     }
     // Return the most recent events, preserving chronological order.
@@ -1498,38 +1597,46 @@ export class AgentDaemon extends EventEmitter {
    * Note: This is intentionally read-only and returns truncated text to avoid huge payloads.
    */
   queryTaskHistory(params: {
-    period: 'today' | 'yesterday' | 'last_7_days' | 'last_30_days' | 'custom';
+    period: "today" | "yesterday" | "last_7_days" | "last_30_days" | "custom";
     from?: string | number;
     to?: string | number;
     limit?: number;
     workspaceId?: string;
     query?: string;
     includeMessages?: boolean;
-  }): { success: true; period: string; range: { startMs: number; endMs: number; startIso: string; endIso: string }; tasks: any[] } | { success: false; error: string } {
+  }):
+    | {
+        success: true;
+        period: string;
+        range: { startMs: number; endMs: number; startIso: string; endIso: string };
+        tasks: any[];
+      }
+    | { success: false; error: string } {
     try {
       const period = params?.period;
       if (!period) {
-        return { success: false, error: 'Missing required field: period' };
+        return { success: false, error: "Missing required field: period" };
       }
 
       const clampLimit = (value: unknown): number => {
-        const n = typeof value === 'number' && Number.isFinite(value) ? Math.floor(value) : 20;
+        const n = typeof value === "number" && Number.isFinite(value) ? Math.floor(value) : 20;
         return Math.min(Math.max(n, 1), 50);
       };
 
       const truncate = (value: unknown, maxChars: number): string => {
-        const s = typeof value === 'string' ? value : '';
-        if (!s) return '';
+        const s = typeof value === "string" ? value : "";
+        if (!s) return "";
         if (s.length <= maxChars) return s;
-        return s.slice(0, maxChars) + '…';
+        return s.slice(0, maxChars) + "…";
       };
 
       const now = new Date();
-      const startOfDayMs = (d: Date): number => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+      const startOfDayMs = (d: Date): number =>
+        new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 
       const parseTime = (v: unknown): number | null => {
-        if (typeof v === 'number' && Number.isFinite(v)) return v;
-        if (typeof v !== 'string') return null;
+        if (typeof v === "number" && Number.isFinite(v)) return v;
+        if (typeof v !== "string") return null;
         const raw = v.trim();
         if (!raw) return null;
         const dt = new Date(raw);
@@ -1544,27 +1651,27 @@ export class AgentDaemon extends EventEmitter {
       let endMs: number;
 
       switch (period) {
-        case 'today': {
+        case "today": {
           startMs = todayStart;
           endMs = todayStart + 24 * 60 * 60 * 1000;
           break;
         }
-        case 'yesterday': {
+        case "yesterday": {
           endMs = todayStart;
           startMs = endMs - 24 * 60 * 60 * 1000;
           break;
         }
-        case 'last_7_days': {
+        case "last_7_days": {
           startMs = nowMs - 7 * 24 * 60 * 60 * 1000;
           endMs = nowMs;
           break;
         }
-        case 'last_30_days': {
+        case "last_30_days": {
           startMs = nowMs - 30 * 24 * 60 * 60 * 1000;
           endMs = nowMs;
           break;
         }
-        case 'custom': {
+        case "custom": {
           const fromMs = parseTime(params?.from);
           const toMs = parseTime(params?.to);
           if (fromMs != null && toMs != null) {
@@ -1589,12 +1696,13 @@ export class AgentDaemon extends EventEmitter {
 
       // Guard against inverted ranges.
       if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) {
-        return { success: false, error: 'Invalid time range' };
+        return { success: false, error: "Invalid time range" };
       }
 
       const limit = clampLimit(params?.limit);
-      const workspaceId = typeof params?.workspaceId === 'string' ? params.workspaceId.trim() : undefined;
-      const query = typeof params?.query === 'string' ? params.query.trim() : undefined;
+      const workspaceId =
+        typeof params?.workspaceId === "string" ? params.workspaceId.trim() : undefined;
+      const query = typeof params?.query === "string" ? params.query.trim() : undefined;
       const includeMessages = params?.includeMessages !== false;
 
       const tasks = this.taskRepo.findByCreatedAtRange({
@@ -1606,18 +1714,19 @@ export class AgentDaemon extends EventEmitter {
       });
 
       const taskIds = tasks.map((t) => t.id);
-      const messageEvents = includeMessages && taskIds.length > 0
-        ? this.eventRepo.findByTaskIds(taskIds, ['assistant_message', 'user_message'])
-        : [];
+      const messageEvents =
+        includeMessages && taskIds.length > 0
+          ? this.eventRepo.findByTaskIds(taskIds, ["assistant_message", "user_message"])
+          : [];
 
       const lastAssistant = new Map<string, string>();
       const lastUser = new Map<string, string>();
       for (const evt of messageEvents) {
         const msg = (evt.payload as any)?.message ?? (evt.payload as any)?.content;
-        const text = typeof msg === 'string' ? msg : '';
+        const text = typeof msg === "string" ? msg : "";
         if (!text) continue;
-        if (evt.type === 'assistant_message') lastAssistant.set(evt.taskId, truncate(text, 900));
-        if (evt.type === 'user_message') lastUser.set(evt.taskId, truncate(text, 900));
+        if (evt.type === "assistant_message") lastAssistant.set(evt.taskId, truncate(text, 900));
+        if (evt.type === "user_message") lastUser.set(evt.taskId, truncate(text, 900));
       }
 
       const items = tasks.map((t) => ({
@@ -1653,44 +1762,47 @@ export class AgentDaemon extends EventEmitter {
    * This is privacy-sensitive and may be blocked in shared gateway contexts.
    */
   queryTaskEvents(params: {
-    period: 'today' | 'yesterday' | 'last_7_days' | 'last_30_days' | 'custom';
+    period: "today" | "yesterday" | "last_7_days" | "last_30_days" | "custom";
     from?: string | number;
     to?: string | number;
     limit?: number;
     workspaceId?: string;
     types?: string[];
     includePayload?: boolean;
-  }): {
-    success: true;
-    period: string;
-    range: { startMs: number; endMs: number; startIso: string; endIso: string };
-    stats: any;
-    events: any[];
-  } | { success: false; error: string } {
+  }):
+    | {
+        success: true;
+        period: string;
+        range: { startMs: number; endMs: number; startIso: string; endIso: string };
+        stats: any;
+        events: any[];
+      }
+    | { success: false; error: string } {
     try {
       const period = params?.period;
       if (!period) {
-        return { success: false, error: 'Missing required field: period' };
+        return { success: false, error: "Missing required field: period" };
       }
 
       const clampLimit = (value: unknown): number => {
-        const n = typeof value === 'number' && Number.isFinite(value) ? Math.floor(value) : 200;
+        const n = typeof value === "number" && Number.isFinite(value) ? Math.floor(value) : 200;
         return Math.min(Math.max(n, 1), 500);
       };
 
       const truncate = (value: unknown, maxChars: number): string => {
-        const s = typeof value === 'string' ? value : '';
-        if (!s) return '';
+        const s = typeof value === "string" ? value : "";
+        if (!s) return "";
         if (s.length <= maxChars) return s;
-        return s.slice(0, maxChars) + '…';
+        return s.slice(0, maxChars) + "…";
       };
 
       const now = new Date();
-      const startOfDayMs = (d: Date): number => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+      const startOfDayMs = (d: Date): number =>
+        new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 
       const parseTime = (v: unknown): number | null => {
-        if (typeof v === 'number' && Number.isFinite(v)) return v;
-        if (typeof v !== 'string') return null;
+        if (typeof v === "number" && Number.isFinite(v)) return v;
+        if (typeof v !== "string") return null;
         const raw = v.trim();
         if (!raw) return null;
         const dt = new Date(raw);
@@ -1705,27 +1817,27 @@ export class AgentDaemon extends EventEmitter {
       let endMs: number;
 
       switch (period) {
-        case 'today': {
+        case "today": {
           startMs = todayStart;
           endMs = todayStart + 24 * 60 * 60 * 1000;
           break;
         }
-        case 'yesterday': {
+        case "yesterday": {
           endMs = todayStart;
           startMs = endMs - 24 * 60 * 60 * 1000;
           break;
         }
-        case 'last_7_days': {
+        case "last_7_days": {
           startMs = nowMs - 7 * 24 * 60 * 60 * 1000;
           endMs = nowMs;
           break;
         }
-        case 'last_30_days': {
+        case "last_30_days": {
           startMs = nowMs - 30 * 24 * 60 * 60 * 1000;
           endMs = nowMs;
           break;
         }
-        case 'custom': {
+        case "custom": {
           const fromMs = parseTime(params?.from);
           const toMs = parseTime(params?.to);
           if (fromMs != null && toMs != null) {
@@ -1752,14 +1864,17 @@ export class AgentDaemon extends EventEmitter {
 
       // Guard against inverted ranges.
       if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) {
-        return { success: false, error: 'Invalid time range' };
+        return { success: false, error: "Invalid time range" };
       }
 
       const limit = clampLimit(params?.limit);
-      const workspaceId = typeof params?.workspaceId === 'string' ? params.workspaceId.trim() : '';
+      const workspaceId = typeof params?.workspaceId === "string" ? params.workspaceId.trim() : "";
       const workspaceFilter = workspaceId.length > 0 ? workspaceId : undefined;
       const normalizedTypes = Array.isArray(params?.types)
-        ? params.types.map((t) => (typeof t === 'string' ? t.trim() : '')).filter(Boolean).slice(0, 50)
+        ? params.types
+            .map((t) => (typeof t === "string" ? t.trim() : ""))
+            .filter(Boolean)
+            .slice(0, 50)
         : [];
       const includePayload = params?.includePayload !== false;
 
@@ -1781,16 +1896,16 @@ export class AgentDaemon extends EventEmitter {
 
       const args: any[] = [startMs, endMs];
       if (workspaceFilter) {
-        sql += ' AND t.workspace_id = ?';
+        sql += " AND t.workspace_id = ?";
         args.push(workspaceFilter);
       }
       if (normalizedTypes.length > 0) {
-        const placeholders = normalizedTypes.map(() => '?').join(', ');
+        const placeholders = normalizedTypes.map(() => "?").join(", ");
         sql += ` AND e.type IN (${placeholders})`;
         args.push(...normalizedTypes);
       }
 
-      sql += ' ORDER BY e.timestamp ASC LIMIT ?';
+      sql += " ORDER BY e.timestamp ASC LIMIT ?";
       args.push(limit);
 
       const rows = db.prepare(sql).all(...args) as Array<{
@@ -1816,24 +1931,24 @@ export class AgentDaemon extends EventEmitter {
       let filesDeleted = 0;
 
       const parseJson = (raw: unknown): any => {
-        if (typeof raw !== 'string' || !raw) return {};
+        if (typeof raw !== "string" || !raw) return {};
         try {
           const obj = JSON.parse(raw);
-          return obj && typeof obj === 'object' ? obj : {};
+          return obj && typeof obj === "object" ? obj : {};
         } catch {
           return {};
         }
       };
 
       const compactPayloadPreview = (payload: any): string => {
-        if (!payload || typeof payload !== 'object') return '';
+        if (!payload || typeof payload !== "object") return "";
         const keys = Object.keys(payload).slice(0, 12);
         const preview: Record<string, any> = {};
         for (const k of keys) {
           const v = (payload as any)[k];
-          if (typeof v === 'string') preview[k] = truncate(v, 260);
-          else if (typeof v === 'number' || typeof v === 'boolean') preview[k] = v;
-          else if (v && typeof v === 'object') preview[k] = '[object]';
+          if (typeof v === "string") preview[k] = truncate(v, 260);
+          else if (typeof v === "number" || typeof v === "boolean") preview[k] = v;
+          else if (v && typeof v === "object") preview[k] = "[object]";
           else preview[k] = v;
         }
         const rendered = JSON.stringify(preview);
@@ -1842,48 +1957,57 @@ export class AgentDaemon extends EventEmitter {
 
       const summarizeEvent = (type: string, payload: any): string => {
         switch (type) {
-          case 'tool_call': {
-            const tool = (payload?.tool || payload?.name || '').toString();
-            return tool ? `Tool call: ${tool}` : 'Tool call';
+          case "tool_call": {
+            const tool = (payload?.tool || payload?.name || "").toString();
+            return tool ? `Tool call: ${tool}` : "Tool call";
           }
-          case 'tool_result': {
-            const tool = (payload?.tool || payload?.name || '').toString();
-            return tool ? `Tool result: ${tool}` : 'Tool result';
+          case "tool_result": {
+            const tool = (payload?.tool || payload?.name || "").toString();
+            return tool ? `Tool result: ${tool}` : "Tool result";
           }
-          case 'tool_error': {
-            const tool = (payload?.tool || payload?.name || '').toString();
-            const err = typeof payload?.error === 'string' ? payload.error : '';
-            return truncate(tool ? `Tool error: ${tool}${err ? ` - ${err}` : ''}` : `Tool error${err ? ` - ${err}` : ''}`, 520);
+          case "tool_error": {
+            const tool = (payload?.tool || payload?.name || "").toString();
+            const err = typeof payload?.error === "string" ? payload.error : "";
+            return truncate(
+              tool
+                ? `Tool error: ${tool}${err ? ` - ${err}` : ""}`
+                : `Tool error${err ? ` - ${err}` : ""}`,
+              520,
+            );
           }
-          case 'assistant_message': {
+          case "assistant_message": {
             const text =
-              (typeof payload?.message === 'string' ? payload.message : '')
-              || (typeof payload?.content === 'string' ? payload.content : '');
-            return text ? `Assistant: ${truncate(text, 260)}` : 'Assistant message';
+              (typeof payload?.message === "string" ? payload.message : "") ||
+              (typeof payload?.content === "string" ? payload.content : "");
+            return text ? `Assistant: ${truncate(text, 260)}` : "Assistant message";
           }
-          case 'user_message': {
+          case "user_message": {
             const text =
-              (typeof payload?.message === 'string' ? payload.message : '')
-              || (typeof payload?.content === 'string' ? payload.content : '');
-            return text ? `User: ${truncate(text, 260)}` : 'User message';
+              (typeof payload?.message === "string" ? payload.message : "") ||
+              (typeof payload?.content === "string" ? payload.content : "");
+            return text ? `User: ${truncate(text, 260)}` : "User message";
           }
-          case 'user_feedback': {
-            const decision = typeof payload?.decision === 'string' ? payload.decision : '';
-            const reason = typeof payload?.reason === 'string' ? payload.reason : '';
-            return truncate(`Feedback: ${decision || 'unknown'}${reason ? ` - ${reason}` : ''}`, 520);
+          case "user_feedback": {
+            const decision = typeof payload?.decision === "string" ? payload.decision : "";
+            const reason = typeof payload?.reason === "string" ? payload.reason : "";
+            return truncate(
+              `Feedback: ${decision || "unknown"}${reason ? ` - ${reason}` : ""}`,
+              520,
+            );
           }
-          case 'file_created':
-          case 'file_modified':
-          case 'file_deleted': {
-            const p = typeof payload?.path === 'string' ? payload.path : '';
-            return p ? `${type.replace('_', ' ')}: ${truncate(p, 320)}` : type.replace('_', ' ');
+          case "file_created":
+          case "file_modified":
+          case "file_deleted": {
+            const p = typeof payload?.path === "string" ? payload.path : "";
+            return p ? `${type.replace("_", " ")}: ${truncate(p, 320)}` : type.replace("_", " ");
           }
-          case 'step_started':
-          case 'step_completed':
-          case 'step_failed': {
-            const desc = typeof payload?.step?.description === 'string' ? payload.step.description : '';
-            const err = typeof payload?.error === 'string' ? payload.error : '';
-            const base = desc ? `${type.replace('_', ' ')}: ${desc}` : type.replace('_', ' ');
+          case "step_started":
+          case "step_completed":
+          case "step_failed": {
+            const desc =
+              typeof payload?.step?.description === "string" ? payload.step.description : "";
+            const err = typeof payload?.error === "string" ? payload.error : "";
+            const base = desc ? `${type.replace("_", " ")}: ${desc}` : type.replace("_", " ");
             return truncate(err ? `${base} - ${err}` : base, 520);
           }
           default: {
@@ -1898,24 +2022,25 @@ export class AgentDaemon extends EventEmitter {
 
         const payloadObj = parseJson(row.payload);
 
-        if (row.type === 'assistant_message') assistantMessages += 1;
-        if (row.type === 'user_message') userMessages += 1;
-        if (row.type === 'tool_call') {
+        if (row.type === "assistant_message") assistantMessages += 1;
+        if (row.type === "user_message") userMessages += 1;
+        if (row.type === "tool_call") {
           toolCalls += 1;
-          const tool = (payloadObj?.tool || payloadObj?.name || '').toString().trim();
+          const tool = (payloadObj?.tool || payloadObj?.name || "").toString().trim();
           if (tool) {
             toolCallsByName[tool] = (toolCallsByName[tool] || 0) + 1;
           }
         }
-        if (row.type === 'tool_error') toolErrors += 1;
+        if (row.type === "tool_error") toolErrors += 1;
 
-        if (row.type === 'file_created') filesCreated += 1;
-        if (row.type === 'file_modified') filesModified += 1;
-        if (row.type === 'file_deleted') filesDeleted += 1;
+        if (row.type === "file_created") filesCreated += 1;
+        if (row.type === "file_modified") filesModified += 1;
+        if (row.type === "file_deleted") filesDeleted += 1;
 
-        if (row.type === 'user_feedback') {
-          const decision = typeof payloadObj?.decision === 'string' ? payloadObj.decision.trim() : 'unknown';
-          const key = decision || 'unknown';
+        if (row.type === "user_feedback") {
+          const decision =
+            typeof payloadObj?.decision === "string" ? payloadObj.decision.trim() : "unknown";
+          const key = decision || "unknown";
           feedbackByDecision[key] = (feedbackByDecision[key] || 0) + 1;
         }
 
@@ -1936,10 +2061,13 @@ export class AgentDaemon extends EventEmitter {
       const toolsUsed = Object.entries(toolCallsByName)
         .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
         .slice(0, 30)
-        .reduce((acc, [k, v]) => {
-          acc[k] = v;
-          return acc;
-        }, {} as Record<string, number>);
+        .reduce(
+          (acc, [k, v]) => {
+            acc[k] = v;
+            return acc;
+          },
+          {} as Record<string, number>,
+        );
 
       const stats = {
         totalEvents: rows.length,
@@ -2005,7 +2133,10 @@ export class AgentDaemon extends EventEmitter {
   /**
    * Update workspace permissions and return the refreshed workspace.
    */
-  updateWorkspacePermissions(workspaceId: string, patch: Partial<WorkspacePermissions>): Workspace | undefined {
+  updateWorkspacePermissions(
+    workspaceId: string,
+    patch: Partial<WorkspacePermissions>,
+  ): Workspace | undefined {
     const workspace = this.workspaceRepo.findById(workspaceId);
     if (!workspace) return undefined;
     const updatedPermissions: WorkspacePermissions = {
@@ -2021,11 +2152,12 @@ export class AgentDaemon extends EventEmitter {
    */
   getMostRecentNonTempWorkspace(): Workspace | undefined {
     const workspaces = this.workspaceRepo.findAll();
-    return workspaces.find((workspace) =>
-      !isTempWorkspaceId(workspace.id) &&
-      !workspace.isTemp &&
-      typeof workspace.path === 'string' &&
-      workspace.path.trim().length > 0
+    return workspaces.find(
+      (workspace) =>
+        !isTempWorkspaceId(workspace.id) &&
+        !workspace.isTemp &&
+        typeof workspace.path === "string" &&
+        workspace.path.trim().length > 0,
     );
   }
 
@@ -2046,10 +2178,17 @@ export class AgentDaemon extends EventEmitter {
   /**
    * Update task fields (for retry/verification attempt tracking, etc.)
    */
-  updateTask(taskId: string, updates: Partial<Pick<Task, 'currentAttempt' | 'status' | 'error' | 'completedAt'>>): void {
+  updateTask(
+    taskId: string,
+    updates: Partial<Pick<Task, "currentAttempt" | "status" | "error" | "completedAt">>,
+  ): void {
     const existing = this.taskRepo.findById(taskId);
     this.taskRepo.update(taskId, updates);
-    if (updates.status === 'completed' || updates.status === 'failed' || updates.status === 'cancelled') {
+    if (
+      updates.status === "completed" ||
+      updates.status === "failed" ||
+      updates.status === "cancelled"
+    ) {
       this.clearRetryState(taskId);
       if (this.teamOrchestrator && existing?.status !== updates.status) {
         void this.teamOrchestrator.onTaskTerminal(taskId).catch(() => {});
@@ -2073,12 +2212,12 @@ export class AgentDaemon extends EventEmitter {
   completeTask(taskId: string, resultSummary?: string): void {
     const existingTask = this.taskRepo.findById(taskId);
     const updates: Partial<Task> = {
-      status: 'completed',
+      status: "completed",
       completedAt: Date.now(),
       // Clear any previous error so completed tasks don't display stale failure state.
       error: null,
     };
-    if (typeof resultSummary === 'string' && resultSummary.trim().length > 0) {
+    if (typeof resultSummary === "string" && resultSummary.trim().length > 0) {
       updates.resultSummary = resultSummary.trim();
     }
     this.taskRepo.update(taskId, updates);
@@ -2086,31 +2225,33 @@ export class AgentDaemon extends EventEmitter {
     // Mark executor as completed for TTL-based cleanup
     const cached = this.activeTasks.get(taskId);
     if (cached) {
-      cached.status = 'completed';
+      cached.status = "completed";
       cached.lastAccessed = Date.now();
     }
-    this.logEvent(taskId, 'task_completed', {
-      message: 'Task completed successfully',
+    this.logEvent(taskId, "task_completed", {
+      message: "Task completed successfully",
       ...(updates.resultSummary ? { resultSummary: updates.resultSummary } : {}),
     });
     try {
-      const isTopLevelTask = existingTask && !existingTask.parentTaskId && (existingTask.agentType ?? 'main') === 'main';
+      const isTopLevelTask =
+        existingTask && !existingTask.parentTaskId && (existingTask.agentType ?? "main") === "main";
       if (isTopLevelTask) {
         const workspaceName = this.workspaceRepo.findById(existingTask.workspaceId)?.name;
         PersonalityManager.recordTaskCompleted(workspaceName);
-        const gatewayContext = existingTask.agentConfig?.gatewayContext ?? 'private';
+        const gatewayContext = existingTask.agentConfig?.gatewayContext ?? "private";
         const canCaptureRelationshipMemory =
-          gatewayContext === 'private' || existingTask.agentConfig?.allowSharedContextMemory === true;
+          gatewayContext === "private" ||
+          existingTask.agentConfig?.allowSharedContextMemory === true;
         if (canCaptureRelationshipMemory) {
           RelationshipMemoryService.recordTaskCompletion(
             existingTask.title,
-            typeof updates.resultSummary === 'string' ? updates.resultSummary : undefined,
-            taskId
+            typeof updates.resultSummary === "string" ? updates.resultSummary : undefined,
+            taskId,
           );
         }
       }
     } catch (error) {
-      console.warn('[AgentDaemon] Failed to record relationship milestone:', error);
+      console.warn("[AgentDaemon] Failed to record relationship milestone:", error);
     }
     if (this.teamOrchestrator) {
       void this.teamOrchestrator.onTaskTerminal(taskId).catch(() => {});
@@ -2152,14 +2293,14 @@ export class AgentDaemon extends EventEmitter {
       this.activeTasks.set(taskId, {
         executor,
         lastAccessed: Date.now(),
-        status: 'active',
+        status: "active",
       });
     } else {
       executor = cached.executor;
       // Update workspace to pick up permission changes (e.g., shell enabled)
       executor.updateWorkspace(workspace);
       cached.lastAccessed = Date.now();
-      cached.status = 'active';
+      cached.status = "active";
     }
 
     // Send the message
@@ -2200,7 +2341,9 @@ export class AgentDaemon extends EventEmitter {
     const runningTaskIds = [...status.runningTaskIds];
     const queuedTaskIds = [...status.queuedTaskIds];
 
-    console.log(`[AgentDaemon] Clearing ${runningTaskIds.length} running tasks and ${queuedTaskIds.length} queued tasks`);
+    console.log(
+      `[AgentDaemon] Clearing ${runningTaskIds.length} running tasks and ${queuedTaskIds.length} queued tasks`,
+    );
 
     // Cancel all running tasks properly (this cleans up browser sessions, etc.)
     for (const taskId of runningTaskIds) {
@@ -2208,7 +2351,7 @@ export class AgentDaemon extends EventEmitter {
       if (cached) {
         try {
           console.log(`[AgentDaemon] Cancelling running task: ${taskId}`);
-          await cached.executor.cancel('system');
+          await cached.executor.cancel("system");
           this.activeTasks.delete(taskId);
         } catch (error) {
           console.error(`[AgentDaemon] Error cancelling task ${taskId}:`, error);
@@ -2231,7 +2374,7 @@ export class AgentDaemon extends EventEmitter {
     if (cached) {
       try {
         // Cancel the task (this cleans up browser sessions, etc.)
-        await cached.executor.cancel('timeout');
+        await cached.executor.cancel("timeout");
         this.activeTasks.delete(taskId);
       } catch (error) {
         console.error(`[AgentDaemon] Error cancelling timed out task ${taskId}:`, error);
@@ -2240,14 +2383,14 @@ export class AgentDaemon extends EventEmitter {
 
     // Update task status to failed with timeout message
     this.taskRepo.update(taskId, {
-      status: 'failed',
-      error: 'Task timed out - exceeded maximum allowed execution time',
+      status: "failed",
+      error: "Task timed out - exceeded maximum allowed execution time",
     });
     this.clearRetryState(taskId);
 
     // Emit timeout event
-    this.logEvent(taskId, 'step_timeout', {
-      message: 'Task exceeded maximum execution time and was automatically cancelled',
+    this.logEvent(taskId, "step_timeout", {
+      message: "Task exceeded maximum execution time and was automatically cancelled",
     });
   }
 
@@ -2256,7 +2399,7 @@ export class AgentDaemon extends EventEmitter {
    */
   private emitQueueUpdate(status: QueueStatus): void {
     const windows = getAllElectronWindows();
-    windows.forEach(window => {
+    windows.forEach((window) => {
       try {
         if (!window.isDestroyed() && window.webContents && !window.webContents.isDestroyed()) {
           window.webContents.send(IPC_CHANNELS.QUEUE_UPDATE, status);
@@ -2272,7 +2415,7 @@ export class AgentDaemon extends EventEmitter {
    * Properly awaits all task cancellations and clears intervals
    */
   async shutdown(): Promise<void> {
-    console.log('Shutting down agent daemon...');
+    console.log("Shutting down agent daemon...");
 
     // Clear the cleanup interval
     if (this.cleanupIntervalHandle) {
@@ -2285,7 +2428,7 @@ export class AgentDaemon extends EventEmitter {
       clearTimeout(pending.timeoutHandle);
       if (!pending.resolved) {
         pending.resolved = true;
-        pending.reject(new Error('Daemon shutting down'));
+        pending.reject(new Error("Daemon shutting down"));
       }
     });
     this.pendingApprovals.clear();
@@ -2295,8 +2438,8 @@ export class AgentDaemon extends EventEmitter {
     this.activeTasks.forEach((_cached, taskId) => {
       try {
         this.taskRepo.update(taskId, {
-          status: 'cancelled' as TaskStatus,
-          error: 'Application shutdown while task was running',
+          status: "cancelled" as TaskStatus,
+          error: "Application shutdown while task was running",
         });
       } catch (err) {
         console.error(`[AgentDaemon] Failed to update task ${taskId} status on shutdown:`, err);
@@ -2306,7 +2449,7 @@ export class AgentDaemon extends EventEmitter {
     // Cancel all active tasks and wait for them to complete
     const cancelPromises: Promise<void>[] = [];
     this.activeTasks.forEach((cached, taskId) => {
-      const promise = cached.executor.cancel('shutdown').catch(err => {
+      const promise = cached.executor.cancel("shutdown").catch((err) => {
         console.error(`Error cancelling task ${taskId}:`, err);
       });
       cancelPromises.push(promise);
@@ -2315,7 +2458,7 @@ export class AgentDaemon extends EventEmitter {
     // Wait for all cancellations to complete (with timeout)
     await Promise.race([
       Promise.all(cancelPromises),
-      new Promise<void>(resolve => setTimeout(resolve, 5000)), // 5 second timeout
+      new Promise<void>((resolve) => setTimeout(resolve, 5000)), // 5 second timeout
     ]);
 
     this.activeTasks.clear();
@@ -2323,7 +2466,7 @@ export class AgentDaemon extends EventEmitter {
     // Remove all EventEmitter listeners to prevent memory leaks
     this.removeAllListeners();
 
-    console.log('Agent daemon shutdown complete');
+    console.log("Agent daemon shutdown complete");
   }
 
   /**
@@ -2334,7 +2477,7 @@ export class AgentDaemon extends EventEmitter {
     try {
       this.eventRepo.pruneOldSnapshots(taskId);
     } catch (error) {
-      console.debug('[AgentDaemon] Failed to prune old snapshots:', error);
+      console.debug("[AgentDaemon] Failed to prune old snapshots:", error);
     }
   }
 }

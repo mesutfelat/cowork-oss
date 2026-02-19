@@ -1,7 +1,7 @@
 const MAX_EXTRACTED_ATTACHMENT_CHARS = 6000;
 const MAX_IMAGE_OCR_CHARS = 6000;
-const ATTACHMENT_CONTENT_START_MARKER = '[[ATTACHMENT_EXTRACTED_CONTENT_START]]';
-const ATTACHMENT_CONTENT_END_MARKER = '[[ATTACHMENT_EXTRACTED_CONTENT_END]]';
+const ATTACHMENT_CONTENT_START_MARKER = "[[ATTACHMENT_EXTRACTED_CONTENT_START]]";
+const ATTACHMENT_CONTENT_END_MARKER = "[[ATTACHMENT_EXTRACTED_CONTENT_END]]";
 
 const OCR_REQUEST_PATTERNS = [
   /\bocr\b/i,
@@ -21,13 +21,13 @@ const shouldRequestImageOcr = (prompt: string, fileName: string): boolean => {
 
 const stripHtmlForText = (value: string): string =>
   value
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/p>/gi, '\n')
-    .replace(/<\/li>/gi, '\n')
-    .replace(/<\/h[1-6]>/gi, '\n')
-    .replace(/<[^>]*>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/\u00a0/g, ' ')
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<\/li>/gi, "\n")
+    .replace(/<\/h[1-6]>/gi, "\n")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/\u00a0/g, " ")
     .trim();
 
 const truncateTextForTaskPrompt = (value: string): string => {
@@ -36,7 +36,7 @@ const truncateTextForTaskPrompt = (value: string): string => {
 };
 
 const stripPptxBubbleContent = (value: string): string => {
-  const lines = value.split('\n');
+  const lines = value.split("\n");
   const output: string[] = [];
   let inExtractedSection = false;
   let inAttachmentSection = false;
@@ -54,13 +54,13 @@ const stripPptxBubbleContent = (value: string): string => {
       continue;
     }
 
-    if (trimmed === 'Extracted content:' || trimmed === 'Attachment content:') {
+    if (trimmed === "Extracted content:" || trimmed === "Attachment content:") {
       inExtractedSection = true;
       continue;
     }
 
     if (inExtractedSection) {
-      if (trimmed === '' || /^\s{2,}/.test(line) || line.startsWith('\t')) {
+      if (trimmed === "" || /^\s{2,}/.test(line) || line.startsWith("\t")) {
         continue;
       }
       inExtractedSection = false;
@@ -68,13 +68,13 @@ const stripPptxBubbleContent = (value: string): string => {
     }
 
     // Strip the attachment listing section entirely
-    if (trimmed === 'Attached files (relative to workspace):') {
+    if (trimmed === "Attached files (relative to workspace):") {
       inAttachmentSection = true;
       continue;
     }
 
     if (inAttachmentSection) {
-      if (trimmed === '' || /^- .+\(.+\)$/.test(trimmed)) {
+      if (trimmed === "" || /^- .+\(.+\)$/.test(trimmed)) {
         continue;
       }
       inAttachmentSection = false;
@@ -83,20 +83,21 @@ const stripPptxBubbleContent = (value: string): string => {
     output.push(line);
   }
 
-  return output.join('\n')
-    .replace(/\n{3,}/g, '\n\n')
+  return output
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
     .trim();
 };
 
 const extractAttachmentNames = (value: string): string[] => {
   const names: string[] = [];
-  const lines = value.split('\n');
+  const lines = value.split("\n");
   let inAttachmentSection = false;
 
   for (const line of lines) {
     const trimmed = line.trim();
 
-    if (trimmed === 'Attached files (relative to workspace):') {
+    if (trimmed === "Attached files (relative to workspace):") {
       inAttachmentSection = true;
       continue;
     }
@@ -105,7 +106,13 @@ const extractAttachmentNames = (value: string): string[] => {
       const match = trimmed.match(/^- (.+?) \(.+\)$/);
       if (match) {
         names.push(match[1]);
-      } else if (trimmed !== '' && trimmed !== ATTACHMENT_CONTENT_START_MARKER && trimmed !== ATTACHMENT_CONTENT_END_MARKER && trimmed !== 'Extracted content:' && trimmed !== 'Attachment content:') {
+      } else if (
+        trimmed !== "" &&
+        trimmed !== ATTACHMENT_CONTENT_START_MARKER &&
+        trimmed !== ATTACHMENT_CONTENT_END_MARKER &&
+        trimmed !== "Extracted content:" &&
+        trimmed !== "Attachment content:"
+      ) {
         // Non-attachment line after the section; stop parsing
         break;
       }

@@ -5,15 +5,15 @@
  * and handles tool execution through the ToolRegistry.
  */
 
-import { MCPTool } from '../types';
-import { ToolProvider } from './MCPHostServer';
+import { MCPTool } from "../types";
+import { ToolProvider } from "./MCPHostServer";
 
 // Interface matching LLMTool from ToolRegistry
 interface LLMTool {
   name: string;
   description: string;
   input_schema: {
-    type: 'object';
+    type: "object";
     properties?: Record<string, any>;
     required?: string[];
   };
@@ -40,16 +40,18 @@ export class ToolAdapter implements ToolProvider {
       exposedTools?: string[];
       // Exclude these tools from exposure
       excludedTools?: string[];
-    } = {}
+    } = {},
   ) {
     this.registry = registry;
     this.exposedTools = options.exposedTools ? new Set(options.exposedTools) : new Set();
-    this.excludedTools = new Set(options.excludedTools || [
-      // Default exclusions - dangerous or internal tools
-      'computer_tool', // Computer control
-      'bash', // Direct shell access
-      'text_editor', // Direct file editing
-    ]);
+    this.excludedTools = new Set(
+      options.excludedTools || [
+        // Default exclusions - dangerous or internal tools
+        "computer_tool", // Computer control
+        "bash", // Direct shell access
+        "text_editor", // Direct file editing
+      ],
+    );
   }
 
   /**
@@ -99,7 +101,7 @@ export class ToolAdapter implements ToolProvider {
       name: tool.name,
       description: tool.description,
       inputSchema: {
-        type: 'object',
+        type: "object",
         properties: tool.input_schema.properties,
         required: tool.input_schema.required,
       },
@@ -126,7 +128,8 @@ export class ToolAdapter implements ToolProvider {
    * Get list of available tool names
    */
   getAvailableToolNames(): string[] {
-    return this.registry.getTools()
+    return this.registry
+      .getTools()
       .filter((tool) => this.shouldExposePlugin(tool.name))
       .map((tool) => tool.name);
   }

@@ -8,12 +8,26 @@
 /**
  * Supported channel types
  */
-export type ChannelType = 'telegram' | 'discord' | 'slack' | 'whatsapp' | 'imessage' | 'signal' | 'mattermost' | 'matrix' | 'twitch' | 'line' | 'bluebubbles' | 'email' | 'teams' | 'googlechat';
+export type ChannelType =
+  | "telegram"
+  | "discord"
+  | "slack"
+  | "whatsapp"
+  | "imessage"
+  | "signal"
+  | "mattermost"
+  | "matrix"
+  | "twitch"
+  | "line"
+  | "bluebubbles"
+  | "email"
+  | "teams"
+  | "googlechat";
 
 /**
  * Channel connection status
  */
-export type ChannelStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
+export type ChannelStatus = "disconnected" | "connecting" | "connected" | "error";
 
 /**
  * Incoming message from any channel
@@ -35,7 +49,7 @@ export interface IncomingMessage {
    * Optional direction hint for persistence.
    * Default: incoming
    */
-  direction?: 'incoming' | 'outgoing_user';
+  direction?: "incoming" | "outgoing_user";
   /**
    * If true, the gateway will persist this message but will NOT route it to the agent
    * or send any replies (useful for ambient/monitoring ingestion).
@@ -82,7 +96,7 @@ export interface OutgoingMessage {
   /** Optional reply-to message ID */
   replyTo?: string;
   /** Parse mode for formatting */
-  parseMode?: 'text' | 'markdown' | 'html';
+  parseMode?: "text" | "markdown" | "html";
   /** Optional attachments */
   attachments?: MessageAttachment[];
   /** Forum topic thread ID (Telegram) */
@@ -124,7 +138,7 @@ export type CallbackQueryHandler = (query: CallbackQuery) => void | Promise<void
  * Message attachment (file, image, etc.)
  */
 export interface MessageAttachment {
-  type: 'file' | 'image' | 'audio' | 'video' | 'document';
+  type: "file" | "image" | "audio" | "video" | "document";
   /** URL or file path */
   url?: string;
   /** File data buffer */
@@ -212,7 +226,7 @@ export interface WhatsAppConfig extends ChannelConfig {
    *
    * Defaults to mentionsOrCommands to reduce group noise.
    */
-  groupRoutingMode?: 'all' | 'mentionsOnly' | 'mentionsOrCommands' | 'commandsOnly';
+  groupRoutingMode?: "all" | "mentionsOnly" | "mentionsOrCommands" | "commandsOnly";
   /**
    * Self-chat mode: When true, the bot is running on the same WhatsApp account
    * as the user (messaging yourself). This mode:
@@ -253,9 +267,9 @@ export interface ImessageConfig extends ChannelConfig {
   /** Path to Messages database (default: ~/Library/Messages/chat.db) */
   dbPath?: string;
   /** DM access policy (default: "pairing") */
-  dmPolicy?: 'open' | 'allowlist' | 'pairing' | 'disabled';
+  dmPolicy?: "open" | "allowlist" | "pairing" | "disabled";
   /** Group access policy (default: "allowlist") */
-  groupPolicy?: 'open' | 'allowlist' | 'disabled';
+  groupPolicy?: "open" | "allowlist" | "disabled";
   /** Allowed contacts (phone numbers, emails, or chat_id:*) */
   allowedContacts?: string[];
   /** Include attachments in context (default: false) */
@@ -263,7 +277,7 @@ export interface ImessageConfig extends ChannelConfig {
   /** Max media size in MB (default: 16) */
   mediaMaxMb?: number;
   /** iMessage service preference */
-  service?: 'imessage' | 'sms' | 'auto';
+  service?: "imessage" | "sms" | "auto";
   /** Enable message deduplication (default: true) */
   deduplicationEnabled?: boolean;
   /** Response prefix for bot messages */
@@ -288,15 +302,15 @@ export interface SignalConfig extends ChannelConfig {
   /** signal-cli data directory (default: ~/.local/share/signal-cli) */
   dataDir?: string;
   /** Configuration mode */
-  mode?: 'native' | 'daemon';
+  mode?: "native" | "daemon";
   /** JSON-RPC socket path (for daemon mode) */
   socketPath?: string;
   /** Trust mode for new contacts */
-  trustMode?: 'tofu' | 'always' | 'manual';
+  trustMode?: "tofu" | "always" | "manual";
   /** DM access policy (default: "pairing") */
-  dmPolicy?: 'open' | 'allowlist' | 'pairing' | 'disabled';
+  dmPolicy?: "open" | "allowlist" | "pairing" | "disabled";
   /** Group access policy (default: "allowlist") */
-  groupPolicy?: 'open' | 'allowlist' | 'disabled';
+  groupPolicy?: "open" | "allowlist" | "disabled";
   /** Allowed phone numbers (E.164 format) */
   allowedNumbers?: string[];
   /** Enable read receipts (default: true) */
@@ -431,7 +445,7 @@ export interface BlueBubblesConfig extends ChannelConfig {
  */
 export interface EmailConfig extends ChannelConfig {
   /** Transport protocol mode (default: "imap-smtp") */
-  protocol?: 'imap-smtp' | 'loom';
+  protocol?: "imap-smtp" | "loom";
 
   // Legacy IMAP/SMTP mode
   /** IMAP server host */
@@ -495,9 +509,9 @@ export interface EmailTransportClient {
   }): Promise<string>;
   markAsRead(uid: number): Promise<void>;
   getEmail?(): string;
-  on(event: 'message', listener: (message: unknown) => void): this;
-  on(event: 'error', listener: (error: Error) => void): this;
-  on(event: 'connected' | 'disconnected', listener: () => void): this;
+  on(event: "message", listener: (message: unknown) => void): this;
+  on(event: "error", listener: (error: Error) => void): this;
+  on(event: "connected" | "disconnected", listener: () => void): this;
 }
 
 /**
@@ -659,7 +673,7 @@ export interface ChannelAdapter {
     chatId: string,
     messageId: string,
     text?: string,
-    inlineKeyboard?: InlineKeyboardButton[][]
+    inlineKeyboard?: InlineKeyboardButton[][],
   ): Promise<void>;
 
   /**
@@ -747,7 +761,7 @@ export interface ChannelSession {
   /** Associated workspace ID */
   workspaceId?: string;
   /** Session state */
-  state: 'idle' | 'active' | 'waiting_approval';
+  state: "idle" | "active" | "waiting_approval";
   /** Session context/memory */
   context?: Record<string, unknown>;
   /** Created timestamp */
@@ -761,7 +775,7 @@ export interface ChannelSession {
  */
 export interface SecurityConfig {
   /** Access mode */
-  mode: 'open' | 'allowlist' | 'pairing';
+  mode: "open" | "allowlist" | "pairing";
   /** Allowed user IDs (for allowlist mode) */
   allowedUsers?: string[];
   /** Pairing code TTL in seconds (for pairing mode) */
@@ -776,15 +790,15 @@ export interface SecurityConfig {
  * Gateway event types
  */
 export type GatewayEventType =
-  | 'channel:connected'
-  | 'channel:disconnected'
-  | 'channel:error'
-  | 'message:received'
-  | 'message:sent'
-  | 'user:paired'
-  | 'user:blocked'
-  | 'session:created'
-  | 'session:ended';
+  | "channel:connected"
+  | "channel:disconnected"
+  | "channel:error"
+  | "message:received"
+  | "message:sent"
+  | "user:paired"
+  | "user:blocked"
+  | "session:created"
+  | "session:ended";
 
 /**
  * Gateway event
@@ -888,7 +902,7 @@ export interface Poll {
   /** Anonymous voting */
   isAnonymous?: boolean;
   /** Poll type: quiz has correct answer */
-  type?: 'regular' | 'quiz';
+  type?: "regular" | "quiz";
   /** Correct option index (for quiz) */
   correctOptionId?: number;
   /** Explanation shown after answering (quiz) */
@@ -928,7 +942,7 @@ export interface ScheduledMessage {
   /** When to send */
   scheduledAt: Date;
   /** Status */
-  status: 'pending' | 'sent' | 'failed' | 'cancelled';
+  status: "pending" | "sent" | "failed" | "cancelled";
   /** Error if failed */
   error?: string;
   /** Created timestamp */
@@ -946,7 +960,7 @@ export interface MessageDelivery {
   /** Chat ID */
   chatId: string;
   /** Delivery status */
-  status: 'pending' | 'sent' | 'delivered' | 'read' | 'failed';
+  status: "pending" | "sent" | "delivered" | "read" | "failed";
   /** Sent timestamp */
   sentAt?: Date;
   /** Delivered timestamp */
@@ -1102,5 +1116,5 @@ export type SelectMenuHandler = (
   userId: string,
   chatId: string,
   messageId: string,
-  raw: unknown
+  raw: unknown,
 ) => void | Promise<void>;

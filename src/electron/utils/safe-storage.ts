@@ -15,20 +15,20 @@ export type SafeStorageLike = {
 };
 
 export function getSafeStorage(): SafeStorageLike | null {
-  const keychainDisabled = (process.env.COWORK_DISABLE_OS_KEYCHAIN || '').trim().toLowerCase();
-  if (keychainDisabled === '1' || keychainDisabled === 'true' || keychainDisabled === 'yes') {
+  const keychainDisabled = (process.env.COWORK_DISABLE_OS_KEYCHAIN || "").trim().toLowerCase();
+  if (keychainDisabled === "1" || keychainDisabled === "true" || keychainDisabled === "yes") {
     return null;
   }
 
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const electron = require('electron') as any;
+    const electron = require("electron") as any;
     const safeStorage = electron?.safeStorage;
 
     if (!safeStorage) return null;
-    if (typeof safeStorage.isEncryptionAvailable !== 'function') return null;
-    if (typeof safeStorage.encryptString !== 'function') return null;
-    if (typeof safeStorage.decryptString !== 'function') return null;
+    if (typeof safeStorage.isEncryptionAvailable !== "function") return null;
+    if (typeof safeStorage.encryptString !== "function") return null;
+    if (typeof safeStorage.decryptString !== "function") return null;
 
     return safeStorage as SafeStorageLike;
   } catch {

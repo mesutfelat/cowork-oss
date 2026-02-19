@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 
 // Types (matching electron mcp types)
-type MCPInstallMethod = 'npm' | 'pip' | 'binary' | 'docker' | 'manual';
-type MCPTransportType = 'stdio' | 'sse' | 'websocket';
+type MCPInstallMethod = "npm" | "pip" | "binary" | "docker" | "manual";
+type MCPTransportType = "stdio" | "sse" | "websocket";
 
 interface MCPRegistryEntry {
   id: string;
@@ -33,11 +33,14 @@ interface MCPRegistryBrowserProps {
   installedServerIds?: string[];
 }
 
-export function MCPRegistryBrowser({ onInstall, installedServerIds = [] }: MCPRegistryBrowserProps) {
+export function MCPRegistryBrowser({
+  onInstall,
+  installedServerIds = [],
+}: MCPRegistryBrowserProps) {
   const [servers, setServers] = useState<MCPRegistryEntry[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [verifiedOnly, setVerifiedOnly] = useState(false);
@@ -64,7 +67,7 @@ export function MCPRegistryBrowser({ onInstall, installedServerIds = [] }: MCPRe
       });
       setCategories(Array.from(uniqueCategories).sort());
     } catch (error) {
-      console.error('Failed to load registry:', error);
+      console.error("Failed to load registry:", error);
     } finally {
       setLoading(false);
     }
@@ -87,7 +90,7 @@ export function MCPRegistryBrowser({ onInstall, installedServerIds = [] }: MCPRe
 
       setServers(filtered);
     } catch (error) {
-      console.error('Failed to search registry:', error);
+      console.error("Failed to search registry:", error);
     }
   };
 
@@ -99,7 +102,7 @@ export function MCPRegistryBrowser({ onInstall, installedServerIds = [] }: MCPRe
       // Refresh the list
       await loadRegistry();
     } catch (error: any) {
-      console.error('Failed to install server:', error);
+      console.error("Failed to install server:", error);
       alert(`Failed to install ${entry.name}: ${error.message}`);
     } finally {
       setInstallingId(null);
@@ -111,7 +114,7 @@ export function MCPRegistryBrowser({ onInstall, installedServerIds = [] }: MCPRe
     return installedServerIds.some(
       (installedName) =>
         installedName.toLowerCase() === entry.id.toLowerCase() ||
-        installedName.toLowerCase() === entry.name.toLowerCase()
+        installedName.toLowerCase() === entry.name.toLowerCase(),
     );
   };
 
@@ -124,7 +127,14 @@ export function MCPRegistryBrowser({ onInstall, installedServerIds = [] }: MCPRe
       {/* Search and filters */}
       <div className="registry-filters">
         <div className="registry-search">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
             <circle cx="11" cy="11" r="8" />
             <path d="M21 21l-4.35-4.35" />
           </svg>
@@ -139,7 +149,7 @@ export function MCPRegistryBrowser({ onInstall, installedServerIds = [] }: MCPRe
         <div className="registry-filter-row">
           <select
             className="registry-category-select"
-            value={selectedCategory || ''}
+            value={selectedCategory || ""}
             onChange={(e) => setSelectedCategory(e.target.value || null)}
           >
             <option value="">All Categories</option>
@@ -165,13 +175,16 @@ export function MCPRegistryBrowser({ onInstall, installedServerIds = [] }: MCPRe
       {servers.length === 0 ? (
         <div className="registry-empty">
           <p>No servers found matching your criteria.</p>
-          <button className="button-secondary" onClick={() => {
-            setSearchQuery('');
-            setSelectedCategory(null);
-            setSelectedTags([]);
-            setVerifiedOnly(false);
-            loadRegistry();
-          }}>
+          <button
+            className="button-secondary"
+            onClick={() => {
+              setSearchQuery("");
+              setSelectedCategory(null);
+              setSelectedTags([]);
+              setVerifiedOnly(false);
+              loadRegistry();
+            }}
+          >
             Clear filters
           </button>
         </div>
@@ -189,9 +202,7 @@ export function MCPRegistryBrowser({ onInstall, installedServerIds = [] }: MCPRe
                       </svg>
                     </span>
                   )}
-                  {entry.featured && (
-                    <span className="registry-featured-badge">Featured</span>
-                  )}
+                  {entry.featured && <span className="registry-featured-badge">Featured</span>}
                 </div>
                 <span className="registry-server-version">v{entry.version}</span>
               </div>
@@ -201,18 +212,12 @@ export function MCPRegistryBrowser({ onInstall, installedServerIds = [] }: MCPRe
               <div className="registry-server-meta">
                 <span className="registry-author">by {entry.author}</span>
                 <span className="registry-tools-count">{entry.tools.length} tools</span>
-                {entry.category && (
-                  <span className="registry-category">{entry.category}</span>
-                )}
+                {entry.category && <span className="registry-category">{entry.category}</span>}
               </div>
 
               <div className="registry-server-tags">
                 {entry.tags.slice(0, 5).map((tag) => (
-                  <span
-                    key={tag}
-                    className="registry-tag"
-                    onClick={() => setSelectedTags([tag])}
-                  >
+                  <span key={tag} className="registry-tag" onClick={() => setSelectedTags([tag])}>
                     {tag}
                   </span>
                 ))}
@@ -227,13 +232,10 @@ export function MCPRegistryBrowser({ onInstall, installedServerIds = [] }: MCPRe
                     onClick={() => handleInstall(entry)}
                     disabled={installingId === entry.id}
                   >
-                    {installingId === entry.id ? 'Installing...' : 'Install'}
+                    {installingId === entry.id ? "Installing..." : "Install"}
                   </button>
                 )}
-                <button
-                  className="button-secondary"
-                  onClick={() => setViewingDetails(entry)}
-                >
+                <button className="button-secondary" onClick={() => setViewingDetails(entry)}>
                   Details
                 </button>
                 {entry.homepage && (
@@ -247,7 +249,14 @@ export function MCPRegistryBrowser({ onInstall, installedServerIds = [] }: MCPRe
                       window.electronAPI.openExternal(entry.homepage!);
                     }}
                   >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
                       <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
                       <polyline points="15 3 21 3 21 9" />
                       <line x1="10" y1="14" x2="21" y2="3" />
@@ -277,7 +286,14 @@ export function MCPRegistryBrowser({ onInstall, installedServerIds = [] }: MCPRe
                 )}
               </div>
               <button className="mcp-modal-close" onClick={() => setViewingDetails(null)}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
                   <path d="M18 6L6 18M6 6l12 12" />
                 </svg>
               </button>
@@ -297,7 +313,9 @@ export function MCPRegistryBrowser({ onInstall, installedServerIds = [] }: MCPRe
                   </div>
                   <div className="registry-detail-row">
                     <span className="registry-detail-label">License:</span>
-                    <span className="registry-detail-value">{viewingDetails.license || 'Not specified'}</span>
+                    <span className="registry-detail-value">
+                      {viewingDetails.license || "Not specified"}
+                    </span>
                   </div>
                   <div className="registry-detail-row">
                     <span className="registry-detail-label">Transport:</span>
@@ -313,7 +331,7 @@ export function MCPRegistryBrowser({ onInstall, installedServerIds = [] }: MCPRe
                   <div className="registry-details-command">
                     <span className="registry-detail-label">Command:</span>
                     <code>
-                      {viewingDetails.defaultCommand} {viewingDetails.defaultArgs?.join(' ')}
+                      {viewingDetails.defaultCommand} {viewingDetails.defaultArgs?.join(" ")}
                     </code>
                   </div>
                 )}
@@ -348,7 +366,9 @@ export function MCPRegistryBrowser({ onInstall, installedServerIds = [] }: MCPRe
               <div className="registry-details-section">
                 <div className="registry-server-tags">
                   {viewingDetails.tags.map((tag) => (
-                    <span key={tag} className="registry-tag">{tag}</span>
+                    <span key={tag} className="registry-tag">
+                      {tag}
+                    </span>
                   ))}
                 </div>
               </div>
@@ -365,7 +385,7 @@ export function MCPRegistryBrowser({ onInstall, installedServerIds = [] }: MCPRe
                     }}
                     disabled={installingId === viewingDetails.id}
                   >
-                    {installingId === viewingDetails.id ? 'Installing...' : 'Install Server'}
+                    {installingId === viewingDetails.id ? "Installing..." : "Install Server"}
                   </button>
                 )}
                 {viewingDetails.repository && (

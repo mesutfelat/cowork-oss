@@ -6,15 +6,15 @@
  * ping/pong keepalive.
  */
 
-import { EventEmitter } from 'events';
-import WebSocket from 'ws';
+import { EventEmitter } from "events";
+import WebSocket from "ws";
 import {
   MCPTransport,
   MCPServerConfig,
   JSONRPCRequest,
   JSONRPCResponse,
   JSONRPCNotification,
-} from '../../types';
+} from "../../types";
 
 interface PendingRequest {
   resolve: (result: any) => void;
@@ -48,19 +48,23 @@ export class WebSocketTransport extends EventEmitter implements MCPTransport {
    */
   async connect(): Promise<void> {
     if (this.connected || this.ws) {
-      throw new Error('Already connected');
+      throw new Error("Already connected");
     }
 
     const { url } = this.config;
 
     if (!url) {
-      throw new Error('No URL specified for WebSocket transport');
+      throw new Error("No URL specified for WebSocket transport");
     }
 
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         this.cleanup();
-        reject(new Error(`Connection timeout: server did not respond within ${this.config.connectionTimeout || 30000}ms`));
+        reject(
+          new Error(
+            `Connection timeout: server did not respond within ${this.config.connectionTimeout || 30000}ms`,
+          ),
+        );
       }, this.config.connectionTimeout || 30000);
 
       try {
@@ -80,7 +84,7 @@ export class WebSocketTransport extends EventEmitter implements MCPTransport {
           handshakeTimeout: this.config.connectionTimeout || 30000,
         });
 
-        this.ws.on('open', () => {
+        this.ws.on("open", () => {
           clearTimeout(timeout);
           this.connected = true;
           console.log(`[MCP WebSocketTransport] Connected successfully`);
@@ -91,11 +95,11 @@ export class WebSocketTransport extends EventEmitter implements MCPTransport {
           resolve();
         });
 
-        this.ws.on('message', (data: WebSocket.Data) => {
+        this.ws.on("message", (data: WebSocket.Data) => {
           this.handleMessage(data.toString());
         });
 
-        this.ws.on('error', (error) => {
+        this.ws.on("error", (error) => {
           console.error(`[MCP WebSocketTransport] WebSocket error:`, error);
           this.errorHandler?.(error);
           if (!this.connected) {
@@ -104,8 +108,8 @@ export class WebSocketTransport extends EventEmitter implements MCPTransport {
           }
         });
 
-        this.ws.on('close', (code, reason) => {
-          const message = `WebSocket closed: code=${code}, reason=${reason?.toString() || 'unknown'}`;
+        this.ws.on("close", (code, reason) => {
+          const message = `WebSocket closed: code=${code}, reason=${reason?.toString() || "unknown"}`;
           console.log(`[MCP WebSocketTransport] ${message}`);
 
           if (this.connected) {
@@ -117,14 +121,13 @@ export class WebSocketTransport extends EventEmitter implements MCPTransport {
           this.cleanup();
         });
 
-        this.ws.on('pong', () => {
+        this.ws.on("pong", () => {
           // Clear pong timeout - connection is alive
           if (this.pongTimeout) {
             clearTimeout(this.pongTimeout);
             this.pongTimeout = null;
           }
         });
-
       } catch (error) {
         clearTimeout(timeout);
         console.error(`[MCP WebSocketTransport] Failed to connect:`, error);
@@ -145,7 +148,7 @@ export class WebSocketTransport extends EventEmitter implements MCPTransport {
     // Reject all pending requests
     for (const [id, pending] of this.pendingRequests) {
       clearTimeout(pending.timeout);
-      pending.reject(new Error('Transport disconnected'));
+      pending.reject(new Error("Transport disconnected"));
     }
     this.pendingRequests.clear();
 
@@ -160,13 +163,13 @@ export class WebSocketTransport extends EventEmitter implements MCPTransport {
           resolve();
         }, 5000);
 
-        this.ws!.once('close', () => {
+        this.ws!.once("close", () => {
           clearTimeout(forceCloseTimeout);
           this.cleanup();
           resolve();
         });
 
-        this.ws!.close(1000, 'Client disconnect');
+        this.ws!.close(1000, "Client disconnect");
       });
     }
 
@@ -178,12 +181,12 @@ export class WebSocketTransport extends EventEmitter implements MCPTransport {
    */
   async sendRequest(method: string, params?: Record<string, any>): Promise<any> {
     if (!this.connected || !this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      throw new Error('Not connected');
+      throw new Error("Not connected");
     }
 
     const id = ++this.requestId;
     const request: JSONRPCRequest = {
-      jsonrpc: '2.0',
+      jsonrpc: "2.0",
       id,
       method,
       params,
@@ -212,7 +215,7 @@ export class WebSocketTransport extends EventEmitter implements MCPTransport {
    */
   async send(message: JSONRPCRequest | JSONRPCNotification): Promise<void> {
     if (!this.connected || !this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      throw new Error('Not connected');
+      throw new Error("Not connected");
     }
 
     try {
@@ -258,14 +261,14 @@ export class WebSocketTransport extends EventEmitter implements MCPTransport {
       const message = JSON.parse(data);
 
       // Check if this is a response to a pending request
-      if ('id' in message && message.id !== null) {
+      if ("id" in message && message.id !== null) {
         const pending = this.pendingRequests.get(message.id);
         if (pending) {
           this.pendingRequests.delete(message.id);
           clearTimeout(pending.timeout);
 
-          if ('error' in message && message.error) {
-            pending.reject(new Error(message.error.message || 'Unknown error'));
+          if ("error" in message && message.error) {
+            pending.reject(new Error(message.error.message || "Unknown error"));
           } else {
             pending.resolve(message.result);
           }
@@ -287,15 +290,15 @@ export class WebSocketTransport extends EventEmitter implements MCPTransport {
     const parsed = new URL(url);
 
     // Convert protocol
-    if (parsed.protocol === 'http:') {
-      parsed.protocol = 'ws:';
-    } else if (parsed.protocol === 'https:') {
-      parsed.protocol = 'wss:';
+    if (parsed.protocol === "http:") {
+      parsed.protocol = "ws:";
+    } else if (parsed.protocol === "https:") {
+      parsed.protocol = "wss:";
     }
 
     // Append /ws path if not already present
-    if (!parsed.pathname.includes('/ws')) {
-      parsed.pathname = parsed.pathname.replace(/\/$/, '') + '/ws';
+    if (!parsed.pathname.includes("/ws")) {
+      parsed.pathname = parsed.pathname.replace(/\/$/, "") + "/ws";
     }
 
     return parsed.toString();
@@ -308,23 +311,23 @@ export class WebSocketTransport extends EventEmitter implements MCPTransport {
     if (!this.config.auth) return;
 
     switch (this.config.auth.type) {
-      case 'bearer':
+      case "bearer":
         if (this.config.auth.token) {
-          headers['Authorization'] = `Bearer ${this.config.auth.token}`;
+          headers["Authorization"] = `Bearer ${this.config.auth.token}`;
         }
         break;
-      case 'api-key':
+      case "api-key":
         if (this.config.auth.apiKey) {
-          const headerName = this.config.auth.headerName || 'X-API-Key';
+          const headerName = this.config.auth.headerName || "X-API-Key";
           headers[headerName] = this.config.auth.apiKey;
         }
         break;
-      case 'basic':
+      case "basic":
         if (this.config.auth.username && this.config.auth.password) {
           const credentials = Buffer.from(
-            `${this.config.auth.username}:${this.config.auth.password}`
-          ).toString('base64');
-          headers['Authorization'] = `Basic ${credentials}`;
+            `${this.config.auth.username}:${this.config.auth.password}`,
+          ).toString("base64");
+          headers["Authorization"] = `Basic ${credentials}`;
         }
         break;
     }
@@ -339,7 +342,7 @@ export class WebSocketTransport extends EventEmitter implements MCPTransport {
         // Set pong timeout - if we don't get pong, connection is dead
         this.pongTimeout = setTimeout(() => {
           console.warn(`[MCP WebSocketTransport] Pong timeout - connection may be dead`);
-          this.errorHandler?.(new Error('WebSocket ping timeout'));
+          this.errorHandler?.(new Error("WebSocket ping timeout"));
           this.ws?.terminate();
         }, this.PONG_TIMEOUT);
 

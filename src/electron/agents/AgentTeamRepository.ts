@@ -1,10 +1,6 @@
-import Database from 'better-sqlite3';
-import { v4 as uuidv4 } from 'uuid';
-import {
-  AgentTeam,
-  CreateAgentTeamRequest,
-  UpdateAgentTeamRequest,
-} from '../../shared/types';
+import Database from "better-sqlite3";
+import { v4 as uuidv4 } from "uuid";
+import { AgentTeam, CreateAgentTeamRequest, UpdateAgentTeamRequest } from "../../shared/types";
 
 /**
  * Repository for managing agent teams (Team Lead + members) in the database.
@@ -52,7 +48,7 @@ export class AgentTeamRepository {
       team.defaultPersonality || null,
       team.isActive ? 1 : 0,
       team.createdAt,
-      team.updatedAt
+      team.updatedAt,
     );
 
     return team;
@@ -62,7 +58,7 @@ export class AgentTeamRepository {
    * Find a team by ID.
    */
   findById(id: string): AgentTeam | undefined {
-    const stmt = this.db.prepare('SELECT * FROM agent_teams WHERE id = ?');
+    const stmt = this.db.prepare("SELECT * FROM agent_teams WHERE id = ?");
     const row = stmt.get(id) as any;
     return row ? this.mapRowToTeam(row) : undefined;
   }
@@ -71,9 +67,7 @@ export class AgentTeamRepository {
    * Find a team by name within a workspace.
    */
   findByName(workspaceId: string, name: string): AgentTeam | undefined {
-    const stmt = this.db.prepare(
-      'SELECT * FROM agent_teams WHERE workspace_id = ? AND name = ?'
-    );
+    const stmt = this.db.prepare("SELECT * FROM agent_teams WHERE workspace_id = ? AND name = ?");
     const row = stmt.get(workspaceId, name) as any;
     return row ? this.mapRowToTeam(row) : undefined;
   }
@@ -83,12 +77,10 @@ export class AgentTeamRepository {
    */
   listByWorkspace(workspaceId: string, includeInactive = false): AgentTeam[] {
     const stmt = includeInactive
-      ? this.db.prepare(
-        'SELECT * FROM agent_teams WHERE workspace_id = ? ORDER BY name ASC'
-      )
+      ? this.db.prepare("SELECT * FROM agent_teams WHERE workspace_id = ? ORDER BY name ASC")
       : this.db.prepare(
-        'SELECT * FROM agent_teams WHERE workspace_id = ? AND is_active = 1 ORDER BY name ASC'
-      );
+          "SELECT * FROM agent_teams WHERE workspace_id = ? AND is_active = 1 ORDER BY name ASC",
+        );
     const rows = stmt.all(workspaceId) as any[];
     return rows.map((row) => this.mapRowToTeam(row));
   }
@@ -104,41 +96,41 @@ export class AgentTeamRepository {
     const values: any[] = [];
 
     if (request.name !== undefined) {
-      fields.push('name = ?');
+      fields.push("name = ?");
       values.push(request.name);
     }
     if (request.description !== undefined) {
-      fields.push('description = ?');
+      fields.push("description = ?");
       values.push(request.description);
     }
     if (request.leadAgentRoleId !== undefined) {
-      fields.push('lead_agent_role_id = ?');
+      fields.push("lead_agent_role_id = ?");
       values.push(request.leadAgentRoleId);
     }
     if (request.maxParallelAgents !== undefined) {
-      fields.push('max_parallel_agents = ?');
+      fields.push("max_parallel_agents = ?");
       values.push(request.maxParallelAgents);
     }
     if (request.defaultModelPreference !== undefined) {
-      fields.push('default_model_preference = ?');
+      fields.push("default_model_preference = ?");
       values.push(request.defaultModelPreference);
     }
     if (request.defaultPersonality !== undefined) {
-      fields.push('default_personality = ?');
+      fields.push("default_personality = ?");
       values.push(request.defaultPersonality);
     }
     if (request.isActive !== undefined) {
-      fields.push('is_active = ?');
+      fields.push("is_active = ?");
       values.push(request.isActive ? 1 : 0);
     }
 
     if (fields.length === 0) return existing;
 
-    fields.push('updated_at = ?');
+    fields.push("updated_at = ?");
     values.push(Date.now());
     values.push(request.id);
 
-    const sql = `UPDATE agent_teams SET ${fields.join(', ')} WHERE id = ?`;
+    const sql = `UPDATE agent_teams SET ${fields.join(", ")} WHERE id = ?`;
     this.db.prepare(sql).run(...values);
 
     return this.findById(request.id);
@@ -157,19 +149,21 @@ export class AgentTeamRepository {
 
     const deleteTx = this.db.transaction((teamId: string) => {
       // Delete items for all runs in this team
-      this.db.prepare(`
+      this.db
+        .prepare(`
         DELETE FROM agent_team_items
         WHERE team_run_id IN (SELECT id FROM agent_team_runs WHERE team_id = ?)
-      `).run(teamId);
+      `)
+        .run(teamId);
 
       // Delete runs
-      this.db.prepare('DELETE FROM agent_team_runs WHERE team_id = ?').run(teamId);
+      this.db.prepare("DELETE FROM agent_team_runs WHERE team_id = ?").run(teamId);
 
       // Delete members
-      this.db.prepare('DELETE FROM agent_team_members WHERE team_id = ?').run(teamId);
+      this.db.prepare("DELETE FROM agent_team_members WHERE team_id = ?").run(teamId);
 
       // Delete team
-      const result = this.db.prepare('DELETE FROM agent_teams WHERE id = ?').run(teamId);
+      const result = this.db.prepare("DELETE FROM agent_teams WHERE id = ?").run(teamId);
       return result.changes > 0;
     });
 
@@ -192,4 +186,3 @@ export class AgentTeamRepository {
     };
   }
 }
-

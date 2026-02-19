@@ -9,7 +9,7 @@ import {
   type Context as PiAiContext,
   type Tool as PiAiTool,
   type KnownProvider,
-} from '@mariozechner/pi-ai';
+} from "@mariozechner/pi-ai";
 import {
   LLMProvider,
   LLMProviderConfig,
@@ -21,10 +21,10 @@ import {
   LLMToolResult,
   PI_PROVIDERS,
   PiProviderKey,
-} from './types';
-import { imageToTextFallback } from './image-utils';
+} from "./types";
+import { imageToTextFallback } from "./image-utils";
 
-const DEFAULT_PI_PROVIDER: KnownProvider = 'anthropic';
+const DEFAULT_PI_PROVIDER: KnownProvider = "anthropic";
 
 /** Placeholder usage data for historical assistant messages replayed as context.
  *  pi-ai requires these fields but the actual values are unknown for past messages. */
@@ -45,7 +45,7 @@ const PLACEHOLDER_USAGE = {
  * This provider lets CoWork OS route LLM calls through pi-ai's API layer.
  */
 export class PiProvider implements LLMProvider {
-  readonly type = 'pi' as const;
+  readonly type = "pi" as const;
   private piProvider: KnownProvider;
   private apiKey: string;
   private modelId: string;
@@ -54,22 +54,20 @@ export class PiProvider implements LLMProvider {
     const requestedProvider = config.piProvider || DEFAULT_PI_PROVIDER;
     if (!(requestedProvider in PI_PROVIDERS)) {
       throw new Error(
-        `Unknown Pi backend provider: "${requestedProvider}". Valid providers: ${Object.keys(PI_PROVIDERS).join(', ')}`
+        `Unknown Pi backend provider: "${requestedProvider}". Valid providers: ${Object.keys(PI_PROVIDERS).join(", ")}`,
       );
     }
     this.piProvider = requestedProvider as KnownProvider;
-    this.apiKey = config.piApiKey || '';
+    this.apiKey = config.piApiKey || "";
     this.modelId = config.model;
 
     if (!this.apiKey) {
       throw new Error(
-        `Pi provider requires an API key for the ${this.piProvider} backend. Configure it in Settings.`
+        `Pi provider requires an API key for the ${this.piProvider} backend. Configure it in Settings.`,
       );
     }
 
-    console.log(
-      `[Pi] Initialized with provider: ${this.piProvider}, model: ${this.modelId}`
-    );
+    console.log(`[Pi] Initialized with provider: ${this.piProvider}, model: ${this.modelId}`);
   }
 
   async createMessage(request: LLMRequest): Promise<LLMResponse> {
@@ -78,16 +76,14 @@ export class PiProvider implements LLMProvider {
       const model = this.resolveModel(request.model);
 
       console.log(
-        `[Pi] Calling ${this.piProvider} with model: ${model.id} (requested: ${request.model})`
+        `[Pi] Calling ${this.piProvider} with model: ${model.id} (requested: ${request.model})`,
       );
 
       // Convert messages to pi-ai format
       const piAiMessages = this.convertMessagesToPiAi(request.messages);
 
       // Convert tools to pi-ai format
-      const piAiTools = request.tools
-        ? this.convertToolsToPiAi(request.tools)
-        : undefined;
+      const piAiTools = request.tools ? this.convertToolsToPiAi(request.tools) : undefined;
 
       // Build context
       const context: PiAiContext = {
@@ -106,12 +102,9 @@ export class PiProvider implements LLMProvider {
       // Convert pi-ai response to CoWork OS format
       return this.convertPiAiResponse(response);
     } catch (error: any) {
-      if (
-        error.name === 'AbortError' ||
-        error.message?.includes('aborted')
-      ) {
+      if (error.name === "AbortError" || error.message?.includes("aborted")) {
         console.log(`[Pi] Request aborted`);
-        throw new Error('Request cancelled');
+        throw new Error("Request cancelled");
       }
 
       console.error(`[Pi] API error (${this.piProvider}):`, {
@@ -131,22 +124,20 @@ export class PiProvider implements LLMProvider {
         {
           messages: [
             {
-              role: 'user',
-              content: [{ type: 'text', text: 'Hi' }],
+              role: "user",
+              content: [{ type: "text", text: "Hi" }],
               timestamp: Date.now(),
             },
           ],
         },
-        { apiKey: this.apiKey, maxTokens: 10 }
+        { apiKey: this.apiKey, maxTokens: 10 },
       );
 
       return { success: true };
     } catch (error: any) {
       return {
         success: false,
-        error:
-          error.message ||
-          `Failed to connect to ${this.piProvider} via Pi`,
+        error: error.message || `Failed to connect to ${this.piProvider} via Pi`,
       };
     }
   }
@@ -155,7 +146,7 @@ export class PiProvider implements LLMProvider {
    * Get available models for the configured Pi provider
    */
   static getAvailableModels(
-    piProvider?: string
+    piProvider?: string,
   ): Array<{ id: string; name: string; description: string }> {
     const provider = (piProvider as KnownProvider) || DEFAULT_PI_PROVIDER;
     try {
@@ -163,7 +154,7 @@ export class PiProvider implements LLMProvider {
       return models.map((m) => ({
         id: m.id,
         name: m.name || m.id,
-        description: `${PI_PROVIDERS[provider as keyof typeof PI_PROVIDERS]?.displayName || provider} - ${m.reasoning ? 'Reasoning model' : 'Standard model'} (${m.contextWindow.toLocaleString()} ctx)`,
+        description: `${PI_PROVIDERS[provider as keyof typeof PI_PROVIDERS]?.displayName || provider} - ${m.reasoning ? "Reasoning model" : "Standard model"} (${m.contextWindow.toLocaleString()} ctx)`,
       }));
     } catch (error: any) {
       console.error(`[Pi] Failed to get models for ${provider}:`, error);
@@ -182,11 +173,10 @@ export class PiProvider implements LLMProvider {
       const providers = getProviders();
       return providers.map((p) => ({
         id: p,
-        name:
-          PI_PROVIDERS[p as keyof typeof PI_PROVIDERS]?.displayName || p,
+        name: PI_PROVIDERS[p as keyof typeof PI_PROVIDERS]?.displayName || p,
       }));
     } catch (error: any) {
-      console.error('[Pi] Failed to get providers:', error);
+      console.error("[Pi] Failed to get providers:", error);
       // Return fallback list
       return Object.entries(PI_PROVIDERS).map(([id, info]) => ({
         id,
@@ -207,9 +197,12 @@ export class PiProvider implements LLMProvider {
       return found;
     }
 
-    const availableIds = availableModels.map((m) => m.id).slice(0, 10).join(', ');
+    const availableIds = availableModels
+      .map((m) => m.id)
+      .slice(0, 10)
+      .join(", ");
     throw new Error(
-      `Model "${modelId}" not found for provider ${this.piProvider}. Available models: ${availableIds}${availableModels.length > 10 ? '...' : ''}`
+      `Model "${modelId}" not found for provider ${this.piProvider}. Available models: ${availableIds}${availableModels.length > 10 ? "..." : ""}`,
     );
   }
 
@@ -224,11 +217,11 @@ export class PiProvider implements LLMProvider {
     const toolCallNames = new Map<string, string>();
 
     for (const msg of messages) {
-      if (typeof msg.content === 'string') {
-        if (msg.role === 'user') {
+      if (typeof msg.content === "string") {
+        if (msg.role === "user") {
           result.push({
-            role: 'user',
-            content: [{ type: 'text', text: msg.content }],
+            role: "user",
+            content: [{ type: "text", text: msg.content }],
             timestamp: now,
           });
         } else {
@@ -236,49 +229,49 @@ export class PiProvider implements LLMProvider {
           // fields. These are synthetic placeholders for historical messages being replayed
           // as conversation context — the actual values are unknown at this point.
           result.push({
-            role: 'assistant',
-            content: [{ type: 'text', text: msg.content }],
-            api: 'openai-completions',
+            role: "assistant",
+            content: [{ type: "text", text: msg.content }],
+            api: "openai-completions",
             provider: this.piProvider,
             model: this.modelId,
             usage: PLACEHOLDER_USAGE,
-            stopReason: 'stop',
+            stopReason: "stop",
             timestamp: now,
           });
         }
       } else if (Array.isArray(msg.content)) {
         // Check if this is a tool result array
         const toolResults = msg.content.filter(
-          (item): item is LLMToolResult => item.type === 'tool_result'
+          (item): item is LLMToolResult => item.type === "tool_result",
         );
 
         if (toolResults.length > 0) {
           for (const toolResult of toolResults) {
             result.push({
-              role: 'toolResult',
+              role: "toolResult",
               toolCallId: toolResult.tool_use_id,
-              toolName: toolCallNames.get(toolResult.tool_use_id) || '',
-              content: [{ type: 'text', text: toolResult.content }],
+              toolName: toolCallNames.get(toolResult.tool_use_id) || "",
+              content: [{ type: "text", text: toolResult.content }],
               isError: toolResult.is_error || false,
               timestamp: now,
             });
           }
         } else {
           // Handle mixed content (text, tool_use, image)
-          if (msg.role === 'user') {
-            const textContent: Array<{ type: 'text'; text: string }> = [];
+          if (msg.role === "user") {
+            const textContent: Array<{ type: "text"; text: string }> = [];
             for (const item of msg.content) {
-              if (item.type === 'text') {
-                textContent.push({ type: 'text' as const, text: (item as any).text });
-              } else if (item.type === 'image') {
+              if (item.type === "text") {
+                textContent.push({ type: "text" as const, text: (item as any).text });
+              } else if (item.type === "image") {
                 // pi-ai SDK doesn't support inline images; use text fallback
-                textContent.push({ type: 'text' as const, text: imageToTextFallback(item) });
+                textContent.push({ type: "text" as const, text: imageToTextFallback(item) });
               }
             }
 
             if (textContent.length > 0) {
               result.push({
-                role: 'user',
+                role: "user",
                 content: textContent,
                 timestamp: now,
               });
@@ -288,13 +281,13 @@ export class PiProvider implements LLMProvider {
             const content: any[] = [];
 
             for (const item of msg.content) {
-              if (item.type === 'text') {
-                content.push({ type: 'text', text: (item as any).text });
-              } else if (item.type === 'tool_use') {
+              if (item.type === "text") {
+                content.push({ type: "text", text: (item as any).text });
+              } else if (item.type === "tool_use") {
                 const toolUse = item as any;
                 toolCallNames.set(toolUse.id, toolUse.name);
                 content.push({
-                  type: 'toolCall',
+                  type: "toolCall",
                   id: toolUse.id,
                   name: toolUse.name,
                   arguments: toolUse.input,
@@ -305,13 +298,13 @@ export class PiProvider implements LLMProvider {
             if (content.length > 0) {
               // Synthetic metadata — see comment above for string assistant messages
               result.push({
-                role: 'assistant',
+                role: "assistant",
                 content,
-                api: 'openai-completions',
+                api: "openai-completions",
                 provider: this.piProvider,
                 model: this.modelId,
                 usage: PLACEHOLDER_USAGE,
-                stopReason: 'stop',
+                stopReason: "stop",
                 timestamp: now,
               });
             }
@@ -342,14 +335,14 @@ export class PiProvider implements LLMProvider {
 
     if (response.content) {
       for (const block of response.content) {
-        if (block.type === 'text') {
+        if (block.type === "text") {
           content.push({
-            type: 'text',
+            type: "text",
             text: block.text,
           });
-        } else if (block.type === 'toolCall') {
+        } else if (block.type === "toolCall") {
           content.push({
-            type: 'tool_use',
+            type: "tool_use",
             id: block.id,
             name: block.name,
             input: block.arguments || {},
@@ -360,11 +353,11 @@ export class PiProvider implements LLMProvider {
     }
 
     // Map stop reason
-    let stopReason: LLMResponse['stopReason'] = 'end_turn';
-    if (response.stopReason === 'toolUse') {
-      stopReason = 'tool_use';
-    } else if (response.stopReason === 'length') {
-      stopReason = 'max_tokens';
+    let stopReason: LLMResponse["stopReason"] = "end_turn";
+    if (response.stopReason === "toolUse") {
+      stopReason = "tool_use";
+    } else if (response.stopReason === "length") {
+      stopReason = "max_tokens";
     }
 
     return {

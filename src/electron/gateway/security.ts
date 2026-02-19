@@ -11,17 +11,13 @@
  * in pairing operations.
  */
 
-import * as crypto from 'crypto';
-import Database from 'better-sqlite3';
-import {
-  ChannelUserRepository,
-  ChannelUser,
-  Channel,
-} from '../database/repositories';
-import { IncomingMessage } from './channels/types';
-import { pairingMutex, IdempotencyManager } from '../security/concurrency';
-import { ContextPolicyManager } from './context-policy';
-import { ContextType, SecurityMode } from '../../shared/types';
+import * as crypto from "crypto";
+import Database from "better-sqlite3";
+import { ChannelUserRepository, ChannelUser, Channel } from "../database/repositories";
+import { IncomingMessage } from "./channels/types";
+import { pairingMutex, IdempotencyManager } from "../security/concurrency";
+import { ContextPolicyManager } from "./context-policy";
+import { ContextType, SecurityMode } from "../../shared/types";
 
 export interface AccessCheckResult {
   allowed: boolean;
@@ -46,7 +42,7 @@ export class SecurityManager {
   private contextPolicyManager: ContextPolicyManager;
 
   // Channels that don't support group chats - always use DM context
-  private static readonly DM_ONLY_CHANNELS = ['email', 'imessage', 'bluebubbles'];
+  private static readonly DM_ONLY_CHANNELS = ["email", "imessage", "bluebubbles"];
 
   constructor(db: Database.Database) {
     this.userRepo = new ChannelUserRepository(db);
@@ -68,7 +64,7 @@ export class SecurityManager {
   async checkAccess(
     channel: Channel,
     message: IncomingMessage,
-    isGroup?: boolean
+    isGroup?: boolean,
   ): Promise<AccessCheckResult> {
     const securityConfig = channel.securityConfig;
 
@@ -78,21 +74,18 @@ export class SecurityManager {
 
     if (isGroup !== undefined) {
       // Explicit parameter takes precedence
-      contextType = isGroup ? 'group' : 'dm';
+      contextType = isGroup ? "group" : "dm";
     } else if (SecurityManager.DM_ONLY_CHANNELS.includes(channel.type)) {
       // Channels that don't support groups always use DM context
-      contextType = 'dm';
+      contextType = "dm";
     } else {
       // Infer from message - chatId different from userId typically means group
       // This works for Telegram, Discord, Slack, etc.
-      contextType = message.chatId !== message.userId ? 'group' : 'dm';
+      contextType = message.chatId !== message.userId ? "group" : "dm";
     }
 
     // Get context-specific policy (creates default if doesn't exist)
-    const contextPolicy = this.contextPolicyManager.getPolicy(
-      channel.id,
-      contextType
-    );
+    const contextPolicy = this.contextPolicyManager.getPolicy(channel.id, contextType);
 
     // Use context policy's security mode, falling back to channel default
     const mode: SecurityMode = contextPolicy.securityMode || securityConfig.mode;
@@ -109,7 +102,7 @@ export class SecurityManager {
         channelId: channel.id,
         channelUserId: message.userId,
         displayName: message.userName,
-        allowed: mode === 'open', // Auto-allow in open mode
+        allowed: mode === "open", // Auto-allow in open mode
       });
     } else {
       // Update display name if changed
@@ -120,11 +113,11 @@ export class SecurityManager {
 
     // Check based on security mode
     switch (mode) {
-      case 'open':
+      case "open":
         // Everyone is allowed
         return { allowed: true, user, contextType, deniedTools };
 
-      case 'allowlist': {
+      case "allowlist": {
         // Check if user is in allowlist
         if (user.allowed) {
           return { allowed: true, user, contextType, deniedTools };
@@ -144,13 +137,13 @@ export class SecurityManager {
         return {
           allowed: false,
           user,
-          reason: 'User not in allowlist',
+          reason: "User not in allowlist",
           contextType,
           deniedTools,
         };
       }
 
-      case 'pairing':
+      case "pairing":
         // Check if user has been paired
         if (user.allowed) {
           return { allowed: true, user, contextType, deniedTools };
@@ -158,7 +151,7 @@ export class SecurityManager {
         return {
           allowed: false,
           user,
-          reason: 'Pairing required',
+          reason: "Pairing required",
           pairingRequired: true,
           contextType,
           deniedTools,
@@ -198,7 +191,7 @@ export class SecurityManager {
     this.userRepo.create({
       channelId: channel.id,
       channelUserId: placeholderId,
-      displayName: 'Pending User',
+      displayName: "Pending User",
       allowed: false,
       pairingCode: code,
       pairingExpiresAt: expiresAt,
@@ -212,22 +205,18 @@ export class SecurityManager {
    * Looks up the code across all users in the channel and grants access to the caller
    * Uses idempotency to prevent double-verification race conditions
    */
-  async verifyPairingCode(
-    channel: Channel,
-    userId: string,
-    code: string
-  ): Promise<PairingResult> {
+  async verifyPairingCode(channel: Channel, userId: string, code: string): Promise<PairingResult> {
     // Generate idempotency key for this verification attempt
     const idempotencyKey = IdempotencyManager.generateKey(
-      'pairing:verify',
+      "pairing:verify",
       channel.id,
       userId,
-      code.toUpperCase()
+      code.toUpperCase(),
     );
 
     // Check if this exact verification is already in progress or completed
     const existing = this.pairingIdempotency.check(idempotencyKey);
-    if (existing.exists && existing.status === 'completed') {
+    if (existing.exists && existing.status === "completed") {
       return existing.result as PairingResult;
     }
 
@@ -237,7 +226,7 @@ export class SecurityManager {
     return await pairingMutex.withLock(mutexKey, async () => {
       // Double-check idempotency after acquiring lock
       const recheck = this.pairingIdempotency.check(idempotencyKey);
-      if (recheck.exists && recheck.status === 'completed') {
+      if (recheck.exists && recheck.status === "completed") {
         return recheck.result as PairingResult;
       }
 
@@ -266,7 +255,7 @@ export class SecurityManager {
   private async doVerifyPairingCode(
     channel: Channel,
     userId: string,
-    code: string
+    code: string,
   ): Promise<PairingResult> {
     // First check if user is already allowed
     const existingUser = this.userRepo.findByChannelUserId(channel.id, userId);
@@ -311,18 +300,24 @@ export class SecurityManager {
         // Warn user about remaining attempts
         const remaining = SecurityManager.MAX_PAIRING_ATTEMPTS - newAttempts;
         if (remaining > 0) {
-          return { success: false, error: `Invalid pairing code. ${remaining} attempt(s) remaining.` };
+          return {
+            success: false,
+            error: `Invalid pairing code. ${remaining} attempt(s) remaining.`,
+          };
         } else {
-          return { success: false, error: 'Too many failed attempts. Please wait 15 minutes before trying again.' };
+          return {
+            success: false,
+            error: "Too many failed attempts. Please wait 15 minutes before trying again.",
+          };
         }
       }
-      return { success: false, error: 'Invalid pairing code' };
+      return { success: false, error: "Invalid pairing code" };
     }
 
     // Check expiration
     if (codeOwner.pairingExpiresAt && Date.now() > codeOwner.pairingExpiresAt) {
       // Remove expired pending placeholders entirely
-      if (codeOwner.channelUserId.startsWith('pending_')) {
+      if (codeOwner.channelUserId.startsWith("pending_")) {
         this.userRepo.delete(codeOwner.id);
       } else {
         // Clear expired code for real users
@@ -331,7 +326,7 @@ export class SecurityManager {
           pairingExpiresAt: undefined,
         });
       }
-      return { success: false, error: 'Pairing code has expired. Please request a new one.' };
+      return { success: false, error: "Pairing code has expired. Please request a new one." };
     }
 
     // Code is valid! Grant access to the requesting user
@@ -346,7 +341,7 @@ export class SecurityManager {
       });
       // Clear the code from wherever it was stored
       if (codeOwner.id !== existingUser.id) {
-        if (codeOwner.channelUserId.startsWith('pending_')) {
+        if (codeOwner.channelUserId.startsWith("pending_")) {
           this.userRepo.delete(codeOwner.id);
         } else {
           this.userRepo.update(codeOwner.id, {
@@ -358,7 +353,7 @@ export class SecurityManager {
       return { success: true, user: { ...existingUser, allowed: true } };
     } else {
       // This shouldn't happen since checkAccess creates the user, but handle it
-      return { success: false, error: 'User record not found' };
+      return { success: false, error: "User record not found" };
     }
   }
 
@@ -423,8 +418,8 @@ export class SecurityManager {
    */
   private createPairingCode(): string {
     // Generate 6-character alphanumeric code
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Exclude similar chars (I, O, 1, 0)
-    let code = '';
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // Exclude similar chars (I, O, 1, 0)
+    let code = "";
     const randomBytes = crypto.randomBytes(6);
     for (let i = 0; i < 6; i++) {
       code += chars[randomBytes[i] % chars.length];

@@ -16,12 +16,20 @@
  * - Health check endpoint for webhook mode
  */
 
-import { Bot, Context, webhookCallback, InputFile, GrammyError, HttpError, InlineKeyboard } from 'grammy';
-import { sequentialize } from '@grammyjs/runner';
-import { apiThrottler } from '@grammyjs/transformer-throttler';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as http from 'http';
+import {
+  Bot,
+  Context,
+  webhookCallback,
+  InputFile,
+  GrammyError,
+  HttpError,
+  InlineKeyboard,
+} from "grammy";
+import { sequentialize } from "@grammyjs/runner";
+import { apiThrottler } from "@grammyjs/transformer-throttler";
+import * as fs from "fs";
+import * as path from "path";
+import * as http from "http";
 import {
   ChannelAdapter,
   ChannelStatus,
@@ -38,7 +46,7 @@ import {
   InlineKeyboardButton,
   Poll,
   ReplyKeyboard,
-} from './types';
+} from "./types";
 
 /**
  * Exponential backoff configuration
@@ -118,10 +126,10 @@ interface DraftState {
 }
 
 export class TelegramAdapter implements ChannelAdapter {
-  readonly type = 'telegram' as const;
+  readonly type = "telegram" as const;
 
   private bot: Bot | null = null;
-  private _status: ChannelStatus = 'disconnected';
+  private _status: ChannelStatus = "disconnected";
   private _botUsername?: string;
   private messageHandlers: MessageHandler[] = [];
   private errorHandlers: ErrorHandler[] = [];
@@ -183,11 +191,11 @@ export class TelegramAdapter implements ChannelAdapter {
    * Connect to Telegram using long polling
    */
   async connect(): Promise<void> {
-    if (this._status === 'connected' || this._status === 'connecting') {
+    if (this._status === "connected" || this._status === "connecting") {
       return;
     }
 
-    this.setStatus('connecting');
+    this.setStatus("connecting");
     this.resetBackoff();
 
     try {
@@ -212,12 +220,12 @@ export class TelegramAdapter implements ChannelAdapter {
 
       // Set up message handler with deduplication and fragment assembly
       // Note: we listen to all messages so photo/voice/document attachments can be handled.
-      this.bot.on('message', async (ctx) => {
+      this.bot.on("message", async (ctx) => {
         const msg = ctx.message as any;
         const from = msg?.from;
         if (!from || from.is_bot) return;
 
-        if (typeof msg.text === 'string' && String(msg.text).length > 0) {
+        if (typeof msg.text === "string" && String(msg.text).length > 0) {
           await this.handleTextMessage(ctx);
           return;
         }
@@ -225,7 +233,7 @@ export class TelegramAdapter implements ChannelAdapter {
       });
 
       // Set up callback query handler for inline keyboards
-      this.bot.on('callback_query:data', async (ctx) => {
+      this.bot.on("callback_query:data", async (ctx) => {
         await this.handleCallbackQuery(ctx);
       });
 
@@ -246,12 +254,17 @@ export class TelegramAdapter implements ChannelAdapter {
 
       // Check for connection conflict (409) during initial connection
       if (this.isConnectionConflictError(error)) {
-        console.error('Connection conflict detected: Another bot instance is running');
-        this.setStatus('error', new Error('Connection conflict: Another bot instance is running. Stop the other instance first.'));
-        throw new Error('Connection conflict: Another bot instance is running');
+        console.error("Connection conflict detected: Another bot instance is running");
+        this.setStatus(
+          "error",
+          new Error(
+            "Connection conflict: Another bot instance is running. Stop the other instance first.",
+          ),
+        );
+        throw new Error("Connection conflict: Another bot instance is running");
       }
 
-      this.setStatus('error', err);
+      this.setStatus("error", err);
       throw err;
     }
   }
@@ -281,36 +294,36 @@ export class TelegramAdapter implements ChannelAdapter {
 
     await this.bot.api.setMyCommands([
       // Core commands
-      { command: 'start', description: 'Start the bot and see welcome message' },
-      { command: 'help', description: 'Show all available commands' },
-      { command: 'status', description: 'Check bot connection and system status' },
+      { command: "start", description: "Start the bot and see welcome message" },
+      { command: "help", description: "Show all available commands" },
+      { command: "status", description: "Check bot connection and system status" },
 
       // Workspace management
-      { command: 'workspaces', description: 'List all available workspaces' },
-      { command: 'workspace', description: 'Select or show current workspace' },
-      { command: 'addworkspace', description: 'Add a new workspace by path' },
-      { command: 'removeworkspace', description: 'Remove a workspace from the list' },
+      { command: "workspaces", description: "List all available workspaces" },
+      { command: "workspace", description: "Select or show current workspace" },
+      { command: "addworkspace", description: "Add a new workspace by path" },
+      { command: "removeworkspace", description: "Remove a workspace from the list" },
 
       // Task management
-      { command: 'newtask', description: 'Start a fresh task/conversation' },
-      { command: 'cancel', description: 'Cancel the current running task' },
-      { command: 'retry', description: 'Retry the last failed task' },
-      { command: 'history', description: 'Show recent task history' },
+      { command: "newtask", description: "Start a fresh task/conversation" },
+      { command: "cancel", description: "Cancel the current running task" },
+      { command: "retry", description: "Retry the last failed task" },
+      { command: "history", description: "Show recent task history" },
 
       // Model configuration
-      { command: 'provider', description: 'Change or show current LLM provider' },
-      { command: 'providers', description: 'List all available LLM providers' },
-      { command: 'model', description: 'Change or show current model' },
-      { command: 'models', description: 'List available AI models' },
+      { command: "provider", description: "Change or show current LLM provider" },
+      { command: "providers", description: "List all available LLM providers" },
+      { command: "model", description: "Change or show current model" },
+      { command: "models", description: "List available AI models" },
 
       // Skills management
-      { command: 'skills', description: 'List available skills' },
-      { command: 'skill', description: 'Enable or disable a skill' },
+      { command: "skills", description: "List available skills" },
+      { command: "skill", description: "Enable or disable a skill" },
 
       // Settings
-      { command: 'settings', description: 'View and modify bot settings' },
-      { command: 'debug', description: 'Toggle debug mode on/off' },
-      { command: 'version', description: 'Show bot version information' },
+      { command: "settings", description: "View and modify bot settings" },
+      { command: "debug", description: "Toggle debug mode on/off" },
+      { command: "version", description: "Show bot version information" },
     ]);
   }
 
@@ -323,11 +336,11 @@ export class TelegramAdapter implements ChannelAdapter {
     this.bot.start({
       onStart: () => {
         console.log(`Telegram bot @${this._botUsername} started`);
-        this.setStatus('connected');
+        this.setStatus("connected");
         this.resetBackoff();
       },
       drop_pending_updates: true,
-      allowed_updates: ['message', 'message_reaction', 'callback_query'] as const,
+      allowed_updates: ["message", "message_reaction", "callback_query"] as const,
     });
   }
 
@@ -335,27 +348,32 @@ export class TelegramAdapter implements ChannelAdapter {
    * Handle bot errors including 409 conflict detection
    */
   private async handleBotError(err: unknown): Promise<void> {
-    console.error('Telegram bot error:', err);
+    console.error("Telegram bot error:", err);
 
     // Check for connection conflict (409)
     if (this.isConnectionConflictError(err)) {
-      console.error('Connection conflict detected (409): Another bot instance may be running');
-      this.setStatus('error', new Error('Connection conflict: Another bot instance is running'));
+      console.error("Connection conflict detected (409): Another bot instance may be running");
+      this.setStatus("error", new Error("Connection conflict: Another bot instance is running"));
 
       // Don't reconnect on 409 - let the user resolve the conflict
-      this.handleError(new Error('Connection conflict: Another bot instance is running. Stop the other instance and restart.'), 'connection_conflict');
+      this.handleError(
+        new Error(
+          "Connection conflict: Another bot instance is running. Stop the other instance and restart.",
+        ),
+        "connection_conflict",
+      );
       return;
     }
 
     // Check for network errors that warrant reconnection
     if (this.isNetworkError(err)) {
-      console.log('Network error detected, will attempt reconnection with backoff');
+      console.log("Network error detected, will attempt reconnection with backoff");
       await this.attemptReconnection();
       return;
     }
 
     // Handle other errors normally
-    this.handleError(err instanceof Error ? err : new Error(String(err)), 'bot.catch');
+    this.handleError(err instanceof Error ? err : new Error(String(err)), "bot.catch");
   }
 
   /**
@@ -370,7 +388,11 @@ export class TelegramAdapter implements ChannelAdapter {
     }
     // Check error message for 409 indicators
     const message = err instanceof Error ? err.message : String(err);
-    return message.includes('409') || message.includes('Conflict') || message.includes('terminated by other getUpdates');
+    return (
+      message.includes("409") ||
+      message.includes("Conflict") ||
+      message.includes("terminated by other getUpdates")
+    );
   }
 
   /**
@@ -382,14 +404,14 @@ export class TelegramAdapter implements ChannelAdapter {
     }
     const message = err instanceof Error ? err.message : String(err);
     return (
-      message.includes('ECONNRESET') ||
-      message.includes('ETIMEDOUT') ||
-      message.includes('ENOTFOUND') ||
-      message.includes('network') ||
-      message.includes('socket') ||
-      message.includes('502') ||
-      message.includes('503') ||
-      message.includes('504')
+      message.includes("ECONNRESET") ||
+      message.includes("ETIMEDOUT") ||
+      message.includes("ENOTFOUND") ||
+      message.includes("network") ||
+      message.includes("socket") ||
+      message.includes("502") ||
+      message.includes("503") ||
+      message.includes("504")
     );
   }
 
@@ -398,7 +420,7 @@ export class TelegramAdapter implements ChannelAdapter {
    */
   private async attemptReconnection(): Promise<void> {
     if (this.isReconnecting) {
-      console.log('Reconnection already in progress');
+      console.log("Reconnection already in progress");
       return;
     }
 
@@ -406,8 +428,11 @@ export class TelegramAdapter implements ChannelAdapter {
 
     if (this.backoffAttempt >= backoffConfig.maxAttempts) {
       console.error(`Max reconnection attempts (${backoffConfig.maxAttempts}) reached`);
-      this.setStatus('error', new Error('Max reconnection attempts reached'));
-      this.handleError(new Error('Failed to reconnect after maximum attempts'), 'reconnection_failed');
+      this.setStatus("error", new Error("Max reconnection attempts reached"));
+      this.handleError(
+        new Error("Failed to reconnect after maximum attempts"),
+        "reconnection_failed",
+      );
       return;
     }
 
@@ -415,7 +440,9 @@ export class TelegramAdapter implements ChannelAdapter {
     this.backoffAttempt++;
 
     const delay = this.calculateBackoffDelay(backoffConfig);
-    console.log(`Reconnection attempt ${this.backoffAttempt}/${backoffConfig.maxAttempts} in ${delay}ms`);
+    console.log(
+      `Reconnection attempt ${this.backoffAttempt}/${backoffConfig.maxAttempts} in ${delay}ms`,
+    );
 
     this.backoffTimer = setTimeout(async () => {
       try {
@@ -426,13 +453,13 @@ export class TelegramAdapter implements ChannelAdapter {
         }
 
         this.isReconnecting = false;
-        this.setStatus('disconnected');
+        this.setStatus("disconnected");
 
         // Attempt to reconnect
         await this.connect();
       } catch (error) {
         this.isReconnecting = false;
-        console.error('Reconnection attempt failed:', error);
+        console.error("Reconnection attempt failed:", error);
 
         // Schedule next attempt if not a 409 conflict
         if (!this.isConnectionConflictError(error)) {
@@ -491,7 +518,7 @@ export class TelegramAdapter implements ChannelAdapter {
       clearTimeout(existingFragment.timer);
       existingFragment.messages.push({
         messageId: msg.message_id.toString(),
-        text: msg.text || '',
+        text: msg.text || "",
         timestamp: new Date(msg.date * 1000),
         ctx,
       });
@@ -503,7 +530,7 @@ export class TelegramAdapter implements ChannelAdapter {
     } else {
       // Check if this might be a split message (long text arriving in chunks)
       // Telegram splits messages at ~4096 chars, so check if message ends mid-sentence
-      const mightBeSplit = this.mightBeSplitMessage(msg.text || '');
+      const mightBeSplit = this.mightBeSplitMessage(msg.text || "");
 
       if (mightBeSplit) {
         // Start new fragment buffer
@@ -514,12 +541,14 @@ export class TelegramAdapter implements ChannelAdapter {
         this.pendingFragments.set(fragmentKey, {
           chatId: msg.chat.id.toString(),
           userId: msg.from!.id.toString(),
-          messages: [{
-            messageId: msg.message_id.toString(),
-            text: msg.text || '',
-            timestamp: new Date(msg.date * 1000),
-            ctx,
-          }],
+          messages: [
+            {
+              messageId: msg.message_id.toString(),
+              text: msg.text || "",
+              timestamp: new Date(msg.date * 1000),
+              ctx,
+            },
+          ],
           timer,
         });
       } else {
@@ -572,7 +601,7 @@ export class TelegramAdapter implements ChannelAdapter {
     const trimmed = text.trim();
     if (trimmed.length > 100) {
       const lastChar = trimmed.charAt(trimmed.length - 1);
-      const terminalPunctuation = ['.', '!', '?', ')', ']', '}', '"', "'", '`'];
+      const terminalPunctuation = [".", "!", "?", ")", "]", "}", '"', "'", "`"];
       if (!terminalPunctuation.includes(lastChar)) {
         return true;
       }
@@ -597,14 +626,16 @@ export class TelegramAdapter implements ChannelAdapter {
       // Multiple messages, combine them
       const combinedText = fragment.messages
         .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
-        .map(m => m.text)
-        .join('');
+        .map((m) => m.text)
+        .join("");
 
       // Use the first message's context but with combined text
       const firstCtx = fragment.messages[0].ctx;
       const message = await this.mapContextToMessage(firstCtx, combinedText);
 
-      console.log(`Assembled ${fragment.messages.length} text fragments into single message (${combinedText.length} chars)`);
+      console.log(
+        `Assembled ${fragment.messages.length} text fragments into single message (${combinedText.length} chars)`,
+      );
 
       await this.handleIncomingMessage(message);
     }
@@ -620,7 +651,7 @@ export class TelegramAdapter implements ChannelAdapter {
         await this.sendAckReaction(ctx);
       } catch (err) {
         // Ignore reaction errors (might not have permission)
-        console.debug('Could not send ACK reaction:', err);
+        console.debug("Could not send ACK reaction:", err);
       }
     }
 
@@ -635,11 +666,9 @@ export class TelegramAdapter implements ChannelAdapter {
     if (!this.bot || !ctx.message) return;
 
     try {
-      await this.bot.api.setMessageReaction(
-        ctx.message.chat.id,
-        ctx.message.message_id,
-        [{ type: 'emoji', emoji: '👀' }]
-      );
+      await this.bot.api.setMessageReaction(ctx.message.chat.id, ctx.message.message_id, [
+        { type: "emoji", emoji: "👀" },
+      ]);
     } catch {
       // Silently fail - reactions might not be available
     }
@@ -655,7 +684,7 @@ export class TelegramAdapter implements ChannelAdapter {
       await this.bot.api.setMessageReaction(
         chatId,
         parseInt(messageId, 10),
-        [] // Empty array removes reactions
+        [], // Empty array removes reactions
       );
     } catch {
       // Silently fail
@@ -670,11 +699,9 @@ export class TelegramAdapter implements ChannelAdapter {
     if (!this.bot) return;
 
     try {
-      await this.bot.api.setMessageReaction(
-        chatId,
-        parseInt(messageId, 10),
-        [{ type: 'emoji', emoji: '👍' }]
-      );
+      await this.bot.api.setMessageReaction(chatId, parseInt(messageId, 10), [
+        { type: "emoji", emoji: "👍" },
+      ]);
     } catch {
       // Silently fail
     }
@@ -755,28 +782,28 @@ export class TelegramAdapter implements ChannelAdapter {
       this.bot = null;
     }
     this._botUsername = undefined;
-    this.setStatus('disconnected');
+    this.setStatus("disconnected");
   }
 
   /**
    * Send a message to a Telegram chat
    */
   async sendMessage(message: OutgoingMessage): Promise<string> {
-    if (!this.bot || this._status !== 'connected') {
-      throw new Error('Telegram bot is not connected');
+    if (!this.bot || this._status !== "connected") {
+      throw new Error("Telegram bot is not connected");
     }
 
     // Handle image attachments first (send images before text)
     let lastMessageId: string | undefined;
     if (message.attachments && message.attachments.length > 0) {
       for (const attachment of message.attachments) {
-        if (attachment.type === 'image' && attachment.url) {
+        if (attachment.type === "image" && attachment.url) {
           try {
             // attachment.url is the file path for local images
             const msgId = await this.sendPhoto(message.chatId, attachment.url);
             lastMessageId = msgId;
           } catch (err) {
-            console.error('Failed to send image attachment:', err);
+            console.error("Failed to send image attachment:", err);
           }
         }
       }
@@ -786,7 +813,7 @@ export class TelegramAdapter implements ChannelAdapter {
     if (message.text && message.text.trim()) {
       // Process text for Telegram compatibility
       let processedText = message.text;
-      if (message.parseMode === 'markdown') {
+      if (message.parseMode === "markdown") {
         processedText = this.convertMarkdownForTelegram(message.text);
       }
 
@@ -794,10 +821,10 @@ export class TelegramAdapter implements ChannelAdapter {
 
       // Set parse mode
       // Use legacy Markdown (not MarkdownV2) to avoid escaping issues with special characters
-      if (message.parseMode === 'markdown') {
-        options.parse_mode = 'Markdown';
-      } else if (message.parseMode === 'html') {
-        options.parse_mode = 'HTML';
+      if (message.parseMode === "markdown") {
+        options.parse_mode = "Markdown";
+      } else if (message.parseMode === "html") {
+        options.parse_mode = "HTML";
       }
 
       // Reply to message if specified
@@ -826,11 +853,13 @@ export class TelegramAdapter implements ChannelAdapter {
       } catch (error: any) {
         // If markdown parsing fails, retry without parse_mode
         if (error?.error_code === 400 && error?.description?.includes("can't parse entities")) {
-          console.log('Markdown parsing failed, retrying without parse_mode');
+          console.log("Markdown parsing failed, retrying without parse_mode");
           const plainOptions: Record<string, unknown> = {
             ...(message.threadId && { message_thread_id: parseInt(message.threadId, 10) }),
             ...(message.disableLinkPreview && { link_preview_options: { is_disabled: true } }),
-            ...(message.inlineKeyboard && { reply_markup: this.buildInlineKeyboard(message.inlineKeyboard) }),
+            ...(message.inlineKeyboard && {
+              reply_markup: this.buildInlineKeyboard(message.inlineKeyboard),
+            }),
           };
           if (message.replyTo) {
             plainOptions.reply_to_message_id = parseInt(message.replyTo, 10);
@@ -843,7 +872,7 @@ export class TelegramAdapter implements ChannelAdapter {
     }
 
     // If no text but had attachments, return the last attachment message ID
-    return lastMessageId || '';
+    return lastMessageId || "";
   }
 
   /**
@@ -876,7 +905,7 @@ export class TelegramAdapter implements ChannelAdapter {
     const callbackQuery: CallbackQuery = {
       id: query.id,
       userId: query.from.id.toString(),
-      userName: query.from.first_name + (query.from.last_name ? ` ${query.from.last_name}` : ''),
+      userName: query.from.first_name + (query.from.last_name ? ` ${query.from.last_name}` : ""),
       chatId: query.message.chat.id.toString(),
       messageId: query.message.message_id.toString(),
       data: query.data,
@@ -889,10 +918,10 @@ export class TelegramAdapter implements ChannelAdapter {
       try {
         await handler(callbackQuery);
       } catch (error) {
-        console.error('Error in callback query handler:', error);
+        console.error("Error in callback query handler:", error);
         this.handleError(
           error instanceof Error ? error : new Error(String(error)),
-          'callbackQueryHandler'
+          "callbackQueryHandler",
         );
       }
     }
@@ -907,7 +936,7 @@ export class TelegramAdapter implements ChannelAdapter {
 
     this.draftStates.set(chatId, {
       chatId,
-      currentText: '',
+      currentText: "",
       lastUpdateTime: Date.now(),
     });
   }
@@ -924,7 +953,7 @@ export class TelegramAdapter implements ChannelAdapter {
       // (e.g., follow-ups or after process restarts).
       state = {
         chatId,
-        currentText: '',
+        currentText: "",
         lastUpdateTime: 0,
       };
       this.draftStates.set(chatId, state);
@@ -940,16 +969,12 @@ export class TelegramAdapter implements ChannelAdapter {
     }
 
     // Add typing indicator suffix
-    const displayText = text + ' ▌';
+    const displayText = text + " ▌";
 
     try {
       if (state.messageId) {
         // Edit existing message
-        await this.bot.api.editMessageText(
-          chatId,
-          parseInt(state.messageId, 10),
-          displayText
-        );
+        await this.bot.api.editMessageText(chatId, parseInt(state.messageId, 10), displayText);
       } else {
         // Create new message
         const sent = await this.bot.api.sendMessage(chatId, displayText);
@@ -960,8 +985,8 @@ export class TelegramAdapter implements ChannelAdapter {
       state.lastUpdateTime = now;
     } catch (error: any) {
       // Ignore "message not modified" errors
-      if (!error?.description?.includes('message is not modified')) {
-        console.error('Draft stream update error:', error);
+      if (!error?.description?.includes("message is not modified")) {
+        console.error("Draft stream update error:", error);
       }
     }
   }
@@ -970,7 +995,7 @@ export class TelegramAdapter implements ChannelAdapter {
    * Finalize draft stream with final content
    */
   async finalizeDraftStream(chatId: string, finalText: string): Promise<string> {
-    if (!this.bot) throw new Error('Bot not connected');
+    if (!this.bot) throw new Error("Bot not connected");
 
     const state = this.draftStates.get(chatId);
     this.draftStates.delete(chatId);
@@ -983,15 +1008,11 @@ export class TelegramAdapter implements ChannelAdapter {
 
     try {
       // Edit the draft message to final content (remove typing indicator)
-      await this.bot.api.editMessageText(
-        chatId,
-        parseInt(state.messageId, 10),
-        finalText
-      );
+      await this.bot.api.editMessageText(chatId, parseInt(state.messageId, 10), finalText);
       return state.messageId;
     } catch (error: any) {
       // If edit fails, send as new message
-      console.error('Failed to finalize draft, sending new message:', error);
+      console.error("Failed to finalize draft, sending new message:", error);
       const sent = await this.bot.api.sendMessage(chatId, finalText);
       return sent.message_id.toString();
     }
@@ -1022,7 +1043,7 @@ export class TelegramAdapter implements ChannelAdapter {
 
     // Convert markdown headers (## Header) to bold (*Header*)
     // Must be done before ** conversion
-    result = result.replace(/^#{1,6}\s+(.+)$/gm, '*$1*');
+    result = result.replace(/^#{1,6}\s+(.+)$/gm, "*$1*");
 
     // Convert markdown tables to code blocks
     // Tables start with | and have a separator line like |---|---|
@@ -1034,28 +1055,30 @@ export class TelegramAdapter implements ChannelAdapter {
       if (hasSeparatorLine.test(match)) {
         // Convert table to code block for monospace display
         // Remove the separator line (|---|---|) as it's just formatting
-        const lines = match.split('\n').filter(line => line.trim());
-        const cleanedLines = lines.filter(line => !(/^\|[\s-:]+\|$/.test(line.trim())));
+        const lines = match.split("\n").filter((line) => line.trim());
+        const cleanedLines = lines.filter((line) => !/^\|[\s-:]+\|$/.test(line.trim()));
 
         // Format table nicely
-        const formattedTable = cleanedLines.map(line => {
-          // Remove leading/trailing pipes and clean up
-          return line.replace(/^\||\|$/g, '').trim();
-        }).join('\n');
+        const formattedTable = cleanedLines
+          .map((line) => {
+            // Remove leading/trailing pipes and clean up
+            return line.replace(/^\||\|$/g, "").trim();
+          })
+          .join("\n");
 
-        return '```\n' + formattedTable + '\n```\n';
+        return "```\n" + formattedTable + "\n```\n";
       }
       return match;
     });
 
     // Convert **bold** to *bold* (Telegram uses single asterisk)
-    result = result.replace(/\*\*([^*]+)\*\*/g, '*$1*');
+    result = result.replace(/\*\*([^*]+)\*\*/g, "*$1*");
 
     // Convert __bold__ to *bold* (alternative bold syntax)
-    result = result.replace(/__([^_]+)__/g, '*$1*');
+    result = result.replace(/__([^_]+)__/g, "*$1*");
 
     // Convert horizontal rules (---, ***) to a line
-    result = result.replace(/^[-*]{3,}$/gm, '─────────────────');
+    result = result.replace(/^[-*]{3,}$/gm, "─────────────────");
 
     return result;
   }
@@ -1064,8 +1087,8 @@ export class TelegramAdapter implements ChannelAdapter {
    * Edit an existing message
    */
   async editMessage(chatId: string, messageId: string, text: string): Promise<void> {
-    if (!this.bot || this._status !== 'connected') {
-      throw new Error('Telegram bot is not connected');
+    if (!this.bot || this._status !== "connected") {
+      throw new Error("Telegram bot is not connected");
     }
 
     const msgId = parseInt(messageId, 10);
@@ -1080,8 +1103,8 @@ export class TelegramAdapter implements ChannelAdapter {
    * Delete a message
    */
   async deleteMessage(chatId: string, messageId: string): Promise<void> {
-    if (!this.bot || this._status !== 'connected') {
-      throw new Error('Telegram bot is not connected');
+    if (!this.bot || this._status !== "connected") {
+      throw new Error("Telegram bot is not connected");
     }
 
     const msgId = parseInt(messageId, 10);
@@ -1096,8 +1119,8 @@ export class TelegramAdapter implements ChannelAdapter {
    * Send a document/file to a chat
    */
   async sendDocument(chatId: string, filePath: string, caption?: string): Promise<string> {
-    if (!this.bot || this._status !== 'connected') {
-      throw new Error('Telegram bot is not connected');
+    if (!this.bot || this._status !== "connected") {
+      throw new Error("Telegram bot is not connected");
     }
 
     // Check if file exists
@@ -1108,11 +1131,9 @@ export class TelegramAdapter implements ChannelAdapter {
     const fileName = path.basename(filePath);
     const fileBuffer = fs.readFileSync(filePath);
 
-    const sent = await this.bot.api.sendDocument(
-      chatId,
-      new InputFile(fileBuffer, fileName),
-      { caption }
-    );
+    const sent = await this.bot.api.sendDocument(chatId, new InputFile(fileBuffer, fileName), {
+      caption,
+    });
 
     return sent.message_id.toString();
   }
@@ -1121,8 +1142,8 @@ export class TelegramAdapter implements ChannelAdapter {
    * Send a photo/image to a chat
    */
   async sendPhoto(chatId: string, filePath: string, caption?: string): Promise<string> {
-    if (!this.bot || this._status !== 'connected') {
-      throw new Error('Telegram bot is not connected');
+    if (!this.bot || this._status !== "connected") {
+      throw new Error("Telegram bot is not connected");
     }
 
     // Check if file exists
@@ -1133,11 +1154,9 @@ export class TelegramAdapter implements ChannelAdapter {
     const fileName = path.basename(filePath);
     const fileBuffer = fs.readFileSync(filePath);
 
-    const sent = await this.bot.api.sendPhoto(
-      chatId,
-      new InputFile(fileBuffer, fileName),
-      { caption }
-    );
+    const sent = await this.bot.api.sendPhoto(chatId, new InputFile(fileBuffer, fileName), {
+      caption,
+    });
 
     return sent.message_id.toString();
   }
@@ -1161,8 +1180,8 @@ export class TelegramAdapter implements ChannelAdapter {
    * Call this to remove the loading state from the button.
    */
   async answerCallbackQuery(queryId: string, text?: string, showAlert?: boolean): Promise<void> {
-    if (!this.bot || this._status !== 'connected') {
-      throw new Error('Telegram bot is not connected');
+    if (!this.bot || this._status !== "connected") {
+      throw new Error("Telegram bot is not connected");
     }
 
     await this.bot.api.answerCallbackQuery(queryId, {
@@ -1178,10 +1197,10 @@ export class TelegramAdapter implements ChannelAdapter {
     chatId: string,
     messageId: string,
     text?: string,
-    inlineKeyboard?: InlineKeyboardButton[][]
+    inlineKeyboard?: InlineKeyboardButton[][],
   ): Promise<void> {
-    if (!this.bot || this._status !== 'connected') {
-      throw new Error('Telegram bot is not connected');
+    if (!this.bot || this._status !== "connected") {
+      throw new Error("Telegram bot is not connected");
     }
 
     const msgId = parseInt(messageId, 10);
@@ -1211,8 +1230,8 @@ export class TelegramAdapter implements ChannelAdapter {
    * Send typing indicator (chat action)
    */
   async sendTyping(chatId: string, threadId?: string): Promise<void> {
-    if (!this.bot || this._status !== 'connected') {
-      throw new Error('Telegram bot is not connected');
+    if (!this.bot || this._status !== "connected") {
+      throw new Error("Telegram bot is not connected");
     }
 
     const options: Record<string, unknown> = {};
@@ -1220,28 +1239,28 @@ export class TelegramAdapter implements ChannelAdapter {
       options.message_thread_id = parseInt(threadId, 10);
     }
 
-    await this.bot.api.sendChatAction(chatId, 'typing', options);
+    await this.bot.api.sendChatAction(chatId, "typing", options);
   }
 
   /**
    * Add reaction to a message
    */
   async addReaction(chatId: string, messageId: string, emoji: string): Promise<void> {
-    if (!this.bot || this._status !== 'connected') {
-      throw new Error('Telegram bot is not connected');
+    if (!this.bot || this._status !== "connected") {
+      throw new Error("Telegram bot is not connected");
     }
 
     const msgId = parseInt(messageId, 10);
     // Cast emoji to the expected type - Telegram will reject invalid emojis at runtime
-    await this.bot.api.setMessageReaction(chatId, msgId, [{ type: 'emoji', emoji: emoji as '👍' }]);
+    await this.bot.api.setMessageReaction(chatId, msgId, [{ type: "emoji", emoji: emoji as "👍" }]);
   }
 
   /**
    * Remove reaction from a message
    */
   async removeReaction(chatId: string, messageId: string): Promise<void> {
-    if (!this.bot || this._status !== 'connected') {
-      throw new Error('Telegram bot is not connected');
+    if (!this.bot || this._status !== "connected") {
+      throw new Error("Telegram bot is not connected");
     }
 
     const msgId = parseInt(messageId, 10);
@@ -1252,8 +1271,8 @@ export class TelegramAdapter implements ChannelAdapter {
    * Send a poll
    */
   async sendPoll(chatId: string, poll: Poll, threadId?: string): Promise<string> {
-    if (!this.bot || this._status !== 'connected') {
-      throw new Error('Telegram bot is not connected');
+    if (!this.bot || this._status !== "connected") {
+      throw new Error("Telegram bot is not connected");
     }
 
     const options: Record<string, unknown> = {
@@ -1265,8 +1284,8 @@ export class TelegramAdapter implements ChannelAdapter {
       options.message_thread_id = parseInt(threadId, 10);
     }
 
-    if (poll.type === 'quiz' && poll.correctOptionId !== undefined) {
-      options.type = 'quiz';
+    if (poll.type === "quiz" && poll.correctOptionId !== undefined) {
+      options.type = "quiz";
       options.correct_option_id = poll.correctOptionId;
       if (poll.explanation) {
         options.explanation = poll.explanation;
@@ -1282,8 +1301,8 @@ export class TelegramAdapter implements ChannelAdapter {
     const sent = await this.bot.api.sendPoll(
       chatId,
       poll.question,
-      poll.options.map(o => o.text),
-      options
+      poll.options.map((o) => o.text),
+      options,
     );
 
     return sent.message_id.toString();
@@ -1296,19 +1315,19 @@ export class TelegramAdapter implements ChannelAdapter {
     chatId: string,
     text: string,
     keyboard: ReplyKeyboard,
-    threadId?: string
+    threadId?: string,
   ): Promise<string> {
-    if (!this.bot || this._status !== 'connected') {
-      throw new Error('Telegram bot is not connected');
+    if (!this.bot || this._status !== "connected") {
+      throw new Error("Telegram bot is not connected");
     }
 
     const replyMarkup = {
-      keyboard: keyboard.buttons.map(row =>
-        row.map(btn => ({
+      keyboard: keyboard.buttons.map((row) =>
+        row.map((btn) => ({
           text: btn.text,
           request_contact: btn.requestContact,
           request_location: btn.requestLocation,
-        }))
+        })),
       ),
       resize_keyboard: keyboard.resizeKeyboard ?? true,
       one_time_keyboard: keyboard.oneTimeKeyboard ?? false,
@@ -1331,8 +1350,8 @@ export class TelegramAdapter implements ChannelAdapter {
    * Remove reply keyboard (send message that hides the keyboard)
    */
   async removeReplyKeyboard(chatId: string, text: string, threadId?: string): Promise<string> {
-    if (!this.bot || this._status !== 'connected') {
-      throw new Error('Telegram bot is not connected');
+    if (!this.bot || this._status !== "connected") {
+      throw new Error("Telegram bot is not connected");
     }
 
     const options: Record<string, unknown> = {
@@ -1351,8 +1370,8 @@ export class TelegramAdapter implements ChannelAdapter {
    * Send a sticker
    */
   async sendSticker(chatId: string, stickerId: string, threadId?: string): Promise<string> {
-    if (!this.bot || this._status !== 'connected') {
-      throw new Error('Telegram bot is not connected');
+    if (!this.bot || this._status !== "connected") {
+      throw new Error("Telegram bot is not connected");
     }
 
     const options: Record<string, unknown> = {};
@@ -1371,10 +1390,10 @@ export class TelegramAdapter implements ChannelAdapter {
     chatId: string,
     latitude: number,
     longitude: number,
-    threadId?: string
+    threadId?: string,
   ): Promise<string> {
-    if (!this.bot || this._status !== 'connected') {
-      throw new Error('Telegram bot is not connected');
+    if (!this.bot || this._status !== "connected") {
+      throw new Error("Telegram bot is not connected");
     }
 
     const options: Record<string, unknown> = {};
@@ -1391,11 +1410,11 @@ export class TelegramAdapter implements ChannelAdapter {
    */
   async sendMediaGroup(
     chatId: string,
-    media: Array<{ type: 'photo' | 'video'; filePath: string; caption?: string }>,
-    threadId?: string
+    media: Array<{ type: "photo" | "video"; filePath: string; caption?: string }>,
+    threadId?: string,
   ): Promise<string[]> {
-    if (!this.bot || this._status !== 'connected') {
-      throw new Error('Telegram bot is not connected');
+    if (!this.bot || this._status !== "connected") {
+      throw new Error("Telegram bot is not connected");
     }
 
     const inputMedia = media.map((m, index) => {
@@ -1414,7 +1433,7 @@ export class TelegramAdapter implements ChannelAdapter {
     }
 
     const sent = await this.bot.api.sendMediaGroup(chatId, inputMedia as any, options);
-    return sent.map(m => m.message_id.toString());
+    return sent.map((m) => m.message_id.toString());
   }
 
   // ============================================================================
@@ -1442,7 +1461,7 @@ export class TelegramAdapter implements ChannelAdapter {
     let botId: string | undefined;
     let botDisplayName: string | undefined;
 
-    if (this.bot && this._status === 'connected') {
+    if (this.bot && this._status === "connected") {
       try {
         const me = await this.bot.api.getMe();
         botId = me.id.toString();
@@ -1454,7 +1473,7 @@ export class TelegramAdapter implements ChannelAdapter {
     }
 
     return {
-      type: 'telegram',
+      type: "telegram",
       status: this._status,
       botId,
       botUsername: this._botUsername,
@@ -1468,9 +1487,12 @@ export class TelegramAdapter implements ChannelAdapter {
    */
   getWebhookCallback(): (req: Request, res: Response) => Promise<void> {
     if (!this.bot) {
-      throw new Error('Bot not initialized');
+      throw new Error("Bot not initialized");
     }
-    return webhookCallback(this.bot, 'express') as unknown as (req: Request, res: Response) => Promise<void>;
+    return webhookCallback(this.bot, "express") as unknown as (
+      req: Request,
+      res: Response,
+    ) => Promise<void>;
   }
 
   /**
@@ -1478,12 +1500,12 @@ export class TelegramAdapter implements ChannelAdapter {
    */
   async setWebhook(url: string, secretToken?: string): Promise<void> {
     if (!this.bot) {
-      throw new Error('Bot not initialized');
+      throw new Error("Bot not initialized");
     }
 
     await this.bot.api.setWebhook(url, {
       secret_token: secretToken,
-      allowed_updates: ['message'] as const,
+      allowed_updates: ["message"] as const,
     });
   }
 
@@ -1492,7 +1514,7 @@ export class TelegramAdapter implements ChannelAdapter {
    */
   async deleteWebhook(): Promise<void> {
     if (!this.bot) {
-      throw new Error('Bot not initialized');
+      throw new Error("Bot not initialized");
     }
 
     await this.bot.api.deleteWebhook();
@@ -1504,39 +1526,39 @@ export class TelegramAdapter implements ChannelAdapter {
    */
   async startWebhookServer(config: WebhookServerConfig): Promise<void> {
     if (this.webhookServer) {
-      throw new Error('Webhook server is already running');
+      throw new Error("Webhook server is already running");
     }
 
     if (!this.bot) {
-      throw new Error('Bot not initialized. Call connect() first or initialize bot manually.');
+      throw new Error("Bot not initialized. Call connect() first or initialize bot manually.");
     }
 
     const {
       port,
-      host = '0.0.0.0',
+      host = "0.0.0.0",
       secretToken,
-      webhookPath = '/webhook',
-      healthPath = '/healthz',
+      webhookPath = "/webhook",
+      healthPath = "/healthz",
     } = config;
 
     // Create HTTP server
     this.webhookServer = http.createServer(async (req, res) => {
-      const url = req.url || '/';
+      const url = req.url || "/";
 
       // Health check endpoint
-      if (req.method === 'GET' && url === healthPath) {
+      if (req.method === "GET" && url === healthPath) {
         await this.handleHealthCheck(req, res);
         return;
       }
 
       // Webhook endpoint
-      if (req.method === 'POST' && url === webhookPath) {
+      if (req.method === "POST" && url === webhookPath) {
         // Validate secret token if configured
         if (secretToken) {
-          const requestToken = req.headers['x-telegram-bot-api-secret-token'];
+          const requestToken = req.headers["x-telegram-bot-api-secret-token"];
           if (requestToken !== secretToken) {
-            res.writeHead(401, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: 'Unauthorized' }));
+            res.writeHead(401, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ error: "Unauthorized" }));
             return;
           }
         }
@@ -1547,8 +1569,8 @@ export class TelegramAdapter implements ChannelAdapter {
       }
 
       // 404 for unknown routes
-      res.writeHead(404, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Not found' }));
+      res.writeHead(404, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Not found" }));
     });
 
     // Start listening
@@ -1560,8 +1582,8 @@ export class TelegramAdapter implements ChannelAdapter {
         resolve();
       });
 
-      this.webhookServer!.on('error', (error) => {
-        console.error('Webhook server error:', error);
+      this.webhookServer!.on("error", (error) => {
+        console.error("Webhook server error:", error);
         reject(error);
       });
     });
@@ -1577,7 +1599,7 @@ export class TelegramAdapter implements ChannelAdapter {
 
     return new Promise((resolve) => {
       this.webhookServer!.close(() => {
-        console.log('Webhook server stopped');
+        console.log("Webhook server stopped");
         this.webhookServer = undefined;
         resolve();
       });
@@ -1587,35 +1609,41 @@ export class TelegramAdapter implements ChannelAdapter {
   /**
    * Handle health check requests
    */
-  private async handleHealthCheck(_req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
+  private async handleHealthCheck(
+    _req: http.IncomingMessage,
+    res: http.ServerResponse,
+  ): Promise<void> {
     const health = {
-      status: this._status === 'connected' ? 'healthy' : 'unhealthy',
+      status: this._status === "connected" ? "healthy" : "unhealthy",
       timestamp: new Date().toISOString(),
       bot: {
         status: this._status,
         username: this._botUsername || null,
-        connected: this._status === 'connected',
+        connected: this._status === "connected",
       },
       uptime: process.uptime(),
       memory: process.memoryUsage(),
     };
 
-    const statusCode = health.status === 'healthy' ? 200 : 503;
-    res.writeHead(statusCode, { 'Content-Type': 'application/json' });
+    const statusCode = health.status === "healthy" ? 200 : 503;
+    res.writeHead(statusCode, { "Content-Type": "application/json" });
     res.end(JSON.stringify(health, null, 2));
   }
 
   /**
    * Handle webhook requests
    */
-  private async handleWebhookRequest(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
-    let body = '';
+  private async handleWebhookRequest(
+    req: http.IncomingMessage,
+    res: http.ServerResponse,
+  ): Promise<void> {
+    let body = "";
 
-    req.on('data', (chunk) => {
+    req.on("data", (chunk) => {
       body += chunk.toString();
     });
 
-    req.on('end', async () => {
+    req.on("end", async () => {
       try {
         const update = JSON.parse(body);
 
@@ -1624,12 +1652,12 @@ export class TelegramAdapter implements ChannelAdapter {
           await this.bot.handleUpdate(update);
         }
 
-        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ ok: true }));
       } catch (error) {
-        console.error('Error processing webhook:', error);
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Internal server error' }));
+        console.error("Error processing webhook:", error);
+        res.writeHead(500, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Internal server error" }));
       }
     });
   }
@@ -1639,11 +1667,11 @@ export class TelegramAdapter implements ChannelAdapter {
    * Sets up the bot, registers commands, and starts the webhook server.
    */
   async connectWithWebhook(webhookUrl: string, serverConfig: WebhookServerConfig): Promise<void> {
-    if (this._status === 'connected' || this._status === 'connecting') {
+    if (this._status === "connected" || this._status === "connecting") {
       return;
     }
 
-    this.setStatus('connecting');
+    this.setStatus("connecting");
     this.resetBackoff();
 
     try {
@@ -1668,12 +1696,12 @@ export class TelegramAdapter implements ChannelAdapter {
 
       // Set up message handler
       // Note: we listen to all messages so photo/voice/document attachments can be handled.
-      this.bot.on('message', async (ctx) => {
+      this.bot.on("message", async (ctx) => {
         const msg = ctx.message as any;
         const from = msg?.from;
         if (!from || from.is_bot) return;
 
-        if (typeof msg.text === 'string' && String(msg.text).length > 0) {
+        if (typeof msg.text === "string" && String(msg.text).length > 0) {
           await this.handleTextMessage(ctx);
           return;
         }
@@ -1697,32 +1725,32 @@ export class TelegramAdapter implements ChannelAdapter {
       await this.setWebhook(webhookUrl, serverConfig.secretToken);
 
       console.log(`Telegram bot @${this._botUsername} connected via webhook`);
-      this.setStatus('connected');
+      this.setStatus("connected");
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
-      this.setStatus('error', err);
+      this.setStatus("error", err);
       throw err;
     }
   }
 
   // Private methods
 
-  private inferAttachmentType(mimeType?: string, fileName?: string): MessageAttachment['type'] {
-    const mime = (mimeType || '').toLowerCase();
-    if (mime.startsWith('image/')) return 'image';
-    if (mime.startsWith('audio/')) return 'audio';
-    if (mime.startsWith('video/')) return 'video';
-    if (mime === 'application/pdf') return 'document';
-    const ext = (fileName ? path.extname(fileName) : '').toLowerCase();
-    if (ext === '.pdf') return 'document';
-    return 'file';
+  private inferAttachmentType(mimeType?: string, fileName?: string): MessageAttachment["type"] {
+    const mime = (mimeType || "").toLowerCase();
+    if (mime.startsWith("image/")) return "image";
+    if (mime.startsWith("audio/")) return "audio";
+    if (mime.startsWith("video/")) return "video";
+    if (mime === "application/pdf") return "document";
+    const ext = (fileName ? path.extname(fileName) : "").toLowerCase();
+    if (ext === ".pdf") return "document";
+    return "file";
   }
 
   private async downloadTelegramAttachment(opts: {
     fileId: string;
     fileName?: string;
     mimeType?: string;
-    type?: MessageAttachment['type'];
+    type?: MessageAttachment["type"];
   }): Promise<MessageAttachment | null> {
     if (!this.bot) return null;
 
@@ -1734,8 +1762,8 @@ export class TelegramAdapter implements ChannelAdapter {
       const declaredSize = (fileInfo as any)?.file_size as number | undefined;
 
       if (!filePath) return null;
-      if (typeof declaredSize === 'number' && declaredSize > MAX_ATTACHMENT_BYTES) {
-        console.warn('[Telegram] Skipping attachment (too large):', declaredSize, 'bytes');
+      if (typeof declaredSize === "number" && declaredSize > MAX_ATTACHMENT_BYTES) {
+        console.warn("[Telegram] Skipping attachment (too large):", declaredSize, "bytes");
         return null;
       }
 
@@ -1747,19 +1775,20 @@ export class TelegramAdapter implements ChannelAdapter {
       try {
         const res = await fetch(url, { signal: controller.signal });
         if (!res.ok) {
-          console.warn('[Telegram] Failed to download attachment:', res.status, res.statusText);
+          console.warn("[Telegram] Failed to download attachment:", res.status, res.statusText);
           return null;
         }
 
         const arrayBuffer = await res.arrayBuffer();
         const buf = Buffer.from(arrayBuffer);
         if (buf.length > MAX_ATTACHMENT_BYTES) {
-          console.warn('[Telegram] Skipping attachment (download too large):', buf.length, 'bytes');
+          console.warn("[Telegram] Skipping attachment (download too large):", buf.length, "bytes");
           return null;
         }
 
-        const fileName = (opts.fileName || '').trim() || path.basename(filePath) || `telegram-${opts.fileId}`;
-        const mimeType = (opts.mimeType || '').trim() || undefined;
+        const fileName =
+          (opts.fileName || "").trim() || path.basename(filePath) || `telegram-${opts.fileId}`;
+        const mimeType = (opts.mimeType || "").trim() || undefined;
         const type = opts.type || this.inferAttachmentType(mimeType, fileName);
 
         return {
@@ -1773,7 +1802,7 @@ export class TelegramAdapter implements ChannelAdapter {
         clearTimeout(timeout);
       }
     } catch (error) {
-      console.warn('[Telegram] Error downloading attachment:', error);
+      console.warn("[Telegram] Error downloading attachment:", error);
       return null;
     }
   }
@@ -1782,7 +1811,7 @@ export class TelegramAdapter implements ChannelAdapter {
     const msg = ctx.message!;
     const from = msg.from!;
     const chat = msg.chat;
-    const isGroup = chat.type !== 'private';
+    const isGroup = chat.type !== "private";
 
     // Check for forum topic (message_thread_id indicates a forum topic)
     const threadId = msg.message_thread_id?.toString();
@@ -1804,21 +1833,23 @@ export class TelegramAdapter implements ChannelAdapter {
     if (Array.isArray(msgAny.photo) && msgAny.photo.length > 0) {
       // Telegram photo sizes are sorted from smallest to largest.
       const photo = msgAny.photo[msgAny.photo.length - 1];
-      const fileId = typeof photo?.file_id === 'string' ? photo.file_id : '';
+      const fileId = typeof photo?.file_id === "string" ? photo.file_id : "";
       if (fileId) {
         const att = await this.downloadTelegramAttachment({
           fileId,
-          type: 'image',
-          mimeType: 'image/jpeg',
+          type: "image",
+          mimeType: "image/jpeg",
         });
         if (att) attachments.push(att);
       }
     }
 
     // Document
-    if (msgAny.document && typeof msgAny.document.file_id === 'string') {
-      const mimeType = typeof msgAny.document.mime_type === 'string' ? msgAny.document.mime_type : undefined;
-      const fileName = typeof msgAny.document.file_name === 'string' ? msgAny.document.file_name : undefined;
+    if (msgAny.document && typeof msgAny.document.file_id === "string") {
+      const mimeType =
+        typeof msgAny.document.mime_type === "string" ? msgAny.document.mime_type : undefined;
+      const fileName =
+        typeof msgAny.document.file_name === "string" ? msgAny.document.file_name : undefined;
       const type = this.inferAttachmentType(mimeType, fileName);
       const att = await this.downloadTelegramAttachment({
         fileId: msgAny.document.file_id,
@@ -1830,12 +1861,13 @@ export class TelegramAdapter implements ChannelAdapter {
     }
 
     // Voice note (usually OGG/Opus)
-    if (msgAny.voice && typeof msgAny.voice.file_id === 'string') {
-      const mimeType = typeof msgAny.voice.mime_type === 'string' ? msgAny.voice.mime_type : 'audio/ogg';
+    if (msgAny.voice && typeof msgAny.voice.file_id === "string") {
+      const mimeType =
+        typeof msgAny.voice.mime_type === "string" ? msgAny.voice.mime_type : "audio/ogg";
       const fileName = `voice-${msg.message_id}.ogg`;
       const att = await this.downloadTelegramAttachment({
         fileId: msgAny.voice.file_id,
-        type: 'audio',
+        type: "audio",
         mimeType,
         fileName,
       });
@@ -1843,12 +1875,14 @@ export class TelegramAdapter implements ChannelAdapter {
     }
 
     // Audio
-    if (msgAny.audio && typeof msgAny.audio.file_id === 'string') {
-      const mimeType = typeof msgAny.audio.mime_type === 'string' ? msgAny.audio.mime_type : undefined;
-      const fileName = typeof msgAny.audio.file_name === 'string' ? msgAny.audio.file_name : undefined;
+    if (msgAny.audio && typeof msgAny.audio.file_id === "string") {
+      const mimeType =
+        typeof msgAny.audio.mime_type === "string" ? msgAny.audio.mime_type : undefined;
+      const fileName =
+        typeof msgAny.audio.file_name === "string" ? msgAny.audio.file_name : undefined;
       const att = await this.downloadTelegramAttachment({
         fileId: msgAny.audio.file_id,
-        type: 'audio',
+        type: "audio",
         mimeType,
         fileName,
       });
@@ -1856,12 +1890,14 @@ export class TelegramAdapter implements ChannelAdapter {
     }
 
     // Video
-    if (msgAny.video && typeof msgAny.video.file_id === 'string') {
-      const mimeType = typeof msgAny.video.mime_type === 'string' ? msgAny.video.mime_type : 'video/mp4';
-      const fileName = typeof msgAny.video.file_name === 'string' ? msgAny.video.file_name : undefined;
+    if (msgAny.video && typeof msgAny.video.file_id === "string") {
+      const mimeType =
+        typeof msgAny.video.mime_type === "string" ? msgAny.video.mime_type : "video/mp4";
+      const fileName =
+        typeof msgAny.video.file_name === "string" ? msgAny.video.file_name : undefined;
       const att = await this.downloadTelegramAttachment({
         fileId: msgAny.video.file_id,
-        type: 'video',
+        type: "video",
         mimeType,
         fileName,
       });
@@ -1869,9 +1905,11 @@ export class TelegramAdapter implements ChannelAdapter {
     }
 
     // Animation (GIF / MP4)
-    if (msgAny.animation && typeof msgAny.animation.file_id === 'string') {
-      const mimeType = typeof msgAny.animation.mime_type === 'string' ? msgAny.animation.mime_type : undefined;
-      const fileName = typeof msgAny.animation.file_name === 'string' ? msgAny.animation.file_name : undefined;
+    if (msgAny.animation && typeof msgAny.animation.file_id === "string") {
+      const mimeType =
+        typeof msgAny.animation.mime_type === "string" ? msgAny.animation.mime_type : undefined;
+      const fileName =
+        typeof msgAny.animation.file_name === "string" ? msgAny.animation.file_name : undefined;
       const type = this.inferAttachmentType(mimeType, fileName);
       const att = await this.downloadTelegramAttachment({
         fileId: msgAny.animation.file_id,
@@ -1883,25 +1921,25 @@ export class TelegramAdapter implements ChannelAdapter {
     }
 
     // Video note
-    if (msgAny.video_note && typeof msgAny.video_note.file_id === 'string') {
+    if (msgAny.video_note && typeof msgAny.video_note.file_id === "string") {
       const att = await this.downloadTelegramAttachment({
         fileId: msgAny.video_note.file_id,
-        type: 'video',
-        mimeType: 'video/mp4',
+        type: "video",
+        mimeType: "video/mp4",
         fileName: `video-note-${msg.message_id}.mp4`,
       });
       if (att) attachments.push(att);
     }
 
-    const caption = typeof msgAny.caption === 'string' ? msgAny.caption : '';
-    const baseText = overrideText ?? msg.text ?? caption ?? '';
-    const finalText = String(baseText || '').trim() || (hadMedia ? '<attachment>' : '');
+    const caption = typeof msgAny.caption === "string" ? msgAny.caption : "";
+    const baseText = overrideText ?? msg.text ?? caption ?? "";
+    const finalText = String(baseText || "").trim() || (hadMedia ? "<attachment>" : "");
 
     return {
       messageId: msg.message_id.toString(),
-      channel: 'telegram',
+      channel: "telegram",
       userId: from.id.toString(),
-      userName: from.first_name + (from.last_name ? ` ${from.last_name}` : ''),
+      userName: from.first_name + (from.last_name ? ` ${from.last_name}` : ""),
       chatId: chat.id.toString(),
       isGroup,
       text: finalText,
@@ -1919,10 +1957,10 @@ export class TelegramAdapter implements ChannelAdapter {
       try {
         await handler(message);
       } catch (error) {
-        console.error('Error in message handler:', error);
+        console.error("Error in message handler:", error);
         this.handleError(
           error instanceof Error ? error : new Error(String(error)),
-          'messageHandler'
+          "messageHandler",
         );
       }
     }
@@ -1933,7 +1971,7 @@ export class TelegramAdapter implements ChannelAdapter {
       try {
         handler(error, context);
       } catch (e) {
-        console.error('Error in error handler:', e);
+        console.error("Error in error handler:", e);
       }
     }
   }
@@ -1944,7 +1982,7 @@ export class TelegramAdapter implements ChannelAdapter {
       try {
         handler(status, error);
       } catch (e) {
-        console.error('Error in status handler:', e);
+        console.error("Error in status handler:", e);
       }
     }
   }
@@ -1955,7 +1993,7 @@ export class TelegramAdapter implements ChannelAdapter {
  */
 export function createTelegramAdapter(config: TelegramAdapterConfig): TelegramAdapter {
   if (!config.botToken) {
-    throw new Error('Telegram bot token is required');
+    throw new Error("Telegram bot token is required");
   }
   return new TelegramAdapter(config);
 }

@@ -1,7 +1,7 @@
-import fs from 'fs';
-import path from 'path';
-import type Database from 'better-sqlite3';
-import { TEMP_WORKSPACE_ID, TEMP_WORKSPACE_ID_PREFIX } from '../../shared/types';
+import fs from "fs";
+import path from "path";
+import type Database from "better-sqlite3";
+import { TEMP_WORKSPACE_ID, TEMP_WORKSPACE_ID_PREFIX } from "../../shared/types";
 
 export interface TempWorkspacePruneOptions {
   db: Database.Database;
@@ -40,9 +40,11 @@ const isSafeTempSubPath = (candidatePath: string, rootPath: string): boolean => 
 };
 
 const hasWorkspaceReferences = (db: Database.Database, workspaceId: string): boolean => {
-  const taskRef = db.prepare('SELECT 1 FROM tasks WHERE workspace_id = ? LIMIT 1').get(workspaceId);
+  const taskRef = db.prepare("SELECT 1 FROM tasks WHERE workspace_id = ? LIMIT 1").get(workspaceId);
   if (taskRef) return true;
-  const sessionRef = db.prepare('SELECT 1 FROM channel_sessions WHERE workspace_id = ? LIMIT 1').get(workspaceId);
+  const sessionRef = db
+    .prepare("SELECT 1 FROM channel_sessions WHERE workspace_id = ? LIMIT 1")
+    .get(workspaceId);
   return !!sessionRef;
 };
 
@@ -57,7 +59,10 @@ const listTempDirectories = (rootPath: string): TempDirectoryEntry[] => {
     if (!isSafeTempSubPath(fullPath, rootPath)) continue;
     try {
       const stat = fs.statSync(fullPath);
-      dirs.push({ path: fullPath, mtimeMs: Number.isFinite(stat.mtimeMs) ? stat.mtimeMs : stat.ctimeMs });
+      dirs.push({
+        path: fullPath,
+        mtimeMs: Number.isFinite(stat.mtimeMs) ? stat.mtimeMs : stat.ctimeMs,
+      });
     } catch {
       // Ignore unreadable entries.
     }
@@ -66,42 +71,58 @@ const listTempDirectories = (rootPath: string): TempDirectoryEntry[] => {
   return dirs;
 };
 
-export function pruneTempWorkspaces(options: TempWorkspacePruneOptions): { removedDirs: number; removedRows: number } {
+export function pruneTempWorkspaces(options: TempWorkspacePruneOptions): {
+  removedDirs: number;
+  removedRows: number;
+} {
   const nowMs = options.nowMs ?? Date.now();
   const keepRecent = Math.max(0, options.keepRecent ?? DEFAULT_KEEP_RECENT);
   const maxAgeMs = options.maxAgeMs ?? DEFAULT_MAX_AGE_MS;
   const hardLimit = Math.max(1, options.hardLimit ?? DEFAULT_HARD_LIMIT);
-  const targetAfterPrune = Math.max(0, Math.min(hardLimit, options.targetAfterPrune ?? DEFAULT_TARGET_AFTER_PRUNE));
+  const targetAfterPrune = Math.max(
+    0,
+    Math.min(hardLimit, options.targetAfterPrune ?? DEFAULT_TARGET_AFTER_PRUNE),
+  );
 
   const resolvedRoot = path.resolve(options.tempWorkspaceRoot);
 
-  const rows = options.db.prepare(`
+  const rows = options.db
+    .prepare(`
     SELECT id, path, created_at, COALESCE(last_used_at, created_at) AS last_used_at
     FROM workspaces
     WHERE id = ? OR substr(id, 1, ?) = ?
     ORDER BY COALESCE(last_used_at, created_at) DESC
-  `).all(TEMP_WORKSPACE_ID, TEMP_ID_PREFIX_LENGTH, TEMP_WORKSPACE_ID_PREFIX) as TempWorkspaceRow[];
+  `)
+    .all(TEMP_WORKSPACE_ID, TEMP_ID_PREFIX_LENGTH, TEMP_WORKSPACE_ID_PREFIX) as TempWorkspaceRow[];
 
-  const taskRefRows = options.db.prepare(`
+  const taskRefRows = options.db
+    .prepare(`
     SELECT DISTINCT workspace_id
     FROM tasks
     WHERE workspace_id = ? OR substr(workspace_id, 1, ?) = ?
-  `).all(TEMP_WORKSPACE_ID, TEMP_ID_PREFIX_LENGTH, TEMP_WORKSPACE_ID_PREFIX) as Array<{ workspace_id: string | null }>;
+  `)
+    .all(TEMP_WORKSPACE_ID, TEMP_ID_PREFIX_LENGTH, TEMP_WORKSPACE_ID_PREFIX) as Array<{
+    workspace_id: string | null;
+  }>;
   const taskReferencedWorkspaceIds = new Set(
     taskRefRows
-      .map((row) => (typeof row.workspace_id === 'string' ? row.workspace_id : ''))
-      .filter(Boolean)
+      .map((row) => (typeof row.workspace_id === "string" ? row.workspace_id : ""))
+      .filter(Boolean),
   );
 
-  const sessionRefRows = options.db.prepare(`
+  const sessionRefRows = options.db
+    .prepare(`
     SELECT DISTINCT workspace_id
     FROM channel_sessions
     WHERE workspace_id = ? OR substr(workspace_id, 1, ?) = ?
-  `).all(TEMP_WORKSPACE_ID, TEMP_ID_PREFIX_LENGTH, TEMP_WORKSPACE_ID_PREFIX) as Array<{ workspace_id: string | null }>;
+  `)
+    .all(TEMP_WORKSPACE_ID, TEMP_ID_PREFIX_LENGTH, TEMP_WORKSPACE_ID_PREFIX) as Array<{
+    workspace_id: string | null;
+  }>;
   const sessionReferencedWorkspaceIds = new Set(
     sessionRefRows
-      .map((row) => (typeof row.workspace_id === 'string' ? row.workspace_id : ''))
-      .filter(Boolean)
+      .map((row) => (typeof row.workspace_id === "string" ? row.workspace_id : ""))
+      .filter(Boolean),
   );
 
   const protectedWorkspaceIds = new Set<string>();
@@ -165,19 +186,21 @@ export function pruneTempWorkspaces(options: TempWorkspacePruneOptions): { remov
     }
 
     try {
-      options.db.prepare('DELETE FROM workspaces WHERE id = ?').run(workspaceId);
+      options.db.prepare("DELETE FROM workspaces WHERE id = ?").run(workspaceId);
       removedRows += 1;
     } catch {
       // Best-effort DB cleanup; keep going.
     }
   }
 
-  const rowsAfterDbPrune = options.db.prepare(`
+  const rowsAfterDbPrune = options.db
+    .prepare(`
     SELECT id, path, created_at, COALESCE(last_used_at, created_at) AS last_used_at
     FROM workspaces
     WHERE id = ? OR substr(id, 1, ?) = ?
     ORDER BY COALESCE(last_used_at, created_at) DESC
-  `).all(TEMP_WORKSPACE_ID, TEMP_ID_PREFIX_LENGTH, TEMP_WORKSPACE_ID_PREFIX) as TempWorkspaceRow[];
+  `)
+    .all(TEMP_WORKSPACE_ID, TEMP_ID_PREFIX_LENGTH, TEMP_WORKSPACE_ID_PREFIX) as TempWorkspaceRow[];
 
   const protectedPaths = new Set<string>();
   const workspaceIdsByPath = new Map<string, string[]>();
@@ -207,7 +230,7 @@ export function pruneTempWorkspaces(options: TempWorkspacePruneOptions): { remov
         continue;
       }
       try {
-        options.db.prepare('DELETE FROM workspaces WHERE id = ?').run(workspaceId);
+        options.db.prepare("DELETE FROM workspaces WHERE id = ?").run(workspaceId);
         removedRows += 1;
       } catch {
         // Best-effort DB cleanup.

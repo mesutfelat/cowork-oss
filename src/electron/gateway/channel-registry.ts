@@ -9,7 +9,7 @@
  * - Configuration validation
  */
 
-import { EventEmitter } from 'events';
+import { EventEmitter } from "events";
 import {
   ChannelAdapter,
   ChannelType,
@@ -30,22 +30,26 @@ import {
   LineConfig,
   BlueBubblesConfig,
   EmailConfig,
-} from './channels/types';
-import { createTelegramAdapter } from './channels/telegram';
-import { createDiscordAdapter } from './channels/discord';
-import { createSlackAdapter } from './channels/slack';
-import { createWhatsAppAdapter } from './channels/whatsapp';
-import { createImessageAdapter } from './channels/imessage';
-import { createSignalAdapter } from './channels/signal';
-import { createTeamsAdapter } from './channels/teams';
-import { createGoogleChatAdapter } from './channels/google-chat';
-import { createMattermostAdapter } from './channels/mattermost';
-import { createMatrixAdapter } from './channels/matrix';
-import { createTwitchAdapter } from './channels/twitch';
-import { createLineAdapter } from './channels/line';
-import { createBlueBubblesAdapter } from './channels/bluebubbles';
-import { createEmailAdapter } from './channels/email';
-import { assertSafeLoomMailboxFolder, isSecureOrLocalLoomUrl, normalizeEmailProtocol } from '../utils/loom';
+} from "./channels/types";
+import { createTelegramAdapter } from "./channels/telegram";
+import { createDiscordAdapter } from "./channels/discord";
+import { createSlackAdapter } from "./channels/slack";
+import { createWhatsAppAdapter } from "./channels/whatsapp";
+import { createImessageAdapter } from "./channels/imessage";
+import { createSignalAdapter } from "./channels/signal";
+import { createTeamsAdapter } from "./channels/teams";
+import { createGoogleChatAdapter } from "./channels/google-chat";
+import { createMattermostAdapter } from "./channels/mattermost";
+import { createMatrixAdapter } from "./channels/matrix";
+import { createTwitchAdapter } from "./channels/twitch";
+import { createLineAdapter } from "./channels/line";
+import { createBlueBubblesAdapter } from "./channels/bluebubbles";
+import { createEmailAdapter } from "./channels/email";
+import {
+  assertSafeLoomMailboxFolder,
+  isSecureOrLocalLoomUrl,
+  normalizeEmailProtocol,
+} from "../utils/loom";
 
 /**
  * Channel metadata for registration
@@ -107,14 +111,17 @@ export interface ChannelCapabilities {
  * Channel configuration schema
  */
 export interface ChannelConfigSchema {
-  type: 'object';
-  properties: Record<string, {
-    type: string;
-    description: string;
-    required?: boolean;
-    secret?: boolean;
-    default?: unknown;
-  }>;
+  type: "object";
+  properties: Record<
+    string,
+    {
+      type: string;
+      description: string;
+      required?: boolean;
+      secret?: boolean;
+      default?: unknown;
+    }
+  >;
   required?: string[];
 }
 
@@ -135,9 +142,9 @@ interface RegisteredChannel {
  * Channel registry events
  */
 export type ChannelRegistryEventType =
-  | 'channel:registered'
-  | 'channel:unregistered'
-  | 'channel:updated';
+  | "channel:registered"
+  | "channel:unregistered"
+  | "channel:updated";
 
 /**
  * Channel Registry - Singleton for managing channel types
@@ -173,10 +180,10 @@ export class ChannelRegistry extends EventEmitter {
     // Telegram
     this.register({
       metadata: {
-        type: 'telegram',
-        displayName: 'Telegram',
-        description: 'Telegram Bot API integration using grammY',
-        icon: '✈️',
+        type: "telegram",
+        displayName: "Telegram",
+        description: "Telegram Bot API integration using grammY",
+        icon: "✈️",
         builtin: true,
         capabilities: {
           sendMessage: true,
@@ -199,20 +206,20 @@ export class ChannelRegistry extends EventEmitter {
           e2eEncryption: false,
         },
         configSchema: {
-          type: 'object',
+          type: "object",
           properties: {
             botToken: {
-              type: 'string',
-              description: 'Bot token from @BotFather',
+              type: "string",
+              description: "Bot token from @BotFather",
               required: true,
               secret: true,
             },
             webhookUrl: {
-              type: 'string',
-              description: 'Webhook URL (optional, uses polling if not set)',
+              type: "string",
+              description: "Webhook URL (optional, uses polling if not set)",
             },
           },
-          required: ['botToken'],
+          required: ["botToken"],
         },
       },
       factory: (config) => createTelegramAdapter(config as TelegramConfig),
@@ -221,10 +228,10 @@ export class ChannelRegistry extends EventEmitter {
     // Discord
     this.register({
       metadata: {
-        type: 'discord',
-        displayName: 'Discord',
-        description: 'Discord Bot integration using discord.js',
-        icon: '🎮',
+        type: "discord",
+        displayName: "Discord",
+        description: "Discord Bot integration using discord.js",
+        icon: "🎮",
         builtin: true,
         capabilities: {
           sendMessage: true,
@@ -247,25 +254,25 @@ export class ChannelRegistry extends EventEmitter {
           e2eEncryption: false,
         },
         configSchema: {
-          type: 'object',
+          type: "object",
           properties: {
             botToken: {
-              type: 'string',
-              description: 'Bot token from Discord Developer Portal',
+              type: "string",
+              description: "Bot token from Discord Developer Portal",
               required: true,
               secret: true,
             },
             applicationId: {
-              type: 'string',
-              description: 'Application ID',
+              type: "string",
+              description: "Application ID",
               required: true,
             },
             guildIds: {
-              type: 'array',
-              description: 'Guild IDs to operate in (empty = all)',
+              type: "array",
+              description: "Guild IDs to operate in (empty = all)",
             },
           },
-          required: ['botToken', 'applicationId'],
+          required: ["botToken", "applicationId"],
         },
       },
       factory: (config) => createDiscordAdapter(config as DiscordConfig),
@@ -274,10 +281,10 @@ export class ChannelRegistry extends EventEmitter {
     // Slack
     this.register({
       metadata: {
-        type: 'slack',
-        displayName: 'Slack',
-        description: 'Slack Bot integration using Bolt SDK',
-        icon: '💼',
+        type: "slack",
+        displayName: "Slack",
+        description: "Slack Bot integration using Bolt SDK",
+        icon: "💼",
         builtin: true,
         capabilities: {
           sendMessage: true,
@@ -300,27 +307,27 @@ export class ChannelRegistry extends EventEmitter {
           e2eEncryption: false,
         },
         configSchema: {
-          type: 'object',
+          type: "object",
           properties: {
             botToken: {
-              type: 'string',
-              description: 'Bot token (xoxb-...)',
+              type: "string",
+              description: "Bot token (xoxb-...)",
               required: true,
               secret: true,
             },
             appToken: {
-              type: 'string',
-              description: 'App token for Socket Mode (xapp-...)',
+              type: "string",
+              description: "App token for Socket Mode (xapp-...)",
               required: true,
               secret: true,
             },
             signingSecret: {
-              type: 'string',
-              description: 'Signing secret for verifying requests',
+              type: "string",
+              description: "Signing secret for verifying requests",
               secret: true,
             },
           },
-          required: ['botToken', 'appToken'],
+          required: ["botToken", "appToken"],
         },
       },
       factory: (config) => createSlackAdapter(config as SlackConfig),
@@ -329,10 +336,10 @@ export class ChannelRegistry extends EventEmitter {
     // WhatsApp
     this.register({
       metadata: {
-        type: 'whatsapp',
-        displayName: 'WhatsApp',
-        description: 'WhatsApp integration using Baileys (unofficial)',
-        icon: '💬',
+        type: "whatsapp",
+        displayName: "WhatsApp",
+        description: "WhatsApp integration using Baileys (unofficial)",
+        icon: "💬",
         builtin: true,
         capabilities: {
           sendMessage: true,
@@ -355,45 +362,47 @@ export class ChannelRegistry extends EventEmitter {
           e2eEncryption: true,
         },
         configSchema: {
-          type: 'object',
+          type: "object",
           properties: {
             allowedNumbers: {
-              type: 'array',
-              description: 'Allowed phone numbers in E.164 format',
+              type: "array",
+              description: "Allowed phone numbers in E.164 format",
             },
             selfChatMode: {
-              type: 'boolean',
-              description: 'Enable self-chat mode (messaging yourself)',
+              type: "boolean",
+              description: "Enable self-chat mode (messaging yourself)",
               default: true,
             },
             groupRoutingMode: {
-              type: 'string',
-              description: 'Group message routing mode (all, mentionsOnly, mentionsOrCommands, commandsOnly)',
-              default: 'mentionsOrCommands',
+              type: "string",
+              description:
+                "Group message routing mode (all, mentionsOnly, mentionsOrCommands, commandsOnly)",
+              default: "mentionsOrCommands",
             },
             sendReadReceipts: {
-              type: 'boolean',
-              description: 'Send read receipts',
+              type: "boolean",
+              description: "Send read receipts",
               default: true,
             },
             ambientMode: {
-              type: 'boolean',
-              description: 'Enable ambient ingestion (non-command messages are logged only)',
+              type: "boolean",
+              description: "Enable ambient ingestion (non-command messages are logged only)",
               default: false,
             },
             deduplicationEnabled: {
-              type: 'boolean',
-              description: 'Enable message deduplication',
+              type: "boolean",
+              description: "Enable message deduplication",
               default: true,
             },
             responsePrefix: {
-              type: 'string',
-              description: 'Prefix for bot responses',
-              default: '🤖',
+              type: "string",
+              description: "Prefix for bot responses",
+              default: "🤖",
             },
             ingestNonSelfChatsInSelfChatMode: {
-              type: 'boolean',
-              description: 'Ingest non-self-chat messages in self-chat mode without routing to the agent',
+              type: "boolean",
+              description:
+                "Ingest non-self-chat messages in self-chat mode without routing to the agent",
               default: false,
             },
           },
@@ -406,12 +415,12 @@ export class ChannelRegistry extends EventEmitter {
     // iMessage
     this.register({
       metadata: {
-        type: 'imessage',
-        displayName: 'iMessage',
-        description: 'iMessage integration using imsg CLI (macOS only)',
-        icon: '💬',
+        type: "imessage",
+        displayName: "iMessage",
+        description: "iMessage integration using imsg CLI (macOS only)",
+        icon: "💬",
         builtin: true,
-        platforms: ['darwin'],
+        platforms: ["darwin"],
         capabilities: {
           sendMessage: true,
           receiveMessage: true,
@@ -433,29 +442,29 @@ export class ChannelRegistry extends EventEmitter {
           e2eEncryption: true,
         },
         configSchema: {
-          type: 'object',
+          type: "object",
           properties: {
             cliPath: {
-              type: 'string',
+              type: "string",
               description: 'Path to imsg CLI (default: "imsg")',
             },
             dbPath: {
-              type: 'string',
-              description: 'Path to Messages database',
+              type: "string",
+              description: "Path to Messages database",
             },
             dmPolicy: {
-              type: 'string',
-              description: 'DM access policy',
-              default: 'pairing',
+              type: "string",
+              description: "DM access policy",
+              default: "pairing",
             },
             groupPolicy: {
-              type: 'string',
-              description: 'Group access policy',
-              default: 'allowlist',
+              type: "string",
+              description: "Group access policy",
+              default: "allowlist",
             },
             allowedContacts: {
-              type: 'array',
-              description: 'Allowed contacts (phone numbers, emails)',
+              type: "array",
+              description: "Allowed contacts (phone numbers, emails)",
             },
           },
           required: [],
@@ -467,10 +476,10 @@ export class ChannelRegistry extends EventEmitter {
     // Signal
     this.register({
       metadata: {
-        type: 'signal',
-        displayName: 'Signal',
-        description: 'Signal messaging integration using signal-cli',
-        icon: '🔐',
+        type: "signal",
+        displayName: "Signal",
+        description: "Signal messaging integration using signal-cli",
+        icon: "🔐",
         builtin: true,
         capabilities: {
           sendMessage: true,
@@ -493,81 +502,81 @@ export class ChannelRegistry extends EventEmitter {
           e2eEncryption: true,
         },
         configSchema: {
-          type: 'object',
+          type: "object",
           properties: {
             phoneNumber: {
-              type: 'string',
-              description: 'Phone number in E.164 format (e.g., +14155551234)',
+              type: "string",
+              description: "Phone number in E.164 format (e.g., +14155551234)",
               required: true,
             },
             cliPath: {
-              type: 'string',
+              type: "string",
               description: 'Path to signal-cli executable (default: "signal-cli")',
             },
             dataDir: {
-              type: 'string',
-              description: 'signal-cli data directory',
+              type: "string",
+              description: "signal-cli data directory",
             },
             mode: {
-              type: 'string',
-              description: 'Communication mode (native, daemon)',
-              default: 'native',
+              type: "string",
+              description: "Communication mode (native, daemon)",
+              default: "native",
             },
             socketPath: {
-              type: 'string',
-              description: 'Daemon socket path (for daemon mode)',
-              default: '/tmp/signal-cli.socket',
+              type: "string",
+              description: "Daemon socket path (for daemon mode)",
+              default: "/tmp/signal-cli.socket",
             },
             trustMode: {
-              type: 'string',
-              description: 'Trust mode for new contacts (tofu, always, manual)',
-              default: 'tofu',
+              type: "string",
+              description: "Trust mode for new contacts (tofu, always, manual)",
+              default: "tofu",
             },
             dmPolicy: {
-              type: 'string',
-              description: 'DM access policy',
-              default: 'pairing',
+              type: "string",
+              description: "DM access policy",
+              default: "pairing",
             },
             groupPolicy: {
-              type: 'string',
-              description: 'Group access policy',
-              default: 'allowlist',
+              type: "string",
+              description: "Group access policy",
+              default: "allowlist",
             },
             allowedNumbers: {
-              type: 'array',
-              description: 'Allowed phone numbers in E.164 format',
+              type: "array",
+              description: "Allowed phone numbers in E.164 format",
             },
             sendReadReceipts: {
-              type: 'boolean',
-              description: 'Send read receipts',
+              type: "boolean",
+              description: "Send read receipts",
               default: true,
             },
             sendTypingIndicators: {
-              type: 'boolean',
-              description: 'Send typing indicators',
+              type: "boolean",
+              description: "Send typing indicators",
               default: true,
             },
             maxAttachmentMb: {
-              type: 'number',
-              description: 'Max attachment size in MB',
+              type: "number",
+              description: "Max attachment size in MB",
               default: 100,
             },
             pollInterval: {
-              type: 'number',
-              description: 'Polling interval for receiving messages in ms',
+              type: "number",
+              description: "Polling interval for receiving messages in ms",
               default: 1000,
             },
             deduplicationEnabled: {
-              type: 'boolean',
-              description: 'Enable message deduplication',
+              type: "boolean",
+              description: "Enable message deduplication",
               default: true,
             },
             responsePrefix: {
-              type: 'string',
-              description: 'Prefix for bot responses',
+              type: "string",
+              description: "Prefix for bot responses",
             },
           },
-          required: ['phoneNumber'],
+          required: ["phoneNumber"],
         },
       },
       factory: (config) => createSignalAdapter(config as SignalConfig),
@@ -576,10 +585,10 @@ export class ChannelRegistry extends EventEmitter {
     // Microsoft Teams
     this.register({
       metadata: {
-        type: 'teams',
-        displayName: 'Microsoft Teams',
-        description: 'Microsoft Teams Bot integration using Bot Framework SDK',
-        icon: '🟦',
+        type: "teams",
+        displayName: "Microsoft Teams",
+        description: "Microsoft Teams Bot integration using Bot Framework SDK",
+        icon: "🟦",
         builtin: true,
         capabilities: {
           sendMessage: true,
@@ -602,34 +611,34 @@ export class ChannelRegistry extends EventEmitter {
           e2eEncryption: false,
         },
         configSchema: {
-          type: 'object',
+          type: "object",
           properties: {
             appId: {
-              type: 'string',
-              description: 'Microsoft App ID from Azure Bot registration',
+              type: "string",
+              description: "Microsoft App ID from Azure Bot registration",
               required: true,
             },
             appPassword: {
-              type: 'string',
-              description: 'Microsoft App Password (Client Secret)',
+              type: "string",
+              description: "Microsoft App Password (Client Secret)",
               required: true,
               secret: true,
             },
             tenantId: {
-              type: 'string',
-              description: 'Tenant ID for single-tenant apps (optional)',
+              type: "string",
+              description: "Tenant ID for single-tenant apps (optional)",
             },
             displayName: {
-              type: 'string',
-              description: 'Bot display name',
+              type: "string",
+              description: "Bot display name",
             },
             webhookPort: {
-              type: 'number',
-              description: 'Webhook endpoint port (default: 3978)',
+              type: "number",
+              description: "Webhook endpoint port (default: 3978)",
               default: 3978,
             },
           },
-          required: ['appId', 'appPassword'],
+          required: ["appId", "appPassword"],
         },
       },
       factory: (config) => createTeamsAdapter(config as TeamsConfig),
@@ -638,10 +647,10 @@ export class ChannelRegistry extends EventEmitter {
     // Google Chat
     this.register({
       metadata: {
-        type: 'googlechat',
-        displayName: 'Google Chat',
-        description: 'Google Chat integration using Google Chat API with service account',
-        icon: '💚',
+        type: "googlechat",
+        displayName: "Google Chat",
+        description: "Google Chat integration using Google Chat API with service account",
+        icon: "💚",
         builtin: true,
         capabilities: {
           sendMessage: true,
@@ -664,29 +673,29 @@ export class ChannelRegistry extends EventEmitter {
           e2eEncryption: false,
         },
         configSchema: {
-          type: 'object',
+          type: "object",
           properties: {
             serviceAccountKeyPath: {
-              type: 'string',
-              description: 'Path to service account JSON key file',
+              type: "string",
+              description: "Path to service account JSON key file",
             },
             projectId: {
-              type: 'string',
-              description: 'Google Cloud project ID',
+              type: "string",
+              description: "Google Cloud project ID",
             },
             displayName: {
-              type: 'string',
-              description: 'Bot display name',
+              type: "string",
+              description: "Bot display name",
             },
             webhookPort: {
-              type: 'number',
-              description: 'Webhook endpoint port (default: 3979)',
+              type: "number",
+              description: "Webhook endpoint port (default: 3979)",
               default: 3979,
             },
             webhookPath: {
-              type: 'string',
-              description: 'Webhook path (default: /googlechat/webhook)',
-              default: '/googlechat/webhook',
+              type: "string",
+              description: "Webhook path (default: /googlechat/webhook)",
+              default: "/googlechat/webhook",
             },
           },
           required: [],
@@ -698,10 +707,10 @@ export class ChannelRegistry extends EventEmitter {
     // Mattermost
     this.register({
       metadata: {
-        type: 'mattermost',
-        displayName: 'Mattermost',
-        description: 'Mattermost integration using WebSocket and REST API',
-        icon: '🔵',
+        type: "mattermost",
+        displayName: "Mattermost",
+        description: "Mattermost integration using WebSocket and REST API",
+        icon: "🔵",
         builtin: true,
         capabilities: {
           sendMessage: true,
@@ -724,29 +733,29 @@ export class ChannelRegistry extends EventEmitter {
           e2eEncryption: false,
         },
         configSchema: {
-          type: 'object',
+          type: "object",
           properties: {
             serverUrl: {
-              type: 'string',
-              description: 'Mattermost server URL (e.g., https://mattermost.example.com)',
+              type: "string",
+              description: "Mattermost server URL (e.g., https://mattermost.example.com)",
               required: true,
             },
             token: {
-              type: 'string',
-              description: 'Personal access token',
+              type: "string",
+              description: "Personal access token",
               required: true,
               secret: true,
             },
             teamId: {
-              type: 'string',
-              description: 'Team ID to operate in (optional)',
+              type: "string",
+              description: "Team ID to operate in (optional)",
             },
             responsePrefix: {
-              type: 'string',
-              description: 'Prefix for bot responses',
+              type: "string",
+              description: "Prefix for bot responses",
             },
           },
-          required: ['serverUrl', 'token'],
+          required: ["serverUrl", "token"],
         },
       },
       factory: (config) => createMattermostAdapter(config as MattermostConfig),
@@ -755,10 +764,10 @@ export class ChannelRegistry extends EventEmitter {
     // Matrix
     this.register({
       metadata: {
-        type: 'matrix',
-        displayName: 'Matrix',
-        description: 'Matrix federated messaging integration',
-        icon: '🟢',
+        type: "matrix",
+        displayName: "Matrix",
+        description: "Matrix federated messaging integration",
+        icon: "🟢",
         builtin: true,
         capabilities: {
           sendMessage: true,
@@ -781,34 +790,34 @@ export class ChannelRegistry extends EventEmitter {
           e2eEncryption: true,
         },
         configSchema: {
-          type: 'object',
+          type: "object",
           properties: {
             homeserver: {
-              type: 'string',
-              description: 'Matrix homeserver URL (e.g., https://matrix.org)',
+              type: "string",
+              description: "Matrix homeserver URL (e.g., https://matrix.org)",
               required: true,
             },
             userId: {
-              type: 'string',
-              description: 'User ID (e.g., @user:matrix.org)',
+              type: "string",
+              description: "User ID (e.g., @user:matrix.org)",
               required: true,
             },
             accessToken: {
-              type: 'string',
-              description: 'Access token',
+              type: "string",
+              description: "Access token",
               required: true,
               secret: true,
             },
             deviceId: {
-              type: 'string',
-              description: 'Device ID (optional)',
+              type: "string",
+              description: "Device ID (optional)",
             },
             roomIds: {
-              type: 'array',
-              description: 'Room IDs to listen to (optional)',
+              type: "array",
+              description: "Room IDs to listen to (optional)",
             },
           },
-          required: ['homeserver', 'userId', 'accessToken'],
+          required: ["homeserver", "userId", "accessToken"],
         },
       },
       factory: (config) => createMatrixAdapter(config as MatrixConfig),
@@ -817,10 +826,10 @@ export class ChannelRegistry extends EventEmitter {
     // Twitch
     this.register({
       metadata: {
-        type: 'twitch',
-        displayName: 'Twitch',
-        description: 'Twitch IRC chat integration',
-        icon: '🟣',
+        type: "twitch",
+        displayName: "Twitch",
+        description: "Twitch IRC chat integration",
+        icon: "🟣",
         builtin: true,
         capabilities: {
           sendMessage: true,
@@ -843,31 +852,31 @@ export class ChannelRegistry extends EventEmitter {
           e2eEncryption: false,
         },
         configSchema: {
-          type: 'object',
+          type: "object",
           properties: {
             username: {
-              type: 'string',
-              description: 'Twitch username (login name)',
+              type: "string",
+              description: "Twitch username (login name)",
               required: true,
             },
             oauthToken: {
-              type: 'string',
-              description: 'OAuth token',
+              type: "string",
+              description: "OAuth token",
               required: true,
               secret: true,
             },
             channels: {
-              type: 'array',
-              description: 'Channels to join (without # prefix)',
+              type: "array",
+              description: "Channels to join (without # prefix)",
               required: true,
             },
             allowWhispers: {
-              type: 'boolean',
-              description: 'Whether to respond to whispers (DMs)',
+              type: "boolean",
+              description: "Whether to respond to whispers (DMs)",
               default: false,
             },
           },
-          required: ['username', 'oauthToken', 'channels'],
+          required: ["username", "oauthToken", "channels"],
         },
       },
       factory: (config) => createTwitchAdapter(config as TwitchConfig),
@@ -876,10 +885,10 @@ export class ChannelRegistry extends EventEmitter {
     // LINE
     this.register({
       metadata: {
-        type: 'line',
-        displayName: 'LINE',
-        description: 'LINE Messaging API integration with webhooks',
-        icon: '💚',
+        type: "line",
+        displayName: "LINE",
+        description: "LINE Messaging API integration with webhooks",
+        icon: "💚",
         builtin: true,
         capabilities: {
           sendMessage: true,
@@ -902,37 +911,37 @@ export class ChannelRegistry extends EventEmitter {
           e2eEncryption: true,
         },
         configSchema: {
-          type: 'object',
+          type: "object",
           properties: {
             channelAccessToken: {
-              type: 'string',
-              description: 'LINE Channel Access Token',
+              type: "string",
+              description: "LINE Channel Access Token",
               required: true,
               secret: true,
             },
             channelSecret: {
-              type: 'string',
-              description: 'LINE Channel Secret',
+              type: "string",
+              description: "LINE Channel Secret",
               required: true,
               secret: true,
             },
             webhookPort: {
-              type: 'number',
-              description: 'Webhook port (default: 3100)',
+              type: "number",
+              description: "Webhook port (default: 3100)",
               default: 3100,
             },
             webhookPath: {
-              type: 'string',
-              description: 'Webhook path (default: /line/webhook)',
-              default: '/line/webhook',
+              type: "string",
+              description: "Webhook path (default: /line/webhook)",
+              default: "/line/webhook",
             },
             useReplyTokens: {
-              type: 'boolean',
-              description: 'Use reply tokens for faster responses',
+              type: "boolean",
+              description: "Use reply tokens for faster responses",
               default: true,
             },
           },
-          required: ['channelAccessToken', 'channelSecret'],
+          required: ["channelAccessToken", "channelSecret"],
         },
       },
       factory: (config) => createLineAdapter(config as LineConfig),
@@ -941,12 +950,12 @@ export class ChannelRegistry extends EventEmitter {
     // BlueBubbles
     this.register({
       metadata: {
-        type: 'bluebubbles',
-        displayName: 'BlueBubbles',
-        description: 'iMessage integration via BlueBubbles server',
-        icon: '💙',
+        type: "bluebubbles",
+        displayName: "BlueBubbles",
+        description: "iMessage integration via BlueBubbles server",
+        icon: "💙",
         builtin: true,
-        platforms: ['darwin'],
+        platforms: ["darwin"],
         capabilities: {
           sendMessage: true,
           receiveMessage: true,
@@ -968,40 +977,40 @@ export class ChannelRegistry extends EventEmitter {
           e2eEncryption: true,
         },
         configSchema: {
-          type: 'object',
+          type: "object",
           properties: {
             serverUrl: {
-              type: 'string',
-              description: 'BlueBubbles server URL (e.g., http://192.168.1.100:1234)',
+              type: "string",
+              description: "BlueBubbles server URL (e.g., http://192.168.1.100:1234)",
               required: true,
             },
             password: {
-              type: 'string',
-              description: 'BlueBubbles server password',
+              type: "string",
+              description: "BlueBubbles server password",
               required: true,
               secret: true,
             },
             webhookPort: {
-              type: 'number',
-              description: 'Webhook port (default: 3101)',
+              type: "number",
+              description: "Webhook port (default: 3101)",
               default: 3101,
             },
             webhookPath: {
-              type: 'string',
-              description: 'Webhook path (default: /bluebubbles/webhook)',
-              default: '/bluebubbles/webhook',
+              type: "string",
+              description: "Webhook path (default: /bluebubbles/webhook)",
+              default: "/bluebubbles/webhook",
             },
             pollInterval: {
-              type: 'number',
-              description: 'Poll interval in ms if webhooks unavailable',
+              type: "number",
+              description: "Poll interval in ms if webhooks unavailable",
               default: 5000,
             },
             allowedContacts: {
-              type: 'array',
-              description: 'Allowed contacts (phone numbers or emails)',
+              type: "array",
+              description: "Allowed contacts (phone numbers or emails)",
             },
           },
-          required: ['serverUrl', 'password'],
+          required: ["serverUrl", "password"],
         },
       },
       factory: (config) => createBlueBubblesAdapter(config as BlueBubblesConfig),
@@ -1010,10 +1019,10 @@ export class ChannelRegistry extends EventEmitter {
     // Email
     this.register({
       metadata: {
-        type: 'email',
-        displayName: 'Email',
-        description: 'Email integration using IMAP/SMTP or LOOM protocol',
-        icon: '📧',
+        type: "email",
+        displayName: "Email",
+        description: "Email integration using IMAP/SMTP or LOOM protocol",
+        icon: "📧",
         builtin: true,
         capabilities: {
           sendMessage: true,
@@ -1036,82 +1045,82 @@ export class ChannelRegistry extends EventEmitter {
           e2eEncryption: false,
         },
         configSchema: {
-          type: 'object',
+          type: "object",
           properties: {
             protocol: {
-              type: 'string',
+              type: "string",
               description: 'Transport protocol: "imap-smtp" (default) or "loom"',
-              default: 'imap-smtp',
+              default: "imap-smtp",
             },
             imapHost: {
-              type: 'string',
-              description: 'IMAP server host (required for IMAP/SMTP mode)',
+              type: "string",
+              description: "IMAP server host (required for IMAP/SMTP mode)",
             },
             imapPort: {
-              type: 'number',
-              description: 'IMAP port (default: 993)',
+              type: "number",
+              description: "IMAP port (default: 993)",
               default: 993,
             },
             smtpHost: {
-              type: 'string',
-              description: 'SMTP server host (required for IMAP/SMTP mode)',
+              type: "string",
+              description: "SMTP server host (required for IMAP/SMTP mode)",
             },
             smtpPort: {
-              type: 'number',
-              description: 'SMTP port (default: 587)',
+              type: "number",
+              description: "SMTP port (default: 587)",
               default: 587,
             },
             email: {
-              type: 'string',
-              description: 'Email address (required for IMAP/SMTP mode)',
+              type: "string",
+              description: "Email address (required for IMAP/SMTP mode)",
             },
             password: {
-              type: 'string',
-              description: 'Password or app password (required for IMAP/SMTP mode)',
+              type: "string",
+              description: "Password or app password (required for IMAP/SMTP mode)",
               secret: true,
             },
             displayName: {
-              type: 'string',
-              description: 'Display name for outgoing emails',
+              type: "string",
+              description: "Display name for outgoing emails",
             },
             mailbox: {
-              type: 'string',
-              description: 'IMAP mailbox to monitor (default: INBOX)',
-              default: 'INBOX',
+              type: "string",
+              description: "IMAP mailbox to monitor (default: INBOX)",
+              default: "INBOX",
             },
             subjectFilter: {
-              type: 'string',
-              description: 'Subject line filter pattern',
+              type: "string",
+              description: "Subject line filter pattern",
             },
             allowedSenders: {
-              type: 'array',
-              description: 'Allowed sender email addresses',
+              type: "array",
+              description: "Allowed sender email addresses",
             },
             loomBaseUrl: {
-              type: 'string',
-              description: 'LOOM node base URL (required for LOOM mode)',
+              type: "string",
+              description: "LOOM node base URL (required for LOOM mode)",
             },
             loomAccessToken: {
-              type: 'string',
-              description: 'LOOM bearer access token (required for LOOM mode)',
+              type: "string",
+              description: "LOOM bearer access token (required for LOOM mode)",
               secret: true,
             },
             loomIdentity: {
-              type: 'string',
-              description: 'LOOM actor identity (optional)',
+              type: "string",
+              description: "LOOM actor identity (optional)",
             },
             loomMailboxFolder: {
-              type: 'string',
-              description: 'LOOM mailbox folder (default: INBOX)',
-              default: 'INBOX',
+              type: "string",
+              description: "LOOM mailbox folder (default: INBOX)",
+              default: "INBOX",
             },
             loomPollInterval: {
-              type: 'number',
-              description: 'LOOM mailbox poll interval in ms',
+              type: "number",
+              description: "LOOM mailbox poll interval in ms",
               default: 30000,
             },
           },
-          required: ['protocol'],
+          required: ["protocol"],
         },
       },
       factory: (config) => createEmailAdapter(config as EmailConfig),
@@ -1136,7 +1145,7 @@ export class ChannelRegistry extends EventEmitter {
     }
 
     this.channels.set(metadata.type, entry);
-    this.emit('channel:registered', { type: metadata.type, metadata });
+    this.emit("channel:registered", { type: metadata.type, metadata });
     console.log(`Channel registered: ${metadata.type} (${metadata.displayName})`);
   }
 
@@ -1155,7 +1164,7 @@ export class ChannelRegistry extends EventEmitter {
     }
 
     this.channels.delete(type);
-    this.emit('channel:unregistered', { type });
+    this.emit("channel:unregistered", { type });
     return true;
   }
 
@@ -1177,7 +1186,7 @@ export class ChannelRegistry extends EventEmitter {
    * Get all channel metadata
    */
   getAllMetadata(): ChannelMetadata[] {
-    return Array.from(this.channels.values()).map(e => e.metadata);
+    return Array.from(this.channels.values()).map((e) => e.metadata);
   }
 
   /**
@@ -1185,8 +1194,8 @@ export class ChannelRegistry extends EventEmitter {
    */
   getBuiltinChannels(): ChannelMetadata[] {
     return Array.from(this.channels.values())
-      .filter(e => e.metadata.builtin)
-      .map(e => e.metadata);
+      .filter((e) => e.metadata.builtin)
+      .map((e) => e.metadata);
   }
 
   /**
@@ -1194,8 +1203,8 @@ export class ChannelRegistry extends EventEmitter {
    */
   getPluginChannels(): ChannelMetadata[] {
     return Array.from(this.channels.values())
-      .filter(e => !e.metadata.builtin)
-      .map(e => e.metadata);
+      .filter((e) => !e.metadata.builtin)
+      .map((e) => e.metadata);
   }
 
   /**
@@ -1251,7 +1260,7 @@ export class ChannelRegistry extends EventEmitter {
 
     // Check required fields
     for (const required of schema.required || []) {
-      if (!(required in config) || config[required] === undefined || config[required] === '') {
+      if (!(required in config) || config[required] === undefined || config[required] === "") {
         errors.push(`Missing required field: ${required}`);
       }
     }
@@ -1264,54 +1273,57 @@ export class ChannelRegistry extends EventEmitter {
       }
 
       const expectedType = prop.type;
-      const actualType = Array.isArray(value) ? 'array' : typeof value;
+      const actualType = Array.isArray(value) ? "array" : typeof value;
 
       if (expectedType !== actualType) {
         errors.push(`Field ${key} should be ${expectedType}, got ${actualType}`);
       }
     }
 
-    if (type === 'email') {
-      const protocolValue = typeof config.protocol === 'string' ? config.protocol.trim().toLowerCase() : '';
-      if (protocolValue && protocolValue !== 'imap-smtp' && protocolValue !== 'loom') {
+    if (type === "email") {
+      const protocolValue =
+        typeof config.protocol === "string" ? config.protocol.trim().toLowerCase() : "";
+      if (protocolValue && protocolValue !== "imap-smtp" && protocolValue !== "loom") {
         errors.push(`Invalid email protocol: ${config.protocol}`);
         return { valid: false, errors };
       }
 
       const protocol = normalizeEmailProtocol(protocolValue);
-      if (protocol === 'loom') {
+      if (protocol === "loom") {
         if (!config.loomBaseUrl) {
-          errors.push('Missing required field: loomBaseUrl');
+          errors.push("Missing required field: loomBaseUrl");
         }
-        if (typeof config.loomBaseUrl === 'string' && !isSecureOrLocalLoomUrl(config.loomBaseUrl)) {
-          errors.push('Invalid LOOM base URL: must use HTTPS unless using localhost/127.0.0.1/::1');
+        if (typeof config.loomBaseUrl === "string" && !isSecureOrLocalLoomUrl(config.loomBaseUrl)) {
+          errors.push("Invalid LOOM base URL: must use HTTPS unless using localhost/127.0.0.1/::1");
         }
         if (!config.loomAccessToken) {
-          errors.push('Missing required field: loomAccessToken');
+          errors.push("Missing required field: loomAccessToken");
         }
-        if (typeof config.loomMailboxFolder !== 'undefined' && typeof config.loomMailboxFolder !== 'string') {
-          errors.push('Invalid LOOM mailbox folder');
-        } else if (typeof config.loomMailboxFolder === 'string') {
+        if (
+          typeof config.loomMailboxFolder !== "undefined" &&
+          typeof config.loomMailboxFolder !== "string"
+        ) {
+          errors.push("Invalid LOOM mailbox folder");
+        } else if (typeof config.loomMailboxFolder === "string") {
           try {
             assertSafeLoomMailboxFolder(config.loomMailboxFolder);
           } catch (error) {
-            const message =
-              error instanceof Error ? error.message : 'Invalid LOOM mailbox folder';
+            const message = error instanceof Error ? error.message : "Invalid LOOM mailbox folder";
             errors.push(message);
           }
         }
       } else {
         if (!config.email) {
-          errors.push('Missing required field: email');
+          errors.push("Missing required field: email");
         }
         if (!config.password) {
-          errors.push('Missing required field: password');
+          errors.push("Missing required field: password");
         }
         if (!config.imapHost) {
-          errors.push('Missing required field: imapHost');
+          errors.push("Missing required field: imapHost");
         }
         if (!config.smtpHost) {
-          errors.push('Missing required field: smtpHost');
+          errors.push("Missing required field: smtpHost");
         }
       }
     }
@@ -1324,8 +1336,8 @@ export class ChannelRegistry extends EventEmitter {
    */
   getChannelsByCapability(capability: keyof ChannelCapabilities): ChannelMetadata[] {
     return Array.from(this.channels.values())
-      .filter(e => e.metadata.capabilities[capability])
-      .map(e => e.metadata);
+      .filter((e) => e.metadata.capabilities[capability])
+      .map((e) => e.metadata);
   }
 
   /**
@@ -1374,7 +1386,7 @@ export class ChannelRegistry extends EventEmitter {
       summary.push({
         type,
         displayName: entry.metadata.displayName,
-        status: adapter?.status || 'disconnected',
+        status: adapter?.status || "disconnected",
       });
     }
 

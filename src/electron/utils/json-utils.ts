@@ -5,13 +5,13 @@ export type JsonStringifyOptions = {
 };
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
-  if (!value || typeof value !== 'object') return false;
+  if (!value || typeof value !== "object") return false;
   const proto = Object.getPrototypeOf(value);
   return proto === Object.prototype || proto === null;
 }
 
 function sortKeysDeep(value: unknown, seen: WeakSet<object>): unknown {
-  if (!value || typeof value !== 'object') return value;
+  if (!value || typeof value !== "object") return value;
   if (seen.has(value as object)) return value;
   seen.add(value as object);
 
@@ -32,14 +32,16 @@ function sortKeysDeep(value: unknown, seen: WeakSet<object>): unknown {
 }
 
 export function stableJsonStringify(value: unknown, options?: JsonStringifyOptions): string {
-  const indent = typeof options?.indent === 'number' ? Math.max(0, Math.min(8, options.indent)) : 0;
+  const indent = typeof options?.indent === "number" ? Math.max(0, Math.min(8, options.indent)) : 0;
   const maxOutputChars =
-    typeof options?.maxOutputChars === 'number' ? Math.max(0, Math.min(500_000, options.maxOutputChars)) : 200_000;
+    typeof options?.maxOutputChars === "number"
+      ? Math.max(0, Math.min(500_000, options.maxOutputChars))
+      : 200_000;
 
   const sortKeys = !!options?.sortKeys;
   const prepared = sortKeys ? sortKeysDeep(value, new WeakSet()) : value;
 
-  let out = '';
+  let out = "";
   try {
     out = JSON.stringify(prepared, null, indent);
   } catch {
@@ -47,7 +49,7 @@ export function stableJsonStringify(value: unknown, options?: JsonStringifyOptio
   }
 
   if (maxOutputChars > 0 && out.length > maxOutputChars) {
-    out = out.slice(0, maxOutputChars) + '\n[... truncated ...]';
+    out = out.slice(0, maxOutputChars) + "\n[... truncated ...]";
   }
 
   return out;
@@ -61,15 +63,12 @@ export type JsonExtractOptions = {
 
 function extractFencedBlocks(text: string): string[] {
   const blocks: string[] = [];
-  const patterns = [
-    /```json\s*([\s\S]*?)\s*```/gi,
-    /```\s*([\s\S]*?)\s*```/g,
-  ];
+  const patterns = [/```json\s*([\s\S]*?)\s*```/gi, /```\s*([\s\S]*?)\s*```/g];
 
   for (const re of patterns) {
     let match: RegExpExecArray | null;
     while ((match = re.exec(text)) !== null) {
-      const body = (match[1] || '').trim();
+      const body = (match[1] || "").trim();
       if (body) blocks.push(body);
       if (blocks.length >= 50) return blocks;
     }
@@ -85,14 +84,14 @@ function scanBalancedJsonCandidates(text: string, maxCandidateChars: number): st
   let start = -1;
   let stack: string[] = [];
   let inString = false;
-  let stringDelim = '';
+  let stringDelim = "";
   let escaped = false;
 
   const reset = () => {
     start = -1;
     stack = [];
     inString = false;
-    stringDelim = '';
+    stringDelim = "";
     escaped = false;
   };
 
@@ -100,11 +99,11 @@ function scanBalancedJsonCandidates(text: string, maxCandidateChars: number): st
     const ch = text[i];
 
     if (start === -1) {
-      if (ch === '{' || ch === '[') {
+      if (ch === "{" || ch === "[") {
         start = i;
         stack = [ch];
         inString = false;
-        stringDelim = '';
+        stringDelim = "";
         escaped = false;
       }
       continue;
@@ -115,31 +114,31 @@ function scanBalancedJsonCandidates(text: string, maxCandidateChars: number): st
         escaped = false;
         continue;
       }
-      if (ch === '\\') {
+      if (ch === "\\") {
         escaped = true;
         continue;
       }
       if (ch === stringDelim) {
         inString = false;
-        stringDelim = '';
+        stringDelim = "";
       }
       continue;
     }
 
-    if (ch === '\"' || ch === '\'') {
+    if (ch === '\"' || ch === "'") {
       inString = true;
       stringDelim = ch;
       continue;
     }
 
-    if (ch === '{' || ch === '[') {
+    if (ch === "{" || ch === "[") {
       stack.push(ch);
       continue;
     }
 
-    if (ch === '}' || ch === ']') {
+    if (ch === "}" || ch === "]") {
       const top = stack[stack.length - 1];
-      const matches = (top === '{' && ch === '}') || (top === '[' && ch === ']');
+      const matches = (top === "{" && ch === "}") || (top === "[" && ch === "]");
       if (!matches) {
         reset();
         continue;
@@ -166,11 +165,11 @@ function scanBalancedJsonCandidates(text: string, maxCandidateChars: number): st
 function repairJsonString(text: string): string {
   let s = text.trim();
 
-  s = s.replace(/\bNone\b/g, 'null');
-  s = s.replace(/\bTrue\b/g, 'true');
-  s = s.replace(/\bFalse\b/g, 'false');
+  s = s.replace(/\bNone\b/g, "null");
+  s = s.replace(/\bTrue\b/g, "true");
+  s = s.replace(/\bFalse\b/g, "false");
 
-  s = s.replace(/,(\s*[}\]])/g, '$1');
+  s = s.replace(/,(\s*[}\]])/g, "$1");
   s = s.replace(/([{,]\s*)([A-Za-z_][A-Za-z0-9_-]*)(\s*:)/g, '$1"$2"$3');
   s = s.replace(/:\s*'([^'\\]*(?:\\.[^'\\]*)*)'\s*([,}])/g, (_m, inner, tail) => {
     const escaped = String(inner).replace(/\\"/g, '"').replace(/"/g, '\\"');
@@ -199,10 +198,11 @@ function tryParseJson(text: string, allowRepair: boolean): unknown | undefined {
 }
 
 export function extractJsonValues(text: string, options?: JsonExtractOptions): unknown[] {
-  const maxResults = typeof options?.maxResults === 'number' ? Math.max(1, Math.min(50, options.maxResults)) : 5;
+  const maxResults =
+    typeof options?.maxResults === "number" ? Math.max(1, Math.min(50, options.maxResults)) : 5;
   const allowRepair = !!options?.allowRepair;
   const maxCandidateChars =
-    typeof options?.maxCandidateChars === 'number'
+    typeof options?.maxCandidateChars === "number"
       ? Math.max(256, Math.min(1_000_000, options.maxCandidateChars))
       : 200_000;
 

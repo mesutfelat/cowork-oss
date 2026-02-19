@@ -2,9 +2,9 @@
  * OneDrive API helpers (Microsoft Graph)
  */
 
-import { OneDriveConnectionTestResult, OneDriveSettingsData } from '../../shared/types';
+import { OneDriveConnectionTestResult, OneDriveSettingsData } from "../../shared/types";
 
-export const ONEDRIVE_API_BASE = 'https://graph.microsoft.com/v1.0';
+export const ONEDRIVE_API_BASE = "https://graph.microsoft.com/v1.0";
 const DEFAULT_TIMEOUT_MS = 20000;
 
 function parseJsonSafe(text: string): any | undefined {
@@ -18,16 +18,12 @@ function parseJsonSafe(text: string): any | undefined {
 }
 
 function formatGraphError(status: number, data: any, fallback?: string): string {
-  const message =
-    data?.error?.message ||
-    data?.message ||
-    fallback ||
-    'Microsoft Graph error';
+  const message = data?.error?.message || data?.message || fallback || "Microsoft Graph error";
   return `Microsoft Graph error ${status}: ${message}`;
 }
 
 export interface OneDriveRequestOptions {
-  method: 'GET' | 'POST' | 'PATCH' | 'DELETE' | 'PUT';
+  method: "GET" | "POST" | "PATCH" | "DELETE" | "PUT";
   path: string;
   query?: Record<string, string | number | boolean | undefined>;
   body?: any;
@@ -43,10 +39,12 @@ export interface OneDriveRequestResult {
 
 export async function onedriveRequest(
   settings: OneDriveSettingsData,
-  options: OneDriveRequestOptions
+  options: OneDriveRequestOptions,
 ): Promise<OneDriveRequestResult> {
   if (!settings.accessToken) {
-    throw new Error('OneDrive access token not configured. Add it in Settings > Integrations > OneDrive.');
+    throw new Error(
+      "OneDrive access token not configured. Add it in Settings > Integrations > OneDrive.",
+    );
   }
 
   const params = new URLSearchParams();
@@ -57,16 +55,19 @@ export async function onedriveRequest(
     }
   }
   const queryString = params.toString();
-  const url = `${ONEDRIVE_API_BASE}${options.path}${queryString ? `?${queryString}` : ''}`;
+  const url = `${ONEDRIVE_API_BASE}${options.path}${queryString ? `?${queryString}` : ""}`;
 
   const headers: Record<string, string> = {
     Authorization: `Bearer ${settings.accessToken}`,
     ...(options.headers || {}),
   };
 
-  const isBinaryBody = options.body instanceof Uint8Array || options.body instanceof ArrayBuffer || Buffer.isBuffer(options.body);
-  if (options.body && !isBinaryBody && options.method !== 'GET' && options.method !== 'DELETE') {
-    headers['Content-Type'] = headers['Content-Type'] || 'application/json';
+  const isBinaryBody =
+    options.body instanceof Uint8Array ||
+    options.body instanceof ArrayBuffer ||
+    Buffer.isBuffer(options.body);
+  if (options.body && !isBinaryBody && options.method !== "GET" && options.method !== "DELETE") {
+    headers["Content-Type"] = headers["Content-Type"] || "application/json";
   }
 
   const timeoutMs = options.timeoutMs ?? settings.timeoutMs ?? DEFAULT_TIMEOUT_MS;
@@ -77,15 +78,11 @@ export async function onedriveRequest(
     const response = await fetch(url, {
       method: options.method,
       headers,
-      body: options.body
-        ? isBinaryBody
-          ? options.body
-          : JSON.stringify(options.body)
-        : undefined,
+      body: options.body ? (isBinaryBody ? options.body : JSON.stringify(options.body)) : undefined,
       signal: controller.signal,
     });
 
-    const rawText = typeof response.text === 'function' ? await response.text() : '';
+    const rawText = typeof response.text === "function" ? await response.text() : "";
     const data = rawText ? parseJsonSafe(rawText) : undefined;
 
     if (!response.ok) {
@@ -98,8 +95,8 @@ export async function onedriveRequest(
       raw: rawText || undefined,
     };
   } catch (error: any) {
-    if (error?.name === 'AbortError') {
-      throw new Error('OneDrive API request timed out');
+    if (error?.name === "AbortError") {
+      throw new Error("OneDrive API request timed out");
     }
     throw error;
   } finally {
@@ -108,19 +105,18 @@ export async function onedriveRequest(
 }
 
 function extractDriveOwner(data: any): { name?: string; userId?: string; driveId?: string } {
-  if (!data || typeof data !== 'object') return {};
-  const name =
-    data?.owner?.user?.displayName ||
-    data?.owner?.user?.id ||
-    undefined;
+  if (!data || typeof data !== "object") return {};
+  const name = data?.owner?.user?.displayName || data?.owner?.user?.id || undefined;
   const userId = data?.owner?.user?.id || undefined;
   const driveId = data?.id || undefined;
   return { name, userId, driveId };
 }
 
-export async function testOneDriveConnection(settings: OneDriveSettingsData): Promise<OneDriveConnectionTestResult> {
+export async function testOneDriveConnection(
+  settings: OneDriveSettingsData,
+): Promise<OneDriveConnectionTestResult> {
   try {
-    const result = await onedriveRequest(settings, { method: 'GET', path: '/me/drive' });
+    const result = await onedriveRequest(settings, { method: "GET", path: "/me/drive" });
     const extracted = extractDriveOwner(result.data);
     return {
       success: true,
@@ -131,7 +127,7 @@ export async function testOneDriveConnection(settings: OneDriveSettingsData): Pr
   } catch (error: any) {
     return {
       success: false,
-      error: error?.message || 'Failed to connect to OneDrive',
+      error: error?.message || "Failed to connect to OneDrive",
     };
   }
 }

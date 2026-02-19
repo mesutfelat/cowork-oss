@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { QueueSettings as QueueSettingsType, DEFAULT_QUEUE_SETTINGS } from '../../shared/types';
+import { useState, useEffect } from "react";
+import { QueueSettings as QueueSettingsType, DEFAULT_QUEUE_SETTINGS } from "../../shared/types";
 
 export function QueueSettings() {
   const [settings, setSettings] = useState<QueueSettingsType | null>(null);
@@ -16,7 +16,7 @@ export function QueueSettings() {
       const loaded = await window.electronAPI.getQueueSettings();
       setSettings(loaded);
     } catch (error) {
-      console.error('Failed to load queue settings:', error);
+      console.error("Failed to load queue settings:", error);
       // Fall back to defaults if loading fails
       setSettings(DEFAULT_QUEUE_SETTINGS);
     } finally {
@@ -30,7 +30,7 @@ export function QueueSettings() {
       setSaving(true);
       await window.electronAPI.saveQueueSettings(settings);
     } catch (error) {
-      console.error('Failed to save queue settings:', error);
+      console.error("Failed to save queue settings:", error);
     } finally {
       setSaving(false);
     }
@@ -50,8 +50,8 @@ export function QueueSettings() {
       <div className="settings-section">
         <h3>Parallel Task Execution</h3>
         <p className="settings-description">
-          Control how many tasks can run simultaneously. Higher values allow more parallel work
-          but use more system resources.
+          Control how many tasks can run simultaneously. Higher values allow more parallel work but
+          use more system resources.
         </p>
 
         <div className="settings-slider-group">
@@ -63,14 +63,17 @@ export function QueueSettings() {
               min={1}
               max={10}
               value={settings.maxConcurrentTasks}
-              onChange={(e) => setSettings({ ...settings, maxConcurrentTasks: parseInt(e.target.value) })}
+              onChange={(e) =>
+                setSettings({ ...settings, maxConcurrentTasks: parseInt(e.target.value) })
+              }
             />
             <span className="slider-value">{settings.maxConcurrentTasks}</span>
           </div>
         </div>
 
         <p className="settings-hint">
-          Default: 3. Tasks beyond this limit will be queued and start automatically when a slot becomes available.
+          Default: 3. Tasks beyond this limit will be queued and start automatically when a slot
+          becomes available.
         </p>
       </div>
 
@@ -78,40 +81,36 @@ export function QueueSettings() {
       <div className="settings-section">
         <h3>Queue Behavior</h3>
         <p className="settings-description">
-          When you create more tasks than the concurrency limit allows, extra tasks are placed in a queue.
+          When you create more tasks than the concurrency limit allows, extra tasks are placed in a
+          queue.
         </p>
 
         <ul className="settings-info-list">
           <li>
-            <strong>FIFO Order:</strong> Tasks are processed in the order they were created (first-in, first-out).
+            <strong>FIFO Order:</strong> Tasks are processed in the order they were created
+            (first-in, first-out).
           </li>
           <li>
-            <strong>Auto-Start:</strong> Queued tasks automatically start when a running task completes.
+            <strong>Auto-Start:</strong> Queued tasks automatically start when a running task
+            completes.
           </li>
           <li>
             <strong>Persistence:</strong> Queued tasks are saved and will resume after app restart.
           </li>
           <li>
-            <strong>Cancel Anytime:</strong> You can cancel queued tasks from the queue panel before they start.
+            <strong>Cancel Anytime:</strong> You can cancel queued tasks from the queue panel before
+            they start.
           </li>
         </ul>
       </div>
 
       {/* Actions */}
       <div className="settings-actions">
-        <button
-          className="button-secondary"
-          onClick={handleReset}
-          disabled={saving}
-        >
+        <button className="button-secondary" onClick={handleReset} disabled={saving}>
           Reset to Default
         </button>
-        <button
-          className="button-primary"
-          onClick={handleSave}
-          disabled={saving}
-        >
-          {saving ? 'Saving...' : 'Save Settings'}
+        <button className="button-primary" onClick={handleSave} disabled={saving}>
+          {saving ? "Saving..." : "Save Settings"}
         </button>
       </div>
     </>

@@ -29,10 +29,10 @@ import {
   type ConnectionState,
   type proto,
   type DownloadableMessage,
-} from '@whiskeysockets/baileys';
-import * as fs from 'fs';
-import * as path from 'path';
-import { getUserDataDir } from '../../utils/user-data-dir';
+} from "@whiskeysockets/baileys";
+import * as fs from "fs";
+import * as path from "path";
+import { getUserDataDir } from "../../utils/user-data-dir";
 import {
   ChannelAdapter,
   ChannelStatus,
@@ -46,8 +46,11 @@ import {
   MessageAttachment,
   CallbackQueryHandler,
   WhatsAppConfig,
-} from './types';
-import { isLikelyWhatsAppNaturalCommand, stripWhatsAppCommandPreamble } from '../whatsapp-command-utils';
+} from "./types";
+import {
+  isLikelyWhatsAppNaturalCommand,
+  stripWhatsAppCommandPreamble,
+} from "../whatsapp-command-utils";
 
 const WHATSAPP_USER_JID_RE = /^(\d+)(?::\d+)?@s\.whatsapp\.net$/i;
 const WHATSAPP_LID_JID_RE = /^(\d+)@lid$/i;
@@ -55,7 +58,7 @@ const WHATSAPP_LID_JID_RE = /^(\d+)@lid$/i;
 function stripWhatsAppTargetPrefixes(value: string): string {
   let candidate = value.trim();
   while (true) {
-    const stripped = candidate.replace(/^whatsapp:/i, '').trim();
+    const stripped = candidate.replace(/^whatsapp:/i, "").trim();
     if (stripped === candidate) {
       return candidate;
     }
@@ -79,11 +82,11 @@ export function normalizeWhatsAppPhoneTarget(value: string): string | null {
     return lidMatch[1];
   }
 
-  if (candidate.includes('@')) {
+  if (candidate.includes("@")) {
     return null;
   }
 
-  const digits = candidate.replace(/\D+/g, '');
+  const digits = candidate.replace(/\D+/g, "");
   return digits.length > 0 ? digits : null;
 }
 
@@ -112,7 +115,7 @@ interface WhatsAppInboundMessage {
   to: string;
   body: string;
   timestamp?: number;
-  chatType: 'direct' | 'group';
+  chatType: "direct" | "group";
   chatId: string;
   senderJid?: string;
   senderE164?: string;
@@ -125,10 +128,10 @@ interface WhatsAppInboundMessage {
 }
 
 export class WhatsAppAdapter implements ChannelAdapter {
-  readonly type = 'whatsapp' as const;
+  readonly type = "whatsapp" as const;
 
   private sock: WASocket | null = null;
-  private _status: ChannelStatus = 'disconnected';
+  private _status: ChannelStatus = "disconnected";
   private _selfJid?: string;
   private _selfE164?: string;
   private messageHandlers: MessageHandler[] = [];
@@ -184,19 +187,19 @@ export class WhatsAppAdapter implements ChannelAdapter {
       sendReadReceipts: true,
       printQrToTerminal: false,
       selfChatMode: true, // Default to self-chat mode since most users use their own number
-      responsePrefix: '🤖', // Default prefix for bot responses
-      groupRoutingMode: 'mentionsOrCommands',
+      responsePrefix: "🤖", // Default prefix for bot responses
+      groupRoutingMode: "mentionsOrCommands",
       ...config,
     };
 
     // In self-chat mode, disable read receipts by default
     if (this.config.selfChatMode && config.sendReadReceipts === undefined) {
       this.config.sendReadReceipts = false;
-      console.log('[WhatsApp] Self-chat mode enabled; defaulting sendReadReceipts to false.');
+      console.log("[WhatsApp] Self-chat mode enabled; defaulting sendReadReceipts to false.");
     }
 
     // Set auth directory
-    this.authDir = config.authDir || path.join(getUserDataDir(), 'whatsapp-auth');
+    this.authDir = config.authDir || path.join(getUserDataDir(), "whatsapp-auth");
   }
 
   /**
@@ -210,10 +213,10 @@ export class WhatsAppAdapter implements ChannelAdapter {
    * Get the response prefix for bot messages
    */
   get responsePrefix(): string {
-    if (typeof this.config.responsePrefix === 'string') {
+    if (typeof this.config.responsePrefix === "string") {
       return this.config.responsePrefix;
     }
-    return '🤖';
+    return "🤖";
   }
 
   get status(): ChannelStatus {
@@ -235,7 +238,7 @@ export class WhatsAppAdapter implements ChannelAdapter {
    * Check if WhatsApp auth credentials exist
    */
   async hasCredentials(): Promise<boolean> {
-    const credsPath = path.join(this.authDir, 'creds.json');
+    const credsPath = path.join(this.authDir, "creds.json");
     return fs.existsSync(credsPath);
   }
 
@@ -243,12 +246,12 @@ export class WhatsAppAdapter implements ChannelAdapter {
    * Connect to WhatsApp Web
    */
   async connect(): Promise<void> {
-    if (this._status === 'connected' || this._status === 'connecting') {
+    if (this._status === "connected" || this._status === "connecting") {
       return;
     }
 
     this.shouldReconnect = true;
-    this.setStatus('connecting');
+    this.setStatus("connecting");
     this.resetBackoff();
 
     try {
@@ -263,7 +266,7 @@ export class WhatsAppAdapter implements ChannelAdapter {
 
       // Create silent logger to suppress Baileys logs
       const logger = {
-        level: 'silent' as const,
+        level: "silent" as const,
         trace: () => {},
         debug: () => {},
         info: () => {},
@@ -282,29 +285,35 @@ export class WhatsAppAdapter implements ChannelAdapter {
         version,
         logger: logger as any,
         // Note: printQRInTerminal is deprecated - QR codes are handled via connection.update event
-        browser: ['CoWork-OS', 'Desktop', '1.0.0'],
+        browser: ["CoWork-OS", "Desktop", "1.0.0"],
         syncFullHistory: false,
         markOnlineOnConnect: false,
       });
 
       // Handle credential updates
-      this.sock.ev.on('creds.update', saveCreds);
+      this.sock.ev.on("creds.update", saveCreds);
 
       // Handle connection updates
-      this.sock.ev.on('connection.update', (update) => {
+      this.sock.ev.on("connection.update", (update) => {
         try {
           this.handleConnectionUpdate(update);
         } catch (error) {
-          console.error('Unhandled error in WhatsApp connection update handler:', error);
-          this.handleError(error instanceof Error ? error : new Error(String(error)), 'connectionUpdate');
+          console.error("Unhandled error in WhatsApp connection update handler:", error);
+          this.handleError(
+            error instanceof Error ? error : new Error(String(error)),
+            "connectionUpdate",
+          );
         }
       });
 
       // Handle incoming messages
-      this.sock.ev.on('messages.upsert', (upsert) => {
+      this.sock.ev.on("messages.upsert", (upsert) => {
         this.handleMessagesUpsert(upsert).catch((error) => {
-          console.error('Unhandled error in WhatsApp message upsert handler:', error);
-          this.handleError(error instanceof Error ? error : new Error(String(error)), 'messagesUpsert');
+          console.error("Unhandled error in WhatsApp message upsert handler:", error);
+          this.handleError(
+            error instanceof Error ? error : new Error(String(error)),
+            "messagesUpsert",
+          );
         });
       });
 
@@ -314,7 +323,7 @@ export class WhatsAppAdapter implements ChannelAdapter {
       }
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
-      this.setStatus('error', err);
+      this.setStatus("error", err);
       throw err;
     }
   }
@@ -326,12 +335,12 @@ export class WhatsAppAdapter implements ChannelAdapter {
     const { connection, lastDisconnect, qr } = update;
 
     if (!this.shouldReconnect) {
-      if (connection === 'open') {
+      if (connection === "open") {
         // If a manual disconnect happened mid-handshake, close immediately.
         this.sock?.ws?.close();
-        this.setStatus('disconnected');
-      } else if (connection === 'close') {
-        this.setStatus('disconnected');
+        this.setStatus("disconnected");
+      } else if (connection === "close") {
+        this.setStatus("disconnected");
       }
       return;
     }
@@ -339,32 +348,33 @@ export class WhatsAppAdapter implements ChannelAdapter {
     // Handle QR code for authentication
     if (qr) {
       this.currentQr = qr;
-      console.log('WhatsApp QR code received - scan with WhatsApp mobile app');
+      console.log("WhatsApp QR code received - scan with WhatsApp mobile app");
 
       // Notify QR handlers
       for (const handler of this.qrCodeHandlers) {
         try {
           handler(qr);
         } catch (e) {
-          console.error('Error in QR code handler:', e);
+          console.error("Error in QR code handler:", e);
         }
       }
     }
 
     // Handle connection open
-    if (connection === 'open') {
+    if (connection === "open") {
       this.currentQr = undefined;
 
       // Check if previous connection was stable before resetting backoff
       const prevConnectedAt = this.connectedAtMs;
-      const wasStable = prevConnectedAt > 0 && (Date.now() - prevConnectedAt) >= this.MIN_STABLE_DURATION_MS;
+      const wasStable =
+        prevConnectedAt > 0 && Date.now() - prevConnectedAt >= this.MIN_STABLE_DURATION_MS;
 
       this.connectedAtMs = Date.now();
       this._selfJid = this.sock?.user?.id;
-      this._selfE164 = this._selfJid ? this.jidToE164(this._selfJid) ?? undefined : undefined;
+      this._selfE164 = this._selfJid ? (this.jidToE164(this._selfJid) ?? undefined) : undefined;
 
       console.log(`WhatsApp connected as ${this._selfE164 || this._selfJid}`);
-      this.setStatus('connected');
+      this.setStatus("connected");
 
       // Only fully reset backoff if the previous connection was stable or this is the first connection.
       // This prevents the backoff counter from resetting during rapid disconnect/reconnect cycles.
@@ -374,29 +384,31 @@ export class WhatsAppAdapter implements ChannelAdapter {
       }
 
       // Send available presence
-      this.sock?.sendPresenceUpdate('available').catch(() => {});
+      this.sock?.sendPresenceUpdate("available").catch(() => {});
     }
 
     // Handle connection close
-    if (connection === 'close') {
+    if (connection === "close") {
       this.currentQr = undefined;
       this.trackDisconnect();
       const statusCode = this.getStatusCode(lastDisconnect?.error);
 
       if (statusCode === DisconnectReason.loggedOut) {
-        console.error('WhatsApp session logged out');
-        this.setStatus('error', new Error('WhatsApp session logged out. Please re-authenticate.'));
+        console.error("WhatsApp session logged out");
+        this.setStatus("error", new Error("WhatsApp session logged out. Please re-authenticate."));
         // Clear credentials on logout
         this.clearCredentials().catch(() => {});
       } else if (statusCode === DisconnectReason.restartRequired) {
-        console.log('WhatsApp restart required, reconnecting...');
+        console.log("WhatsApp restart required, reconnecting...");
         this.attemptReconnection().catch((error) => {
-          console.error('WhatsApp reconnection failed:', error);
+          console.error("WhatsApp reconnection failed:", error);
         });
       } else {
-        console.log(`WhatsApp connection closed (status: ${statusCode}), attempting reconnection...`);
+        console.log(
+          `WhatsApp connection closed (status: ${statusCode}), attempting reconnection...`,
+        );
         this.attemptReconnection().catch((error) => {
-          console.error('WhatsApp reconnection failed:', error);
+          console.error("WhatsApp reconnection failed:", error);
         });
       }
     }
@@ -405,17 +417,20 @@ export class WhatsAppAdapter implements ChannelAdapter {
   /**
    * Handle incoming messages
    */
-  private async handleMessagesUpsert(upsert: { type?: string; messages?: WAMessage[] }): Promise<void> {
-    if (upsert.type !== 'notify' && upsert.type !== 'append') return;
+  private async handleMessagesUpsert(upsert: {
+    type?: string;
+    messages?: WAMessage[];
+  }): Promise<void> {
+    if (upsert.type !== "notify" && upsert.type !== "append") return;
 
     for (const msg of upsert.messages ?? []) {
       try {
         await this.processInboundMessage(msg, upsert.type);
       } catch (error) {
-        console.error('Error processing WhatsApp message:', error);
+        console.error("Error processing WhatsApp message:", error);
         this.handleError(
           error instanceof Error ? error : new Error(String(error)),
-          'messageProcessing'
+          "messageProcessing",
         );
       }
     }
@@ -430,14 +445,14 @@ export class WhatsAppAdapter implements ChannelAdapter {
     if (!remoteJid) return;
 
     // Skip status and broadcast messages
-    if (remoteJid.endsWith('@status') || remoteJid.endsWith('@broadcast')) return;
+    if (remoteJid.endsWith("@status") || remoteJid.endsWith("@broadcast")) return;
 
-    const rawBody = this.extractText(msg.message) ?? '';
+    const rawBody = this.extractText(msg.message) ?? "";
     const body = rawBody.trim();
     const isGroup = isJidGroup(remoteJid) === true;
     const participantJid = msg.key?.participant;
     const quotedMessageContext = this.extractQuotedMessageContext(msg.message);
-    const isCommand = body.startsWith('/');
+    const isCommand = body.startsWith("/");
     const isPairingCode = body.length > 0 && this.looksLikePairingCode(body);
     const isNaturalCommand = isLikelyWhatsAppNaturalCommand(body);
     const botMentioned = isGroup ? this.isSelfMentionedInMessage(msg.message, body) : false;
@@ -466,7 +481,7 @@ export class WhatsAppAdapter implements ChannelAdapter {
           if (now - this.selfChatIgnoreLogAt > 30000) {
             console.log(
               `WhatsApp: Ignoring message from ${remoteJidNormalized} because self-chat mode is enabled. ` +
-              'Disable self-chat mode to accept messages from other numbers.'
+                "Disable self-chat mode to accept messages from other numbers.",
             );
             this.selfChatIgnoreLogAt = now;
           }
@@ -489,12 +504,12 @@ export class WhatsAppAdapter implements ChannelAdapter {
     }
 
     const from = isGroup ? remoteJid : this.jidToE164(remoteJid) || remoteJid;
-    const senderE164 = isGroup
-      ? participantJid ? this.jidToE164(participantJid) : null
-      : from;
+    const senderE164 = isGroup ? (participantJid ? this.jidToE164(participantJid) : null) : from;
     const isFromMe = msg.key?.fromMe === true;
     const normalizedText = isGroup ? this.normalizeGroupMessageText(body, botMentioned) : body;
-    const groupTextForRouting = isGroup ? stripWhatsAppCommandPreamble(normalizedText) : normalizedText;
+    const groupTextForRouting = isGroup
+      ? stripWhatsAppCommandPreamble(normalizedText)
+      : normalizedText;
     if (isGroup && !shouldRouteGroupMessage) {
       ingestOnly = true;
     }
@@ -502,7 +517,7 @@ export class WhatsAppAdapter implements ChannelAdapter {
     // Check access control
     const allowedNumbers = this.getAllowedNumbersSet(this.config.allowedNumbers);
     if (allowedNumbers.size > 0) {
-      const senderNumber = senderE164?.replace(/[^0-9]/g, '');
+      const senderNumber = senderE164?.replace(/[^0-9]/g, "");
       if (senderNumber && !allowedNumbers.has(senderNumber)) {
         console.log(`WhatsApp: Ignoring message from unauthorized number: ${senderNumber}`);
         return;
@@ -524,35 +539,37 @@ export class WhatsAppAdapter implements ChannelAdapter {
     }
 
     // Send read receipt
-    if (!ingestOnly && id && this.config.sendReadReceipts && upsertType === 'notify') {
+    if (!ingestOnly && id && this.config.sendReadReceipts && upsertType === "notify") {
       try {
-        await this.sock?.readMessages([{
-          remoteJid,
-          id,
-          participant: participantJid,
-          fromMe: false,
-        }]);
+        await this.sock?.readMessages([
+          {
+            remoteJid,
+            id,
+            participant: participantJid,
+            fromMe: false,
+          },
+        ]);
       } catch {
         // Ignore read receipt errors
       }
     }
 
     // Skip history/offline catch-up messages
-    if (upsertType === 'append') return;
+    if (upsertType === "append") return;
 
     const messageTimestampMs = msg.messageTimestamp
       ? Number(msg.messageTimestamp) * 1000
       : undefined;
 
     // Download media attachments if present
-    const mediaIdSuffix = id ? `-${id}` : '';
+    const mediaIdSuffix = id ? `-${id}` : "";
     const attachments: MessageAttachment[] = [];
 
     if (msg.message?.imageMessage) {
       const imageAttachment = await this.downloadMediaMessage({
         media: msg.message.imageMessage as DownloadableMessage,
-        mediaType: 'image',
-        attachmentType: 'image',
+        mediaType: "image",
+        attachmentType: "image",
         mimeType: (msg.message.imageMessage as any)?.mimetype,
         fileName: this.extractWaFilename(msg.message.imageMessage as any),
         defaultBaseName: `image${mediaIdSuffix}`,
@@ -565,8 +582,8 @@ export class WhatsAppAdapter implements ChannelAdapter {
     if (msg.message?.videoMessage) {
       const videoAttachment = await this.downloadMediaMessage({
         media: msg.message.videoMessage as DownloadableMessage,
-        mediaType: 'video',
-        attachmentType: 'video',
+        mediaType: "video",
+        attachmentType: "video",
         mimeType: (msg.message.videoMessage as any)?.mimetype,
         fileName: this.extractWaFilename(msg.message.videoMessage as any),
         defaultBaseName: `video${mediaIdSuffix}`,
@@ -579,8 +596,8 @@ export class WhatsAppAdapter implements ChannelAdapter {
     if (msg.message?.documentMessage) {
       const documentAttachment = await this.downloadMediaMessage({
         media: msg.message.documentMessage as DownloadableMessage,
-        mediaType: 'document',
-        attachmentType: 'document',
+        mediaType: "document",
+        attachmentType: "document",
         mimeType: (msg.message.documentMessage as any)?.mimetype,
         fileName: this.extractWaFilename(msg.message.documentMessage as any),
         defaultBaseName: `document${mediaIdSuffix}`,
@@ -593,8 +610,8 @@ export class WhatsAppAdapter implements ChannelAdapter {
     if (msg.message?.stickerMessage) {
       const stickerAttachment = await this.downloadMediaMessage({
         media: msg.message.stickerMessage as DownloadableMessage,
-        mediaType: 'sticker',
-        attachmentType: 'image',
+        mediaType: "sticker",
+        attachmentType: "image",
         mimeType: (msg.message.stickerMessage as any)?.mimetype,
         fileName: this.extractWaFilename(msg.message.stickerMessage as any),
         defaultBaseName: `sticker${mediaIdSuffix}`,
@@ -617,34 +634,38 @@ export class WhatsAppAdapter implements ChannelAdapter {
       }
     }
 
-    const mediaPlaceholder = attachments.length === 0 ? this.extractMediaPlaceholder(msg.message) : '';
+    const mediaPlaceholder =
+      attachments.length === 0 ? this.extractMediaPlaceholder(msg.message) : "";
     const quotedContextBlock = this.formatQuotedMessageContextBlock(quotedMessageContext);
-    const rawText = normalizedText || mediaPlaceholder || '';
-    const routingText = isGroup ? (groupTextForRouting || mediaPlaceholder || '') : rawText;
+    const rawText = normalizedText || mediaPlaceholder || "";
+    const routingText = isGroup ? groupTextForRouting || mediaPlaceholder || "" : rawText;
     const textWithReplyContext = quotedContextBlock
-      ? (rawText ? `${quotedContextBlock}\n\n${rawText}` : quotedContextBlock)
+      ? rawText
+        ? `${quotedContextBlock}\n\n${rawText}`
+        : quotedContextBlock
       : rawText;
     const textForRoutingWithReplyContext = quotedContextBlock
-      ? (routingText ? `${quotedContextBlock}\n\n${routingText}` : quotedContextBlock)
+      ? routingText
+        ? `${quotedContextBlock}\n\n${routingText}`
+        : quotedContextBlock
       : routingText;
 
     // Create incoming message
     // Note: In self-chat mode we may ingest other chats into the message log (ingestOnly).
     // If the message is from our own account in a non-self chat, treat it as an outgoing user message.
-    const authorId = nonSelfChat && isFromMe
-      ? (this._selfE164 || this._selfJid || 'self')
-      : (senderE164 || participantJid || remoteJid);
-    const authorName = nonSelfChat && isFromMe
-      ? 'Me'
-      : (msg.pushName || senderE164 || 'Unknown');
+    const authorId =
+      nonSelfChat && isFromMe
+        ? this._selfE164 || this._selfJid || "self"
+        : senderE164 || participantJid || remoteJid;
+    const authorName = nonSelfChat && isFromMe ? "Me" : msg.pushName || senderE164 || "Unknown";
     const incomingMessage: IncomingMessage = {
       messageId: id || `wa-${Date.now()}`,
-      channel: 'whatsapp',
+      channel: "whatsapp",
       userId: authorId,
       userName: authorName,
       chatId: remoteJid,
       isGroup,
-      ...(nonSelfChat && isFromMe ? { direction: 'outgoing_user' as const } : {}),
+      ...(nonSelfChat && isFromMe ? { direction: "outgoing_user" as const } : {}),
       ...(quotedMessageContext.messageId ? { replyTo: quotedMessageContext.messageId } : {}),
       text: isGroup ? textForRoutingWithReplyContext : textWithReplyContext,
       timestamp: messageTimestampMs ? new Date(messageTimestampMs) : new Date(),
@@ -654,16 +675,19 @@ export class WhatsAppAdapter implements ChannelAdapter {
         groupRoutingMode: this.config.groupRoutingMode,
         botMentioned,
         groupMessageRoutable: isGroup ? shouldRouteGroupMessage : true,
-        ...(quotedMessageContext.body || quotedMessageContext.senderE164 || quotedMessageContext.senderName || quotedMessageContext.senderJid
+        ...(quotedMessageContext.body ||
+        quotedMessageContext.senderE164 ||
+        quotedMessageContext.senderName ||
+        quotedMessageContext.senderJid
           ? {
-            quotedMessage: {
-              messageId: quotedMessageContext.messageId,
-              senderJid: quotedMessageContext.senderJid,
-              senderE164: quotedMessageContext.senderE164,
-              senderName: quotedMessageContext.senderName,
-              body: quotedMessageContext.body,
-            },
-          }
+              quotedMessage: {
+                messageId: quotedMessageContext.messageId,
+                senderJid: quotedMessageContext.senderJid,
+                senderE164: quotedMessageContext.senderE164,
+                senderName: quotedMessageContext.senderName,
+                body: quotedMessageContext.body,
+              },
+            }
           : {}),
       },
       raw: msg,
@@ -703,7 +727,7 @@ export class WhatsAppAdapter implements ChannelAdapter {
 
     this._selfJid = undefined;
     this._selfE164 = undefined;
-    this.setStatus('disconnected');
+    this.setStatus("disconnected");
   }
 
   /**
@@ -714,19 +738,19 @@ export class WhatsAppAdapter implements ChannelAdapter {
     let result = text;
 
     // Convert headers (### Header) to bold text
-    result = result.replace(/^#{1,6}\s+(.+)$/gm, '*$1*');
+    result = result.replace(/^#{1,6}\s+(.+)$/gm, "*$1*");
 
     // Convert **bold** to *bold* (WhatsApp style)
-    result = result.replace(/\*\*(.+?)\*\*/g, '*$1*');
+    result = result.replace(/\*\*(.+?)\*\*/g, "*$1*");
 
     // Convert __bold__ to *bold*
-    result = result.replace(/__(.+?)__/g, '*$1*');
+    result = result.replace(/__(.+?)__/g, "*$1*");
 
     // Convert _italic_ - already WhatsApp compatible, but handle markdown style
     // Note: Single underscores are already WhatsApp italic
 
     // Convert ~~strikethrough~~ to ~strikethrough~
-    result = result.replace(/~~(.+?)~~/g, '~$1~');
+    result = result.replace(/~~(.+?)~~/g, "~$1~");
 
     // Convert inline code `code` to monospace (WhatsApp uses triple backticks but single works in some clients)
     // Keep as-is since WhatsApp renders `code` reasonably
@@ -734,13 +758,13 @@ export class WhatsAppAdapter implements ChannelAdapter {
     // Convert code blocks ```code``` - already WhatsApp compatible
 
     // Convert [link text](url) to "link text (url)" since WhatsApp auto-links URLs
-    result = result.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1 ($2)');
+    result = result.replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1 ($2)");
 
     // Convert horizontal rules (---, ***, ___) to a line
-    result = result.replace(/^[-*_]{3,}$/gm, '───────────');
+    result = result.replace(/^[-*_]{3,}$/gm, "───────────");
 
     // Clean up excessive newlines
-    result = result.replace(/\n{3,}/g, '\n\n');
+    result = result.replace(/\n{3,}/g, "\n\n");
 
     return result;
   }
@@ -749,12 +773,12 @@ export class WhatsAppAdapter implements ChannelAdapter {
    * Send a message to a WhatsApp chat
    */
   async sendMessage(message: OutgoingMessage): Promise<string> {
-    if (!this.sock || this._status !== 'connected') {
-      throw new Error('WhatsApp is not connected');
+    if (!this.sock || this._status !== "connected") {
+      throw new Error("WhatsApp is not connected");
     }
 
     const jid = this.toWhatsAppJid(message.chatId);
-    let messageId = '';
+    let messageId = "";
 
     // Convert markdown to WhatsApp formatting and apply response prefix
     let textToSend = message.text ? this.convertMarkdownToWhatsApp(message.text) : message.text;
@@ -778,13 +802,13 @@ export class WhatsAppAdapter implements ChannelAdapter {
               : undefined;
           const result = await this.sendWithRetry(
             () => this.sendMediaAttachment(jid, attachment, captionForAttachment),
-            'sendMediaAttachment'
+            "sendMediaAttachment",
           );
           messageId = result;
           didAttachWithCaption = true;
-          textToSend = '';
+          textToSend = "";
         } catch (error) {
-          console.error('Failed to send media attachment; sending fallback message only:', error);
+          console.error("Failed to send media attachment; sending fallback message only:", error);
         }
       }
     }
@@ -796,7 +820,7 @@ export class WhatsAppAdapter implements ChannelAdapter {
 
       const result = await this.sendWithRetry(
         () => this.sock!.sendMessage(jid, { text: textToSend }),
-        'sendText'
+        "sendText",
       );
       messageId = result?.key?.id || `wa-${Date.now()}`;
     }
@@ -810,11 +834,11 @@ export class WhatsAppAdapter implements ChannelAdapter {
   private async sendMediaAttachment(
     jid: string,
     attachment: MessageAttachment,
-    caption?: string
+    caption?: string,
   ): Promise<string> {
-    if (!this.sock) throw new Error('WhatsApp is not connected');
+    if (!this.sock) throw new Error("WhatsApp is not connected");
 
-    const resolvedType = attachment.type === 'file' ? 'document' : attachment.type;
+    const resolvedType = attachment.type === "file" ? "document" : attachment.type;
     const payload = await this.resolveAttachmentPayload(attachment);
 
     if (!payload || payload.length === 0) {
@@ -830,38 +854,42 @@ export class WhatsAppAdapter implements ChannelAdapter {
 
     const isVoiceNote = attachment.isVoiceNote === true;
     const fileUrlName = this.extractAttachmentFileNameFromUrl(attachment.url);
-    const inferredDocumentExt = this.inferAttachmentExtension(attachment.mimeType, resolvedType, attachment.fileName || fileUrlName);
+    const inferredDocumentExt = this.inferAttachmentExtension(
+      attachment.mimeType,
+      resolvedType,
+      attachment.fileName || fileUrlName,
+    );
     const documentFileName = this.normalizeAttachmentName(
       attachment.fileName || fileUrlName || `document.${inferredDocumentExt}`,
-      inferredDocumentExt
+      inferredDocumentExt,
     );
 
     let content: AnyMessageContent;
 
-    if (resolvedType === 'image') {
+    if (resolvedType === "image") {
       content = {
         image: payload,
         caption,
-        mimetype: attachment.mimeType || 'image/jpeg',
+        mimetype: attachment.mimeType || "image/jpeg",
       };
-    } else if (resolvedType === 'document') {
+    } else if (resolvedType === "document") {
       content = {
         document: payload,
         fileName: documentFileName,
-        mimetype: attachment.mimeType || 'application/octet-stream',
+        mimetype: attachment.mimeType || "application/octet-stream",
         caption,
       };
-    } else if (resolvedType === 'audio') {
+    } else if (resolvedType === "audio") {
       content = {
         audio: payload,
-        mimetype: attachment.mimeType || 'audio/mpeg',
+        mimetype: attachment.mimeType || "audio/mpeg",
         ptt: isVoiceNote,
       };
-    } else if (resolvedType === 'video') {
+    } else if (resolvedType === "video") {
       content = {
         video: payload,
         caption,
-        mimetype: attachment.mimeType || 'video/mp4',
+        mimetype: attachment.mimeType || "video/mp4",
       };
     } else {
       throw new Error(`Unsupported attachment type: ${attachment.type}`);
@@ -869,7 +897,7 @@ export class WhatsAppAdapter implements ChannelAdapter {
 
     const result = await this.sendWithRetry(
       () => this.sock!.sendMessage(jid, content),
-      'sendMediaAttachment'
+      "sendMediaAttachment",
     );
     return result?.key?.id || `wa-${Date.now()}`;
   }
@@ -899,7 +927,7 @@ export class WhatsAppAdapter implements ChannelAdapter {
     }
 
     if (/^file:\/\//i.test(source)) {
-      const filePath = decodeURIComponent(new URL(source).pathname || '');
+      const filePath = decodeURIComponent(new URL(source).pathname || "");
       if (filePath && fs.existsSync(filePath)) {
         const fileStats = fs.statSync(filePath);
         if (!fileStats.isFile()) {
@@ -912,12 +940,14 @@ export class WhatsAppAdapter implements ChannelAdapter {
       }
     }
 
-    if (/^https?:\/\//i.test(source) || source.startsWith('data:')) {
+    if (/^https?:\/\//i.test(source) || source.startsWith("data:")) {
       const response = await fetch(source);
       if (!response.ok) {
-        throw new Error(`Failed to download attachment from URL: ${response.status} ${response.statusText}`);
+        throw new Error(
+          `Failed to download attachment from URL: ${response.status} ${response.statusText}`,
+        );
       }
-      const headerLength = response.headers.get('content-length');
+      const headerLength = response.headers.get("content-length");
       if (headerLength) {
         const contentLength = Number.parseInt(headerLength, 10);
         if (Number.isFinite(contentLength) && contentLength > this.MAX_ATTACHMENT_BYTES) {
@@ -946,18 +976,21 @@ export class WhatsAppAdapter implements ChannelAdapter {
 
     try {
       const parsed = new URL(trimmed);
-      const base = path.basename(parsed.pathname || '');
-      return base && base !== '/' && base !== '.' ? base : undefined;
+      const base = path.basename(parsed.pathname || "");
+      return base && base !== "/" && base !== "." ? base : undefined;
     } catch {
       const base = path.basename(trimmed);
-      return base && base !== '.' ? base : undefined;
+      return base && base !== "." ? base : undefined;
     }
   }
 
   /**
    * Send operation with retry + exponential jitter.
    */
-  private async sendWithRetry<T>(operation: () => Promise<T>, operationName = 'operation'): Promise<T> {
+  private async sendWithRetry<T>(
+    operation: () => Promise<T>,
+    operationName = "operation",
+  ): Promise<T> {
     let lastError: unknown;
     for (let attempt = 1; attempt <= this.MESSAGE_SEND_RETRY_ATTEMPTS; attempt++) {
       try {
@@ -969,15 +1002,17 @@ export class WhatsAppAdapter implements ChannelAdapter {
         }
 
         const delayMs = this.calculateSendRetryDelay(attempt);
-        console.warn(`[WhatsApp] ${operationName} attempt ${attempt} failed, retrying in ${delayMs}ms`);
+        console.warn(
+          `[WhatsApp] ${operationName} attempt ${attempt} failed, retrying in ${delayMs}ms`,
+        );
         await new Promise((resolve) => setTimeout(resolve, delayMs));
       }
     }
 
     throw new Error(
       `WhatsApp ${operationName} failed after ${this.MESSAGE_SEND_RETRY_ATTEMPTS} attempts: ${
-        lastError instanceof Error ? lastError.message : 'Unknown error'
-      }`
+        lastError instanceof Error ? lastError.message : "Unknown error"
+      }`,
     );
   }
 
@@ -987,7 +1022,7 @@ export class WhatsAppAdapter implements ChannelAdapter {
   private calculateSendRetryDelay(attempt: number): number {
     const exponentialDelay = Math.min(
       this.MESSAGE_SEND_RETRY_MAX_MS,
-      this.MESSAGE_SEND_RETRY_BASE_MS * Math.pow(this.MESSAGE_SEND_RETRY_MULTIPLIER, attempt - 1)
+      this.MESSAGE_SEND_RETRY_BASE_MS * Math.pow(this.MESSAGE_SEND_RETRY_MULTIPLIER, attempt - 1),
     );
     const jitter = exponentialDelay * this.MESSAGE_SEND_RETRY_JITTER;
     const minDelay = Math.max(150, exponentialDelay - jitter);
@@ -1003,7 +1038,7 @@ export class WhatsAppAdapter implements ChannelAdapter {
 
     const jid = this.toWhatsAppJid(chatId);
     try {
-      await this.sock.sendPresenceUpdate('composing', jid);
+      await this.sock.sendPresenceUpdate("composing", jid);
     } catch {
       // Ignore presence errors
     }
@@ -1020,14 +1055,14 @@ export class WhatsAppAdapter implements ChannelAdapter {
    * Edit an existing message (not supported by WhatsApp Web API)
    */
   async editMessage(_chatId: string, _messageId: string, _text: string): Promise<void> {
-    throw new Error('WhatsApp does not support message editing');
+    throw new Error("WhatsApp does not support message editing");
   }
 
   /**
    * Delete a message
    */
   async deleteMessage(chatId: string, messageId: string): Promise<void> {
-    if (!this.sock) throw new Error('WhatsApp is not connected');
+    if (!this.sock) throw new Error("WhatsApp is not connected");
 
     const jid = this.toWhatsAppJid(chatId);
     await this.sock.sendMessage(jid, {
@@ -1043,7 +1078,7 @@ export class WhatsAppAdapter implements ChannelAdapter {
    * Send a document/file
    */
   async sendDocument(chatId: string, filePath: string, caption?: string): Promise<string> {
-    if (!this.sock) throw new Error('WhatsApp is not connected');
+    if (!this.sock) throw new Error("WhatsApp is not connected");
 
     const jid = this.toWhatsAppJid(chatId);
     const buffer = fs.readFileSync(filePath);
@@ -1052,7 +1087,7 @@ export class WhatsAppAdapter implements ChannelAdapter {
     const result = await this.sock.sendMessage(jid, {
       document: buffer,
       fileName,
-      mimetype: 'application/octet-stream',
+      mimetype: "application/octet-stream",
       caption,
     });
 
@@ -1063,7 +1098,7 @@ export class WhatsAppAdapter implements ChannelAdapter {
    * Send a photo/image
    */
   async sendPhoto(chatId: string, filePath: string, caption?: string): Promise<string> {
-    if (!this.sock) throw new Error('WhatsApp is not connected');
+    if (!this.sock) throw new Error("WhatsApp is not connected");
 
     const jid = this.toWhatsAppJid(chatId);
     const buffer = fs.readFileSync(filePath);
@@ -1080,7 +1115,7 @@ export class WhatsAppAdapter implements ChannelAdapter {
    * Add a reaction to a message
    */
   async addReaction(chatId: string, messageId: string, emoji: string): Promise<void> {
-    if (!this.sock) throw new Error('WhatsApp is not connected');
+    if (!this.sock) throw new Error("WhatsApp is not connected");
 
     const jid = this.toWhatsAppJid(chatId);
     await this.sock.sendMessage(jid, {
@@ -1099,7 +1134,7 @@ export class WhatsAppAdapter implements ChannelAdapter {
    * Remove a reaction from a message
    */
   async removeReaction(chatId: string, messageId: string): Promise<void> {
-    await this.addReaction(chatId, messageId, ''); // Empty string removes reaction
+    await this.addReaction(chatId, messageId, ""); // Empty string removes reaction
   }
 
   /**
@@ -1153,7 +1188,7 @@ export class WhatsAppAdapter implements ChannelAdapter {
     // If self-chat was just enabled and read receipts weren't explicitly set, default to false.
     if (!prevSelfChat && this.config.selfChatMode && next.sendReadReceipts === undefined) {
       this.config.sendReadReceipts = false;
-      console.log('[WhatsApp] Self-chat mode enabled; defaulting sendReadReceipts to false.');
+      console.log("[WhatsApp] Self-chat mode enabled; defaulting sendReadReceipts to false.");
     }
 
     const nextDedupEnabled = this.config.deduplicationEnabled !== false;
@@ -1173,7 +1208,7 @@ export class WhatsAppAdapter implements ChannelAdapter {
    */
   async getInfo(): Promise<ChannelInfo> {
     return {
-      type: 'whatsapp',
+      type: "whatsapp",
       status: this._status,
       botId: this._selfJid,
       botUsername: this._selfE164,
@@ -1205,7 +1240,7 @@ export class WhatsAppAdapter implements ChannelAdapter {
         }
       }
     } catch (error) {
-      console.error('Error clearing WhatsApp credentials:', error);
+      console.error("Error clearing WhatsApp credentials:", error);
     }
   }
 
@@ -1221,10 +1256,10 @@ export class WhatsAppAdapter implements ChannelAdapter {
       try {
         await handler(message);
       } catch (error) {
-        console.error('Error in WhatsApp message handler:', error);
+        console.error("Error in WhatsApp message handler:", error);
         this.handleError(
           error instanceof Error ? error : new Error(String(error)),
-          'messageHandler'
+          "messageHandler",
         );
       }
     }
@@ -1238,7 +1273,7 @@ export class WhatsAppAdapter implements ChannelAdapter {
       try {
         handler(error, context);
       } catch (e) {
-        console.error('Error in error handler:', e);
+        console.error("Error in error handler:", e);
       }
     }
   }
@@ -1252,7 +1287,7 @@ export class WhatsAppAdapter implements ChannelAdapter {
       try {
         handler(status, error);
       } catch (e) {
-        console.error('Error in status handler:', e);
+        console.error("Error in status handler:", e);
       }
     }
   }
@@ -1271,7 +1306,7 @@ export class WhatsAppAdapter implements ChannelAdapter {
 
     if (this.backoffAttempt >= config.maxAttempts) {
       console.error(`WhatsApp: Max reconnection attempts (${config.maxAttempts}) reached`);
-      this.setStatus('error', new Error('Max reconnection attempts reached'));
+      this.setStatus("error", new Error("Max reconnection attempts reached"));
       return;
     }
 
@@ -1283,10 +1318,14 @@ export class WhatsAppAdapter implements ChannelAdapter {
     // If connection is flapping (repeated rapid disconnects), enforce a longer minimum delay
     if (this.isConnectionFlapping()) {
       delay = Math.max(delay, this.FLAP_BACKOFF_MS);
-      console.warn(`WhatsApp: Connection flapping detected (${this.recentDisconnects.length} disconnects in ${Math.round(this.FLAP_WINDOW_MS / 60000)}min), using ${Math.round(delay / 1000)}s backoff`);
+      console.warn(
+        `WhatsApp: Connection flapping detected (${this.recentDisconnects.length} disconnects in ${Math.round(this.FLAP_WINDOW_MS / 60000)}min), using ${Math.round(delay / 1000)}s backoff`,
+      );
     }
 
-    console.log(`WhatsApp: Reconnection attempt ${this.backoffAttempt}/${config.maxAttempts} in ${delay}ms`);
+    console.log(
+      `WhatsApp: Reconnection attempt ${this.backoffAttempt}/${config.maxAttempts} in ${delay}ms`,
+    );
 
     this.backoffTimer = setTimeout(async () => {
       try {
@@ -1297,11 +1336,11 @@ export class WhatsAppAdapter implements ChannelAdapter {
 
         this.sock = null;
         this.isReconnecting = false;
-        this.setStatus('disconnected');
+        this.setStatus("disconnected");
         await this.connect();
       } catch (error) {
         this.isReconnecting = false;
-        console.error('WhatsApp reconnection attempt failed:', error);
+        console.error("WhatsApp reconnection attempt failed:", error);
         await this.attemptReconnection();
       }
     }, delay);
@@ -1340,9 +1379,7 @@ export class WhatsAppAdapter implements ChannelAdapter {
     const now = Date.now();
     this.recentDisconnects.push(now);
     // Trim entries outside the flap window
-    this.recentDisconnects = this.recentDisconnects.filter(
-      (ts) => now - ts < this.FLAP_WINDOW_MS
-    );
+    this.recentDisconnects = this.recentDisconnects.filter((ts) => now - ts < this.FLAP_WINDOW_MS);
   }
 
   /**
@@ -1408,15 +1445,15 @@ export class WhatsAppAdapter implements ChannelAdapter {
    */
   private toWhatsAppJid(chatId: string): string {
     // Already a JID
-    if (chatId.includes('@')) return chatId;
+    if (chatId.includes("@")) return chatId;
 
     // Group ID
-    if (chatId.includes('-')) {
+    if (chatId.includes("-")) {
       return `${chatId}@g.us`;
     }
 
     // Phone number - remove any non-numeric characters
-    const cleaned = chatId.replace(/[^0-9]/g, '');
+    const cleaned = chatId.replace(/[^0-9]/g, "");
     return `${cleaned}@s.whatsapp.net`;
   }
 
@@ -1466,10 +1503,12 @@ export class WhatsAppAdapter implements ChannelAdapter {
       return {};
     }
 
-    const quotedMessage = typeof contextInfo.quotedMessage === 'object'
-      ? (contextInfo.quotedMessage as proto.IMessage)
-      : undefined;
-    const senderJid = typeof contextInfo.participant === 'string' ? contextInfo.participant : undefined;
+    const quotedMessage =
+      typeof contextInfo.quotedMessage === "object"
+        ? (contextInfo.quotedMessage as proto.IMessage)
+        : undefined;
+    const senderJid =
+      typeof contextInfo.participant === "string" ? contextInfo.participant : undefined;
     const senderE164 = senderJid ? (this.jidToE164(senderJid) ?? undefined) : undefined;
     const quotedBody = this.extractText(quotedMessage)?.trim();
     const quotedMediaPlaceholder = quotedMessage
@@ -1478,17 +1517,17 @@ export class WhatsAppAdapter implements ChannelAdapter {
 
     const quotedText = quotedBody
       ? quotedBody
-      : (typeof contextInfo.quotedMessageText === 'string' && contextInfo.quotedMessageText.trim())
+      : typeof contextInfo.quotedMessageText === "string" && contextInfo.quotedMessageText.trim()
         ? contextInfo.quotedMessageText.trim()
         : quotedMediaPlaceholder;
 
     return {
       messageId:
-        typeof contextInfo.stanzaId === 'string'
+        typeof contextInfo.stanzaId === "string"
           ? contextInfo.stanzaId
-          : (typeof contextInfo.quotedMessageId === 'string'
+          : typeof contextInfo.quotedMessageId === "string"
             ? contextInfo.quotedMessageId
-            : undefined),
+            : undefined,
       senderJid,
       senderE164,
       senderName: senderE164 ?? senderJid ?? undefined,
@@ -1501,11 +1540,11 @@ export class WhatsAppAdapter implements ChannelAdapter {
     senderName?: string;
     body?: string;
   }): string | undefined {
-    const rawBody = (context.body || '').trim();
+    const rawBody = (context.body || "").trim();
     if (!rawBody) return undefined;
 
-    const quotedFrom = context.senderName || context.senderE164 || 'a previous message';
-    return `💬 In reply to ${quotedFrom}\n> ${rawBody.replace(/\n/g, '\n> ')}`;
+    const quotedFrom = context.senderName || context.senderE164 || "a previous message";
+    return `💬 In reply to ${quotedFrom}\n> ${rawBody.replace(/\n/g, "\n> ")}`;
   }
 
   private truncateTextForReplyContext(value: string, maxLength: number): string {
@@ -1515,17 +1554,17 @@ export class WhatsAppAdapter implements ChannelAdapter {
 
   /**
    * Extract media placeholder from message
-  */
+   */
   private extractMediaPlaceholder(message: proto.IMessage | null | undefined): string | undefined {
     if (!message) return undefined;
 
-    if (message.imageMessage) return '<media:image>';
-    if (message.videoMessage) return '<media:video>';
-    if (message.audioMessage) return '<media:audio>';
-    if (message.documentMessage) return '<media:document>';
-    if (message.stickerMessage) return '<media:sticker>';
-    if (message.contactMessage) return '<contact>';
-    if (message.locationMessage) return '<location>';
+    if (message.imageMessage) return "<media:image>";
+    if (message.videoMessage) return "<media:video>";
+    if (message.audioMessage) return "<media:audio>";
+    if (message.documentMessage) return "<media:document>";
+    if (message.stickerMessage) return "<media:sticker>";
+    if (message.contactMessage) return "<contact>";
+    if (message.locationMessage) return "<location>";
 
     return undefined;
   }
@@ -1541,12 +1580,12 @@ export class WhatsAppAdapter implements ChannelAdapter {
     defaultBaseName?: string;
   }): Promise<MessageAttachment | null> {
     const defaultBaseName = params.isVoiceNote
-      ? `voice_message${params.defaultBaseName ? `-${params.defaultBaseName}` : ''}`
-      : (params.defaultBaseName || 'audio');
+      ? `voice_message${params.defaultBaseName ? `-${params.defaultBaseName}` : ""}`
+      : params.defaultBaseName || "audio";
     return this.downloadMediaMessage({
       media: params.audioMessage,
-      mediaType: 'audio',
-      attachmentType: 'audio',
+      mediaType: "audio",
+      attachmentType: "audio",
       mimeType: params.mimeType,
       fileName: params.fileName,
       defaultBaseName,
@@ -1556,8 +1595,8 @@ export class WhatsAppAdapter implements ChannelAdapter {
 
   private async downloadMediaMessage(params: {
     media: DownloadableMessage;
-    mediaType: 'audio' | 'image' | 'video' | 'document' | 'sticker';
-    attachmentType: MessageAttachment['type'];
+    mediaType: "audio" | "image" | "video" | "document" | "sticker";
+    attachmentType: MessageAttachment["type"];
     mimeType?: string;
     fileName?: string;
     isVoiceNote?: boolean;
@@ -1566,12 +1605,23 @@ export class WhatsAppAdapter implements ChannelAdapter {
     try {
       const buffer = await this.bufferFromWhatsAppMedia(params.media, params.mediaType);
       if (!buffer.length || buffer.length > this.MAX_ATTACHMENT_BYTES) {
-        console.warn('[WhatsApp] Attachment download skipped (size unacceptable):', params.defaultBaseName, buffer.length);
+        console.warn(
+          "[WhatsApp] Attachment download skipped (size unacceptable):",
+          params.defaultBaseName,
+          buffer.length,
+        );
         return null;
       }
 
-      const ext = this.inferAttachmentExtension(params.mimeType, params.attachmentType, params.fileName);
-      const fileName = this.normalizeAttachmentName(params.fileName || `${params.defaultBaseName}.${ext}`, ext);
+      const ext = this.inferAttachmentExtension(
+        params.mimeType,
+        params.attachmentType,
+        params.fileName,
+      );
+      const fileName = this.normalizeAttachmentName(
+        params.fileName || `${params.defaultBaseName}.${ext}`,
+        ext,
+      );
 
       return {
         type: params.attachmentType,
@@ -1582,14 +1632,14 @@ export class WhatsAppAdapter implements ChannelAdapter {
         isVoiceNote: params.isVoiceNote,
       };
     } catch (error) {
-      console.error('[WhatsApp] Failed to download attachment:', error);
+      console.error("[WhatsApp] Failed to download attachment:", error);
       return null;
     }
   }
 
   private async bufferFromWhatsAppMedia(
     media: DownloadableMessage,
-    mediaType: 'audio' | 'image' | 'video' | 'document' | 'sticker'
+    mediaType: "audio" | "image" | "video" | "document" | "sticker",
   ): Promise<Buffer> {
     const stream = await downloadContentFromMessage(media, mediaType);
     const chunks: Buffer[] = [];
@@ -1605,40 +1655,40 @@ export class WhatsAppAdapter implements ChannelAdapter {
     if (currentExt) {
       return trimmed;
     }
-    const safe = trimmed.replace(/[^a-zA-Z0-9._-]/g, '_').replace(/_{2,}/g, '_');
-    return `${safe}.${ext || 'bin'}`;
+    const safe = trimmed.replace(/[^a-zA-Z0-9._-]/g, "_").replace(/_{2,}/g, "_");
+    return `${safe}.${ext || "bin"}`;
   }
 
   private inferAttachmentExtension(
     mimeType: string | undefined,
-    attachmentType: MessageAttachment['type'],
-    fileName?: string
+    attachmentType: MessageAttachment["type"],
+    fileName?: string,
   ): string {
-    const explicitExt = fileName ? path.extname(fileName).replace(/^\./, '').toLowerCase() : '';
+    const explicitExt = fileName ? path.extname(fileName).replace(/^\./, "").toLowerCase() : "";
     if (explicitExt) return explicitExt;
 
     if (!mimeType) {
-      return attachmentType === 'audio' ? 'ogg' : attachmentType === 'image' ? 'jpg' : 'bin';
+      return attachmentType === "audio" ? "ogg" : attachmentType === "image" ? "jpg" : "bin";
     }
 
     const mime = mimeType.toLowerCase();
-    if (mime.includes('image/jpeg')) return 'jpg';
-    if (mime.includes('image/png')) return 'png';
-    if (mime.includes('image/webp')) return 'webp';
-    if (mime.includes('image/gif')) return 'gif';
-    if (mime.includes('image/bmp')) return 'bmp';
-    if (mime.includes('audio/mpeg') || mime.includes('audio/mp3')) return 'mp3';
-    if (mime.includes('audio/m4a') || mime.includes('audio/aac')) return 'm4a';
-    if (mime.includes('audio/ogg')) return 'ogg';
-    if (mime.includes('audio/wav')) return 'wav';
-    if (mime.includes('audio/aac')) return 'm4a';
-    if (mime.includes('audio/webm')) return 'webm';
-    if (mime.includes('video/mp4')) return 'mp4';
-    if (mime.includes('video/webm')) return 'webm';
-    if (mime.includes('video/quicktime')) return 'mov';
-    if (mime.includes('application/pdf')) return 'pdf';
-    if (mime.includes('text/plain')) return 'txt';
-    return attachmentType === 'audio' ? 'ogg' : attachmentType === 'image' ? 'jpg' : 'bin';
+    if (mime.includes("image/jpeg")) return "jpg";
+    if (mime.includes("image/png")) return "png";
+    if (mime.includes("image/webp")) return "webp";
+    if (mime.includes("image/gif")) return "gif";
+    if (mime.includes("image/bmp")) return "bmp";
+    if (mime.includes("audio/mpeg") || mime.includes("audio/mp3")) return "mp3";
+    if (mime.includes("audio/m4a") || mime.includes("audio/aac")) return "m4a";
+    if (mime.includes("audio/ogg")) return "ogg";
+    if (mime.includes("audio/wav")) return "wav";
+    if (mime.includes("audio/aac")) return "m4a";
+    if (mime.includes("audio/webm")) return "webm";
+    if (mime.includes("video/mp4")) return "mp4";
+    if (mime.includes("video/webm")) return "webm";
+    if (mime.includes("video/quicktime")) return "mov";
+    if (mime.includes("application/pdf")) return "pdf";
+    if (mime.includes("text/plain")) return "txt";
+    return attachmentType === "audio" ? "ogg" : attachmentType === "image" ? "jpg" : "bin";
   }
 
   private extractWaFilename(message: { fileName?: string } | null | undefined): string | undefined {
@@ -1658,14 +1708,14 @@ export class WhatsAppAdapter implements ChannelAdapter {
    */
   private normalizeJid(jid: string): string {
     const candidate = stripWhatsAppTargetPrefixes(jid);
-    return candidate.replace(/:\d+@/, '@');
+    return candidate.replace(/:\d+@/, "@");
   }
 
   /**
    * Strip non-digits from a phone/JID value.
    */
   private extractDigits(value: string): string {
-    return value.replace(/\D+/g, '');
+    return value.replace(/\D+/g, "");
   }
 
   /**
@@ -1692,10 +1742,12 @@ export class WhatsAppAdapter implements ChannelAdapter {
    * Extract mention-like tokens from text (e.g. '@1415...', '@cowork').
    */
   private extractMentionTokensFromText(text: string): string[] {
-    return text
-      .match(/@[^\s@.,!?;:\)\]]+/g)
-      ?.map((token) => token.trim())
-      ?.filter((token) => token.length > 1) ?? [];
+    return (
+      text
+        .match(/@[^\s@.,!?;:\)\]]+/g)
+        ?.map((token) => token.trim())
+        ?.filter((token) => token.length > 1) ?? []
+    );
   }
 
   private getAllowedNumbersSet(allowedNumbers: unknown): Set<string> {
@@ -1704,11 +1756,11 @@ export class WhatsAppAdapter implements ChannelAdapter {
     }
 
     const values = allowedNumbers
-      .filter((value): value is string => typeof value === 'string')
+      .filter((value): value is string => typeof value === "string")
       .map((value) => normalizeWhatsAppPhoneTarget(value))
       .filter((value): value is string => Boolean(value))
       .flatMap((value) => {
-        const normalized = value.replace(/[^0-9]/g, '').trim();
+        const normalized = value.replace(/[^0-9]/g, "").trim();
         return normalized.length >= 5 ? [normalized] : [];
       });
 
@@ -1718,7 +1770,10 @@ export class WhatsAppAdapter implements ChannelAdapter {
   /**
    * Check whether this group message mentions the bot.
    */
-  private isSelfMentionedInMessage(message: proto.IMessage | null | undefined, text: string): boolean {
+  private isSelfMentionedInMessage(
+    message: proto.IMessage | null | undefined,
+    text: string,
+  ): boolean {
     const botTokens = this.getBotMentionTokens();
     const botDigits = new Set(botTokens.map((token) => this.extractDigits(token)));
     if (botDigits.size === 0) {
@@ -1731,12 +1786,10 @@ export class WhatsAppAdapter implements ChannelAdapter {
       (message as any)?.videoMessage?.contextInfo ??
       (message as any)?.documentMessage?.contextInfo;
 
-    const mentionedJids = Array.isArray(contextInfo?.mentionedJid)
-      ? contextInfo.mentionedJid
-      : [];
+    const mentionedJids = Array.isArray(contextInfo?.mentionedJid) ? contextInfo.mentionedJid : [];
 
     for (const mentioned of mentionedJids) {
-      if (typeof mentioned === 'string' && botDigits.has(this.extractDigits(mentioned))) {
+      if (typeof mentioned === "string" && botDigits.has(this.extractDigits(mentioned))) {
         return true;
       }
     }
@@ -1760,7 +1813,7 @@ export class WhatsAppAdapter implements ChannelAdapter {
       isPairingCode: boolean;
       botMentioned: boolean;
       isNaturalCommand: boolean;
-    }
+    },
   ): boolean {
     if (!isGroup) {
       return true;
@@ -1770,17 +1823,17 @@ export class WhatsAppAdapter implements ChannelAdapter {
       return true;
     }
 
-    const mode = this.config.groupRoutingMode || 'mentionsOrCommands';
-    if (mode === 'all') {
+    const mode = this.config.groupRoutingMode || "mentionsOrCommands";
+    if (mode === "all") {
       return true;
     }
-    if (mode === 'mentionsOrCommands') {
+    if (mode === "mentionsOrCommands") {
       return params.botMentioned || params.isCommand || params.isNaturalCommand;
     }
-    if (mode === 'commandsOnly') {
+    if (mode === "commandsOnly") {
       return params.isCommand || params.isNaturalCommand;
     }
-    if (mode === 'mentionsOnly') {
+    if (mode === "mentionsOnly") {
       return params.botMentioned;
     }
     return params.botMentioned || params.isCommand || params.isNaturalCommand;
@@ -1795,7 +1848,9 @@ export class WhatsAppAdapter implements ChannelAdapter {
     }
 
     const botDigits = new Set(
-      this.getBotMentionTokens().map((token) => this.extractDigits(token)).filter(Boolean)
+      this.getBotMentionTokens()
+        .map((token) => this.extractDigits(token))
+        .filter(Boolean),
     );
 
     let normalized = body;
@@ -1806,12 +1861,12 @@ export class WhatsAppAdapter implements ChannelAdapter {
         continue;
       }
 
-      const escaped = mention.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const tokenPattern = new RegExp(`\\s*${escaped}\\s*`, 'gi');
-      normalized = normalized.replace(tokenPattern, ' ');
+      const escaped = mention.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const tokenPattern = new RegExp(`\\s*${escaped}\\s*`, "gi");
+      normalized = normalized.replace(tokenPattern, " ");
     }
 
-    return normalized.replace(/\s+/g, ' ').trim();
+    return normalized.replace(/\s+/g, " ").trim();
   }
 
   /**
@@ -1821,11 +1876,7 @@ export class WhatsAppAdapter implements ChannelAdapter {
     if (!err) return undefined;
 
     const asAny = err as any;
-    return (
-      asAny?.output?.statusCode ||
-      asAny?.status ||
-      undefined
-    );
+    return asAny?.output?.statusCode || asAny?.status || undefined;
   }
 
   /**

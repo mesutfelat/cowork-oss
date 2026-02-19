@@ -2,9 +2,9 @@
  * SharePoint API helpers (Microsoft Graph)
  */
 
-import { SharePointConnectionTestResult, SharePointSettingsData } from '../../shared/types';
+import { SharePointConnectionTestResult, SharePointSettingsData } from "../../shared/types";
 
-export const SHAREPOINT_API_BASE = 'https://graph.microsoft.com/v1.0';
+export const SHAREPOINT_API_BASE = "https://graph.microsoft.com/v1.0";
 const DEFAULT_TIMEOUT_MS = 20000;
 
 function parseJsonSafe(text: string): any | undefined {
@@ -18,16 +18,12 @@ function parseJsonSafe(text: string): any | undefined {
 }
 
 function formatGraphError(status: number, data: any, fallback?: string): string {
-  const message =
-    data?.error?.message ||
-    data?.message ||
-    fallback ||
-    'Microsoft Graph error';
+  const message = data?.error?.message || data?.message || fallback || "Microsoft Graph error";
   return `Microsoft Graph error ${status}: ${message}`;
 }
 
 export interface SharePointRequestOptions {
-  method: 'GET' | 'POST' | 'PATCH' | 'DELETE' | 'PUT';
+  method: "GET" | "POST" | "PATCH" | "DELETE" | "PUT";
   path: string;
   query?: Record<string, string | number | boolean | undefined>;
   body?: any;
@@ -43,10 +39,12 @@ export interface SharePointRequestResult {
 
 export async function sharepointRequest(
   settings: SharePointSettingsData,
-  options: SharePointRequestOptions
+  options: SharePointRequestOptions,
 ): Promise<SharePointRequestResult> {
   if (!settings.accessToken) {
-    throw new Error('SharePoint access token not configured. Add it in Settings > Integrations > SharePoint.');
+    throw new Error(
+      "SharePoint access token not configured. Add it in Settings > Integrations > SharePoint.",
+    );
   }
 
   const params = new URLSearchParams();
@@ -57,16 +55,19 @@ export async function sharepointRequest(
     }
   }
   const queryString = params.toString();
-  const url = `${SHAREPOINT_API_BASE}${options.path}${queryString ? `?${queryString}` : ''}`;
+  const url = `${SHAREPOINT_API_BASE}${options.path}${queryString ? `?${queryString}` : ""}`;
 
   const headers: Record<string, string> = {
     Authorization: `Bearer ${settings.accessToken}`,
     ...(options.headers || {}),
   };
 
-  const isBinaryBody = options.body instanceof Uint8Array || options.body instanceof ArrayBuffer || Buffer.isBuffer(options.body);
-  if (options.body && !isBinaryBody && options.method !== 'GET' && options.method !== 'DELETE') {
-    headers['Content-Type'] = headers['Content-Type'] || 'application/json';
+  const isBinaryBody =
+    options.body instanceof Uint8Array ||
+    options.body instanceof ArrayBuffer ||
+    Buffer.isBuffer(options.body);
+  if (options.body && !isBinaryBody && options.method !== "GET" && options.method !== "DELETE") {
+    headers["Content-Type"] = headers["Content-Type"] || "application/json";
   }
 
   const timeoutMs = options.timeoutMs ?? settings.timeoutMs ?? DEFAULT_TIMEOUT_MS;
@@ -77,15 +78,11 @@ export async function sharepointRequest(
     const response = await fetch(url, {
       method: options.method,
       headers,
-      body: options.body
-        ? isBinaryBody
-          ? options.body
-          : JSON.stringify(options.body)
-        : undefined,
+      body: options.body ? (isBinaryBody ? options.body : JSON.stringify(options.body)) : undefined,
       signal: controller.signal,
     });
 
-    const rawText = typeof response.text === 'function' ? await response.text() : '';
+    const rawText = typeof response.text === "function" ? await response.text() : "";
     const data = rawText ? parseJsonSafe(rawText) : undefined;
 
     if (!response.ok) {
@@ -98,8 +95,8 @@ export async function sharepointRequest(
       raw: rawText || undefined,
     };
   } catch (error: any) {
-    if (error?.name === 'AbortError') {
-      throw new Error('SharePoint API request timed out');
+    if (error?.name === "AbortError") {
+      throw new Error("SharePoint API request timed out");
     }
     throw error;
   } finally {
@@ -108,15 +105,17 @@ export async function sharepointRequest(
 }
 
 function extractUserInfo(data: any): { name?: string; userId?: string } {
-  if (!data || typeof data !== 'object') return {};
+  if (!data || typeof data !== "object") return {};
   const name = data.displayName || data.name || undefined;
   const userId = data.id || undefined;
   return { name, userId };
 }
 
-export async function testSharePointConnection(settings: SharePointSettingsData): Promise<SharePointConnectionTestResult> {
+export async function testSharePointConnection(
+  settings: SharePointSettingsData,
+): Promise<SharePointConnectionTestResult> {
   try {
-    const result = await sharepointRequest(settings, { method: 'GET', path: '/me' });
+    const result = await sharepointRequest(settings, { method: "GET", path: "/me" });
     const extracted = extractUserInfo(result.data);
     return {
       success: true,
@@ -126,7 +125,7 @@ export async function testSharePointConnection(settings: SharePointSettingsData)
   } catch (error: any) {
     return {
       success: false,
-      error: error?.message || 'Failed to connect to SharePoint',
+      error: error?.message || "Failed to connect to SharePoint",
     };
   }
 }

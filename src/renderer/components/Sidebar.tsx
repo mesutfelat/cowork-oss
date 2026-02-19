@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect, useMemo, useCallback, Fragment } from 'react';
-import { Task, Workspace, UiDensity, ConwaySetupStatus } from '../../shared/types';
+import { useState, useRef, useEffect, useMemo, useCallback, Fragment } from "react";
+import { Task, Workspace, UiDensity, ConwaySetupStatus } from "../../shared/types";
 
 interface SidebarProps {
   workspace: Workspace | null;
@@ -28,11 +28,11 @@ export function Sidebar({
   onOpenSettings,
   onOpenMissionControl,
   onTasksChanged,
-  uiDensity = 'focused',
+  uiDensity = "focused",
 }: SidebarProps) {
   const [menuOpenTaskId, setMenuOpenTaskId] = useState<string | null>(null);
   const [renameTaskId, setRenameTaskId] = useState<string | null>(null);
-  const [renameValue, setRenameValue] = useState('');
+  const [renameValue, setRenameValue] = useState("");
   const [collapsedTasks, setCollapsedTasks] = useState<Set<string>>(new Set());
   const [showFailedSessions, setShowFailedSessions] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -45,9 +45,9 @@ export function Sidebar({
     const date = new Date(timestamp);
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const yesterday = new Date(today.getTime() - 86400000);
-    if (date >= today) return 'Today';
-    if (date >= yesterday) return 'Yesterday';
-    return 'Earlier';
+    if (date >= today) return "Today";
+    if (date >= yesterday) return "Yesterday";
+    return "Earlier";
   }, []);
 
   // Build task tree from flat list
@@ -77,13 +77,11 @@ export function Sidebar({
     };
 
     // Get root tasks (no parent) and sort by creation time (newest first)
-    let rootTasks = tasks
-      .filter(t => !t.parentTaskId)
-      .sort((a, b) => b.createdAt - a.createdAt);
+    let rootTasks = tasks.filter((t) => !t.parentTaskId).sort((a, b) => b.createdAt - a.createdAt);
 
     // In focused mode, hide failed/cancelled sessions by default
-    if (uiDensity === 'focused' && !showFailedSessions) {
-      rootTasks = rootTasks.filter(t => t.status !== 'failed' && t.status !== 'cancelled');
+    if (uiDensity === "focused" && !showFailedSessions) {
+      rootTasks = rootTasks.filter((t) => t.status !== "failed" && t.status !== "cancelled");
     }
 
     return rootTasks.map(buildNode);
@@ -91,21 +89,25 @@ export function Sidebar({
 
   // Count hidden failed sessions for the toggle label
   const failedSessionCount = useMemo(() => {
-    if (uiDensity !== 'focused') return 0;
-    return tasks.filter(t => !t.parentTaskId && (t.status === 'failed' || t.status === 'cancelled')).length;
+    if (uiDensity !== "focused") return 0;
+    return tasks.filter(
+      (t) => !t.parentTaskId && (t.status === "failed" || t.status === "cancelled"),
+    ).length;
   }, [tasks, uiDensity]);
 
   const focusedTaskEntries = useMemo(() => {
-    if (uiDensity !== 'focused') return [];
-    return taskTree.reduce<Array<{
-      node: TaskTreeNode;
-      index: number;
-      group: string;
-      showHeader: boolean;
-      isLast: boolean;
-    }>>((acc, node, index) => {
+    if (uiDensity !== "focused") return [];
+    return taskTree.reduce<
+      Array<{
+        node: TaskTreeNode;
+        index: number;
+        group: string;
+        showHeader: boolean;
+        isLast: boolean;
+      }>
+    >((acc, node, index) => {
       const group = getDateGroup(node.task.createdAt);
-      const previousGroup = acc.length > 0 ? acc[acc.length - 1].group : '';
+      const previousGroup = acc.length > 0 ? acc[acc.length - 1].group : "";
       const isLast = index === taskTree.length - 1;
       acc.push({
         node,
@@ -121,7 +123,7 @@ export function Sidebar({
   // Auto-collapse sub-agent trees in focused mode
   const hasInitializedCollapse = useRef(false);
   useEffect(() => {
-    if (uiDensity === 'focused' && !hasInitializedCollapse.current) {
+    if (uiDensity === "focused" && !hasInitializedCollapse.current) {
       const parentsWithChildren = new Set<string>();
       for (const task of tasks) {
         if (task.parentTaskId) {
@@ -133,7 +135,7 @@ export function Sidebar({
         hasInitializedCollapse.current = true;
       }
     }
-    if (uiDensity === 'full') {
+    if (uiDensity === "full") {
       hasInitializedCollapse.current = false;
     }
   }, [uiDensity, tasks]);
@@ -145,8 +147,8 @@ export function Sidebar({
         setMenuOpenTaskId(null);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   // Focus rename input when entering rename mode
@@ -171,7 +173,7 @@ export function Sidebar({
 
   const focusFirstMenuItem = () => {
     const menu = menuRef.current;
-    const first = menu?.querySelector<HTMLButtonElement>('button[data-menu-option]');
+    const first = menu?.querySelector<HTMLButtonElement>("button[data-menu-option]");
     first?.focus();
   };
 
@@ -179,7 +181,9 @@ export function Sidebar({
     const menu = menuRef.current;
     if (!menu) return;
 
-    const options = Array.from(menu.querySelectorAll<HTMLButtonElement>('button[data-menu-option]'));
+    const options = Array.from(
+      menu.querySelectorAll<HTMLButtonElement>("button[data-menu-option]"),
+    );
     if (options.length === 0) return;
 
     const currentIndex = options.indexOf(document.activeElement as HTMLButtonElement);
@@ -194,7 +198,7 @@ export function Sidebar({
   };
 
   const handleMenuButtonKeyDown = (e: React.KeyboardEvent, taskId: string) => {
-    if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
+    if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown") {
       e.preventDefault();
       const nextOpen = menuOpenTaskId === taskId ? null : taskId;
       setMenuOpenTaskId(nextOpen);
@@ -204,23 +208,23 @@ export function Sidebar({
       return;
     }
 
-    if (e.key === 'Escape') {
+    if (e.key === "Escape") {
       closeMenu(taskId);
     }
   };
 
   const handleMenuItemKeyDown = (e: React.KeyboardEvent, taskId: string) => {
-    if (e.key === 'ArrowDown') {
+    if (e.key === "ArrowDown") {
       e.preventDefault();
       focusMenuItem(1);
       return;
     }
-    if (e.key === 'ArrowUp') {
+    if (e.key === "ArrowUp") {
       e.preventDefault();
       focusMenuItem(-1);
       return;
     }
-    if (e.key === 'Escape') {
+    if (e.key === "Escape") {
       e.preventDefault();
       closeMenu(taskId);
       return;
@@ -240,15 +244,15 @@ export function Sidebar({
       onTasksChanged();
     }
     setRenameTaskId(null);
-    setRenameValue('');
+    setRenameValue("");
   };
 
   const handleRenameKeyDown = (e: React.KeyboardEvent, taskId: string) => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       handleRenameSubmit(taskId);
-    } else if (e.key === 'Escape') {
+    } else if (e.key === "Escape") {
       setRenameTaskId(null);
-      setRenameValue('');
+      setRenameValue("");
     }
   };
 
@@ -264,7 +268,7 @@ export function Sidebar({
 
   const toggleCollapse = (e: React.MouseEvent, taskId: string) => {
     e.stopPropagation();
-    setCollapsedTasks(prev => {
+    setCollapsedTasks((prev) => {
       const next = new Set(prev);
       if (next.has(taskId)) {
         next.delete(taskId);
@@ -275,52 +279,112 @@ export function Sidebar({
     });
   };
 
-  const getStatusIndicator = (status: Task['status']) => {
+  const getStatusIndicator = (status: Task["status"]) => {
     switch (status) {
-      case 'completed':
+      case "completed":
         return (
           <>
             <span className="terminal-only">[✓]</span>
             <span className="modern-only">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
             </span>
           </>
         );
-      case 'paused':
+      case "paused":
         return (
           <>
             <span className="terminal-only">[P]</span>
             <span className="modern-only">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="10" y1="15" x2="10" y2="9"></line><line x1="14" y1="15" x2="14" y2="9"></line></svg>
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="10" y1="15" x2="10" y2="9"></line>
+                <line x1="14" y1="15" x2="14" y2="9"></line>
+              </svg>
             </span>
           </>
         );
-      case 'blocked':
+      case "blocked":
         return (
           <>
             <span className="terminal-only">[!]</span>
             <span className="modern-only">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
             </span>
           </>
         );
-      case 'failed':
-      case 'cancelled':
+      case "failed":
+      case "cancelled":
         return (
           <>
             <span className="terminal-only">[✗]</span>
             <span className="modern-only">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
             </span>
           </>
         );
-      case 'executing':
-      case 'planning':
+      case "executing":
+      case "planning":
         return (
           <>
             <span className="terminal-only">[~]</span>
             <span className="modern-only">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle></svg>
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="10"></circle>
+              </svg>
             </span>
           </>
         );
@@ -329,38 +393,57 @@ export function Sidebar({
           <>
             <span className="terminal-only">[ ]</span>
             <span className="modern-only">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" opacity="0.3"></circle></svg>
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="10" opacity="0.3"></circle>
+              </svg>
             </span>
           </>
         );
     }
   };
 
-  const getStatusClass = (status: Task['status']) => {
+  const getStatusClass = (status: Task["status"]) => {
     switch (status) {
-      case 'completed':
-        return 'completed';
-      case 'paused':
-        return 'paused';
-      case 'blocked':
-        return 'blocked';
-      case 'failed':
-      case 'cancelled':
-        return 'failed';
-      case 'executing':
-      case 'planning':
-        return 'active';
+      case "completed":
+        return "completed";
+      case "paused":
+        return "paused";
+      case "blocked":
+        return "blocked";
+      case "failed":
+      case "cancelled":
+        return "failed";
+      case "executing":
+      case "planning":
+        return "active";
       default:
-        return '';
+        return "";
     }
   };
 
   const getAgentTypeIndicator = (task: Task) => {
-    if (task.agentType === 'sub') {
-      return <span className="cli-agent-type sub" title="Sub-agent">SUB</span>;
+    if (task.agentType === "sub") {
+      return (
+        <span className="cli-agent-type sub" title="Sub-agent">
+          SUB
+        </span>
+      );
     }
-    if (task.agentType === 'parallel') {
-      return <span className="cli-agent-type parallel" title="Parallel agent">PAR</span>;
+    if (task.agentType === "parallel") {
+      return (
+        <span className="cli-agent-type parallel" title="Parallel agent">
+          PAR
+        </span>
+      );
     }
     return null;
   };
@@ -379,7 +462,7 @@ export function Sidebar({
     node: TaskTreeNode,
     index: number,
     depth: number = 0,
-    isLast: boolean = true
+    isLast: boolean = true,
   ): React.ReactNode => {
     const { task, children } = node;
     const hasChildren = children.length > 0;
@@ -387,31 +470,31 @@ export function Sidebar({
     const isSubAgent = !!task.parentTaskId;
 
     // Tree connector prefix based on depth
-    const treePrefix = depth > 0 ? (isLast ? '└─' : '├─') : '';
+    const treePrefix = depth > 0 ? (isLast ? "└─" : "├─") : "";
 
     return (
       <div key={task.id} className="task-tree-node">
         <div
-          className={`task-item cli-task-item ${selectedTaskId === task.id ? 'task-item-selected' : ''} ${isSubAgent ? 'task-item-subagent' : ''}`}
+          className={`task-item cli-task-item ${selectedTaskId === task.id ? "task-item-selected" : ""} ${isSubAgent ? "task-item-subagent" : ""}`}
           onClick={() => renameTaskId !== task.id && onSelectTask(task.id)}
           style={{ paddingLeft: depth > 0 ? `${8 + depth * 16}px` : undefined }}
         >
           {/* Tree connector for sub-agents */}
-          {depth > 0 && (
-            <span className="cli-tree-prefix">{treePrefix}</span>
-          )}
+          {depth > 0 && <span className="cli-tree-prefix">{treePrefix}</span>}
 
           {/* Collapse toggle for tasks with children */}
           {hasChildren ? (
             <button
               className="cli-collapse-btn"
               onClick={(e) => toggleCollapse(e, task.id)}
-              title={isCollapsed ? 'Expand' : 'Collapse'}
+              title={isCollapsed ? "Expand" : "Collapse"}
             >
-              {isCollapsed ? '▸' : '▾'}
+              {isCollapsed ? "▸" : "▾"}
             </button>
           ) : (
-            <span className="cli-task-num">{depth === 0 ? String(index + 1).padStart(2, '0') : '··'}</span>
+            <span className="cli-task-num">
+              {depth === 0 ? String(index + 1).padStart(2, "0") : "··"}
+            </span>
           )}
 
           <span className={`cli-task-status ${getStatusClass(task.status)}`}>
@@ -440,25 +523,28 @@ export function Sidebar({
             )}
           </div>
 
-          <div className="task-item-actions cli-task-actions" ref={menuOpenTaskId === task.id ? menuRef : null}>
-              <button
-                className="task-item-more cli-more-btn"
-                aria-haspopup="menu"
-                aria-expanded={menuOpenTaskId === task.id}
-                aria-controls={`task-menu-${task.id}`}
-                aria-label={`Session actions for ${task.title}`}
-                onClick={(e) => handleMenuToggle(e, task.id)}
-                onKeyDown={(e) => handleMenuButtonKeyDown(e, task.id)}
-                ref={(el) => {
-                  if (el) {
-                    menuButtonRef.current.set(task.id, el);
-                  } else {
-                    menuButtonRef.current.delete(task.id);
-                  }
-                }}
-              >
-                ···
-              </button>
+          <div
+            className="task-item-actions cli-task-actions"
+            ref={menuOpenTaskId === task.id ? menuRef : null}
+          >
+            <button
+              className="task-item-more cli-more-btn"
+              aria-haspopup="menu"
+              aria-expanded={menuOpenTaskId === task.id}
+              aria-controls={`task-menu-${task.id}`}
+              aria-label={`Session actions for ${task.title}`}
+              onClick={(e) => handleMenuToggle(e, task.id)}
+              onKeyDown={(e) => handleMenuButtonKeyDown(e, task.id)}
+              ref={(el) => {
+                if (el) {
+                  menuButtonRef.current.set(task.id, el);
+                } else {
+                  menuButtonRef.current.delete(task.id);
+                }
+              }}
+            >
+              ···
+            </button>
             {menuOpenTaskId === task.id && (
               <div
                 id={`task-menu-${task.id}`}
@@ -496,7 +582,7 @@ export function Sidebar({
         {hasChildren && !isCollapsed && (
           <div className="task-tree-children">
             {children.map((child, childIndex) =>
-              renderTaskNode(child, childIndex, depth + 1, childIndex === children.length - 1)
+              renderTaskNode(child, childIndex, depth + 1, childIndex === children.length - 1),
             )}
           </div>
         )}
@@ -544,22 +630,34 @@ export function Sidebar({
           <span className="cli-section-prompt">&gt;</span>
           <span className="terminal-only">SESSIONS</span>
           <span className="modern-only">Sessions</span>
-          {uiDensity === 'focused' && failedSessionCount > 0 && (
+          {uiDensity === "focused" && failedSessionCount > 0 && (
             <button
               className="show-failed-toggle"
               onClick={() => setShowFailedSessions(!showFailedSessions)}
             >
-              {showFailedSessions ? 'Hide' : 'Show'} failed ({failedSessionCount})
+              {showFailedSessions ? "Hide" : "Show"} failed ({failedSessionCount})
             </button>
           )}
         </div>
         {taskTree.length === 0 ? (
-          <div className={`sidebar-empty cli-empty ${uiDensity === 'focused' ? 'sidebar-empty-focused' : ''}`}>
+          <div
+            className={`sidebar-empty cli-empty ${uiDensity === "focused" ? "sidebar-empty-focused" : ""}`}
+          >
             <pre className="cli-tree terminal-only">{`├── (no sessions yet)
 └── ...`}</pre>
-            {uiDensity === 'focused' ? (
+            {uiDensity === "focused" ? (
               <div className="sidebar-empty-message">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.3 }}>
+                <svg
+                  width="32"
+                  height="32"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{ opacity: 0.3 }}
+                >
                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                 </svg>
                 <p>Your conversations will appear here</p>
@@ -572,18 +670,16 @@ export function Sidebar({
               </p>
             )}
           </div>
-        ) : uiDensity === 'focused' ? (
+        ) : uiDensity === "focused" ? (
           focusedTaskEntries.map((entry) => (
             <Fragment key={entry.node.task.id}>
-              {entry.showHeader && (
-                <div className="sidebar-date-group">{entry.group}</div>
-              )}
+              {entry.showHeader && <div className="sidebar-date-group">{entry.group}</div>}
               {renderTaskNode(entry.node, entry.index, 0, entry.isLast)}
             </Fragment>
           ))
         ) : (
           taskTree.map((node, index) =>
-            renderTaskNode(node, index, 0, index === taskTree.length - 1)
+            renderTaskNode(node, index, 0, index === taskTree.length - 1),
           )
         )}
       </div>
@@ -592,10 +688,23 @@ export function Sidebar({
       <div className="sidebar-footer cli-sidebar-footer">
         <ConwayWalletBadge onOpenSettings={onOpenSettings} />
         <div className="cli-footer-actions">
-          <button className="settings-btn cli-settings-btn" onClick={onOpenSettings} title="Settings">
+          <button
+            className="settings-btn cli-settings-btn"
+            onClick={onOpenSettings}
+            title="Settings"
+          >
             <span className="terminal-only">[cfg]</span>
             <span className="modern-only">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <circle cx="12" cy="12" r="3" />
                 <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
               </svg>
@@ -622,7 +731,11 @@ function ConwayWalletBadge({ onOpenSettings }: { onOpenSettings: () => void }) {
           ipcAPI.conwayGetStatus(),
           ipcAPI.conwayGetSettings(),
         ]);
-        if (settings?.showWalletInSidebar && status?.state === 'ready' && status?.balance?.balance) {
+        if (
+          settings?.showWalletInSidebar &&
+          status?.state === "ready" &&
+          status?.balance?.balance
+        ) {
           setBalance(String(status.balance.balance));
           setVisible(true);
         } else {
@@ -636,7 +749,7 @@ function ConwayWalletBadge({ onOpenSettings }: { onOpenSettings: () => void }) {
     load();
 
     const unsubscribe = ipcAPI.onConwayStatusChange?.((status: ConwaySetupStatus) => {
-      if (status?.state === 'ready' && status?.balance?.balance) {
+      if (status?.state === "ready" && status?.balance?.balance) {
         setBalance(String(status.balance.balance));
         setVisible(true);
       }
@@ -654,7 +767,14 @@ function ConwayWalletBadge({ onOpenSettings }: { onOpenSettings: () => void }) {
       title="Conway Terminal — click to open settings"
       aria-label="Open Conway Terminal settings"
     >
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <svg
+        width="12"
+        height="12"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      >
         <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
       </svg>
       <span className="conway-wallet-balance">{balance} USDC</span>

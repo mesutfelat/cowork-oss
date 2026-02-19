@@ -17,12 +17,9 @@ export {
   enableTailscaleFunnel,
   disableTailscaleFunnel,
   checkTailscaleFunnelAvailable,
-} from './tailscale';
+} from "./tailscale";
 
-export {
-  TailscaleSettingsManager,
-  type TailscaleSettings,
-} from './settings';
+export { TailscaleSettingsManager, type TailscaleSettings } from "./settings";
 
 export {
   startTailscaleExposure,
@@ -31,4 +28,4 @@ export {
   checkTailscaleAvailability,
   type TailscaleExposureConfig,
   type TailscaleExposureResult,
-} from './exposure';
+} from "./exposure";

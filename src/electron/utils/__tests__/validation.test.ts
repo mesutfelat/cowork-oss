@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from "vitest";
 import {
   validateInput,
   WorkspaceCreateSchema,
@@ -8,68 +8,68 @@ import {
   ChannelConfigSchema,
   EmailChannelConfigSchema,
   AddEmailChannelSchema,
-} from '../validation';
-import { z } from 'zod';
+} from "../validation";
+import { z } from "zod";
 
-describe('validateInput', () => {
+describe("validateInput", () => {
   const simpleSchema = z.object({
     name: z.string().min(1),
     age: z.number().int().positive(),
   });
 
-  it('returns parsed data for valid input', () => {
-    const result = validateInput(simpleSchema, { name: 'Alice', age: 30 });
-    expect(result).toEqual({ name: 'Alice', age: 30 });
+  it("returns parsed data for valid input", () => {
+    const result = validateInput(simpleSchema, { name: "Alice", age: 30 });
+    expect(result).toEqual({ name: "Alice", age: 30 });
   });
 
-  it('throws on invalid input with error details', () => {
-    expect(() => validateInput(simpleSchema, { name: '', age: -1 })).toThrow('Invalid input:');
+  it("throws on invalid input with error details", () => {
+    expect(() => validateInput(simpleSchema, { name: "", age: -1 })).toThrow("Invalid input:");
   });
 
-  it('includes context in error message when provided', () => {
-    expect(() => validateInput(simpleSchema, { name: '' }, 'user profile')).toThrow(
-      'Invalid user profile:'
+  it("includes context in error message when provided", () => {
+    expect(() => validateInput(simpleSchema, { name: "" }, "user profile")).toThrow(
+      "Invalid user profile:",
     );
   });
 
-  it('includes field paths in error message', () => {
+  it("includes field paths in error message", () => {
     try {
-      validateInput(simpleSchema, { name: 'ok', age: 'not a number' });
+      validateInput(simpleSchema, { name: "ok", age: "not a number" });
     } catch (e: any) {
-      expect(e.message).toContain('age');
+      expect(e.message).toContain("age");
     }
   });
 });
 
-describe('WorkspaceCreateSchema', () => {
-  it('validates a minimal workspace', () => {
+describe("WorkspaceCreateSchema", () => {
+  it("validates a minimal workspace", () => {
     const result = WorkspaceCreateSchema.safeParse({
-      name: 'My Workspace',
-      path: '/home/user/workspace',
+      name: "My Workspace",
+      path: "/home/user/workspace",
     });
     expect(result.success).toBe(true);
   });
 
-  it('rejects empty name', () => {
+  it("rejects empty name", () => {
     const result = WorkspaceCreateSchema.safeParse({
-      name: '',
-      path: '/home/user/workspace',
+      name: "",
+      path: "/home/user/workspace",
     });
     expect(result.success).toBe(false);
   });
 
-  it('rejects empty path', () => {
+  it("rejects empty path", () => {
     const result = WorkspaceCreateSchema.safeParse({
-      name: 'Test',
-      path: '',
+      name: "Test",
+      path: "",
     });
     expect(result.success).toBe(false);
   });
 
-  it('validates with permissions', () => {
+  it("validates with permissions", () => {
     const result = WorkspaceCreateSchema.safeParse({
-      name: 'Test',
-      path: '/tmp/test',
+      name: "Test",
+      path: "/tmp/test",
       permissions: {
         read: true,
         write: false,
@@ -82,109 +82,109 @@ describe('WorkspaceCreateSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('rejects name exceeding max length', () => {
+  it("rejects name exceeding max length", () => {
     const result = WorkspaceCreateSchema.safeParse({
-      name: 'x'.repeat(501),
-      path: '/tmp/test',
+      name: "x".repeat(501),
+      path: "/tmp/test",
     });
     expect(result.success).toBe(false);
   });
 });
 
-describe('TaskCreateSchema', () => {
-  it('validates with UUID workspaceId', () => {
+describe("TaskCreateSchema", () => {
+  it("validates with UUID workspaceId", () => {
     const result = TaskCreateSchema.safeParse({
-      title: 'Test Task',
-      prompt: 'Do something',
-      workspaceId: '550e8400-e29b-41d4-a716-446655440000',
+      title: "Test Task",
+      prompt: "Do something",
+      workspaceId: "550e8400-e29b-41d4-a716-446655440000",
     });
     expect(result.success).toBe(true);
   });
 
-  it('validates with temp workspace ID', () => {
+  it("validates with temp workspace ID", () => {
     const result = TaskCreateSchema.safeParse({
-      title: 'Test Task',
-      prompt: 'Do something',
-      workspaceId: '__temp_workspace__',
+      title: "Test Task",
+      prompt: "Do something",
+      workspaceId: "__temp_workspace__",
     });
     expect(result.success).toBe(true);
   });
 
-  it('validates with session temp workspace ID', () => {
+  it("validates with session temp workspace ID", () => {
     const result = TaskCreateSchema.safeParse({
-      title: 'Test Task',
-      prompt: 'Do something',
-      workspaceId: '__temp_workspace__:session-123',
+      title: "Test Task",
+      prompt: "Do something",
+      workspaceId: "__temp_workspace__:session-123",
     });
     expect(result.success).toBe(true);
   });
 
-  it('rejects invalid workspaceId', () => {
+  it("rejects invalid workspaceId", () => {
     const result = TaskCreateSchema.safeParse({
-      title: 'Test Task',
-      prompt: 'Do something',
-      workspaceId: 'not-a-uuid',
+      title: "Test Task",
+      prompt: "Do something",
+      workspaceId: "not-a-uuid",
     });
     expect(result.success).toBe(false);
   });
 
-  it('rejects empty title', () => {
+  it("rejects empty title", () => {
     const result = TaskCreateSchema.safeParse({
-      title: '',
-      prompt: 'Do something',
-      workspaceId: '__temp_workspace__',
+      title: "",
+      prompt: "Do something",
+      workspaceId: "__temp_workspace__",
     });
     expect(result.success).toBe(false);
   });
 
-  it('rejects empty prompt', () => {
+  it("rejects empty prompt", () => {
     const result = TaskCreateSchema.safeParse({
-      title: 'Test',
-      prompt: '',
-      workspaceId: '__temp_workspace__',
+      title: "Test",
+      prompt: "",
+      workspaceId: "__temp_workspace__",
     });
     expect(result.success).toBe(false);
   });
 
-  it('accepts optional budgetTokens', () => {
+  it("accepts optional budgetTokens", () => {
     const result = TaskCreateSchema.safeParse({
-      title: 'Test',
-      prompt: 'Do it',
-      workspaceId: '__temp_workspace__',
+      title: "Test",
+      prompt: "Do it",
+      workspaceId: "__temp_workspace__",
       budgetTokens: 50000,
     });
     expect(result.success).toBe(true);
   });
 });
 
-describe('ApprovalResponseSchema', () => {
-  it('validates correct approval response', () => {
+describe("ApprovalResponseSchema", () => {
+  it("validates correct approval response", () => {
     const result = ApprovalResponseSchema.safeParse({
-      approvalId: '550e8400-e29b-41d4-a716-446655440000',
+      approvalId: "550e8400-e29b-41d4-a716-446655440000",
       approved: true,
     });
     expect(result.success).toBe(true);
   });
 
-  it('rejects non-UUID approvalId', () => {
+  it("rejects non-UUID approvalId", () => {
     const result = ApprovalResponseSchema.safeParse({
-      approvalId: 'invalid',
+      approvalId: "invalid",
       approved: true,
     });
     expect(result.success).toBe(false);
   });
 
-  it('rejects non-boolean approved', () => {
+  it("rejects non-boolean approved", () => {
     const result = ApprovalResponseSchema.safeParse({
-      approvalId: '550e8400-e29b-41d4-a716-446655440000',
-      approved: 'yes',
+      approvalId: "550e8400-e29b-41d4-a716-446655440000",
+      approved: "yes",
     });
     expect(result.success).toBe(false);
   });
 });
 
-describe('GuardrailSettingsSchema', () => {
-  it('validates with all defaults', () => {
+describe("GuardrailSettingsSchema", () => {
+  it("validates with all defaults", () => {
     const result = GuardrailSettingsSchema.safeParse({});
     expect(result.success).toBe(true);
     if (result.success) {
@@ -195,170 +195,170 @@ describe('GuardrailSettingsSchema', () => {
     }
   });
 
-  it('rejects maxTokensPerTask below minimum', () => {
+  it("rejects maxTokensPerTask below minimum", () => {
     const result = GuardrailSettingsSchema.safeParse({ maxTokensPerTask: 100 });
     expect(result.success).toBe(false);
   });
 
-  it('rejects maxIterationsPerTask above maximum', () => {
+  it("rejects maxIterationsPerTask above maximum", () => {
     const result = GuardrailSettingsSchema.safeParse({ maxIterationsPerTask: 501 });
     expect(result.success).toBe(false);
   });
 
-  it('validates custom blocked patterns', () => {
+  it("validates custom blocked patterns", () => {
     const result = GuardrailSettingsSchema.safeParse({
-      customBlockedPatterns: ['rm -rf', 'DROP TABLE'],
+      customBlockedPatterns: ["rm -rf", "DROP TABLE"],
     });
     expect(result.success).toBe(true);
   });
 });
 
-describe('EmailChannelConfigSchema', () => {
-  it('accepts valid IMAP/SMTP configuration', () => {
+describe("EmailChannelConfigSchema", () => {
+  it("accepts valid IMAP/SMTP configuration", () => {
     const result = EmailChannelConfigSchema.safeParse({
-      protocol: 'imap-smtp',
-      email: 'agent@example.com',
-      password: 'secret',
-      imapHost: 'imap.example.com',
-      smtpHost: 'smtp.example.com',
+      protocol: "imap-smtp",
+      email: "agent@example.com",
+      password: "secret",
+      imapHost: "imap.example.com",
+      smtpHost: "smtp.example.com",
     });
 
     expect(result.success).toBe(true);
   });
 
-  it('accepts unknown legacy keys for forward compatibility', () => {
+  it("accepts unknown legacy keys for forward compatibility", () => {
     const result = EmailChannelConfigSchema.safeParse({
-      protocol: 'imap-smtp',
-      email: 'agent@example.com',
-      password: 'secret',
-      imapHost: 'imap.example.com',
-      smtpHost: 'smtp.example.com',
-      pluginMetadata: 'legacy-plugin-state',
+      protocol: "imap-smtp",
+      email: "agent@example.com",
+      password: "secret",
+      imapHost: "imap.example.com",
+      smtpHost: "smtp.example.com",
+      pluginMetadata: "legacy-plugin-state",
       legacyFlag: true,
     });
 
     expect(result.success).toBe(true);
-    expect((result.data as Record<string, unknown>).pluginMetadata).toBe('legacy-plugin-state');
+    expect((result.data as Record<string, unknown>).pluginMetadata).toBe("legacy-plugin-state");
     expect((result.data as Record<string, unknown>).legacyFlag).toBe(true);
   });
 
-  it('requires credentials for IMAP/SMTP mode', () => {
+  it("requires credentials for IMAP/SMTP mode", () => {
     const result = EmailChannelConfigSchema.safeParse({
-      protocol: 'imap-smtp',
+      protocol: "imap-smtp",
     });
 
     expect(result.success).toBe(false);
   });
 
-  it('requires LOOM base URL over HTTPS or localhost', () => {
+  it("requires LOOM base URL over HTTPS or localhost", () => {
     const result = EmailChannelConfigSchema.safeParse({
-      protocol: 'loom',
-      loomAccessToken: 'token',
-      loomBaseUrl: 'http://example.com',
+      protocol: "loom",
+      loomAccessToken: "token",
+      loomBaseUrl: "http://example.com",
     });
 
     expect(result.success).toBe(false);
   });
 
-  it('validates LOOM mailbox folder characters', () => {
+  it("validates LOOM mailbox folder characters", () => {
     const result = EmailChannelConfigSchema.safeParse({
-      protocol: 'loom',
-      loomBaseUrl: 'http://127.0.0.1:8787',
-      loomAccessToken: 'token',
-      loomMailboxFolder: 'INBOX/../Work',
+      protocol: "loom",
+      loomBaseUrl: "http://127.0.0.1:8787",
+      loomAccessToken: "token",
+      loomMailboxFolder: "INBOX/../Work",
     });
 
     expect(result.success).toBe(false);
   });
 });
 
-describe('AddEmailChannelSchema', () => {
-  it('validates IMAP/SMTP add payload using prefixed fields', () => {
+describe("AddEmailChannelSchema", () => {
+  it("validates IMAP/SMTP add payload using prefixed fields", () => {
     const result = AddEmailChannelSchema.safeParse({
-      type: 'email',
-      name: 'Mailbox',
-      emailProtocol: 'imap-smtp',
-      emailAddress: 'agent@example.com',
-      emailPassword: 'secret',
-      emailImapHost: 'imap.example.com',
-      emailSmtpHost: 'smtp.example.com',
+      type: "email",
+      name: "Mailbox",
+      emailProtocol: "imap-smtp",
+      emailAddress: "agent@example.com",
+      emailPassword: "secret",
+      emailImapHost: "imap.example.com",
+      emailSmtpHost: "smtp.example.com",
     });
 
     expect(result.success).toBe(true);
   });
 
-  it('defaults IMAP/SMTP protocol on add when protocol is omitted', () => {
+  it("defaults IMAP/SMTP protocol on add when protocol is omitted", () => {
     const result = AddEmailChannelSchema.safeParse({
-      type: 'email',
-      name: 'Mailbox',
-      emailAddress: 'agent@example.com',
-      emailPassword: 'secret',
-      emailImapHost: 'imap.example.com',
-      emailSmtpHost: 'smtp.example.com',
+      type: "email",
+      name: "Mailbox",
+      emailAddress: "agent@example.com",
+      emailPassword: "secret",
+      emailImapHost: "imap.example.com",
+      emailSmtpHost: "smtp.example.com",
     });
 
     expect(result.success).toBe(true);
   });
 
-  it('validates LOOM add payload requiring LOOM fields and optional display alias', () => {
+  it("validates LOOM add payload requiring LOOM fields and optional display alias", () => {
     const result = AddEmailChannelSchema.safeParse({
-      type: 'email',
-      name: 'Mailbox',
-      emailProtocol: 'loom',
-      emailLoomBaseUrl: 'https://mail.example.com',
-      emailLoomAccessToken: 'token',
-      emailLoomMailboxFolder: 'INBOX',
+      type: "email",
+      name: "Mailbox",
+      emailProtocol: "loom",
+      emailLoomBaseUrl: "https://mail.example.com",
+      emailLoomAccessToken: "token",
+      emailLoomMailboxFolder: "INBOX",
     });
 
     expect(result.success).toBe(true);
   });
 
-  it('validates LOOM add mailbox folder path characters', () => {
+  it("validates LOOM add mailbox folder path characters", () => {
     const result = AddEmailChannelSchema.safeParse({
-      type: 'email',
-      name: 'Mailbox',
-      emailProtocol: 'loom',
-      emailLoomBaseUrl: 'https://mail.example.com',
-      emailLoomAccessToken: 'token',
-      emailLoomMailboxFolder: 'INBOX/../Work',
+      type: "email",
+      name: "Mailbox",
+      emailProtocol: "loom",
+      emailLoomBaseUrl: "https://mail.example.com",
+      emailLoomAccessToken: "token",
+      emailLoomMailboxFolder: "INBOX/../Work",
     });
 
     expect(result.success).toBe(false);
   });
 
-  it('rejects IMAP/SMTP add payload missing required mapped hosts and credentials', () => {
+  it("rejects IMAP/SMTP add payload missing required mapped hosts and credentials", () => {
     const result = AddEmailChannelSchema.safeParse({
-      type: 'email',
-      name: 'Mailbox',
-      emailProtocol: 'imap-smtp',
+      type: "email",
+      name: "Mailbox",
+      emailProtocol: "imap-smtp",
     });
 
     expect(result.success).toBe(false);
   });
 
-  it('shares protocol validation behavior with update schema for IMAP/SMTP mode', () => {
+  it("shares protocol validation behavior with update schema for IMAP/SMTP mode", () => {
     const result = AddEmailChannelSchema.safeParse({
-      type: 'email',
-      name: 'Mailbox',
-      emailProtocol: 'imap-smtp',
-      emailAddress: 'agent@example.com',
-      emailPassword: 'secret',
-      emailImapHost: 'imap.example.com',
+      type: "email",
+      name: "Mailbox",
+      emailProtocol: "imap-smtp",
+      emailAddress: "agent@example.com",
+      emailPassword: "secret",
+      emailImapHost: "imap.example.com",
     });
 
     expect(result.success).toBe(false);
   });
 });
 
-describe('ChannelConfigSchema', () => {
-  it('allows extra keys from future channel plugins', () => {
+describe("ChannelConfigSchema", () => {
+  it("allows extra keys from future channel plugins", () => {
     const result = ChannelConfigSchema.safeParse({
       selfChatMode: true,
       trustedGroupMemoryOptIn: false,
-      pluginVersion: '2.0',
+      pluginVersion: "2.0",
     });
 
     expect(result.success).toBe(true);
-    expect((result.data as Record<string, unknown>).pluginVersion).toBe('2.0');
+    expect((result.data as Record<string, unknown>).pluginVersion).toBe("2.0");
   });
 });

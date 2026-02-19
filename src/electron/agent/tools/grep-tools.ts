@@ -1,10 +1,14 @@
-import * as fs from 'fs';
-import * as fsPromises from 'fs/promises';
-import * as path from 'path';
-import { Workspace } from '../../../shared/types';
-import { AgentDaemon } from '../daemon';
-import { checkProjectAccess, getProjectIdFromWorkspaceRelPath, getWorkspaceRelativePosixPath } from '../../security/project-access';
-import { LLMTool } from '../llm/types';
+import * as fs from "fs";
+import * as fsPromises from "fs/promises";
+import * as path from "path";
+import { Workspace } from "../../../shared/types";
+import { AgentDaemon } from "../daemon";
+import {
+  checkProjectAccess,
+  getProjectIdFromWorkspaceRelPath,
+  getWorkspaceRelativePosixPath,
+} from "../../security/project-access";
+import { LLMTool } from "../llm/types";
 
 /**
  * GrepTools provides powerful regex-based content search
@@ -14,7 +18,7 @@ export class GrepTools {
   constructor(
     private workspace: Workspace,
     private daemon: AgentDaemon,
-    private taskId: string
+    private taskId: string,
   ) {}
 
   /**
@@ -30,48 +34,49 @@ export class GrepTools {
   static getToolDefinitions(): LLMTool[] {
     return [
       {
-        name: 'grep',
+        name: "grep",
         description:
-          'Powerful regex-based content search across files. ' +
+          "Powerful regex-based content search across files. " +
           'Supports full regex syntax (e.g., "async function.*fetch", "class\\s+\\w+"). ' +
-          'Searches text files only; binary formats like PDF/DOCX are skipped. ' +
-          'Use this to find code patterns, function definitions, imports, etc. ' +
-          'PREFERRED over search_files for content search.',
+          "Searches text files only; binary formats like PDF/DOCX are skipped. " +
+          "Use this to find code patterns, function definitions, imports, etc. " +
+          "PREFERRED over search_files for content search.",
         input_schema: {
-          type: 'object',
+          type: "object",
           properties: {
             pattern: {
-              type: 'string',
-              description: 'Regular expression pattern to search for in file contents',
+              type: "string",
+              description: "Regular expression pattern to search for in file contents",
             },
             path: {
-              type: 'string',
-              description: 'Directory or file to search in (relative to workspace). Defaults to workspace root.',
+              type: "string",
+              description:
+                "Directory or file to search in (relative to workspace). Defaults to workspace root.",
             },
             glob: {
-              type: 'string',
+              type: "string",
               description: 'Glob pattern to filter files (e.g., "*.ts", "**/*.{js,jsx}")',
             },
             ignoreCase: {
-              type: 'boolean',
-              description: 'Case insensitive search (default: false)',
+              type: "boolean",
+              description: "Case insensitive search (default: false)",
             },
             contextLines: {
-              type: 'number',
-              description: 'Number of context lines before and after match (default: 0)',
+              type: "number",
+              description: "Number of context lines before and after match (default: 0)",
             },
             maxResults: {
-              type: 'number',
-              description: 'Maximum number of matches to return (default: 50)',
+              type: "number",
+              description: "Maximum number of matches to return (default: 50)",
             },
             outputMode: {
-              type: 'string',
-              enum: ['content', 'files_only', 'count'],
+              type: "string",
+              enum: ["content", "files_only", "count"],
               description:
                 'Output mode: "content" shows matching lines (default), "files_only" shows file paths, "count" shows match counts',
             },
           },
-          required: ['pattern'],
+          required: ["pattern"],
         },
       },
     ];
@@ -87,7 +92,7 @@ export class GrepTools {
     ignoreCase?: boolean;
     contextLines?: number;
     maxResults?: number;
-    outputMode?: 'content' | 'files_only' | 'count';
+    outputMode?: "content" | "files_only" | "count";
   }): Promise<{
     success: boolean;
     pattern: string;
@@ -111,15 +116,18 @@ export class GrepTools {
       ignoreCase = false,
       contextLines = 0,
       maxResults = 50,
-      outputMode = 'content',
+      outputMode = "content",
     } = input;
 
-    this.daemon.logEvent(this.taskId, 'log', {
-      message: `Grep search: "${pattern}"${searchPath ? ` in ${searchPath}` : ''}${globPattern ? ` (${globPattern})` : ''}`,
+    this.daemon.logEvent(this.taskId, "log", {
+      message: `Grep search: "${pattern}"${searchPath ? ` in ${searchPath}` : ""}${globPattern ? ` (${globPattern})` : ""}`,
     });
 
     try {
-      if ((await this.isDocumentHeavyWorkspace()) && (!globPattern || /\.(pdf|docx)\b/i.test(globPattern))) {
+      if (
+        (await this.isDocumentHeavyWorkspace()) &&
+        (!globPattern || /\.(pdf|docx)\b/i.test(globPattern))
+      ) {
         return {
           success: true,
           pattern,
@@ -127,14 +135,15 @@ export class GrepTools {
           totalMatches: 0,
           filesSearched: 0,
           truncated: false,
-          warning: 'Workspace appears document-heavy (PDF/DOCX/PPTX). The grep tool only searches text files. Use read_file for those documents.',
+          warning:
+            "Workspace appears document-heavy (PDF/DOCX/PPTX). The grep tool only searches text files. Use read_file for those documents.",
         };
       }
 
       // Compile regex
       let regex: RegExp;
       try {
-        regex = new RegExp(pattern, ignoreCase ? 'gi' : 'g');
+        regex = new RegExp(pattern, ignoreCase ? "gi" : "g");
       } catch (e: any) {
         throw new Error(`Invalid regex pattern: ${e.message}`);
       }
@@ -145,25 +154,31 @@ export class GrepTools {
 
       // Validate path is within workspace
       if (!basePath.startsWith(this.workspace.path)) {
-        throw new Error('Search path must be within workspace');
+        throw new Error("Search path must be within workspace");
       }
 
       if (!fs.existsSync(basePath)) {
-        throw new Error(`Path does not exist: ${searchPath || '.'}`);
+        throw new Error(`Path does not exist: ${searchPath || "."}`);
       }
 
       const taskGetter = (this.daemon as any)?.getTask;
-      const task = typeof taskGetter === 'function' ? taskGetter.call(this.daemon, this.taskId) : null;
+      const task =
+        typeof taskGetter === "function" ? taskGetter.call(this.daemon, this.taskId) : null;
       const agentRoleId = task?.assignedAgentRoleId || null;
       const projectAccessCache = new Map<string, boolean>();
 
       // If the user tries to search directly within a denied project, block early.
       if (await this.isDeniedByProjectAccess(basePath, agentRoleId, projectAccessCache)) {
-        throw new Error('Access denied by project access rules');
+        throw new Error("Access denied by project access rules");
       }
 
       // Find files to search
-      const files = await this.findFilesToSearch(basePath, globPattern, agentRoleId, projectAccessCache);
+      const files = await this.findFilesToSearch(
+        basePath,
+        globPattern,
+        agentRoleId,
+        projectAccessCache,
+      );
       const matches: Array<{
         file: string;
         line?: number;
@@ -180,11 +195,11 @@ export class GrepTools {
         if (truncated) break;
 
         try {
-          const content = fs.readFileSync(file, 'utf-8');
-          const lines = content.split('\n');
+          const content = fs.readFileSync(file, "utf-8");
+          const lines = content.split("\n");
           const relativePath = path.relative(this.workspace.path, file);
 
-          if (outputMode === 'count') {
+          if (outputMode === "count") {
             // Count matches in file
             const fileMatches = (content.match(regex) || []).length;
             if (fileMatches > 0) {
@@ -194,7 +209,7 @@ export class GrepTools {
                 count: fileMatches,
               });
             }
-          } else if (outputMode === 'files_only') {
+          } else if (outputMode === "files_only") {
             // Just check if file has matches
             if (regex.test(content)) {
               totalMatches++;
@@ -246,8 +261,8 @@ export class GrepTools {
         }
       }
 
-      this.daemon.logEvent(this.taskId, 'tool_result', {
-        tool: 'grep',
+      this.daemon.logEvent(this.taskId, "tool_result", {
+        tool: "grep",
         result: {
           pattern,
           matchCount: matches.length,
@@ -266,8 +281,8 @@ export class GrepTools {
         truncated,
       };
     } catch (error: any) {
-      this.daemon.logEvent(this.taskId, 'tool_result', {
-        tool: 'grep',
+      this.daemon.logEvent(this.taskId, "tool_result", {
+        tool: "grep",
         error: error.message,
       });
 
@@ -290,7 +305,7 @@ export class GrepTools {
     basePath: string,
     globPattern: string | undefined,
     agentRoleId: string | null,
-    projectAccessCache: Map<string, boolean>
+    projectAccessCache: Map<string, boolean>,
   ): Promise<string[]> {
     const files: string[] = [];
     const globRegex = globPattern ? this.globToRegex(globPattern) : null;
@@ -310,7 +325,7 @@ export class GrepTools {
     globRegex: RegExp | null,
     agentRoleId: string | null,
     projectAccessCache: Map<string, boolean>,
-    depth: number = 0
+    depth: number = 0,
   ): Promise<void> {
     // Limit recursion depth
     if (depth > 50) return;
@@ -323,19 +338,19 @@ export class GrepTools {
     // Skip common non-code directories
     const dirName = path.basename(currentPath);
     const skipDirs = [
-      'node_modules',
-      '.git',
-      '.svn',
-      '.hg',
-      'dist',
-      'build',
-      'coverage',
-      '.next',
-      '.nuxt',
-      '__pycache__',
-      '.pytest_cache',
-      'venv',
-      '.venv',
+      "node_modules",
+      ".git",
+      ".svn",
+      ".hg",
+      "dist",
+      "build",
+      "coverage",
+      ".next",
+      ".nuxt",
+      "__pycache__",
+      ".pytest_cache",
+      "venv",
+      ".venv",
     ];
 
     if (depth > 0 && skipDirs.includes(dirName)) {
@@ -350,7 +365,15 @@ export class GrepTools {
         const relativePath = path.relative(basePath, fullPath);
 
         if (entry.isDirectory()) {
-          await this.walkDirectory(fullPath, basePath, files, globRegex, agentRoleId, projectAccessCache, depth + 1);
+          await this.walkDirectory(
+            fullPath,
+            basePath,
+            files,
+            globRegex,
+            agentRoleId,
+            projectAccessCache,
+            depth + 1,
+          );
         } else if (entry.isFile()) {
           if (await this.isDeniedByProjectAccess(fullPath, agentRoleId, projectAccessCache)) {
             continue;
@@ -369,7 +392,7 @@ export class GrepTools {
 
           // Apply glob filter if specified
           if (globRegex) {
-            const normalizedRelative = relativePath.split(path.sep).join('/');
+            const normalizedRelative = relativePath.split(path.sep).join("/");
             if (!globRegex.test(normalizedRelative) && !globRegex.test(entry.name)) {
               continue;
             }
@@ -386,7 +409,7 @@ export class GrepTools {
   private async isDeniedByProjectAccess(
     absolutePath: string,
     agentRoleId: string | null,
-    cache: Map<string, boolean>
+    cache: Map<string, boolean>,
   ): Promise<boolean> {
     if (!agentRoleId) return false;
     const relPosix = getWorkspaceRelativePosixPath(this.workspace.path, absolutePath);
@@ -395,9 +418,13 @@ export class GrepTools {
     if (!projectId) return false;
 
     const cached = cache.get(projectId);
-    if (typeof cached === 'boolean') return !cached;
+    if (typeof cached === "boolean") return !cached;
 
-    const res = await checkProjectAccess({ workspacePath: this.workspace.path, projectId, agentRoleId });
+    const res = await checkProjectAccess({
+      workspacePath: this.workspace.path,
+      projectId,
+      agentRoleId,
+    });
     cache.set(projectId, res.allowed);
     return !res.allowed;
   }
@@ -407,46 +434,46 @@ export class GrepTools {
    */
   private isBinaryFile(filename: string): boolean {
     const binaryExtensions = [
-      '.png',
-      '.jpg',
-      '.jpeg',
-      '.gif',
-      '.bmp',
-      '.ico',
-      '.webp',
-      '.svg',
-      '.pdf',
-      '.doc',
-      '.docx',
-      '.xls',
-      '.xlsx',
-      '.ppt',
-      '.pptx',
-      '.zip',
-      '.tar',
-      '.gz',
-      '.rar',
-      '.7z',
-      '.exe',
-      '.dll',
-      '.so',
-      '.dylib',
-      '.bin',
-      '.dat',
-      '.db',
-      '.sqlite',
-      '.mp3',
-      '.mp4',
-      '.avi',
-      '.mov',
-      '.mkv',
-      '.wav',
-      '.flac',
-      '.woff',
-      '.woff2',
-      '.ttf',
-      '.eot',
-      '.otf',
+      ".png",
+      ".jpg",
+      ".jpeg",
+      ".gif",
+      ".bmp",
+      ".ico",
+      ".webp",
+      ".svg",
+      ".pdf",
+      ".doc",
+      ".docx",
+      ".xls",
+      ".xlsx",
+      ".ppt",
+      ".pptx",
+      ".zip",
+      ".tar",
+      ".gz",
+      ".rar",
+      ".7z",
+      ".exe",
+      ".dll",
+      ".so",
+      ".dylib",
+      ".bin",
+      ".dat",
+      ".db",
+      ".sqlite",
+      ".mp3",
+      ".mp4",
+      ".avi",
+      ".mov",
+      ".mkv",
+      ".wav",
+      ".flac",
+      ".woff",
+      ".woff2",
+      ".ttf",
+      ".eot",
+      ".otf",
     ];
 
     const ext = path.extname(filename).toLowerCase();
@@ -459,8 +486,8 @@ export class GrepTools {
   private globToRegex(pattern: string): RegExp {
     const expandedPatterns = this.expandBraces(pattern);
     const regexParts = expandedPatterns.map((p) => this.globPatternToRegex(p));
-    const combined = regexParts.length > 1 ? `(${regexParts.join('|')})` : regexParts[0];
-    return new RegExp(`^${combined}$`, 'i');
+    const combined = regexParts.length > 1 ? `(${regexParts.join("|")})` : regexParts[0];
+    return new RegExp(`^${combined}$`, "i");
   }
 
   /**
@@ -471,7 +498,7 @@ export class GrepTools {
     if (!braceMatch) return [pattern];
 
     const [fullMatch, options] = braceMatch;
-    const optionList = options.split(',');
+    const optionList = options.split(",");
     const results: string[] = [];
 
     for (const option of optionList) {
@@ -497,7 +524,7 @@ export class GrepTools {
         if (!entry.isFile()) continue;
         fileCount++;
         const ext = path.extname(entry.name).toLowerCase();
-        if (ext === '.pdf' || ext === '.docx') {
+        if (ext === ".pdf" || ext === ".docx") {
           docCount++;
         }
       }
@@ -513,43 +540,43 @@ export class GrepTools {
    * Convert a glob pattern to a regex string (without delimiters)
    */
   private globPatternToRegex(pattern: string): string {
-    let regex = '';
+    let regex = "";
     let i = 0;
 
     while (i < pattern.length) {
       const char = pattern[i];
 
-      if (char === '*') {
-        const isDoubleStar = pattern[i + 1] === '*';
+      if (char === "*") {
+        const isDoubleStar = pattern[i + 1] === "*";
         if (isDoubleStar) {
           i += 2;
-          if (pattern[i] === '/') {
-            regex += '(?:.*/)?';
+          if (pattern[i] === "/") {
+            regex += "(?:.*/)?";
             i += 1;
           } else {
-            regex += '.*';
+            regex += ".*";
           }
         } else {
-          regex += '[^/]*';
+          regex += "[^/]*";
           i += 1;
         }
         continue;
       }
 
-      if (char === '?') {
-        regex += '[^/]';
+      if (char === "?") {
+        regex += "[^/]";
         i += 1;
         continue;
       }
 
-      if ('+^${}()|[]\\.'.includes(char)) {
+      if ("+^${}()|[]\\.".includes(char)) {
         regex += `\\${char}`;
         i += 1;
         continue;
       }
 
-      if (char === '/') {
-        regex += '/';
+      if (char === "/") {
+        regex += "/";
         i += 1;
         continue;
       }

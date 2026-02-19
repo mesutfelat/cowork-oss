@@ -1,12 +1,22 @@
-import { useEffect, useState } from 'react';
-import { NotionSettingsData } from '../../shared/types';
+import { useEffect, useState } from "react";
+import { NotionSettingsData } from "../../shared/types";
 
 export function NotionSettings() {
   const [settings, setSettings] = useState<NotionSettingsData | null>(null);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<{ success: boolean; error?: string; name?: string; userId?: string } | null>(null);
-  const [status, setStatus] = useState<{ configured: boolean; connected: boolean; name?: string; error?: string } | null>(null);
+  const [testResult, setTestResult] = useState<{
+    success: boolean;
+    error?: string;
+    name?: string;
+    userId?: string;
+  } | null>(null);
+  const [status, setStatus] = useState<{
+    configured: boolean;
+    connected: boolean;
+    name?: string;
+    error?: string;
+  } | null>(null);
   const [statusLoading, setStatusLoading] = useState(false);
 
   useEffect(() => {
@@ -19,7 +29,7 @@ export function NotionSettings() {
       const loaded = await window.electronAPI.getNotionSettings();
       setSettings(loaded);
     } catch (error) {
-      console.error('Failed to load Notion settings:', error);
+      console.error("Failed to load Notion settings:", error);
     }
   };
 
@@ -38,7 +48,7 @@ export function NotionSettings() {
       setSettings(payload);
       await refreshStatus();
     } catch (error) {
-      console.error('Failed to save Notion settings:', error);
+      console.error("Failed to save Notion settings:", error);
     } finally {
       setSaving(false);
     }
@@ -50,7 +60,7 @@ export function NotionSettings() {
       const result = await window.electronAPI.getNotionStatus();
       setStatus(result);
     } catch (error) {
-      console.error('Failed to load Notion status:', error);
+      console.error("Failed to load Notion status:", error);
     } finally {
       setStatusLoading(false);
     }
@@ -64,7 +74,7 @@ export function NotionSettings() {
       setTestResult(result);
       await refreshStatus();
     } catch (error: any) {
-      setTestResult({ success: false, error: error.message || 'Failed to test connection' });
+      setTestResult({ success: false, error: error.message || "Failed to test connection" });
     } finally {
       setTesting(false);
     }
@@ -75,16 +85,16 @@ export function NotionSettings() {
   }
 
   const statusLabel = !status?.configured
-    ? 'Missing Key'
+    ? "Missing Key"
     : status.connected
-      ? 'Connected'
-      : 'Configured';
+      ? "Connected"
+      : "Configured";
 
   const statusClass = !status?.configured
-    ? 'missing'
+    ? "missing"
     : status.connected
-      ? 'connected'
-      : 'configured';
+      ? "connected"
+      : "configured";
 
   return (
     <div className="notion-settings">
@@ -95,7 +105,13 @@ export function NotionSettings() {
             {status && (
               <span
                 className={`notion-status-badge ${statusClass}`}
-                title={!status.configured ? 'API key not configured' : status.connected ? 'Connected to Notion' : 'Configured'}
+                title={
+                  !status.configured
+                    ? "API key not configured"
+                    : status.connected
+                      ? "Connected to Notion"
+                      : "Configured"
+                }
               >
                 {statusLabel}
               </span>
@@ -105,20 +121,18 @@ export function NotionSettings() {
             )}
           </div>
           <button className="btn-secondary btn-sm" onClick={refreshStatus} disabled={statusLoading}>
-            {statusLoading ? 'Checking...' : 'Refresh Status'}
+            {statusLoading ? "Checking..." : "Refresh Status"}
           </button>
         </div>
         <p className="settings-description">
-          Connect the agent to Notion using an integration API key, then use the built-in `notion_action` tool to search,
-          read, and update pages or data sources.
+          Connect the agent to Notion using an integration API key, then use the built-in
+          `notion_action` tool to search, read, and update pages or data sources.
         </p>
-        {status?.error && (
-          <p className="settings-hint">Status check: {status.error}</p>
-        )}
+        {status?.error && <p className="settings-hint">Status check: {status.error}</p>}
         <div className="settings-actions">
           <button
             className="btn-secondary btn-sm"
-            onClick={() => window.electronAPI.openExternal('https://notion.so/my-integrations')}
+            onClick={() => window.electronAPI.openExternal("https://notion.so/my-integrations")}
           >
             Open Integrations
           </button>
@@ -144,10 +158,13 @@ export function NotionSettings() {
             type="password"
             className="settings-input"
             placeholder="ntn_..."
-            value={settings.apiKey || ''}
+            value={settings.apiKey || ""}
             onChange={(e) => updateSettings({ apiKey: e.target.value || undefined })}
           />
-          <p className="settings-hint">Create an integration and copy the key that starts with <code>ntn_</code> or <code>secret_</code>.</p>
+          <p className="settings-hint">
+            Create an integration and copy the key that starts with <code>ntn_</code> or{" "}
+            <code>secret_</code>.
+          </p>
         </div>
 
         <div className="settings-field">
@@ -156,7 +173,7 @@ export function NotionSettings() {
             type="text"
             className="settings-input"
             placeholder="2025-09-03"
-            value={settings.notionVersion || ''}
+            value={settings.notionVersion || ""}
             onChange={(e) => updateSettings({ notionVersion: e.target.value || undefined })}
           />
           <p className="settings-hint">Use the latest API version unless support requests a pin.</p>
@@ -175,18 +192,22 @@ export function NotionSettings() {
         </div>
 
         <div className="settings-actions">
-          <button className="btn-secondary btn-sm" onClick={handleTestConnection} disabled={testing}>
-            {testing ? 'Testing...' : 'Test Connection'}
+          <button
+            className="btn-secondary btn-sm"
+            onClick={handleTestConnection}
+            disabled={testing}
+          >
+            {testing ? "Testing..." : "Test Connection"}
           </button>
           <button className="btn-primary btn-sm" onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving...' : 'Save Settings'}
+            {saving ? "Saving..." : "Save Settings"}
           </button>
         </div>
 
         {testResult && (
-          <div className={`test-result ${testResult.success ? 'success' : 'error'}`}>
+          <div className={`test-result ${testResult.success ? "success" : "error"}`}>
             {testResult.success ? (
-              <span>Connected{testResult.name ? ` as ${testResult.name}` : ''}</span>
+              <span>Connected{testResult.name ? ` as ${testResult.name}` : ""}</span>
             ) : (
               <span>Connection failed: {testResult.error}</span>
             )}

@@ -5,30 +5,26 @@
  * Uses the system's ssh command to establish port forwarding.
  */
 
-import { spawn, ChildProcess } from 'child_process';
-import { EventEmitter } from 'events';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
-import * as net from 'net';
-import type {
-  SSHTunnelConfig,
-  SSHTunnelStatus,
-  SSHTunnelState,
-} from '../../shared/types';
+import { spawn, ChildProcess } from "child_process";
+import { EventEmitter } from "events";
+import * as fs from "fs";
+import * as path from "path";
+import * as os from "os";
+import * as net from "net";
+import type { SSHTunnelConfig, SSHTunnelStatus, SSHTunnelState } from "../../shared/types";
 
 /**
  * Default SSH tunnel configuration
  */
 export const DEFAULT_SSH_TUNNEL_CONFIG: SSHTunnelConfig = {
   enabled: false,
-  host: '',
+  host: "",
   sshPort: 22,
-  username: '',
+  username: "",
   keyPath: undefined,
   localPort: 18789,
   remotePort: 18789,
-  remoteBindAddress: '127.0.0.1',
+  remoteBindAddress: "127.0.0.1",
   autoReconnect: true,
   reconnectDelayMs: 5000,
   maxReconnectAttempts: 10,
@@ -54,7 +50,7 @@ export interface SSHTunnelEvents {
  */
 export class SSHTunnelManager extends EventEmitter {
   private config: SSHTunnelConfig;
-  private state: SSHTunnelState = 'disconnected';
+  private state: SSHTunnelState = "disconnected";
   private sshProcess: ChildProcess | null = null;
   private connectedAt: number | null = null;
   private reconnectAttempts = 0;
@@ -89,9 +85,8 @@ export class SSHTunnelManager extends EventEmitter {
       error: this.lastError ?? undefined,
       reconnectAttempts: this.reconnectAttempts > 0 ? this.reconnectAttempts : undefined,
       pid: this.sshProcess?.pid,
-      localEndpoint: this.state === 'connected'
-        ? `ws://127.0.0.1:${this.config.localPort}`
-        : undefined,
+      localEndpoint:
+        this.state === "connected" ? `ws://127.0.0.1:${this.config.localPort}` : undefined,
     };
   }
 
@@ -106,7 +101,7 @@ export class SSHTunnelManager extends EventEmitter {
    * Update configuration (disconnects if connected)
    */
   updateConfig(config: Partial<SSHTunnelConfig>): void {
-    const wasConnected = this.state === 'connected';
+    const wasConnected = this.state === "connected";
     if (wasConnected) {
       this.disconnect();
     }
@@ -126,15 +121,15 @@ export class SSHTunnelManager extends EventEmitter {
    * Connect the SSH tunnel
    */
   async connect(): Promise<void> {
-    if (this.state === 'connected' || this.state === 'connecting') {
-      console.log('[SSHTunnel] Already connected or connecting');
+    if (this.state === "connected" || this.state === "connecting") {
+      console.log("[SSHTunnel] Already connected or connecting");
       return;
     }
 
     if (!this.validateConfig()) {
-      const error = new Error('Invalid SSH tunnel configuration');
+      const error = new Error("Invalid SSH tunnel configuration");
       this.lastError = error.message;
-      this.setState('error');
+      this.setState("error");
       throw error;
     }
 
@@ -153,13 +148,13 @@ export class SSHTunnelManager extends EventEmitter {
 
     if (this.sshProcess) {
       console.log(`[SSHTunnel] Terminating SSH process (PID: ${this.sshProcess.pid})`);
-      this.sshProcess.kill('SIGTERM');
+      this.sshProcess.kill("SIGTERM");
 
       // Force kill after timeout
       setTimeout(() => {
         if (this.sshProcess && !this.sshProcess.killed) {
-          console.log('[SSHTunnel] Force killing SSH process');
-          this.sshProcess.kill('SIGKILL');
+          console.log("[SSHTunnel] Force killing SSH process");
+          this.sshProcess.kill("SIGKILL");
         }
       }, 5000);
 
@@ -168,9 +163,9 @@ export class SSHTunnelManager extends EventEmitter {
 
     this.connectedAt = null;
     this.lastError = null;
-    this.setState('disconnected');
-    this.emit('disconnected', 'User requested disconnect');
-    console.log('[SSHTunnel] Disconnected');
+    this.setState("disconnected");
+    this.emit("disconnected", "User requested disconnect");
+    console.log("[SSHTunnel] Disconnected");
   }
 
   /**
@@ -181,25 +176,25 @@ export class SSHTunnelManager extends EventEmitter {
 
     return new Promise((resolve) => {
       const args = this.buildSSHArgs(true); // Test mode
-      console.log('[SSHTunnel] Testing connection:', this.maskCommand(args));
+      console.log("[SSHTunnel] Testing connection:", this.maskCommand(args));
 
-      const testProcess = spawn('ssh', args, {
-        stdio: ['pipe', 'pipe', 'pipe'],
+      const testProcess = spawn("ssh", args, {
+        stdio: ["pipe", "pipe", "pipe"],
         env: { ...process.env, SSH_AUTH_SOCK: process.env.SSH_AUTH_SOCK },
       });
 
       const timeout = setTimeout(() => {
-        testProcess.kill('SIGTERM');
-        resolve({ success: false, error: 'Connection timeout' });
+        testProcess.kill("SIGTERM");
+        resolve({ success: false, error: "Connection timeout" });
       }, this.config.connectionTimeoutMs || 30000);
 
-      let stderrOutput = '';
+      let stderrOutput = "";
 
-      testProcess.stderr?.on('data', (data) => {
+      testProcess.stderr?.on("data", (data) => {
         stderrOutput += data.toString();
       });
 
-      testProcess.on('close', (code) => {
+      testProcess.on("close", (code) => {
         clearTimeout(timeout);
         const latencyMs = Date.now() - startTime;
 
@@ -213,7 +208,7 @@ export class SSHTunnelManager extends EventEmitter {
         }
       });
 
-      testProcess.on('error', (error) => {
+      testProcess.on("error", (error) => {
         clearTimeout(timeout);
         resolve({ success: false, error: error.message });
       });
@@ -224,12 +219,12 @@ export class SSHTunnelManager extends EventEmitter {
 
   private validateConfig(): boolean {
     if (!this.config.host || !this.config.host.trim()) {
-      this.lastError = 'SSH host is required';
+      this.lastError = "SSH host is required";
       return false;
     }
 
     if (!this.config.username || !this.config.username.trim()) {
-      this.lastError = 'SSH username is required';
+      this.lastError = "SSH username is required";
       return false;
     }
 
@@ -245,37 +240,37 @@ export class SSHTunnelManager extends EventEmitter {
   }
 
   private async doConnect(): Promise<void> {
-    this.setState('connecting');
+    this.setState("connecting");
 
     return new Promise((resolve, reject) => {
       try {
         const args = this.buildSSHArgs(false);
-        console.log('[SSHTunnel] Connecting:', this.maskCommand(args));
+        console.log("[SSHTunnel] Connecting:", this.maskCommand(args));
 
-        this.sshProcess = spawn('ssh', args, {
-          stdio: ['pipe', 'pipe', 'pipe'],
+        this.sshProcess = spawn("ssh", args, {
+          stdio: ["pipe", "pipe", "pipe"],
           env: { ...process.env, SSH_AUTH_SOCK: process.env.SSH_AUTH_SOCK },
           detached: false,
         });
 
-        let stderrBuffer = '';
+        let stderrBuffer = "";
         let connected = false;
 
         // Connection timeout
         const connectionTimeout = setTimeout(() => {
           if (!connected && this.sshProcess) {
-            this.sshProcess.kill('SIGTERM');
-            const error = new Error('SSH connection timeout');
+            this.sshProcess.kill("SIGTERM");
+            const error = new Error("SSH connection timeout");
             this.lastError = error.message;
-            this.setState('error');
+            this.setState("error");
             reject(error);
           }
         }, this.config.connectionTimeoutMs || 30000);
 
-        this.sshProcess.stderr?.on('data', (data) => {
+        this.sshProcess.stderr?.on("data", (data) => {
           const output = data.toString();
           stderrBuffer += output;
-          this.emit('output', output);
+          this.emit("output", output);
 
           // Check for successful connection indicators
           if (!connected && this.isConnectionEstablished(stderrBuffer)) {
@@ -288,19 +283,19 @@ export class SSHTunnelManager extends EventEmitter {
           // Check for authentication failures
           if (this.isAuthFailure(stderrBuffer)) {
             clearTimeout(connectionTimeout);
-            const error = new Error('SSH authentication failed');
+            const error = new Error("SSH authentication failed");
             this.lastError = error.message;
-            this.setState('error');
-            this.sshProcess?.kill('SIGTERM');
+            this.setState("error");
+            this.sshProcess?.kill("SIGTERM");
             reject(error);
           }
         });
 
-        this.sshProcess.stdout?.on('data', (data) => {
-          this.emit('output', data.toString());
+        this.sshProcess.stdout?.on("data", (data) => {
+          this.emit("output", data.toString());
         });
 
-        this.sshProcess.on('close', (code, signal) => {
+        this.sshProcess.on("close", (code, signal) => {
           clearTimeout(connectionTimeout);
 
           if (connected) {
@@ -308,20 +303,20 @@ export class SSHTunnelManager extends EventEmitter {
             this.handleDisconnect(code, signal);
           } else if (!this.isShuttingDown) {
             const error = new Error(
-              this.parseSSHError(stderrBuffer) || `SSH failed with code ${code}`
+              this.parseSSHError(stderrBuffer) || `SSH failed with code ${code}`,
             );
             this.lastError = error.message;
-            this.setState('error');
+            this.setState("error");
             reject(error);
           }
         });
 
-        this.sshProcess.on('error', (error) => {
+        this.sshProcess.on("error", (error) => {
           clearTimeout(connectionTimeout);
-          console.error('[SSHTunnel] Process error:', error);
+          console.error("[SSHTunnel] Process error:", error);
           this.lastError = error.message;
-          this.setState('error');
-          this.emit('error', error);
+          this.setState("error");
+          this.emit("error", error);
           reject(error);
         });
 
@@ -338,10 +333,9 @@ export class SSHTunnelManager extends EventEmitter {
           .catch(() => {
             // Port check failed, but SSH might still work via stderr
           });
-
       } catch (error: any) {
         this.lastError = error.message;
-        this.setState('error');
+        this.setState("error");
         reject(error);
       }
     });
@@ -351,41 +345,38 @@ export class SSHTunnelManager extends EventEmitter {
     const args: string[] = [];
 
     // SSH options
-    args.push('-o', 'BatchMode=yes'); // No interactive prompts
-    args.push('-o', 'StrictHostKeyChecking=accept-new'); // Accept new hosts
-    args.push('-o', 'ServerAliveInterval=30'); // Keepalive
-    args.push('-o', 'ServerAliveCountMax=3'); // Disconnect after 3 missed keepalives
-    args.push('-o', 'ExitOnForwardFailure=yes'); // Exit if tunnel fails
-    args.push('-o', 'ConnectTimeout=30'); // Connection timeout
+    args.push("-o", "BatchMode=yes"); // No interactive prompts
+    args.push("-o", "StrictHostKeyChecking=accept-new"); // Accept new hosts
+    args.push("-o", "ServerAliveInterval=30"); // Keepalive
+    args.push("-o", "ServerAliveCountMax=3"); // Disconnect after 3 missed keepalives
+    args.push("-o", "ExitOnForwardFailure=yes"); // Exit if tunnel fails
+    args.push("-o", "ConnectTimeout=30"); // Connection timeout
 
     // Verbose mode for debugging (shows when tunnel is ready)
-    args.push('-v');
+    args.push("-v");
 
     // SSH key if specified
     if (this.config.keyPath) {
-      args.push('-i', this.expandPath(this.config.keyPath));
+      args.push("-i", this.expandPath(this.config.keyPath));
     }
 
     // SSH port
     if (this.config.sshPort !== 22) {
-      args.push('-p', String(this.config.sshPort));
+      args.push("-p", String(this.config.sshPort));
     }
 
     if (testMode) {
       // Test mode: just verify connection and exit
-      args.push('-o', 'PasswordAuthentication=no');
+      args.push("-o", "PasswordAuthentication=no");
       args.push(`${this.config.username}@${this.config.host}`);
-      args.push('exit');
+      args.push("exit");
     } else {
       // Tunnel mode: don't execute remote command, just forward
-      args.push('-N');
+      args.push("-N");
 
       // Local port forwarding: -L localPort:remoteBindAddress:remotePort
-      const remoteBindAddress = this.config.remoteBindAddress || '127.0.0.1';
-      args.push(
-        '-L',
-        `${this.config.localPort}:${remoteBindAddress}:${this.config.remotePort}`
-      );
+      const remoteBindAddress = this.config.remoteBindAddress || "127.0.0.1";
+      args.push("-L", `${this.config.localPort}:${remoteBindAddress}:${this.config.remotePort}`);
 
       // User@host
       args.push(`${this.config.username}@${this.config.host}`);
@@ -396,11 +387,11 @@ export class SSHTunnelManager extends EventEmitter {
 
   private maskCommand(args: string[]): string {
     // Mask sensitive parts for logging
-    return `ssh ${args.join(' ')}`;
+    return `ssh ${args.join(" ")}`;
   }
 
   private expandPath(filePath: string): string {
-    if (filePath.startsWith('~')) {
+    if (filePath.startsWith("~")) {
       return path.join(os.homedir(), filePath.slice(1));
     }
     return filePath;
@@ -409,18 +400,18 @@ export class SSHTunnelManager extends EventEmitter {
   private isConnectionEstablished(output: string): boolean {
     // SSH verbose output indicators that connection is ready
     return (
-      output.includes('Entering interactive session') ||
-      output.includes('Local forwarding listening') ||
-      output.includes('Local connections to LOCALHOST:') ||
-      output.includes('channel 0: new')
+      output.includes("Entering interactive session") ||
+      output.includes("Local forwarding listening") ||
+      output.includes("Local connections to LOCALHOST:") ||
+      output.includes("channel 0: new")
     );
   }
 
   private isAuthFailure(output: string): boolean {
     return (
-      output.includes('Permission denied') ||
-      output.includes('Authentication failed') ||
-      output.includes('Too many authentication failures')
+      output.includes("Permission denied") ||
+      output.includes("Authentication failed") ||
+      output.includes("Too many authentication failures")
     );
   }
 
@@ -459,7 +450,7 @@ export class SSHTunnelManager extends EventEmitter {
       await this.delay(delayMs);
     }
 
-    throw new Error('Local port did not become available');
+    throw new Error("Local port did not become available");
   }
 
   private isPortOpen(port: number): Promise<boolean> {
@@ -467,22 +458,22 @@ export class SSHTunnelManager extends EventEmitter {
       const socket = new net.Socket();
       socket.setTimeout(1000);
 
-      socket.on('connect', () => {
+      socket.on("connect", () => {
         socket.destroy();
         resolve(true);
       });
 
-      socket.on('timeout', () => {
+      socket.on("timeout", () => {
         socket.destroy();
         resolve(false);
       });
 
-      socket.on('error', () => {
+      socket.on("error", () => {
         socket.destroy();
         resolve(false);
       });
 
-      socket.connect(port, '127.0.0.1');
+      socket.connect(port, "127.0.0.1");
     });
   }
 
@@ -494,12 +485,10 @@ export class SSHTunnelManager extends EventEmitter {
     this.connectedAt = Date.now();
     this.reconnectAttempts = 0;
     this.lastError = null;
-    this.setState('connected');
+    this.setState("connected");
     this.startHealthCheck();
-    this.emit('connected');
-    console.log(
-      `[SSHTunnel] Connected - Local endpoint: ws://127.0.0.1:${this.config.localPort}`
-    );
+    this.emit("connected");
+    console.log(`[SSHTunnel] Connected - Local endpoint: ws://127.0.0.1:${this.config.localPort}`);
   }
 
   private handleDisconnect(code: number | null, signal: NodeJS.Signals | null): void {
@@ -508,7 +497,7 @@ export class SSHTunnelManager extends EventEmitter {
     this.connectedAt = null;
 
     if (this.isShuttingDown) {
-      this.setState('disconnected');
+      this.setState("disconnected");
       return;
     }
 
@@ -521,13 +510,13 @@ export class SSHTunnelManager extends EventEmitter {
     ) {
       this.scheduleReconnect();
     } else {
-      this.setState('disconnected');
-      this.emit('disconnected', `SSH exited: code=${code}, signal=${signal}`);
+      this.setState("disconnected");
+      this.emit("disconnected", `SSH exited: code=${code}, signal=${signal}`);
     }
   }
 
   private scheduleReconnect(): void {
-    this.setState('reconnecting');
+    this.setState("reconnecting");
     this.reconnectAttempts++;
 
     // Exponential backoff
@@ -535,19 +524,19 @@ export class SSHTunnelManager extends EventEmitter {
     const delay = Math.min(baseDelay * Math.pow(1.5, this.reconnectAttempts - 1), 60000);
 
     console.log(
-      `[SSHTunnel] Reconnecting in ${Math.round(delay / 1000)}s (attempt ${this.reconnectAttempts})`
+      `[SSHTunnel] Reconnecting in ${Math.round(delay / 1000)}s (attempt ${this.reconnectAttempts})`,
     );
 
     this.reconnectTimer = setTimeout(() => {
       this.doConnect().catch((error) => {
-        console.error('[SSHTunnel] Reconnection failed:', error.message);
+        console.error("[SSHTunnel] Reconnection failed:", error.message);
         if (
           this.config.maxReconnectAttempts !== 0 &&
           this.reconnectAttempts >= (this.config.maxReconnectAttempts || 10)
         ) {
-          this.lastError = 'Max reconnection attempts reached';
-          this.setState('error');
-          this.emit('error', new Error(this.lastError));
+          this.lastError = "Max reconnection attempts reached";
+          this.setState("error");
+          this.emit("error", new Error(this.lastError));
         }
       });
     }, delay);
@@ -556,14 +545,14 @@ export class SSHTunnelManager extends EventEmitter {
   private startHealthCheck(): void {
     // Periodically verify the tunnel is still working
     this.healthCheckTimer = setInterval(async () => {
-      if (this.state !== 'connected') return;
+      if (this.state !== "connected") return;
 
       const isOpen = await this.isPortOpen(this.config.localPort);
       if (!isOpen) {
-        console.warn('[SSHTunnel] Health check failed - tunnel port not responding');
+        console.warn("[SSHTunnel] Health check failed - tunnel port not responding");
         // The SSH process should exit and trigger reconnect
         if (this.sshProcess) {
-          this.sshProcess.kill('SIGTERM');
+          this.sshProcess.kill("SIGTERM");
         }
       }
     }, 30000);
@@ -572,8 +561,8 @@ export class SSHTunnelManager extends EventEmitter {
   private setState(state: SSHTunnelState): void {
     if (this.state !== state) {
       this.state = state;
-      console.log(`[SSHTunnel] State: ${state}${this.lastError ? ` (${this.lastError})` : ''}`);
-      this.emit('stateChange', state, this.lastError ?? undefined);
+      console.log(`[SSHTunnel] State: ${state}${this.lastError ? ` (${this.lastError})` : ""}`);
+      this.emit("stateChange", state, this.lastError ?? undefined);
     }
   }
 

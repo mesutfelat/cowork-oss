@@ -1,8 +1,5 @@
-import { useState } from 'react';
-import {
-  TaskLabelData,
-  AgentRoleData,
-} from '../../electron/preload';
+import { useState } from "react";
+import { TaskLabelData, AgentRoleData } from "../../electron/preload";
 
 interface Task {
   id: string;
@@ -27,17 +24,17 @@ interface TaskBoardCardProps {
 }
 
 const PRIORITY_LABELS: Record<number, { label: string; color: string }> = {
-  0: { label: 'None', color: '#6b7280' },
-  1: { label: 'Low', color: '#22c55e' },
-  2: { label: 'Medium', color: '#f59e0b' },
-  3: { label: 'High', color: '#ef4444' },
-  4: { label: 'Urgent', color: '#dc2626' },
+  0: { label: "None", color: "#6b7280" },
+  1: { label: "Low", color: "#22c55e" },
+  2: { label: "Medium", color: "#f59e0b" },
+  3: { label: "High", color: "#ef4444" },
+  4: { label: "Urgent", color: "#dc2626" },
 };
 
 function formatTimeAgo(timestamp: number): string {
   const seconds = Math.floor((Date.now() - timestamp) / 1000);
 
-  if (seconds < 60) return 'just now';
+  if (seconds < 60) return "just now";
   if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
   if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
   if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
@@ -54,10 +51,10 @@ function formatDueDate(timestamp: number): { text: string; isOverdue: boolean } 
     return { text: `${Math.abs(diffDays)}d overdue`, isOverdue: true };
   }
   if (diffDays === 0) {
-    return { text: 'Due today', isOverdue: false };
+    return { text: "Due today", isOverdue: false };
   }
   if (diffDays === 1) {
-    return { text: 'Due tomorrow', isOverdue: false };
+    return { text: "Due tomorrow", isOverdue: false };
   }
   if (diffDays <= 7) {
     return { text: `Due in ${diffDays}d`, isOverdue: false };
@@ -76,19 +73,19 @@ export function TaskBoardCard({
 }: TaskBoardCardProps) {
   const [showActions, setShowActions] = useState(false);
 
-  const taskLabels = labels.filter(l => task.labels?.includes(l.id));
+  const taskLabels = labels.filter((l) => task.labels?.includes(l.id));
   const assignedAgent = task.assignedAgentRoleId ? agents[task.assignedAgentRoleId] : null;
   const priority = PRIORITY_LABELS[task.priority || 0];
   const dueInfo = task.dueDate ? formatDueDate(task.dueDate) : null;
 
   const handleDragStart = (e: React.DragEvent) => {
-    e.dataTransfer.setData('text/plain', task.id);
-    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData("text/plain", task.id);
+    e.dataTransfer.effectAllowed = "move";
   };
 
   return (
     <div
-      className={`task-board-card ${isDragging ? 'dragging' : ''}`}
+      className={`task-board-card ${isDragging ? "dragging" : ""}`}
       draggable
       onDragStart={handleDragStart}
       onClick={() => onSelect(task)}
@@ -97,12 +94,8 @@ export function TaskBoardCard({
     >
       <div className="card-header">
         <div className="card-labels">
-          {taskLabels.map(label => (
-            <span
-              key={label.id}
-              className="card-label"
-              style={{ backgroundColor: label.color }}
-            >
+          {taskLabels.map((label) => (
+            <span key={label.id} className="card-label" style={{ backgroundColor: label.color }}>
               {label.name}
             </span>
           ))}
@@ -118,24 +111,21 @@ export function TaskBoardCard({
         )}
       </div>
 
-      <div className="card-title" title={task.title}>{task.title}</div>
+      <div className="card-title" title={task.title}>
+        {task.title}
+      </div>
 
       <div className="card-meta">
         {assignedAgent && (
           <div className="card-agent" title={assignedAgent.displayName}>
-            <span
-              className="agent-avatar"
-              style={{ backgroundColor: assignedAgent.color }}
-            >
+            <span className="agent-avatar" style={{ backgroundColor: assignedAgent.color }}>
               {assignedAgent.icon}
             </span>
             <span className="agent-name">{assignedAgent.displayName}</span>
           </div>
         )}
         {dueInfo && (
-          <span className={`card-due ${dueInfo.isOverdue ? 'overdue' : ''}`}>
-            {dueInfo.text}
-          </span>
+          <span className={`card-due ${dueInfo.isOverdue ? "overdue" : ""}`}>{dueInfo.text}</span>
         )}
         {task.estimatedMinutes && (
           <span className="card-estimate">

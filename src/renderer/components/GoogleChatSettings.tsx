@@ -1,7 +1,13 @@
-import { useState, useEffect, useCallback } from 'react';
-import { ChannelData, ChannelUserData, SecurityMode, ContextType, ContextPolicy } from '../../shared/types';
-import { PairingCodeDisplay } from './PairingCodeDisplay';
-import { ContextPolicySettings } from './ContextPolicySettings';
+import { useState, useEffect, useCallback } from "react";
+import {
+  ChannelData,
+  ChannelUserData,
+  SecurityMode,
+  ContextType,
+  ContextPolicy,
+} from "../../shared/types";
+import { PairingCodeDisplay } from "./PairingCodeDisplay";
+import { ContextPolicySettings } from "./ContextPolicySettings";
 
 interface GoogleChatSettingsProps {
   onStatusChange?: (connected: boolean) => void;
@@ -13,15 +19,19 @@ export function GoogleChatSettings({ onStatusChange }: GoogleChatSettingsProps) 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<{ success: boolean; error?: string; botUsername?: string } | null>(null);
+  const [testResult, setTestResult] = useState<{
+    success: boolean;
+    error?: string;
+    botUsername?: string;
+  } | null>(null);
 
   // Form state
-  const [serviceAccountKeyPath, setServiceAccountKeyPath] = useState('');
-  const [projectId, setProjectId] = useState('');
-  const [webhookPort, setWebhookPort] = useState('3979');
-  const [webhookPath, setWebhookPath] = useState('/googlechat/webhook');
-  const [channelName, setChannelName] = useState('Google Chat Bot');
-  const [securityMode, setSecurityMode] = useState<SecurityMode>('pairing');
+  const [serviceAccountKeyPath, setServiceAccountKeyPath] = useState("");
+  const [projectId, setProjectId] = useState("");
+  const [webhookPort, setWebhookPort] = useState("3979");
+  const [webhookPath, setWebhookPath] = useState("/googlechat/webhook");
+  const [channelName, setChannelName] = useState("Google Chat Bot");
+  const [securityMode, setSecurityMode] = useState<SecurityMode>("pairing");
 
   // Pairing code state
   const [pairingCode, setPairingCode] = useState<string | null>(null);
@@ -29,20 +39,22 @@ export function GoogleChatSettings({ onStatusChange }: GoogleChatSettingsProps) 
   const [generatingCode, setGeneratingCode] = useState(false);
 
   // Context policy state
-  const [contextPolicies, setContextPolicies] = useState<Record<ContextType, ContextPolicy>>({} as Record<ContextType, ContextPolicy>);
+  const [contextPolicies, setContextPolicies] = useState<Record<ContextType, ContextPolicy>>(
+    {} as Record<ContextType, ContextPolicy>,
+  );
   const [savingPolicy, setSavingPolicy] = useState(false);
 
   const loadChannel = useCallback(async () => {
     try {
       setLoading(true);
       const channels = await window.electronAPI.getGatewayChannels();
-      const googleChatChannel = channels.find((c: ChannelData) => c.type === 'googlechat');
+      const googleChatChannel = channels.find((c: ChannelData) => c.type === "googlechat");
 
       if (googleChatChannel) {
         setChannel(googleChatChannel);
         setChannelName(googleChatChannel.name);
         setSecurityMode(googleChatChannel.securityMode);
-        onStatusChange?.(googleChatChannel.status === 'connected');
+        onStatusChange?.(googleChatChannel.status === "connected");
 
         // Load users for this channel
         const channelUsers = await window.electronAPI.getGatewayUsers(googleChatChannel.id);
@@ -50,14 +62,17 @@ export function GoogleChatSettings({ onStatusChange }: GoogleChatSettingsProps) 
 
         // Load context policies
         const policies = await window.electronAPI.listContextPolicies(googleChatChannel.id);
-        const policyMap: Record<ContextType, ContextPolicy> = {} as Record<ContextType, ContextPolicy>;
+        const policyMap: Record<ContextType, ContextPolicy> = {} as Record<
+          ContextType,
+          ContextPolicy
+        >;
         for (const policy of policies) {
           policyMap[policy.contextType as ContextType] = policy;
         }
         setContextPolicies(policyMap);
       }
     } catch (error) {
-      console.error('Failed to load Google Chat channel:', error);
+      console.error("Failed to load Google Chat channel:", error);
     } finally {
       setLoading(false);
     }
@@ -69,7 +84,7 @@ export function GoogleChatSettings({ onStatusChange }: GoogleChatSettingsProps) 
 
   useEffect(() => {
     const unsubscribe = window.electronAPI?.onGatewayUsersUpdated?.((data) => {
-      if (data?.channelType !== 'googlechat') return;
+      if (data?.channelType !== "googlechat") return;
       if (channel && data?.channelId && data.channelId !== channel.id) return;
       loadChannel();
     });
@@ -86,17 +101,17 @@ export function GoogleChatSettings({ onStatusChange }: GoogleChatSettingsProps) 
       setTestResult(null);
 
       await window.electronAPI.addGatewayChannel({
-        type: 'googlechat',
+        type: "googlechat",
         name: channelName,
         serviceAccountKeyPath: serviceAccountKeyPath.trim(),
         projectId: projectId.trim() || undefined,
         webhookPort: parseInt(webhookPort) || 3979,
-        webhookPath: webhookPath.trim() || '/googlechat/webhook',
+        webhookPath: webhookPath.trim() || "/googlechat/webhook",
         securityMode,
       });
 
-      setServiceAccountKeyPath('');
-      setProjectId('');
+      setServiceAccountKeyPath("");
+      setProjectId("");
       await loadChannel();
     } catch (error: any) {
       setTestResult({ success: false, error: error.message });
@@ -142,7 +157,7 @@ export function GoogleChatSettings({ onStatusChange }: GoogleChatSettingsProps) 
   const handleRemoveChannel = async () => {
     if (!channel) return;
 
-    if (!confirm('Are you sure you want to remove the Google Chat channel?')) {
+    if (!confirm("Are you sure you want to remove the Google Chat channel?")) {
       return;
     }
 
@@ -170,7 +185,7 @@ export function GoogleChatSettings({ onStatusChange }: GoogleChatSettingsProps) 
       setSecurityMode(mode);
       setChannel({ ...channel, securityMode: mode });
     } catch (error: any) {
-      console.error('Failed to update security mode:', error);
+      console.error("Failed to update security mode:", error);
     }
   };
 
@@ -179,12 +194,12 @@ export function GoogleChatSettings({ onStatusChange }: GoogleChatSettingsProps) 
 
     try {
       setGeneratingCode(true);
-      const code = await window.electronAPI.generateGatewayPairing(channel.id, '');
+      const code = await window.electronAPI.generateGatewayPairing(channel.id, "");
       setPairingCode(code);
       // Default TTL is 5 minutes (300 seconds)
       setPairingExpiresAt(Date.now() + 5 * 60 * 1000);
     } catch (error: any) {
-      console.error('Failed to generate pairing code:', error);
+      console.error("Failed to generate pairing code:", error);
     } finally {
       setGeneratingCode(false);
     }
@@ -199,12 +214,12 @@ export function GoogleChatSettings({ onStatusChange }: GoogleChatSettingsProps) 
         securityMode: updates.securityMode,
         toolRestrictions: updates.toolRestrictions,
       });
-      setContextPolicies(prev => ({
+      setContextPolicies((prev) => ({
         ...prev,
         [contextType]: updated,
       }));
     } catch (error: any) {
-      console.error('Failed to update context policy:', error);
+      console.error("Failed to update context policy:", error);
     } finally {
       setSavingPolicy(false);
     }
@@ -217,7 +232,7 @@ export function GoogleChatSettings({ onStatusChange }: GoogleChatSettingsProps) 
       await window.electronAPI.revokeGatewayAccess(channel.id, userId);
       await loadChannel();
     } catch (error: any) {
-      console.error('Failed to revoke access:', error);
+      console.error("Failed to revoke access:", error);
     }
   };
 
@@ -232,7 +247,8 @@ export function GoogleChatSettings({ onStatusChange }: GoogleChatSettingsProps) 
         <div className="settings-section">
           <h3>Connect Google Chat Bot</h3>
           <p className="settings-description">
-            Create a Google Cloud project with Chat API enabled and a service account, then configure the webhook.
+            Create a Google Cloud project with Chat API enabled and a service account, then
+            configure the webhook.
           </p>
 
           <div className="settings-field">
@@ -297,9 +313,7 @@ export function GoogleChatSettings({ onStatusChange }: GoogleChatSettingsProps) 
               value={webhookPath}
               onChange={(e) => setWebhookPath(e.target.value)}
             />
-            <p className="settings-hint">
-              URL path for the webhook endpoint
-            </p>
+            <p className="settings-hint">URL path for the webhook endpoint</p>
           </div>
 
           <div className="settings-field">
@@ -314,14 +328,16 @@ export function GoogleChatSettings({ onStatusChange }: GoogleChatSettingsProps) 
               <option value="open">Open (Anyone can use)</option>
             </select>
             <p className="settings-hint">
-              {securityMode === 'pairing' && 'Users must enter a code generated in this app to use the bot'}
-              {securityMode === 'allowlist' && 'Only pre-approved Google user IDs can use the bot'}
-              {securityMode === 'open' && 'Anyone who messages the bot can use it (not recommended)'}
+              {securityMode === "pairing" &&
+                "Users must enter a code generated in this app to use the bot"}
+              {securityMode === "allowlist" && "Only pre-approved Google user IDs can use the bot"}
+              {securityMode === "open" &&
+                "Anyone who messages the bot can use it (not recommended)"}
             </p>
           </div>
 
           {testResult && (
-            <div className={`test-result ${testResult.success ? 'success' : 'error'}`}>
+            <div className={`test-result ${testResult.success ? "success" : "error"}`}>
               {testResult.success ? (
                 <>✓ Connected as {testResult.botUsername}</>
               ) : (
@@ -335,54 +351,94 @@ export function GoogleChatSettings({ onStatusChange }: GoogleChatSettingsProps) 
             onClick={handleAddChannel}
             disabled={saving || !serviceAccountKeyPath.trim()}
           >
-            {saving ? 'Adding...' : 'Add Google Chat Bot'}
+            {saving ? "Adding..." : "Add Google Chat Bot"}
           </button>
         </div>
 
         <div className="settings-section">
           <h4>Setup Instructions</h4>
           <ol className="setup-instructions">
-            <li>Go to <a href="https://console.cloud.google.com/apis/library/chat.googleapis.com" target="_blank" rel="noopener noreferrer">Google Cloud Console</a> and enable the Google Chat API</li>
-            <li>Create a service account:
+            <li>
+              Go to{" "}
+              <a
+                href="https://console.cloud.google.com/apis/library/chat.googleapis.com"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Google Cloud Console
+              </a>{" "}
+              and enable the Google Chat API
+            </li>
+            <li>
+              Create a service account:
               <ul>
-                <li>Go to <strong>IAM & Admin &gt; Service Accounts</strong></li>
-                <li>Click <strong>Create Service Account</strong></li>
+                <li>
+                  Go to <strong>IAM & Admin &gt; Service Accounts</strong>
+                </li>
+                <li>
+                  Click <strong>Create Service Account</strong>
+                </li>
                 <li>Create a JSON key and download it</li>
               </ul>
             </li>
-            <li>Configure the Chat App:
+            <li>
+              Configure the Chat App:
               <ul>
-                <li>Go to <a href="https://console.cloud.google.com/apis/api/chat.googleapis.com/hangouts-chat" target="_blank" rel="noopener noreferrer">Chat API Configuration</a></li>
-                <li>Set <strong>App Status</strong> to "Live"</li>
-                <li>Under <strong>Connection settings</strong>, select "HTTP endpoint URL"</li>
+                <li>
+                  Go to{" "}
+                  <a
+                    href="https://console.cloud.google.com/apis/api/chat.googleapis.com/hangouts-chat"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Chat API Configuration
+                  </a>
+                </li>
+                <li>
+                  Set <strong>App Status</strong> to "Live"
+                </li>
+                <li>
+                  Under <strong>Connection settings</strong>, select "HTTP endpoint URL"
+                </li>
                 <li>Enter your public webhook URL (use ngrok for testing)</li>
               </ul>
             </li>
-            <li>Set up ngrok or a tunnel to expose your local webhook:
+            <li>
+              Set up ngrok or a tunnel to expose your local webhook:
               <ul>
-                <li><code>ngrok http 3979</code></li>
+                <li>
+                  <code>ngrok http 3979</code>
+                </li>
                 <li>Use the HTTPS URL as your webhook endpoint</li>
               </ul>
             </li>
-            <li>In Google Admin Console, approve the app for your organization (if using Workspace)</li>
+            <li>
+              In Google Admin Console, approve the app for your organization (if using Workspace)
+            </li>
           </ol>
         </div>
 
         <div className="settings-section">
           <h4>Required APIs & Permissions</h4>
-          <p className="settings-description">
-            Enable these APIs in Google Cloud Console:
-          </p>
+          <p className="settings-description">Enable these APIs in Google Cloud Console:</p>
           <ul className="permissions-list">
-            <li><code>Google Chat API</code> - Core messaging functionality</li>
-            <li><code>Cloud Pub/Sub API</code> - Optional, for Pub/Sub mode</li>
+            <li>
+              <code>Google Chat API</code> - Core messaging functionality
+            </li>
+            <li>
+              <code>Cloud Pub/Sub API</code> - Optional, for Pub/Sub mode
+            </li>
           </ul>
-          <p className="settings-description" style={{ marginTop: '12px' }}>
+          <p className="settings-description" style={{ marginTop: "12px" }}>
             The service account needs these roles:
           </p>
           <ul className="permissions-list">
-            <li><code>Chat Bots Viewer</code> - Read chat spaces</li>
-            <li><code>Chat Bots Admin</code> - Send messages</li>
+            <li>
+              <code>Chat Bots Viewer</code> - Read chat spaces
+            </li>
+            <li>
+              <code>Chat Bots Admin</code> - Send messages
+            </li>
           </ul>
         </div>
       </div>
@@ -400,44 +456,36 @@ export function GoogleChatSettings({ onStatusChange }: GoogleChatSettingsProps) 
               {channel.botUsername && <span className="bot-username">@{channel.botUsername}</span>}
             </h3>
             <div className={`channel-status ${channel.status}`}>
-              {channel.status === 'connected' && '● Connected'}
-              {channel.status === 'connecting' && '○ Connecting...'}
-              {channel.status === 'disconnected' && '○ Disconnected'}
-              {channel.status === 'error' && '● Error'}
+              {channel.status === "connected" && "● Connected"}
+              {channel.status === "connecting" && "○ Connecting..."}
+              {channel.status === "disconnected" && "○ Disconnected"}
+              {channel.status === "error" && "● Error"}
             </div>
           </div>
           <div className="channel-actions">
             <button
-              className={channel.enabled ? 'button-secondary' : 'button-primary'}
+              className={channel.enabled ? "button-secondary" : "button-primary"}
               onClick={handleToggleEnabled}
               disabled={saving}
             >
-              {channel.enabled ? 'Disable' : 'Enable'}
+              {channel.enabled ? "Disable" : "Enable"}
             </button>
             <button
               className="button-secondary"
               onClick={handleTestConnection}
               disabled={testing || !channel.enabled}
             >
-              {testing ? 'Testing...' : 'Test'}
+              {testing ? "Testing..." : "Test"}
             </button>
-            <button
-              className="button-danger"
-              onClick={handleRemoveChannel}
-              disabled={saving}
-            >
+            <button className="button-danger" onClick={handleRemoveChannel} disabled={saving}>
               Remove
             </button>
           </div>
         </div>
 
         {testResult && (
-          <div className={`test-result ${testResult.success ? 'success' : 'error'}`}>
-            {testResult.success ? (
-              <>✓ Connection successful</>
-            ) : (
-              <>✗ {testResult.error}</>
-            )}
+          <div className={`test-result ${testResult.success ? "success" : "error"}`}>
+            {testResult.success ? <>✓ Connection successful</> : <>✗ {testResult.error}</>}
           </div>
         )}
       </div>
@@ -455,7 +503,7 @@ export function GoogleChatSettings({ onStatusChange }: GoogleChatSettingsProps) 
         </select>
       </div>
 
-      {securityMode === 'pairing' && (
+      {securityMode === "pairing" && (
         <div className="settings-section">
           <h4>Generate Pairing Code</h4>
           <p className="settings-description">
@@ -474,7 +522,7 @@ export function GoogleChatSettings({ onStatusChange }: GoogleChatSettingsProps) 
               onClick={handleGeneratePairingCode}
               disabled={generatingCode}
             >
-              {generatingCode ? 'Generating...' : 'Generate Code'}
+              {generatingCode ? "Generating..." : "Generate Code"}
             </button>
           )}
         </div>
@@ -506,8 +554,8 @@ export function GoogleChatSettings({ onStatusChange }: GoogleChatSettingsProps) 
                 <div className="user-info">
                   <span className="user-name">{user.displayName}</span>
                   {user.username && <span className="user-username">@{user.username}</span>}
-                  <span className={`user-status ${user.allowed ? 'allowed' : 'pending'}`}>
-                    {user.allowed ? '✓ Allowed' : '○ Pending'}
+                  <span className={`user-status ${user.allowed ? "allowed" : "pending"}`}>
+                    {user.allowed ? "✓ Allowed" : "○ Pending"}
                   </span>
                 </div>
                 {user.allowed && (
@@ -530,14 +578,30 @@ export function GoogleChatSettings({ onStatusChange }: GoogleChatSettingsProps) 
           <p className="settings-description">
             Add the bot to a Google Chat space or send a direct message to start a task.
           </p>
-          <div className="command-item"><code>/start</code> - Start the bot and get help</div>
-          <div className="command-item"><code>/help</code> - Show available commands</div>
-          <div className="command-item"><code>/workspaces</code> - List available workspaces</div>
-          <div className="command-item"><code>/workspace</code> - Select or show current workspace</div>
-          <div className="command-item"><code>/newtask</code> - Start a fresh task/conversation</div>
-          <div className="command-item"><code>/status</code> - Check bot status</div>
-          <div className="command-item"><code>/cancel</code> - Cancel current task</div>
-          <div className="command-item"><code>/pair</code> - Pair with a pairing code</div>
+          <div className="command-item">
+            <code>/start</code> - Start the bot and get help
+          </div>
+          <div className="command-item">
+            <code>/help</code> - Show available commands
+          </div>
+          <div className="command-item">
+            <code>/workspaces</code> - List available workspaces
+          </div>
+          <div className="command-item">
+            <code>/workspace</code> - Select or show current workspace
+          </div>
+          <div className="command-item">
+            <code>/newtask</code> - Start a fresh task/conversation
+          </div>
+          <div className="command-item">
+            <code>/status</code> - Check bot status
+          </div>
+          <div className="command-item">
+            <code>/cancel</code> - Cancel current task
+          </div>
+          <div className="command-item">
+            <code>/pair</code> - Pair with a pairing code
+          </div>
         </div>
       </div>
     </div>

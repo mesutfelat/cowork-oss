@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { MentionEvent } from '../../electron/preload';
+import { useState, useEffect } from "react";
+import { MentionEvent } from "../../electron/preload";
 
 interface MentionBadgeProps {
   agentRoleId?: string;
@@ -7,17 +7,13 @@ interface MentionBadgeProps {
   onClick?: () => void;
 }
 
-export function MentionBadge({
-  agentRoleId,
-  workspaceId,
-  onClick,
-}: MentionBadgeProps) {
+export function MentionBadge({ agentRoleId, workspaceId, onClick }: MentionBadgeProps) {
   const [count, setCount] = useState(0);
 
   useEffect(() => {
     const loadCount = async () => {
       try {
-        const query: any = { status: 'pending' };
+        const query: any = { status: "pending" };
         if (agentRoleId) {
           query.toAgentRoleId = agentRoleId;
         }
@@ -27,7 +23,7 @@ export function MentionBadge({
         const mentions = await window.electronAPI.listMentions(query);
         setCount(mentions.length);
       } catch (err) {
-        console.error('Failed to load mention count:', err);
+        console.error("Failed to load mention count:", err);
       }
     };
 
@@ -35,18 +31,26 @@ export function MentionBadge({
 
     // Subscribe to real-time mention events
     const unsubscribe = window.electronAPI.onMentionEvent((event: MentionEvent) => {
-      if (event.type === 'created') {
+      if (event.type === "created") {
         // Check if this mention is for our agent
-        if (event.mention &&
-            (!agentRoleId || event.mention.toAgentRoleId === agentRoleId) &&
-            (!workspaceId || event.mention.workspaceId === workspaceId)) {
+        if (
+          event.mention &&
+          (!agentRoleId || event.mention.toAgentRoleId === agentRoleId) &&
+          (!workspaceId || event.mention.workspaceId === workspaceId)
+        ) {
           setCount((prev) => prev + 1);
         }
-      } else if (event.type === 'acknowledged' || event.type === 'completed' || event.type === 'dismissed') {
+      } else if (
+        event.type === "acknowledged" ||
+        event.type === "completed" ||
+        event.type === "dismissed"
+      ) {
         // Decrement if this mention was pending
-        if (event.mention &&
-            (!agentRoleId || event.mention.toAgentRoleId === agentRoleId) &&
-            (!workspaceId || event.mention.workspaceId === workspaceId)) {
+        if (
+          event.mention &&
+          (!agentRoleId || event.mention.toAgentRoleId === agentRoleId) &&
+          (!workspaceId || event.mention.workspaceId === workspaceId)
+        ) {
           setCount((prev) => Math.max(0, prev - 1));
         }
       }
@@ -61,7 +65,7 @@ export function MentionBadge({
 
   return (
     <span className="mention-badge" onClick={onClick}>
-      {count > 99 ? '99+' : count}
+      {count > 99 ? "99+" : count}
       <style>{`
         .mention-badge {
           display: inline-flex;

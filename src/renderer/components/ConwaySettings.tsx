@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from "react";
 import type {
   ConwaySetupStatus,
   ConwaySettings as ConwaySettingsType,
   ConwayCreditHistoryEntry,
-} from '../../shared/types';
+} from "../../shared/types";
 
-type SetupStep = 'idle' | 'installing' | 'initializing' | 'connecting' | 'done' | 'error';
+type SetupStep = "idle" | "installing" | "initializing" | "connecting" | "done" | "error";
 
 const ipcAPI = window.electronAPI;
 
@@ -14,7 +14,7 @@ export function ConwaySettings() {
   const [settings, setSettings] = useState<ConwaySettingsType | null>(null);
   const [creditHistory, setCreditHistory] = useState<ConwayCreditHistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [setupStep, setSetupStep] = useState<SetupStep>('idle');
+  const [setupStep, setSetupStep] = useState<SetupStep>("idle");
   const [setupError, setSetupError] = useState<string | null>(null);
   const [copiedAddress, setCopiedAddress] = useState(false);
 
@@ -27,12 +27,12 @@ export function ConwaySettings() {
       setStatus(statusRes);
       setSettings(settingsRes);
 
-      if (statusRes?.state === 'ready' && statusRes?.mcpConnectionStatus === 'connected') {
+      if (statusRes?.state === "ready" && statusRes?.mcpConnectionStatus === "connected") {
         const history = await ipcAPI.conwayGetCreditHistory();
         setCreditHistory(history || []);
       }
     } catch (error) {
-      console.error('Failed to load Conway data:', error);
+      console.error("Failed to load Conway data:", error);
     } finally {
       setLoading(false);
     }
@@ -42,7 +42,7 @@ export function ConwaySettings() {
     loadData();
     const unsubscribe = ipcAPI.onConwayStatusChange?.((newStatus: ConwaySetupStatus) => {
       // Only accept push updates when not mid-setup (setup manages its own state)
-      if (newStatus?.state === 'ready') {
+      if (newStatus?.state === "ready") {
         setStatus(newStatus);
       }
     });
@@ -50,20 +50,20 @@ export function ConwaySettings() {
   }, [loadData]);
 
   const handleSetup = async () => {
-    setSetupStep('installing');
+    setSetupStep("installing");
     setSetupError(null);
     try {
       const result = await ipcAPI.conwaySetup();
-      if (result?.state === 'error') {
-        setSetupStep('error');
-        setSetupError(result.error || 'Setup failed');
+      if (result?.state === "error") {
+        setSetupStep("error");
+        setSetupError(result.error || "Setup failed");
       } else {
-        setSetupStep('done');
+        setSetupStep("done");
         // Reload full data so status, wallet, and history are all fresh
         await loadData();
       }
     } catch (error: any) {
-      setSetupStep('error');
+      setSetupStep("error");
       setSetupError(error.message || String(error));
     }
   };
@@ -73,7 +73,7 @@ export function ConwaySettings() {
       await ipcAPI.conwayConnect();
       await loadData();
     } catch (error: any) {
-      console.error('Connect failed:', error);
+      console.error("Connect failed:", error);
     }
   };
 
@@ -82,41 +82,48 @@ export function ConwaySettings() {
       await ipcAPI.conwayDisconnect();
       await loadData();
     } catch (error: any) {
-      console.error('Disconnect failed:', error);
+      console.error("Disconnect failed:", error);
     }
   };
 
   const handleReset = async () => {
-    if (!confirm(
-      'This will disconnect the Conway MCP server and clear app settings.\n\n' +
-      'Your wallet private key at ~/.conway/wallet.json will NOT be deleted. ' +
-      'Keep that file safe — it controls access to any funds in your wallet.\n\n' +
-      'Continue?'
-    )) return;
+    if (
+      !confirm(
+        "This will disconnect the Conway MCP server and clear app settings.\n\n" +
+          "Your wallet private key remains safely encrypted in CoWork OS's database " +
+          "and the file at ~/.conway/wallet.json will not be deleted.\n\n" +
+          "You can re-enable Conway Terminal at any time and your wallet will be restored.\n\n" +
+          "Continue?",
+      )
+    )
+      return;
     try {
       await ipcAPI.conwayReset();
-      setSetupStep('idle');
+      setSetupStep("idle");
       setCreditHistory([]);
       await loadData();
     } catch (error: any) {
-      console.error('Reset failed:', error);
+      console.error("Reset failed:", error);
     }
   };
 
-  const handleSettingChange = async <K extends keyof ConwaySettingsType>(key: K, value: ConwaySettingsType[K]) => {
+  const handleSettingChange = async <K extends keyof ConwaySettingsType>(
+    key: K,
+    value: ConwaySettingsType[K],
+  ) => {
     if (!settings) return;
     const updated: ConwaySettingsType = { ...settings, [key]: value };
     setSettings(updated);
     try {
       await ipcAPI.conwaySaveSettings(updated);
     } catch (error) {
-      console.error('Failed to save Conway settings:', error);
+      console.error("Failed to save Conway settings:", error);
     }
   };
 
   const handleToolCategoryChange = async (
-    category: keyof ConwaySettingsType['enabledToolCategories'],
-    enabled: boolean
+    category: keyof ConwaySettingsType["enabledToolCategories"],
+    enabled: boolean,
   ) => {
     if (!settings) return;
     const updated: ConwaySettingsType = {
@@ -130,7 +137,7 @@ export function ConwaySettings() {
     try {
       await ipcAPI.conwaySaveSettings(updated);
     } catch (error) {
-      console.error('Failed to save Conway settings:', error);
+      console.error("Failed to save Conway settings:", error);
     }
   };
 
@@ -149,10 +156,14 @@ export function ConwaySettings() {
 
   const getStatusDot = (connStatus?: string) => {
     switch (connStatus) {
-      case 'connected': return 'conway-status-dot connected';
-      case 'connecting': return 'conway-status-dot connecting';
-      case 'error': return 'conway-status-dot error';
-      default: return 'conway-status-dot disconnected';
+      case "connected":
+        return "conway-status-dot connected";
+      case "connecting":
+        return "conway-status-dot connecting";
+      case "error":
+        return "conway-status-dot error";
+      default:
+        return "conway-status-dot disconnected";
     }
   };
 
@@ -164,60 +175,80 @@ export function ConwaySettings() {
     );
   }
 
-  const isReady = status?.state === 'ready';
-  const isConnected = status?.mcpConnectionStatus === 'connected';
+  const isReady = status?.state === "ready";
+  const isConnected = status?.mcpConnectionStatus === "connected";
 
   return (
     <div className="conway-settings-panel">
       <div className="conway-header">
         <h2>Conway Terminal</h2>
         <p className="settings-description">
-          Permissionless cloud compute, domains, and payments for AI agents.
-          No API keys, no logins — agents get crypto wallets automatically.
+          Permissionless cloud compute, domains, and payments for AI agents. No API keys, no logins
+          — agents get crypto wallets automatically.
         </p>
       </div>
 
       {/* Setup Section */}
-      {!isReady && setupStep !== 'done' && (
+      {!isReady && setupStep !== "done" && (
         <div className="conway-setup-section">
           <div className="conway-setup-info">
             <h3>Get Started</h3>
             <p>Conway Terminal gives your agents access to:</p>
             <ul className="conway-feature-list">
-              <li><strong>Cloud Sandboxes</strong> — Spin up Linux VMs, run code, expose services</li>
-              <li><strong>Domain Registration</strong> — Search, register, and manage domains with DNS</li>
-              <li><strong>AI Inference</strong> — Route to Claude, GPT, Gemini, Kimi, Qwen</li>
-              <li><strong>Crypto Wallet</strong> — Autonomous payments via USDC (x402 protocol)</li>
+              <li>
+                <strong>Cloud Sandboxes</strong> — Spin up Linux VMs, run code, expose services
+              </li>
+              <li>
+                <strong>Domain Registration</strong> — Search, register, and manage domains with DNS
+              </li>
+              <li>
+                <strong>AI Inference</strong> — Route to Claude, GPT, Gemini, Kimi, Qwen
+              </li>
+              <li>
+                <strong>Crypto Wallet</strong> — Autonomous payments via USDC (x402 protocol)
+              </li>
             </ul>
           </div>
 
-          {setupStep === 'idle' && (
+          {setupStep === "idle" && (
             <button className="button-primary" onClick={handleSetup}>
               Enable Conway Terminal
             </button>
           )}
 
-          {(setupStep === 'installing' || setupStep === 'initializing' || setupStep === 'connecting') && (
+          {(setupStep === "installing" ||
+            setupStep === "initializing" ||
+            setupStep === "connecting") && (
             <div className="conway-setup-progress">
-              <div className={`conway-setup-step ${setupStep === 'installing' ? 'active' : 'completed'}`}>
-                <span className="step-indicator">{setupStep === 'installing' ? '...' : '✓'}</span>
+              <div
+                className={`conway-setup-step ${setupStep === "installing" ? "active" : "completed"}`}
+              >
+                <span className="step-indicator">{setupStep === "installing" ? "..." : "✓"}</span>
                 Installing conway-terminal
               </div>
-              <div className={`conway-setup-step ${setupStep === 'initializing' ? 'active' : setupStep === 'connecting' ? 'completed' : 'pending'}`}>
-                <span className="step-indicator">{setupStep === 'initializing' ? '...' : setupStep === 'connecting' ? '✓' : '○'}</span>
+              <div
+                className={`conway-setup-step ${setupStep === "initializing" ? "active" : setupStep === "connecting" ? "completed" : "pending"}`}
+              >
+                <span className="step-indicator">
+                  {setupStep === "initializing" ? "..." : setupStep === "connecting" ? "✓" : "○"}
+                </span>
                 Generating wallet
               </div>
-              <div className={`conway-setup-step ${setupStep === 'connecting' ? 'active' : 'pending'}`}>
-                <span className="step-indicator">{setupStep === 'connecting' ? '...' : '○'}</span>
+              <div
+                className={`conway-setup-step ${setupStep === "connecting" ? "active" : "pending"}`}
+              >
+                <span className="step-indicator">{setupStep === "connecting" ? "..." : "○"}</span>
                 Connecting MCP server
               </div>
             </div>
           )}
 
-          {setupStep === 'error' && (
+          {setupStep === "error" && (
             <div className="conway-error">
               <p>{setupError}</p>
-              <button className="button-secondary" onClick={handleSetup}>Retry</button>
+              <button className="button-secondary" onClick={handleSetup}>
+                Retry
+              </button>
             </div>
           )}
         </div>
@@ -230,16 +261,20 @@ export function ConwaySettings() {
             <div className="conway-status-row">
               <span className={getStatusDot(status?.mcpConnectionStatus)} />
               <span className="conway-status-label">
-                {isConnected ? 'Connected' : status?.mcpConnectionStatus || 'Disconnected'}
+                {isConnected ? "Connected" : status?.mcpConnectionStatus || "Disconnected"}
               </span>
               {isConnected && status?.toolCount ? (
                 <span className="conway-tool-count">{status.toolCount} tools</span>
               ) : null}
               <div className="conway-status-actions">
                 {isConnected ? (
-                  <button className="button-secondary button-small" onClick={handleDisconnect}>Disconnect</button>
+                  <button className="button-secondary button-small" onClick={handleDisconnect}>
+                    Disconnect
+                  </button>
                 ) : (
-                  <button className="button-primary button-small" onClick={handleConnect}>Connect</button>
+                  <button className="button-primary button-small" onClick={handleConnect}>
+                    Connect
+                  </button>
                 )}
               </div>
             </div>
@@ -251,7 +286,9 @@ export function ConwaySettings() {
             {status?.walletInfo ? (
               <div className="conway-wallet-info">
                 <div className="conway-wallet-address-row">
-                  <code className="conway-wallet-address">{truncateAddress(String(status.walletInfo.address || ''))}</code>
+                  <code className="conway-wallet-address">
+                    {truncateAddress(String(status.walletInfo.address || ""))}
+                  </code>
                   <button
                     type="button"
                     className="conway-copy-btn"
@@ -259,13 +296,15 @@ export function ConwaySettings() {
                     title="Copy address"
                     aria-label="Copy wallet address to clipboard"
                   >
-                    {copiedAddress ? 'Copied' : 'Copy'}
+                    {copiedAddress ? "Copied" : "Copy"}
                   </button>
-                  <span className="conway-network-badge">{String(status.walletInfo.network || '')}</span>
+                  <span className="conway-network-badge">
+                    {String(status.walletInfo.network || "")}
+                  </span>
                 </div>
                 <div className="conway-balance-row">
                   <span className="conway-balance-display">
-                    {String(status.balance?.balance || '0.00')}
+                    {String(status.balance?.balance || "0.00")}
                   </span>
                   <span className="conway-balance-currency">USDC</span>
                 </div>
@@ -274,22 +313,37 @@ export function ConwaySettings() {
                 </p>
                 {status?.walletFileExists === false && (
                   <div className="conway-wallet-warning">
-                    Wallet file (~/.conway/wallet.json) not found on disk. Your private key may be missing.
-                    If you previously had funds at this address, check your backups.
+                    <p>
+                      Wallet file (<code>~/.conway/wallet.json</code>) not found on disk.
+                      Your private key is safely stored in CoWork OS's encrypted database and can be restored.
+                    </p>
+                    <button
+                      type="button"
+                      className="button-primary button-small"
+                      onClick={async () => {
+                        const result = await ipcAPI.conwayWalletRestore();
+                        if (result?.success) {
+                          await loadData();
+                        }
+                      }}
+                    >
+                      Restore Wallet File
+                    </button>
                   </div>
                 )}
                 <div className="conway-wallet-safety">
-                  <strong>Keep your wallet safe</strong>
+                  <strong>Wallet Security</strong>
                   <p>
-                    Your private key is stored locally at <code>~/.conway/wallet.json</code>.
-                    Back up this file — if it is deleted, access to any funds in this wallet will be permanently lost.
+                    Your private key is encrypted and stored in CoWork OS's secure database
+                    (backed by your OS keychain). The plaintext file at <code>~/.conway/wallet.json</code> is
+                    written for Conway's MCP server and can be restored automatically if deleted.
                     CoWork OS never transmits your private key.
                   </p>
                 </div>
               </div>
             ) : (
               <p className="conway-wallet-hint">
-                {isConnected ? 'Loading wallet info...' : 'Connect to view wallet details.'}
+                {isConnected ? "Loading wallet info..." : "Connect to view wallet details."}
               </p>
             )}
           </div>
@@ -300,15 +354,27 @@ export function ConwaySettings() {
             <div className="conway-info-grid">
               <div className="conway-info-item">
                 <strong>No API keys needed</strong>
-                <p>Conway Terminal is permissionless. A crypto wallet is generated locally on your machine during setup — no accounts, logins, or API keys required.</p>
+                <p>
+                  Conway Terminal is permissionless. A crypto wallet is generated locally on your
+                  machine during setup — no accounts, logins, or API keys required. Your private key
+                  is encrypted and stored securely using your OS keychain.
+                </p>
               </div>
               <div className="conway-info-item">
                 <strong>Pay-per-use with USDC</strong>
-                <p>Services are paid with USDC stablecoin on the Base network via the x402 protocol. Fund your wallet by sending USDC (Base) to the address above. You can get USDC from Coinbase, MetaMask, or bridge from Ethereum at bridge.base.org.</p>
+                <p>
+                  Services are paid with USDC stablecoin on the Base network via the x402 protocol.
+                  Fund your wallet by sending USDC (Base) to the address above. You can get USDC
+                  from Coinbase, MetaMask, or bridge from Ethereum at bridge.base.org.
+                </p>
               </div>
               <div className="conway-info-item">
                 <strong>Agents spend autonomously</strong>
-                <p>Once funded, agents can autonomously use Conway tools — spin up sandboxes, register domains, call AI models — and pay directly from the wallet. You control which tool categories are enabled below.</p>
+                <p>
+                  Once funded, agents can autonomously use Conway tools — spin up sandboxes,
+                  register domains, call AI models — and pay directly from the wallet. You control
+                  which tool categories are enabled below.
+                </p>
               </div>
             </div>
           </div>
@@ -332,14 +398,15 @@ export function ConwaySettings() {
                       <tr key={entry.id}>
                         <td>
                           <span className={`conway-tx-type ${entry.type}`}>
-                            {entry.type === 'credit' ? '+' : '-'}
+                            {entry.type === "credit" ? "+" : "-"}
                           </span>
                         </td>
                         <td className={`conway-tx-amount ${entry.type}`}>
-                          {entry.type === 'credit' ? '+' : '-'}{String(entry.amount)} USDC
+                          {entry.type === "credit" ? "+" : "-"}
+                          {String(entry.amount)} USDC
                         </td>
-                        <td>{String(entry.service || '')}</td>
-                        <td className="conway-tx-desc">{String(entry.description || '')}</td>
+                        <td>{String(entry.service || "")}</td>
+                        <td className="conway-tx-desc">{String(entry.description || "")}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -356,7 +423,7 @@ export function ConwaySettings() {
                 <input
                   type="checkbox"
                   checked={settings?.autoConnect ?? true}
-                  onChange={(e) => handleSettingChange('autoConnect', e.target.checked)}
+                  onChange={(e) => handleSettingChange("autoConnect", e.target.checked)}
                 />
                 Auto-connect on app startup
               </label>
@@ -366,21 +433,39 @@ export function ConwaySettings() {
                 <input
                   type="checkbox"
                   checked={settings?.showWalletInSidebar ?? true}
-                  onChange={(e) => handleSettingChange('showWalletInSidebar', e.target.checked)}
+                  onChange={(e) => handleSettingChange("showWalletInSidebar", e.target.checked)}
                 />
                 Show wallet balance in sidebar
               </label>
             </div>
 
             <h4>Tool Categories</h4>
-            <p className="settings-description">Control which Conway capabilities your agents can use.</p>
+            <p className="settings-description">
+              Control which Conway capabilities your agents can use.
+            </p>
             <div className="conway-tool-categories">
-              {([
-                { key: 'sandbox' as const, label: 'Cloud Sandboxes', desc: 'Spin up Linux VMs, run code, expose ports, deploy services' },
-                { key: 'inference' as const, label: 'AI Inference', desc: 'Route to Claude, GPT, Gemini, Kimi, Qwen and other models' },
-                { key: 'domains' as const, label: 'Domain Management', desc: 'Search, register, and manage domains with DNS records' },
-                { key: 'payments' as const, label: 'Payments & Wallet', desc: 'USDC transfers, x402 machine-to-machine payments' },
-              ]).map((cat) => (
+              {[
+                {
+                  key: "sandbox" as const,
+                  label: "Cloud Sandboxes",
+                  desc: "Spin up Linux VMs, run code, expose ports, deploy services",
+                },
+                {
+                  key: "inference" as const,
+                  label: "AI Inference",
+                  desc: "Route to Claude, GPT, Gemini, Kimi, Qwen and other models",
+                },
+                {
+                  key: "domains" as const,
+                  label: "Domain Management",
+                  desc: "Search, register, and manage domains with DNS records",
+                },
+                {
+                  key: "payments" as const,
+                  label: "Payments & Wallet",
+                  desc: "USDC transfers, x402 machine-to-machine payments",
+                },
+              ].map((cat) => (
                 <div key={cat.key} className="conway-setting-row conway-category-row">
                   <label>
                     <input
@@ -403,7 +488,7 @@ export function ConwaySettings() {
             <h3>Reset</h3>
             <p className="settings-description">
               Disconnects the Conway MCP server and clears app settings.
-              Your wallet private key at <code>~/.conway/wallet.json</code> will not be deleted.
+              Your wallet private key stays encrypted in CoWork OS's secure database and can be restored.
             </p>
             <button className="button-danger" onClick={handleReset}>
               Reset Conway Terminal

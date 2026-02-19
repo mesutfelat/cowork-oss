@@ -1,7 +1,7 @@
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import PptxGenJS from 'pptxgenjs';
-import { Workspace } from '../../../shared/types';
+import * as fs from "fs/promises";
+import * as path from "path";
+import PptxGenJS from "pptxgenjs";
+import { Workspace } from "../../../shared/types";
 
 export interface SlideContent {
   title: string;
@@ -11,7 +11,7 @@ export interface SlideContent {
   /** Optional image path (relative to workspace) */
   imagePath?: string;
   /** Layout type */
-  layout?: 'title' | 'titleContent' | 'twoColumn' | 'imageOnly' | 'blank';
+  layout?: "title" | "titleContent" | "twoColumn" | "imageOnly" | "blank";
   /** Optional speaker notes */
   notes?: string;
 }
@@ -26,7 +26,7 @@ export interface PresentationOptions {
   /** Theme color (hex without #) */
   themeColor?: string;
   /** Slide size: standard (4:3), widescreen (16:9), or custom */
-  slideSize?: 'standard' | 'widescreen';
+  slideSize?: "standard" | "widescreen";
 }
 
 /**
@@ -38,12 +38,12 @@ export class PresentationBuilder {
   async create(
     outputPath: string,
     slides: SlideContent[],
-    options: PresentationOptions = {}
+    options: PresentationOptions = {},
   ): Promise<void> {
     const ext = path.extname(outputPath).toLowerCase();
 
     // If markdown is explicitly requested, create markdown slides
-    if (ext === '.md') {
+    if (ext === ".md") {
       await this.createMarkdownSlides(outputPath, slides);
       return;
     }
@@ -52,22 +52,22 @@ export class PresentationBuilder {
     const pptx = new PptxGenJS();
 
     // Set presentation metadata
-    pptx.author = options.author || 'CoWork OS';
-    pptx.title = options.title || 'Presentation';
-    pptx.subject = options.subject || '';
-    pptx.company = 'CoWork OS';
+    pptx.author = options.author || "CoWork OS";
+    pptx.title = options.title || "Presentation";
+    pptx.subject = options.subject || "";
+    pptx.company = "CoWork OS";
 
     // Set slide size
-    if (options.slideSize === 'standard') {
-      pptx.defineLayout({ name: 'STANDARD', width: 10, height: 7.5 });
-      pptx.layout = 'STANDARD';
+    if (options.slideSize === "standard") {
+      pptx.defineLayout({ name: "STANDARD", width: 10, height: 7.5 });
+      pptx.layout = "STANDARD";
     } else {
       // Default to widescreen 16:9
-      pptx.defineLayout({ name: 'WIDESCREEN', width: 13.33, height: 7.5 });
-      pptx.layout = 'WIDESCREEN';
+      pptx.defineLayout({ name: "WIDESCREEN", width: 13.33, height: 7.5 });
+      pptx.layout = "WIDESCREEN";
     }
 
-    const themeColor = options.themeColor || '2B579A'; // Default blue
+    const themeColor = options.themeColor || "2B579A"; // Default blue
 
     for (let i = 0; i < slides.length; i++) {
       const slideData = slides[i];
@@ -78,35 +78,35 @@ export class PresentationBuilder {
         slide.addNotes(slideData.notes);
       }
 
-      const layout = slideData.layout || (i === 0 ? 'title' : 'titleContent');
+      const layout = slideData.layout || (i === 0 ? "title" : "titleContent");
 
       switch (layout) {
-        case 'title':
+        case "title":
           this.createTitleSlide(slide, slideData, themeColor);
           break;
 
-        case 'titleContent':
+        case "titleContent":
           this.createTitleContentSlide(slide, slideData, themeColor);
           break;
 
-        case 'twoColumn':
+        case "twoColumn":
           this.createTwoColumnSlide(slide, slideData, themeColor);
           break;
 
-        case 'imageOnly':
+        case "imageOnly":
           await this.createImageSlide(slide, slideData, themeColor);
           break;
 
-        case 'blank':
+        case "blank":
           // Just add title if provided
           if (slideData.title) {
             slide.addText(slideData.title, {
               x: 0.5,
               y: 0.5,
-              w: '90%',
+              w: "90%",
               fontSize: 28,
               bold: true,
-              color: themeColor
+              color: themeColor,
             });
           }
           break;
@@ -120,31 +120,27 @@ export class PresentationBuilder {
     await pptx.writeFile({ fileName: outputPath });
   }
 
-  private createTitleSlide(
-    slide: PptxGenJS.Slide,
-    data: SlideContent,
-    themeColor: string
-  ): void {
+  private createTitleSlide(slide: PptxGenJS.Slide, data: SlideContent, themeColor: string): void {
     // Background accent
-    slide.addShape('rect', {
+    slide.addShape("rect", {
       x: 0,
       y: 3,
-      w: '100%',
+      w: "100%",
       h: 1.5,
-      fill: { color: themeColor }
+      fill: { color: themeColor },
     });
 
     // Main title
     slide.addText(data.title, {
       x: 0.5,
       y: 2.5,
-      w: '90%',
+      w: "90%",
       h: 1.5,
       fontSize: 44,
       bold: true,
-      color: '363636',
-      align: 'center',
-      valign: 'middle'
+      color: "363636",
+      align: "center",
+      valign: "middle",
     });
 
     // Subtitle
@@ -152,24 +148,24 @@ export class PresentationBuilder {
       slide.addText(data.subtitle, {
         x: 0.5,
         y: 4.5,
-        w: '90%',
+        w: "90%",
         h: 1,
         fontSize: 24,
-        color: '666666',
-        align: 'center',
-        valign: 'middle'
+        color: "666666",
+        align: "center",
+        valign: "middle",
       });
     }
 
     // Content bullets on title slide (if provided)
     if (data.content && data.content.length > 0) {
-      slide.addText(data.content.join('\n'), {
+      slide.addText(data.content.join("\n"), {
         x: 0.5,
         y: 5.5,
-        w: '90%',
+        w: "90%",
         fontSize: 18,
-        color: '888888',
-        align: 'center'
+        color: "888888",
+        align: "center",
       });
     }
   }
@@ -177,47 +173,47 @@ export class PresentationBuilder {
   private createTitleContentSlide(
     slide: PptxGenJS.Slide,
     data: SlideContent,
-    themeColor: string
+    themeColor: string,
   ): void {
     // Title bar
-    slide.addShape('rect', {
+    slide.addShape("rect", {
       x: 0,
       y: 0,
-      w: '100%',
+      w: "100%",
       h: 1.2,
-      fill: { color: themeColor }
+      fill: { color: themeColor },
     });
 
     // Title text
     slide.addText(data.title, {
       x: 0.5,
       y: 0.2,
-      w: '90%',
+      w: "90%",
       h: 0.8,
       fontSize: 32,
       bold: true,
-      color: 'FFFFFF'
+      color: "FFFFFF",
     });
 
     // Content bullets
     if (data.content && data.content.length > 0) {
-      const bulletItems = data.content.map(item => ({
+      const bulletItems = data.content.map((item) => ({
         text: item,
         options: {
-          bullet: { type: 'bullet' as const },
+          bullet: { type: "bullet" as const },
           fontSize: 20,
-          color: '363636',
+          color: "363636",
           paraSpaceBefore: 8,
-          paraSpaceAfter: 8
-        }
+          paraSpaceAfter: 8,
+        },
       }));
 
       slide.addText(bulletItems, {
         x: 0.5,
         y: 1.5,
-        w: '90%',
+        w: "90%",
         h: 5.5,
-        valign: 'top'
+        valign: "top",
       });
     }
 
@@ -226,10 +222,10 @@ export class PresentationBuilder {
       slide.addText(data.subtitle, {
         x: 0.5,
         y: 6.8,
-        w: '90%',
+        w: "90%",
         fontSize: 14,
-        color: '888888',
-        italic: true
+        color: "888888",
+        italic: true,
       });
     }
   }
@@ -237,26 +233,26 @@ export class PresentationBuilder {
   private createTwoColumnSlide(
     slide: PptxGenJS.Slide,
     data: SlideContent,
-    themeColor: string
+    themeColor: string,
   ): void {
     // Title bar
-    slide.addShape('rect', {
+    slide.addShape("rect", {
       x: 0,
       y: 0,
-      w: '100%',
+      w: "100%",
       h: 1.2,
-      fill: { color: themeColor }
+      fill: { color: themeColor },
     });
 
     // Title text
     slide.addText(data.title, {
       x: 0.5,
       y: 0.2,
-      w: '90%',
+      w: "90%",
       h: 0.8,
       fontSize: 32,
       bold: true,
-      color: 'FFFFFF'
+      color: "FFFFFF",
     });
 
     if (data.content && data.content.length > 0) {
@@ -266,15 +262,15 @@ export class PresentationBuilder {
       const rightContent = data.content.slice(midpoint);
 
       // Left column
-      const leftItems = leftContent.map(item => ({
+      const leftItems = leftContent.map((item) => ({
         text: item,
         options: {
-          bullet: { type: 'bullet' as const },
+          bullet: { type: "bullet" as const },
           fontSize: 18,
-          color: '363636',
+          color: "363636",
           paraSpaceBefore: 6,
-          paraSpaceAfter: 6
-        }
+          paraSpaceAfter: 6,
+        },
       }));
 
       slide.addText(leftItems, {
@@ -282,20 +278,20 @@ export class PresentationBuilder {
         y: 1.5,
         w: 5.8,
         h: 5.5,
-        valign: 'top'
+        valign: "top",
       });
 
       // Right column
       if (rightContent.length > 0) {
-        const rightItems = rightContent.map(item => ({
+        const rightItems = rightContent.map((item) => ({
           text: item,
           options: {
-            bullet: { type: 'bullet' as const },
+            bullet: { type: "bullet" as const },
             fontSize: 18,
-            color: '363636',
+            color: "363636",
             paraSpaceBefore: 6,
-            paraSpaceAfter: 6
-          }
+            paraSpaceAfter: 6,
+          },
         }));
 
         slide.addText(rightItems, {
@@ -303,7 +299,7 @@ export class PresentationBuilder {
           y: 1.5,
           w: 5.8,
           h: 5.5,
-          valign: 'top'
+          valign: "top",
         });
       }
     }
@@ -312,26 +308,26 @@ export class PresentationBuilder {
   private async createImageSlide(
     slide: PptxGenJS.Slide,
     data: SlideContent,
-    themeColor: string
+    themeColor: string,
   ): Promise<void> {
     // Title bar
-    slide.addShape('rect', {
+    slide.addShape("rect", {
       x: 0,
       y: 0,
-      w: '100%',
+      w: "100%",
       h: 1.2,
-      fill: { color: themeColor }
+      fill: { color: themeColor },
     });
 
     // Title text
     slide.addText(data.title, {
       x: 0.5,
       y: 0.2,
-      w: '90%',
+      w: "90%",
       h: 0.8,
       fontSize: 32,
       bold: true,
-      color: 'FFFFFF'
+      color: "FFFFFF",
     });
 
     // Add image if path provided
@@ -342,9 +338,9 @@ export class PresentationBuilder {
 
       try {
         const imageBuffer = await fs.readFile(fullPath);
-        const base64 = imageBuffer.toString('base64');
+        const base64 = imageBuffer.toString("base64");
         const ext = path.extname(data.imagePath).toLowerCase().slice(1);
-        const mimeType = ext === 'jpg' ? 'jpeg' : ext;
+        const mimeType = ext === "jpg" ? "jpeg" : ext;
 
         slide.addImage({
           data: `data:image/${mimeType};base64,${base64}`,
@@ -352,7 +348,7 @@ export class PresentationBuilder {
           y: 1.5,
           w: 11,
           h: 5.5,
-          sizing: { type: 'contain', w: 11, h: 5.5 }
+          sizing: { type: "contain", w: 11, h: 5.5 },
         });
       } catch (error) {
         // If image can't be loaded, add placeholder text
@@ -362,8 +358,8 @@ export class PresentationBuilder {
           w: 11,
           h: 1,
           fontSize: 16,
-          color: '888888',
-          align: 'center'
+          color: "888888",
+          align: "center",
         });
       }
     }
@@ -373,11 +369,11 @@ export class PresentationBuilder {
       slide.addText(data.content[0], {
         x: 0.5,
         y: 6.8,
-        w: '90%',
+        w: "90%",
         fontSize: 14,
-        color: '666666',
-        align: 'center',
-        italic: true
+        color: "666666",
+        align: "center",
+        italic: true,
       });
     }
   }
@@ -385,34 +381,27 @@ export class PresentationBuilder {
   /**
    * Creates Markdown slides (fallback)
    */
-  private async createMarkdownSlides(
-    outputPath: string,
-    slides: SlideContent[]
-  ): Promise<void> {
+  private async createMarkdownSlides(outputPath: string, slides: SlideContent[]): Promise<void> {
     const markdown = slides
       .map((slide, index) => {
-        const lines: string[] = [
-          '---',
-          `# Slide ${index + 1}: ${slide.title}`,
-          ''
-        ];
+        const lines: string[] = ["---", `# Slide ${index + 1}: ${slide.title}`, ""];
 
         if (slide.subtitle) {
-          lines.push(`*${slide.subtitle}*`, '');
+          lines.push(`*${slide.subtitle}*`, "");
         }
 
         if (slide.content && slide.content.length > 0) {
-          lines.push(...slide.content.map(item => `- ${item}`), '');
+          lines.push(...slide.content.map((item) => `- ${item}`), "");
         }
 
         if (slide.notes) {
-          lines.push('', '> Notes: ' + slide.notes, '');
+          lines.push("", "> Notes: " + slide.notes, "");
         }
 
-        return lines.join('\n');
+        return lines.join("\n");
       })
-      .join('\n');
+      .join("\n");
 
-    await fs.writeFile(outputPath, markdown, 'utf-8');
+    await fs.writeFile(outputPath, markdown, "utf-8");
   }
 }

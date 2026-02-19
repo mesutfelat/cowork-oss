@@ -7,10 +7,10 @@
  * interface over stdio for sending and receiving iMessages.
  */
 
-import { type ChildProcessWithoutNullStreams, spawn } from 'node:child_process';
-import { createInterface, type Interface } from 'node:readline';
-import * as path from 'path';
-import * as os from 'os';
+import { type ChildProcessWithoutNullStreams, spawn } from "node:child_process";
+import { createInterface, type Interface } from "node:readline";
+import * as path from "path";
+import * as os from "os";
 
 /**
  * JSON-RPC error structure
@@ -105,7 +105,7 @@ export interface ImessageSendOptions {
   /** Message text */
   text: string;
   /** Service preference */
-  service?: 'imessage' | 'sms' | 'auto';
+  service?: "imessage" | "sms" | "auto";
   /** File path for attachment */
   file?: string;
   /** Request timeout in ms */
@@ -124,7 +124,7 @@ export interface ImessageSendResult {
  * Resolve user home path (expand ~)
  */
 function resolveUserPath(inputPath: string): string {
-  if (inputPath.startsWith('~')) {
+  if (inputPath.startsWith("~")) {
     return path.join(os.homedir(), inputPath.slice(1));
   }
   return inputPath;
@@ -148,7 +148,7 @@ export class ImessageRpcClient {
   private nextId = 1;
 
   constructor(opts: ImessageRpcClientOptions = {}) {
-    this.cliPath = opts.cliPath?.trim() || 'imsg';
+    this.cliPath = opts.cliPath?.trim() || "imsg";
     this.dbPath = opts.dbPath?.trim() ? resolveUserPath(opts.dbPath) : undefined;
     this.onNotification = opts.onNotification;
     this.onError = opts.onError;
@@ -163,24 +163,24 @@ export class ImessageRpcClient {
   async start(): Promise<void> {
     if (this.child) return;
 
-    const args = ['rpc'];
+    const args = ["rpc"];
     if (this.dbPath) {
-      args.push('--db', this.dbPath);
+      args.push("--db", this.dbPath);
     }
 
     const child = spawn(this.cliPath, args, {
-      stdio: ['pipe', 'pipe', 'pipe'],
+      stdio: ["pipe", "pipe", "pipe"],
     });
     this.child = child;
     this.reader = createInterface({ input: child.stdout });
 
-    this.reader.on('line', (line) => {
+    this.reader.on("line", (line) => {
       const trimmed = line.trim();
       if (!trimmed) return;
       this.handleLine(trimmed);
     });
 
-    child.stderr?.on('data', (chunk) => {
+    child.stderr?.on("data", (chunk) => {
       const lines = chunk.toString().split(/\r?\n/);
       for (const line of lines) {
         if (!line.trim()) continue;
@@ -188,17 +188,17 @@ export class ImessageRpcClient {
       }
     });
 
-    child.on('error', (err) => {
+    child.on("error", (err) => {
       this.failAll(err instanceof Error ? err : new Error(String(err)));
       this.closedResolve?.();
     });
 
-    child.on('close', (code, signal) => {
+    child.on("close", (code, signal) => {
       if (code !== 0 && code !== null) {
         const reason = signal ? `signal ${signal}` : `code ${code}`;
         this.failAll(new Error(`imsg rpc exited (${reason})`));
       } else {
-        this.failAll(new Error('imsg rpc closed'));
+        this.failAll(new Error("imsg rpc closed"));
       }
       this.closedResolve?.();
     });
@@ -220,7 +220,7 @@ export class ImessageRpcClient {
       this.closed,
       new Promise<void>((resolve) => {
         setTimeout(() => {
-          if (!child.killed) child.kill('SIGTERM');
+          if (!child.killed) child.kill("SIGTERM");
           resolve();
         }, 500);
       }),
@@ -247,15 +247,15 @@ export class ImessageRpcClient {
   async request<T = unknown>(
     method: string,
     params?: Record<string, unknown>,
-    opts?: { timeoutMs?: number }
+    opts?: { timeoutMs?: number },
   ): Promise<T> {
     if (!this.child || !this.child.stdin) {
-      throw new Error('imsg rpc not running');
+      throw new Error("imsg rpc not running");
     }
 
     const id = this.nextId++;
     const payload = {
-      jsonrpc: '2.0',
+      jsonrpc: "2.0",
       id,
       method,
       params: params ?? {},
@@ -288,7 +288,7 @@ export class ImessageRpcClient {
    */
   private handleLine(line: string): void {
     // Check for known non-JSON error patterns from imsg
-    if (line.startsWith('permissionDenied')) {
+    if (line.startsWith("permissionDenied")) {
       const errorMsg = this.parseImsgError(line);
       this.onError?.(`imsg: ${errorMsg}`);
       this.failAll(new Error(errorMsg));
@@ -296,7 +296,7 @@ export class ImessageRpcClient {
     }
 
     // Skip lines that don't look like JSON
-    if (!line.startsWith('{') && !line.startsWith('[')) {
+    if (!line.startsWith("{") && !line.startsWith("[")) {
       // Log non-JSON output but don't treat as error
       if (line.trim()) {
         this.onError?.(`imsg output: ${line}`);
@@ -322,17 +322,17 @@ export class ImessageRpcClient {
       this.pending.delete(key);
 
       if (parsed.error) {
-        const baseMessage = parsed.error.message ?? 'imsg rpc error';
+        const baseMessage = parsed.error.message ?? "imsg rpc error";
         const details = parsed.error.data;
         const code = parsed.error.code;
         const suffixes: string[] = [];
-        if (typeof code === 'number') suffixes.push(`code=${code}`);
+        if (typeof code === "number") suffixes.push(`code=${code}`);
         if (details !== undefined) {
           const detailText =
-            typeof details === 'string' ? details : JSON.stringify(details, null, 2);
+            typeof details === "string" ? details : JSON.stringify(details, null, 2);
           if (detailText) suffixes.push(detailText);
         }
-        const msg = suffixes.length > 0 ? `${baseMessage}: ${suffixes.join(' ')}` : baseMessage;
+        const msg = suffixes.length > 0 ? `${baseMessage}: ${suffixes.join(" ")}` : baseMessage;
         pending.reject(new Error(msg));
         return;
       }
@@ -354,11 +354,11 @@ export class ImessageRpcClient {
    */
   private parseImsgError(line: string): string {
     // Parse patterns like: permissionDenied(path: "...", underlying: ...)
-    if (line.startsWith('permissionDenied')) {
+    if (line.startsWith("permissionDenied")) {
       const pathMatch = line.match(/path:\s*"([^"]+)"/);
-      const path = pathMatch ? pathMatch[1] : 'unknown';
+      const path = pathMatch ? pathMatch[1] : "unknown";
 
-      if (line.includes('authorization denied')) {
+      if (line.includes("authorization denied")) {
         return `imsg needs Full Disk Access to read the Messages database. Open System Settings > Privacy & Security > Full Disk Access and enable access for your Terminal application.`;
       }
       return `Permission denied: ${path}`;
@@ -382,7 +382,7 @@ export class ImessageRpcClient {
  * Create and start an iMessage RPC client
  */
 export async function createImessageRpcClient(
-  opts: ImessageRpcClientOptions = {}
+  opts: ImessageRpcClientOptions = {},
 ): Promise<ImessageRpcClient> {
   const client = new ImessageRpcClient(opts);
   await client.start();
@@ -394,28 +394,28 @@ export async function createImessageRpcClient(
  */
 export async function probeImsg(
   timeoutMs: number = 2000,
-  opts: { cliPath?: string; dbPath?: string } = {}
+  opts: { cliPath?: string; dbPath?: string } = {},
 ): Promise<{ ok: boolean; error?: string; fatal?: boolean }> {
-  const cliPath = opts.cliPath?.trim() || 'imsg';
+  const cliPath = opts.cliPath?.trim() || "imsg";
 
   return new Promise((resolve) => {
     const timeout = setTimeout(() => {
-      resolve({ ok: false, error: 'timeout' });
+      resolve({ ok: false, error: "timeout" });
     }, timeoutMs);
 
-    const child = spawn(cliPath, ['--version'], {
-      stdio: ['pipe', 'pipe', 'pipe'],
+    const child = spawn(cliPath, ["--version"], {
+      stdio: ["pipe", "pipe", "pipe"],
     });
 
-    let output = '';
+    let output = "";
 
-    child.stdout?.on('data', (chunk) => {
+    child.stdout?.on("data", (chunk) => {
       output += chunk.toString();
     });
 
-    child.on('error', (err) => {
+    child.on("error", (err) => {
       clearTimeout(timeout);
-      if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+      if ((err as NodeJS.ErrnoException).code === "ENOENT") {
         resolve({
           ok: false,
           error: `imsg CLI not found at "${cliPath}". Install with: brew install steipete/tap/imsg`,
@@ -426,7 +426,7 @@ export async function probeImsg(
       }
     });
 
-    child.on('close', (code) => {
+    child.on("close", (code) => {
       clearTimeout(timeout);
       if (code === 0) {
         resolve({ ok: true });
@@ -445,14 +445,14 @@ export function normalizeImessageHandle(handle: string): string {
   if (!trimmed) return trimmed;
 
   // If it's an email, lowercase it
-  if (trimmed.includes('@')) {
+  if (trimmed.includes("@")) {
     return trimmed.toLowerCase();
   }
 
   // If it's a phone number, normalize to E.164 format
   // Remove any non-digit characters except leading +
-  const hasPlus = trimmed.startsWith('+');
-  const digits = trimmed.replace(/\D/g, '');
+  const hasPlus = trimmed.startsWith("+");
+  const digits = trimmed.replace(/\D/g, "");
 
   if (!digits) return trimmed;
 

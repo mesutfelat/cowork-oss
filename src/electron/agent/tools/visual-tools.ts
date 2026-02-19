@@ -9,13 +9,13 @@
  * can regenerate and update the annotator for the next iteration.
  */
 
-import * as fs from 'fs/promises';
-import { existsSync } from 'fs';
-import * as path from 'path';
-import { Workspace } from '../../../shared/types';
-import { CanvasManager } from '../../canvas/canvas-manager';
-import { AgentDaemon } from '../daemon';
-import { LLMTool } from '../llm/types';
+import * as fs from "fs/promises";
+import { existsSync } from "fs";
+import * as path from "path";
+import { Workspace } from "../../../shared/types";
+import { CanvasManager } from "../../canvas/canvas-manager";
+import { AgentDaemon } from "../daemon";
+import { LLMTool } from "../llm/types";
 
 type VisualAnnotatorTarget = {
   kind?: string; // e.g. "blog_cover", "infographic", "social_story"
@@ -26,7 +26,7 @@ type VisualAnnotatorTarget = {
 
 export type VisualAnnotationPayloadV1 = {
   version: 1;
-  kind: 'visual_annotation';
+  kind: "visual_annotation";
   image: {
     filename: string;
     originalPath?: string;
@@ -40,7 +40,7 @@ export type VisualAnnotationPayloadV1 = {
   };
   annotations: Array<{
     id: string;
-    type: 'rect' | 'pen';
+    type: "rect" | "pen";
     note?: string;
     color: string;
     strokeWidth: number;
@@ -71,14 +71,14 @@ function resolveWorkspacePath(workspaceRoot: string, inputPath: string): string 
   const abs = path.resolve(path.isAbsolute(inputPath) ? inputPath : path.join(root, inputPath));
   // Ensure the file is within the workspace root
   if (abs !== root && !abs.startsWith(root + path.sep)) {
-    throw new Error('imagePath must be within the workspace');
+    throw new Error("imagePath must be within the workspace");
   }
   return abs;
 }
 
 function safeJsonForHtml(value: unknown): string {
   // Prevent breaking out of <script> by escaping "<" (covers "</script" and HTML tags).
-  return JSON.stringify(value).replace(/</g, '\\u003c');
+  return JSON.stringify(value).replace(/</g, "\\u003c");
 }
 
 export function renderVisualAnnotatorHtml(bootstrap: AnnotatorBootstrap): string {
@@ -89,7 +89,7 @@ export function renderVisualAnnotatorHtml(bootstrap: AnnotatorBootstrap): string
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>${'Visual Annotator'}</title>
+  <title>${"Visual Annotator"}</title>
   <style>
     :root{
       --bg0:#0b1020;
@@ -839,7 +839,7 @@ export class VisualTools {
   constructor(
     private workspace: Workspace,
     private daemon: AgentDaemon,
-    private taskId: string
+    private taskId: string,
   ) {
     this.canvasManager = CanvasManager.getInstance();
   }
@@ -848,7 +848,10 @@ export class VisualTools {
     this.workspace = workspace;
   }
 
-  private async getOrCreateSession(input: { sessionId?: string; title?: string }): Promise<{ sessionId: string; sessionDir: string }> {
+  private async getOrCreateSession(input: {
+    sessionId?: string;
+    title?: string;
+  }): Promise<{ sessionId: string; sessionDir: string }> {
     if (input.sessionId) {
       const session = this.canvasManager.getSession(input.sessionId);
       if (!session) throw new Error(`Canvas session not found: ${input.sessionId}`);
@@ -858,14 +861,14 @@ export class VisualTools {
     const session = await this.canvasManager.createSession(
       this.taskId,
       this.workspace.id,
-      input.title || 'Visual Annotator'
+      input.title || "Visual Annotator",
     );
     return { sessionId: session.id, sessionDir: session.sessionDir };
   }
 
   private async stageImage(sessionDir: string, sourceAbsPath: string): Promise<string> {
     const extRaw = path.extname(sourceAbsPath).toLowerCase();
-    const ext = extRaw && extRaw.length <= 8 ? extRaw : '.png';
+    const ext = extRaw && extRaw.length <= 8 ? extRaw : ".png";
     const imageFilename = `image${ext}`;
 
     // Clear previous staged image files
@@ -873,8 +876,8 @@ export class VisualTools {
       const files = await fs.readdir(sessionDir);
       await Promise.all(
         files
-          .filter((f) => f.startsWith('image.'))
-          .map((f) => fs.rm(path.join(sessionDir, f), { force: true }))
+          .filter((f) => f.startsWith("image."))
+          .map((f) => fs.rm(path.join(sessionDir, f), { force: true })),
       );
     } catch {
       // best effort
@@ -893,10 +896,10 @@ export class VisualTools {
     instructions?: string;
   }): Promise<{ sessionId: string; sessionDir: string; imageFilename: string }> {
     if (!this.workspace.permissions.read) {
-      throw new Error('Read permission not granted for visual annotation');
+      throw new Error("Read permission not granted for visual annotation");
     }
-    if (!input?.imagePath || typeof input.imagePath !== 'string' || !input.imagePath.trim()) {
-      throw new Error('Missing required parameter: imagePath');
+    if (!input?.imagePath || typeof input.imagePath !== "string" || !input.imagePath.trim()) {
+      throw new Error("Missing required parameter: imagePath");
     }
 
     const absImagePath = resolveWorkspacePath(this.workspace.path, input.imagePath.trim());
@@ -904,21 +907,24 @@ export class VisualTools {
       throw new Error(`Image not found: ${input.imagePath}`);
     }
 
-    this.daemon.logEvent(this.taskId, 'tool_call', {
-      tool: 'visual_open_annotator',
+    this.daemon.logEvent(this.taskId, "tool_call", {
+      tool: "visual_open_annotator",
       imagePath: input.imagePath,
       sessionId: input.sessionId,
       title: input.title,
       iteration: input.iteration,
     });
 
-    const { sessionId, sessionDir } = await this.getOrCreateSession({ sessionId: input.sessionId, title: input.title });
+    const { sessionId, sessionDir } = await this.getOrCreateSession({
+      sessionId: input.sessionId,
+      title: input.title,
+    });
     const imageFilename = await this.stageImage(sessionDir, absImagePath);
 
     const html = renderVisualAnnotatorHtml({
       version: 1,
       sessionId,
-      title: input.title || 'Visual Annotator',
+      title: input.title || "Visual Annotator",
       imageFilename,
       originalImagePath: input.imagePath,
       iteration: input.iteration,
@@ -926,11 +932,11 @@ export class VisualTools {
       instructions: input.instructions,
     });
 
-    await this.canvasManager.pushContent(sessionId, html, 'index.html');
+    await this.canvasManager.pushContent(sessionId, html, "index.html");
     await this.canvasManager.showCanvas(sessionId);
 
-    this.daemon.logEvent(this.taskId, 'tool_result', {
-      tool: 'visual_open_annotator',
+    this.daemon.logEvent(this.taskId, "tool_result", {
+      tool: "visual_open_annotator",
       success: true,
       sessionId,
       imageFilename,
@@ -948,13 +954,13 @@ export class VisualTools {
     instructions?: string;
   }): Promise<{ success: boolean; sessionId: string; imageFilename: string }> {
     if (!this.workspace.permissions.read) {
-      throw new Error('Read permission not granted for visual annotation');
+      throw new Error("Read permission not granted for visual annotation");
     }
-    if (!input?.sessionId || typeof input.sessionId !== 'string') {
-      throw new Error('Missing required parameter: sessionId');
+    if (!input?.sessionId || typeof input.sessionId !== "string") {
+      throw new Error("Missing required parameter: sessionId");
     }
-    if (!input?.imagePath || typeof input.imagePath !== 'string' || !input.imagePath.trim()) {
-      throw new Error('Missing required parameter: imagePath');
+    if (!input?.imagePath || typeof input.imagePath !== "string" || !input.imagePath.trim()) {
+      throw new Error("Missing required parameter: imagePath");
     }
 
     const session = this.canvasManager.getSession(input.sessionId);
@@ -965,8 +971,8 @@ export class VisualTools {
       throw new Error(`Image not found: ${input.imagePath}`);
     }
 
-    this.daemon.logEvent(this.taskId, 'tool_call', {
-      tool: 'visual_update_annotator',
+    this.daemon.logEvent(this.taskId, "tool_call", {
+      tool: "visual_update_annotator",
       imagePath: input.imagePath,
       sessionId: input.sessionId,
       iteration: input.iteration,
@@ -976,7 +982,7 @@ export class VisualTools {
     const html = renderVisualAnnotatorHtml({
       version: 1,
       sessionId: session.id,
-      title: input.title || session.title || 'Visual Annotator',
+      title: input.title || session.title || "Visual Annotator",
       imageFilename,
       originalImagePath: input.imagePath,
       iteration: input.iteration,
@@ -984,10 +990,10 @@ export class VisualTools {
       instructions: input.instructions,
     });
 
-    await this.canvasManager.pushContent(session.id, html, 'index.html');
+    await this.canvasManager.pushContent(session.id, html, "index.html");
 
-    this.daemon.logEvent(this.taskId, 'tool_result', {
-      tool: 'visual_update_annotator',
+    this.daemon.logEvent(this.taskId, "tool_result", {
+      tool: "visual_update_annotator",
       success: true,
       sessionId: session.id,
       imageFilename,
@@ -999,78 +1005,80 @@ export class VisualTools {
   static getToolDefinitions(): LLMTool[] {
     return [
       {
-        name: 'visual_open_annotator',
+        name: "visual_open_annotator",
         description:
-          'Open an interactive visual annotation UI in Live Canvas for a workspace image. ' +
-          'The user can draw rectangles/pen strokes and add notes, then click Send Feedback / Regenerate / Approve. ' +
-          'Those actions are sent back to the running task as a [Canvas Interaction] message with structured JSON context.',
+          "Open an interactive visual annotation UI in Live Canvas for a workspace image. " +
+          "The user can draw rectangles/pen strokes and add notes, then click Send Feedback / Regenerate / Approve. " +
+          "Those actions are sent back to the running task as a [Canvas Interaction] message with structured JSON context.",
         input_schema: {
-          type: 'object',
+          type: "object",
           properties: {
             imagePath: {
-              type: 'string',
-              description: 'Workspace-relative path to the image to annotate (must be inside the workspace).',
+              type: "string",
+              description:
+                "Workspace-relative path to the image to annotate (must be inside the workspace).",
             },
             sessionId: {
-              type: 'string',
-              description: 'Optional existing canvas session ID to reuse. If omitted, a new session is created.',
+              type: "string",
+              description:
+                "Optional existing canvas session ID to reuse. If omitted, a new session is created.",
             },
             title: {
-              type: 'string',
-              description: 'Optional title to show in the annotator header.',
+              type: "string",
+              description: "Optional title to show in the annotator header.",
             },
             iteration: {
-              type: 'number',
-              description: 'Optional iteration number to show in the UI (e.g., 1, 2, 3...).',
+              type: "number",
+              description: "Optional iteration number to show in the UI (e.g., 1, 2, 3...).",
             },
             target: {
-              type: 'object',
-              description: 'Optional target context for the visual (usage, size, style).',
+              type: "object",
+              description: "Optional target context for the visual (usage, size, style).",
               properties: {
-                kind: { type: 'string' },
-                usage: { type: 'string' },
-                size: { type: 'string' },
-                style: { type: 'string' },
+                kind: { type: "string" },
+                usage: { type: "string" },
+                size: { type: "string" },
+                style: { type: "string" },
               },
             },
             instructions: {
-              type: 'string',
-              description: 'Optional placeholder guidance for what feedback to leave.',
+              type: "string",
+              description: "Optional placeholder guidance for what feedback to leave.",
             },
           },
-          required: ['imagePath'],
+          required: ["imagePath"],
         },
       },
       {
-        name: 'visual_update_annotator',
+        name: "visual_update_annotator",
         description:
-          'Update an existing visual annotation canvas session with a new image iteration (e.g., after regenerating). ' +
-          'This keeps the same canvas window but replaces the image and updates header metadata.',
+          "Update an existing visual annotation canvas session with a new image iteration (e.g., after regenerating). " +
+          "This keeps the same canvas window but replaces the image and updates header metadata.",
         input_schema: {
-          type: 'object',
+          type: "object",
           properties: {
             sessionId: {
-              type: 'string',
-              description: 'The canvas session ID returned by visual_open_annotator.',
+              type: "string",
+              description: "The canvas session ID returned by visual_open_annotator.",
             },
             imagePath: {
-              type: 'string',
-              description: 'Workspace-relative path to the new image iteration to display.',
+              type: "string",
+              description: "Workspace-relative path to the new image iteration to display.",
             },
-            title: { type: 'string' },
-            iteration: { type: 'number' },
+            title: { type: "string" },
+            iteration: { type: "number" },
             target: {
-              type: 'object',
+              type: "object",
               properties: {
-                kind: { type: 'string' },
-                usage: { type: 'string' },
-                size: { type: 'string' },
-                style: { type: 'string' },
+                kind: { type: "string" },
+                usage: { type: "string" },
+                size: { type: "string" },
+                style: { type: "string" },
               },
             },
-            instructions: { type: 'string' },
+            instructions: { type: "string" },
           },
-          required: ['sessionId', 'imagePath'],
+          required: ["sessionId", "imagePath"],
         },
       },
     ];

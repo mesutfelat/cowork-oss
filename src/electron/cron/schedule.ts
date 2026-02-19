@@ -3,7 +3,7 @@
  * Supports: at (one-shot), every (interval), cron (cron expressions)
  */
 
-import type { CronSchedule } from './types';
+import type { CronSchedule } from "./types";
 
 /**
  * Compute the next run time in milliseconds for a given schedule
@@ -11,11 +11,11 @@ import type { CronSchedule } from './types';
  */
 export function computeNextRunAtMs(schedule: CronSchedule, nowMs: number): number | undefined {
   switch (schedule.kind) {
-    case 'at':
+    case "at":
       // One-shot: run at specific time, or undefined if already passed
       return schedule.atMs > nowMs ? schedule.atMs : undefined;
 
-    case 'every': {
+    case "every": {
       // Interval: compute next run based on anchor
       const everyMs = Math.max(1, Math.floor(schedule.everyMs));
       const anchor = Math.max(0, Math.floor(schedule.anchorMs ?? nowMs));
@@ -30,7 +30,7 @@ export function computeNextRunAtMs(schedule: CronSchedule, nowMs: number): numbe
       return anchor + steps * everyMs;
     }
 
-    case 'cron': {
+    case "cron": {
       // Cron expression: parse and compute next run
       const expr = schedule.expr.trim();
       if (!expr) return undefined;
@@ -55,7 +55,7 @@ export function computeNextRunAtMs(schedule: CronSchedule, nowMs: number): numbe
 function computeNextCronRun(expr: string, now: Date, tz?: string): number | undefined {
   const parts = expr.split(/\s+/);
   if (parts.length !== 5) {
-    console.warn('[Cron] Invalid cron expression (expected 5 fields):', expr);
+    console.warn("[Cron] Invalid cron expression (expected 5 fields):", expr);
     return undefined;
   }
 
@@ -69,7 +69,7 @@ function computeNextCronRun(expr: string, now: Date, tz?: string): number | unde
   const dows = parseField(dowExpr, 0, 6); // 0 = Sunday
 
   if (!minutes || !hours || !days || !months || !dows) {
-    console.warn('[Cron] Failed to parse cron expression:', expr);
+    console.warn("[Cron] Failed to parse cron expression:", expr);
     return undefined;
   }
 
@@ -116,14 +116,14 @@ function parseField(field: string, min: number, max: number): Set<number> | null
   const values = new Set<number>();
 
   // Split by comma for multiple values
-  const parts = field.split(',');
+  const parts = field.split(",");
 
   for (const part of parts) {
     const trimmed = part.trim();
 
     // Wildcard with optional step: * or */N
-    if (trimmed === '*' || trimmed.startsWith('*/')) {
-      const step = trimmed === '*' ? 1 : parseInt(trimmed.slice(2), 10);
+    if (trimmed === "*" || trimmed.startsWith("*/")) {
+      const step = trimmed === "*" ? 1 : parseInt(trimmed.slice(2), 10);
       if (isNaN(step) || step < 1) return null;
 
       for (let i = min; i <= max; i += step) {
@@ -199,19 +199,19 @@ export function validateCronExpression(expr: string): boolean {
  * Common cron presets for the UI
  */
 export const CRON_PRESETS = [
-  { label: 'Every minute', value: '* * * * *' },
-  { label: 'Every 5 minutes', value: '*/5 * * * *' },
-  { label: 'Every 15 minutes', value: '*/15 * * * *' },
-  { label: 'Every 30 minutes', value: '*/30 * * * *' },
-  { label: 'Every hour', value: '0 * * * *' },
-  { label: 'Every 2 hours', value: '0 */2 * * *' },
-  { label: 'Every 6 hours', value: '0 */6 * * *' },
-  { label: 'Daily at midnight', value: '0 0 * * *' },
-  { label: 'Daily at 9:00 AM', value: '0 9 * * *' },
-  { label: 'Daily at 6:00 PM', value: '0 18 * * *' },
-  { label: 'Weekdays at 9:00 AM', value: '0 9 * * 1-5' },
-  { label: 'Weekly on Sunday', value: '0 0 * * 0' },
-  { label: 'Weekly on Monday', value: '0 0 * * 1' },
-  { label: 'Monthly on the 1st', value: '0 0 1 * *' },
-  { label: 'Monthly on the 15th', value: '0 0 15 * *' },
+  { label: "Every minute", value: "* * * * *" },
+  { label: "Every 5 minutes", value: "*/5 * * * *" },
+  { label: "Every 15 minutes", value: "*/15 * * * *" },
+  { label: "Every 30 minutes", value: "*/30 * * * *" },
+  { label: "Every hour", value: "0 * * * *" },
+  { label: "Every 2 hours", value: "0 */2 * * *" },
+  { label: "Every 6 hours", value: "0 */6 * * *" },
+  { label: "Daily at midnight", value: "0 0 * * *" },
+  { label: "Daily at 9:00 AM", value: "0 9 * * *" },
+  { label: "Daily at 6:00 PM", value: "0 18 * * *" },
+  { label: "Weekdays at 9:00 AM", value: "0 9 * * 1-5" },
+  { label: "Weekly on Sunday", value: "0 0 * * 0" },
+  { label: "Weekly on Monday", value: "0 0 * * 1" },
+  { label: "Monthly on the 1st", value: "0 0 1 * *" },
+  { label: "Monthly on the 15th", value: "0 0 15 * *" },
 ] as const;

@@ -1,15 +1,15 @@
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from "fs";
+import * as path from "path";
 
-import { InputSanitizer } from '../agent/security/input-sanitizer';
-import { redactSensitiveMarkdownContent } from '../memory/MarkdownMemoryIndexService';
+import { InputSanitizer } from "../agent/security/input-sanitizer";
+import { redactSensitiveMarkdownContent } from "../memory/MarkdownMemoryIndexService";
 
-const KIT_DIRNAME = '.cowork';
-const ROLE_PROFILE_DIR = 'agents';
+const KIT_DIRNAME = ".cowork";
+const ROLE_PROFILE_DIR = "agents";
 const ROLE_PROFILE_FILES: Array<{ file: string; title: string }> = [
-  { file: 'SOUL.md', title: 'Role Persona' },
-  { file: 'IDENTITY.md', title: 'Role Identity' },
-  { file: 'RULES.md', title: 'Role Rules' },
+  { file: "SOUL.md", title: "Role Persona" },
+  { file: "IDENTITY.md", title: "Role Identity" },
+  { file: "RULES.md", title: "Role Rules" },
 ];
 
 const MAX_FILE_BYTES = 96 * 1024;
@@ -30,11 +30,11 @@ export interface RolePersonaInput {
 
 function clampSection(text: string, maxChars: number): string {
   if (text.length <= maxChars) return text;
-  return text.slice(0, maxChars) + '\n[... truncated ...]';
+  return text.slice(0, maxChars) + "\n[... truncated ...]";
 }
 
 function sanitizePersonaText(text: string): string {
-  const redacted = redactSensitiveMarkdownContent(text || '');
+  const redacted = redactSensitiveMarkdownContent(text || "");
   return InputSanitizer.sanitizeMemoryContent(redacted).trim();
 }
 
@@ -43,7 +43,7 @@ function safeResolveWithinWorkspace(workspacePath: string, relPath: string): str
   const candidate = path.resolve(workspacePath, relPath);
   const relative = path.relative(root, candidate);
   const isInsideWorkspace =
-    relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
+    relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
 
   if (isInsideWorkspace) {
     return candidate;
@@ -57,11 +57,11 @@ function readFilePrefix(absPath: string, maxBytes: number): string | null {
     if (!stat.isFile()) return null;
 
     const size = Math.min(stat.size, maxBytes);
-    const fd = fs.openSync(absPath, 'r');
+    const fd = fs.openSync(absPath, "r");
     try {
       const buf = Buffer.alloc(size);
       const bytesRead = fs.readSync(fd, buf, 0, size, 0);
-      return buf.toString('utf8', 0, bytesRead);
+      return buf.toString("utf8", 0, bytesRead);
     } finally {
       fs.closeSync(fd);
     }
@@ -74,21 +74,21 @@ function slugifyRoleName(input: string): string {
   const slug = input
     .trim()
     .toLowerCase()
-    .replace(/\s+/g, '-')
-    .replace(/[^a-z0-9-]/g, '-');
-  return slug.replace(/-+/g, '-').replace(/^-+|-+$/g, '');
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "-");
+  return slug.replace(/-+/g, "-").replace(/^-+|-+$/g, "");
 }
 
 function normalizeRoleFolderName(input: string): string {
   const lowered = input.trim().toLowerCase();
   return lowered
-    .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[\\/]+/g, '-')
-    .replace(/\s+/g, '-')
-    .replace(/[^a-z0-9._-]+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-+|-+$/g, '');
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[\\/]+/g, "-")
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9._-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 function getRoleFolderCandidates(role: RolePersonaInput): string[] {
@@ -118,12 +118,12 @@ function getRoleFolderCandidates(role: RolePersonaInput): string[] {
     if (slug) candidates.add(slug);
   }
 
-  candidates.add('default');
+  candidates.add("default");
   return Array.from(candidates);
 }
 
 function summarizeSoulFromDb(soul?: string | null): string | null {
-  const trimmed = typeof soul === 'string' ? soul.trim() : '';
+  const trimmed = typeof soul === "string" ? soul.trim() : "";
   if (!trimmed) return null;
 
   try {
@@ -131,25 +131,25 @@ function summarizeSoulFromDb(soul?: string | null): string | null {
     const parts: string[] = [];
 
     const add = (label: string, value: unknown) => {
-      if (typeof value === 'string' && value.trim().length > 0) {
+      if (typeof value === "string" && value.trim().length > 0) {
         parts.push(`${label}: ${value.trim()}`);
       }
     };
 
-    add('Name', parsed.name);
-    add('Role', parsed.role);
-    add('Personality', parsed.personality);
-    add('Communication style', parsed.communicationStyle);
+    add("Name", parsed.name);
+    add("Role", parsed.role);
+    add("Personality", parsed.personality);
+    add("Communication style", parsed.communicationStyle);
 
     if (Array.isArray(parsed.focusAreas) && parsed.focusAreas.length > 0) {
-      parts.push(`Focus areas: ${parsed.focusAreas.map(String).join(', ')}`);
+      parts.push(`Focus areas: ${parsed.focusAreas.map(String).join(", ")}`);
     }
 
     if (Array.isArray(parsed.strengths) && parsed.strengths.length > 0) {
-      parts.push(`Strengths: ${parsed.strengths.map(String).join(', ')}`);
+      parts.push(`Strengths: ${parsed.strengths.map(String).join(", ")}`);
     }
 
-    const summary = parts.length > 0 ? parts.join('\n') : trimmed;
+    const summary = parts.length > 0 ? parts.join("\n") : trimmed;
     return sanitizePersonaText(clampSection(summary, MAX_FILE_CHARS));
   } catch {
     return sanitizePersonaText(clampSection(trimmed, MAX_FILE_CHARS));
@@ -157,7 +157,7 @@ function summarizeSoulFromDb(soul?: string | null): string | null {
 }
 
 function buildRoleProfileFromFiles(role: RolePersonaInput, workspacePath?: string | null): string {
-  if (!workspacePath) return '';
+  if (!workspacePath) return "";
 
   const profileByFile = new Map<string, string>();
   const dirs = getRoleFolderCandidates(role);
@@ -181,7 +181,7 @@ function buildRoleProfileFromFiles(role: RolePersonaInput, workspacePath?: strin
 
       profileByFile.set(
         fileSpec.file,
-        `### ${fileSpec.title} (${relPath.replace(/\\/g, '/')})\n${content}`
+        `### ${fileSpec.title} (${relPath.replace(/\\/g, "/")})\n${content}`,
       );
     }
 
@@ -191,7 +191,7 @@ function buildRoleProfileFromFiles(role: RolePersonaInput, workspacePath?: strin
   }
 
   if (profileByFile.size === 0) {
-    return '';
+    return "";
   }
 
   const sections: string[] = [];
@@ -200,13 +200,17 @@ function buildRoleProfileFromFiles(role: RolePersonaInput, workspacePath?: strin
     if (!section) continue;
 
     sections.push(section);
-    sections.push('');
+    sections.push("");
   }
 
-  return sections.join('\n').trim();
+  return sections.join("\n").trim();
 }
 
-export function buildRolePersonaPrompt(role: RolePersonaInput, workspacePath?: string | null, options: RolePersonaOptions = {}): string {
+export function buildRolePersonaPrompt(
+  role: RolePersonaInput,
+  workspacePath?: string | null,
+  options: RolePersonaOptions = {},
+): string {
   const includeDbFallback = options.includeDbFallback ?? true;
   const fromFiles = buildRoleProfileFromFiles(role, workspacePath);
 
@@ -215,11 +219,11 @@ export function buildRolePersonaPrompt(role: RolePersonaInput, workspacePath?: s
   }
 
   if (!includeDbFallback) {
-    return '';
+    return "";
   }
 
   const fromDb = summarizeSoulFromDb(role.soul);
-  if (!fromDb) return '';
+  if (!fromDb) return "";
 
   return `ROLE NOTES\n${fromDb}`;
 }

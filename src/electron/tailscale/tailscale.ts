@@ -5,10 +5,10 @@
  * Handles binary detection, status queries, and Serve/Funnel management.
  */
 
-import { execFile, exec } from 'child_process';
-import { promisify } from 'util';
-import * as fs from 'fs';
-import * as path from 'path';
+import { execFile, exec } from "child_process";
+import { promisify } from "util";
+import * as fs from "fs";
+import * as path from "path";
 
 const execFileAsync = promisify(execFile);
 const execAsync = promisify(exec);
@@ -58,10 +58,10 @@ export interface TailscaleStatusJson {
  * Common macOS paths where Tailscale might be installed
  */
 const MACOS_TAILSCALE_PATHS = [
-  '/Applications/Tailscale.app/Contents/MacOS/Tailscale',
-  '/usr/local/bin/tailscale',
-  '/opt/homebrew/bin/tailscale',
-  path.join(process.env.HOME || '', 'Applications/Tailscale.app/Contents/MacOS/Tailscale'),
+  "/Applications/Tailscale.app/Contents/MacOS/Tailscale",
+  "/usr/local/bin/tailscale",
+  "/opt/homebrew/bin/tailscale",
+  path.join(process.env.HOME || "", "Applications/Tailscale.app/Contents/MacOS/Tailscale"),
 ];
 
 /**
@@ -81,10 +81,10 @@ async function isExecutable(filePath: string): Promise<boolean> {
  */
 async function verifyTailscaleBinary(binaryPath: string): Promise<boolean> {
   try {
-    const { stdout } = await execFileAsync(binaryPath, ['--version'], {
+    const { stdout } = await execFileAsync(binaryPath, ["--version"], {
       timeout: 3000,
     });
-    return stdout.includes('tailscale') || stdout.includes('Tailscale');
+    return stdout.includes("tailscale") || stdout.includes("Tailscale");
   } catch {
     return false;
   }
@@ -114,7 +114,7 @@ export async function findTailscaleBinary(): Promise<string | null> {
     if (await isExecutable(candidatePath)) {
       if (await verifyTailscaleBinary(candidatePath)) {
         cachedBinaryPath = candidatePath;
-        console.log('[Tailscale] Found binary at:', candidatePath);
+        console.log("[Tailscale] Found binary at:", candidatePath);
         return candidatePath;
       }
     }
@@ -122,12 +122,12 @@ export async function findTailscaleBinary(): Promise<string | null> {
 
   // Strategy 2: Try PATH lookup
   try {
-    const { stdout } = await execAsync('which tailscale', { timeout: 3000 });
+    const { stdout } = await execAsync("which tailscale", { timeout: 3000 });
     const whichPath = stdout.trim();
-    if (whichPath && await isExecutable(whichPath)) {
+    if (whichPath && (await isExecutable(whichPath))) {
       if (await verifyTailscaleBinary(whichPath)) {
         cachedBinaryPath = whichPath;
-        console.log('[Tailscale] Found binary via which:', whichPath);
+        console.log("[Tailscale] Found binary via which:", whichPath);
         return whichPath;
       }
     }
@@ -136,13 +136,13 @@ export async function findTailscaleBinary(): Promise<string | null> {
   }
 
   // Strategy 3: Just try 'tailscale' directly
-  if (await verifyTailscaleBinary('tailscale')) {
-    cachedBinaryPath = 'tailscale';
-    console.log('[Tailscale] Using tailscale from PATH');
-    return 'tailscale';
+  if (await verifyTailscaleBinary("tailscale")) {
+    cachedBinaryPath = "tailscale";
+    console.log("[Tailscale] Using tailscale from PATH");
+    return "tailscale";
   }
 
-  console.log('[Tailscale] Binary not found');
+  console.log("[Tailscale] Binary not found");
   return null;
 }
 
@@ -151,7 +151,7 @@ export async function findTailscaleBinary(): Promise<string | null> {
  */
 export async function getTailscaleBinary(): Promise<string> {
   const binary = await findTailscaleBinary();
-  return binary || 'tailscale';
+  return binary || "tailscale";
 }
 
 /**
@@ -195,7 +195,7 @@ export async function getTailscaleStatus(): Promise<TailscaleStatusJson | null> 
   const binary = await getTailscaleBinary();
 
   try {
-    const { stdout } = await execFileAsync(binary, ['status', '--json'], {
+    const { stdout } = await execFileAsync(binary, ["status", "--json"], {
       timeout: 10000,
     });
 
@@ -206,7 +206,7 @@ export async function getTailscaleStatus(): Promise<TailscaleStatusJson | null> 
     };
     return status;
   } catch (error: any) {
-    console.error('[Tailscale] Failed to get status:', error.message || error);
+    console.error("[Tailscale] Failed to get status:", error.message || error);
     cachedStatus = {
       data: null,
       timestamp: Date.now(),
@@ -227,7 +227,7 @@ export async function getTailnetHostname(): Promise<string | null> {
   // Prefer DNS name
   if (status.Self?.DNSName) {
     // Remove trailing dot if present
-    return status.Self.DNSName.replace(/\.$/, '');
+    return status.Self.DNSName.replace(/\.$/, "");
   }
 
   // Fallback to first Tailscale IP
@@ -243,7 +243,7 @@ export async function getTailnetHostname(): Promise<string | null> {
  */
 async function execTailscaleCommand(
   args: string[],
-  options?: { timeout?: number }
+  options?: { timeout?: number },
 ): Promise<{ stdout: string; stderr: string }> {
   const binary = await getTailscaleBinary();
   const timeout = options?.timeout || 30000;
@@ -252,19 +252,19 @@ async function execTailscaleCommand(
     return await execFileAsync(binary, args, { timeout });
   } catch (error: any) {
     // Check if it's a permission error
-    const stderr = error.stderr || '';
-    const message = error.message || '';
+    const stderr = error.stderr || "";
+    const message = error.message || "";
 
     if (
-      stderr.includes('permission denied') ||
-      stderr.includes('Operation not permitted') ||
-      message.includes('permission denied') ||
-      message.includes('EPERM')
+      stderr.includes("permission denied") ||
+      stderr.includes("Operation not permitted") ||
+      message.includes("permission denied") ||
+      message.includes("EPERM")
     ) {
-      console.log('[Tailscale] Retrying with sudo...');
+      console.log("[Tailscale] Retrying with sudo...");
 
       // Try with sudo
-      const command = `sudo ${binary} ${args.map(a => `"${a}"`).join(' ')}`;
+      const command = `sudo ${binary} ${args.map((a) => `"${a}"`).join(" ")}`;
       return await execAsync(command, { timeout });
     }
 
@@ -279,12 +279,12 @@ async function execTailscaleCommand(
  * @param path - URL path (default: "/")
  * @returns true if successful
  */
-export async function enableTailscaleServe(port: number, urlPath = '/'): Promise<boolean> {
+export async function enableTailscaleServe(port: number, urlPath = "/"): Promise<boolean> {
   try {
     const target = `http://127.0.0.1:${port}${urlPath}`;
 
     // Use --bg to run in background, --yes to skip confirmation
-    await execTailscaleCommand(['serve', '--bg', '--yes', target]);
+    await execTailscaleCommand(["serve", "--bg", "--yes", target]);
 
     console.log(`[Tailscale] Serve enabled for ${target}`);
 
@@ -292,7 +292,7 @@ export async function enableTailscaleServe(port: number, urlPath = '/'): Promise
     cachedStatus = null;
     return true;
   } catch (error: any) {
-    console.error('[Tailscale] Failed to enable Serve:', error.message || error);
+    console.error("[Tailscale] Failed to enable Serve:", error.message || error);
     return false;
   }
 }
@@ -304,12 +304,12 @@ export async function enableTailscaleServe(port: number, urlPath = '/'): Promise
  */
 export async function disableTailscaleServe(): Promise<boolean> {
   try {
-    await execTailscaleCommand(['serve', 'reset']);
-    console.log('[Tailscale] Serve disabled');
+    await execTailscaleCommand(["serve", "reset"]);
+    console.log("[Tailscale] Serve disabled");
     cachedStatus = null;
     return true;
   } catch (error: any) {
-    console.error('[Tailscale] Failed to disable Serve:', error.message || error);
+    console.error("[Tailscale] Failed to disable Serve:", error.message || error);
     return false;
   }
 }
@@ -321,18 +321,18 @@ export async function disableTailscaleServe(): Promise<boolean> {
  * @param path - URL path (default: "/")
  * @returns true if successful
  */
-export async function enableTailscaleFunnel(port: number, urlPath = '/'): Promise<boolean> {
+export async function enableTailscaleFunnel(port: number, urlPath = "/"): Promise<boolean> {
   try {
     const target = `http://127.0.0.1:${port}${urlPath}`;
 
     // Use --bg to run in background, --yes to skip confirmation
-    await execTailscaleCommand(['funnel', '--bg', '--yes', target]);
+    await execTailscaleCommand(["funnel", "--bg", "--yes", target]);
 
     console.log(`[Tailscale] Funnel enabled for ${target}`);
     cachedStatus = null;
     return true;
   } catch (error: any) {
-    console.error('[Tailscale] Failed to enable Funnel:', error.message || error);
+    console.error("[Tailscale] Failed to enable Funnel:", error.message || error);
     return false;
   }
 }
@@ -344,12 +344,12 @@ export async function enableTailscaleFunnel(port: number, urlPath = '/'): Promis
  */
 export async function disableTailscaleFunnel(): Promise<boolean> {
   try {
-    await execTailscaleCommand(['funnel', 'reset']);
-    console.log('[Tailscale] Funnel disabled');
+    await execTailscaleCommand(["funnel", "reset"]);
+    console.log("[Tailscale] Funnel disabled");
     cachedStatus = null;
     return true;
   } catch (error: any) {
-    console.error('[Tailscale] Failed to disable Funnel:', error.message || error);
+    console.error("[Tailscale] Failed to disable Funnel:", error.message || error);
     return false;
   }
 }
@@ -364,9 +364,7 @@ export async function checkTailscaleFunnelAvailable(): Promise<boolean> {
 
   // Check capabilities
   const capabilities = status.Self?.Capabilities || [];
-  return capabilities.some(
-    (cap) => cap.includes('funnel') || cap.includes('https')
-  );
+  return capabilities.some((cap) => cap.includes("funnel") || cap.includes("https"));
 }
 
 /**

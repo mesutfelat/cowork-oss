@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
-import { ConnectorSetupModal, ConnectorProvider } from './ConnectorSetupModal';
-import { ConnectorEnvModal, ConnectorEnvField } from './ConnectorEnvModal';
+import { useEffect, useMemo, useState } from "react";
+import { ConnectorSetupModal, ConnectorProvider } from "./ConnectorSetupModal";
+import { ConnectorEnvModal, ConnectorEnvField } from "./ConnectorEnvModal";
 
 // Types (matching preload types)
-type MCPConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'reconnecting' | 'error';
+type MCPConnectionStatus = "disconnected" | "connecting" | "connected" | "reconnecting" | "error";
 
 type MCPServerConfig = {
   id: string;
@@ -39,128 +39,128 @@ interface ConnectorDefinition {
 
 const CONNECTORS: ConnectorDefinition[] = [
   {
-    key: 'salesforce',
-    name: 'Salesforce',
-    registryId: 'salesforce',
-    description: 'CRM (accounts, cases, opportunities).',
+    key: "salesforce",
+    name: "Salesforce",
+    registryId: "salesforce",
+    description: "CRM (accounts, cases, opportunities).",
     supportsOAuth: true,
-    provider: 'salesforce',
+    provider: "salesforce",
   },
   {
-    key: 'jira',
-    name: 'Jira',
-    registryId: 'jira',
-    description: 'Issue tracking for teams.',
+    key: "jira",
+    name: "Jira",
+    registryId: "jira",
+    description: "Issue tracking for teams.",
     supportsOAuth: true,
-    provider: 'jira',
+    provider: "jira",
   },
   {
-    key: 'hubspot',
-    name: 'HubSpot',
-    registryId: 'hubspot',
-    description: 'CRM objects for contacts, companies, deals.',
+    key: "hubspot",
+    name: "HubSpot",
+    registryId: "hubspot",
+    description: "CRM objects for contacts, companies, deals.",
     supportsOAuth: true,
-    provider: 'hubspot',
+    provider: "hubspot",
   },
   {
-    key: 'zendesk',
-    name: 'Zendesk',
-    registryId: 'zendesk',
-    description: 'Support tickets and customer operations.',
+    key: "zendesk",
+    name: "Zendesk",
+    registryId: "zendesk",
+    description: "Support tickets and customer operations.",
     supportsOAuth: true,
-    provider: 'zendesk',
+    provider: "zendesk",
   },
   {
-    key: 'servicenow',
-    name: 'ServiceNow',
-    registryId: 'servicenow',
-    description: 'ITSM records and table APIs.',
+    key: "servicenow",
+    name: "ServiceNow",
+    registryId: "servicenow",
+    description: "ITSM records and table APIs.",
     supportsOAuth: false,
     envFields: [
-      { key: 'SERVICENOW_INSTANCE_URL', label: 'Instance URL', placeholder: 'https://instance.service-now.com' },
-      { key: 'SERVICENOW_INSTANCE', label: 'Instance Subdomain', placeholder: 'dev12345' },
-      { key: 'SERVICENOW_USERNAME', label: 'Username' },
-      { key: 'SERVICENOW_PASSWORD', label: 'Password', type: 'password' },
-      { key: 'SERVICENOW_ACCESS_TOKEN', label: 'Access Token', type: 'password' },
+      {
+        key: "SERVICENOW_INSTANCE_URL",
+        label: "Instance URL",
+        placeholder: "https://instance.service-now.com",
+      },
+      { key: "SERVICENOW_INSTANCE", label: "Instance Subdomain", placeholder: "dev12345" },
+      { key: "SERVICENOW_USERNAME", label: "Username" },
+      { key: "SERVICENOW_PASSWORD", label: "Password", type: "password" },
+      { key: "SERVICENOW_ACCESS_TOKEN", label: "Access Token", type: "password" },
     ],
   },
   {
-    key: 'linear',
-    name: 'Linear',
-    registryId: 'linear',
-    description: 'Project and issue tracking (GraphQL).',
+    key: "linear",
+    name: "Linear",
+    registryId: "linear",
+    description: "Project and issue tracking (GraphQL).",
+    supportsOAuth: false,
+    envFields: [{ key: "LINEAR_API_KEY", label: "API Key", type: "password" }],
+  },
+  {
+    key: "asana",
+    name: "Asana",
+    registryId: "asana",
+    description: "Work management tasks and projects.",
+    supportsOAuth: false,
+    envFields: [{ key: "ASANA_ACCESS_TOKEN", label: "Access Token", type: "password" }],
+  },
+  {
+    key: "okta",
+    name: "Okta",
+    registryId: "okta",
+    description: "User and directory management.",
     supportsOAuth: false,
     envFields: [
-      { key: 'LINEAR_API_KEY', label: 'API Key', type: 'password' },
+      { key: "OKTA_BASE_URL", label: "Okta Base URL", placeholder: "https://your-org.okta.com" },
+      { key: "OKTA_API_TOKEN", label: "API Token", type: "password" },
     ],
   },
   {
-    key: 'asana',
-    name: 'Asana',
-    registryId: 'asana',
-    description: 'Work management tasks and projects.',
+    key: "resend",
+    name: "Resend",
+    registryId: "resend",
+    description: "Transactional email send + inbound webhook management.",
     supportsOAuth: false,
     envFields: [
-      { key: 'ASANA_ACCESS_TOKEN', label: 'Access Token', type: 'password' },
-    ],
-  },
-  {
-    key: 'okta',
-    name: 'Okta',
-    registryId: 'okta',
-    description: 'User and directory management.',
-    supportsOAuth: false,
-    envFields: [
-      { key: 'OKTA_BASE_URL', label: 'Okta Base URL', placeholder: 'https://your-org.okta.com' },
-      { key: 'OKTA_API_TOKEN', label: 'API Token', type: 'password' },
-    ],
-  },
-  {
-    key: 'resend',
-    name: 'Resend',
-    registryId: 'resend',
-    description: 'Transactional email send + inbound webhook management.',
-    supportsOAuth: false,
-    envFields: [
-      { key: 'RESEND_API_KEY', label: 'API Key', type: 'password' },
-      { key: 'RESEND_BASE_URL', label: 'Base URL', placeholder: 'https://api.resend.com' },
+      { key: "RESEND_API_KEY", label: "API Key", type: "password" },
+      { key: "RESEND_BASE_URL", label: "Base URL", placeholder: "https://api.resend.com" },
     ],
   },
 ];
 
 const getStatusColor = (status: MCPConnectionStatus): string => {
   switch (status) {
-    case 'connected':
-      return 'var(--color-success)';
-    case 'connecting':
-    case 'reconnecting':
-      return 'var(--color-warning)';
-    case 'error':
-      return 'var(--color-error)';
+    case "connected":
+      return "var(--color-success)";
+    case "connecting":
+    case "reconnecting":
+      return "var(--color-warning)";
+    case "error":
+      return "var(--color-error)";
     default:
-      return 'var(--color-text-tertiary)';
+      return "var(--color-text-tertiary)";
   }
 };
 
 const getStatusText = (status: MCPConnectionStatus): string => {
   switch (status) {
-    case 'connected':
-      return 'Connected';
-    case 'connecting':
-      return 'Connecting';
-    case 'reconnecting':
-      return 'Reconnecting';
-    case 'error':
-      return 'Error';
+    case "connected":
+      return "Connected";
+    case "connecting":
+      return "Connecting";
+    case "reconnecting":
+      return "Reconnecting";
+    case "error":
+      return "Error";
     default:
-      return 'Disconnected';
+      return "Disconnected";
   }
 };
 
 function matchConnector(config: MCPServerConfig, connector: ConnectorDefinition): boolean {
   const nameMatch = config.name.toLowerCase().includes(connector.key);
   const argsMatch = (config.args || []).some((arg) => arg.toLowerCase().includes(connector.key));
-  const commandMatch = (config.command || '').toLowerCase().includes(connector.key);
+  const commandMatch = (config.command || "").toLowerCase().includes(connector.key);
   return nameMatch || argsMatch || commandMatch;
 }
 
@@ -206,7 +206,7 @@ export function ConnectorsSettings() {
       setSettings(loadedSettings);
       setServerStatuses(statuses);
     } catch (error) {
-      console.error('Failed to load connector settings:', error);
+      console.error("Failed to load connector settings:", error);
     } finally {
       setLoading(false);
     }
@@ -216,9 +216,7 @@ export function ConnectorsSettings() {
     if (!settings) return [];
     return CONNECTORS.map((connector) => {
       const config = settings.servers.find((server) => matchConnector(server, connector));
-      const status = config
-        ? serverStatuses.find((s) => s.id === config.id)
-        : undefined;
+      const status = config ? serverStatuses.find((s) => s.id === config.id) : undefined;
       return { connector, config, status };
     });
   }, [settings, serverStatuses]);
@@ -238,15 +236,15 @@ export function ConnectorsSettings() {
   const handleConnectServer = async (serverId: string) => {
     try {
       setConnectingServer(serverId);
-      setConnectionErrors(prev => {
+      setConnectionErrors((prev) => {
         const { [serverId]: _, ...rest } = prev;
         return rest;
       });
       await window.electronAPI.connectMCPServer(serverId);
     } catch (error: any) {
-      setConnectionErrors(prev => ({
+      setConnectionErrors((prev) => ({
         ...prev,
-        [serverId]: error.message || 'Connection failed',
+        [serverId]: error.message || "Connection failed",
       }));
     } finally {
       setConnectingServer(null);
@@ -256,15 +254,15 @@ export function ConnectorsSettings() {
   const handleDisconnectServer = async (serverId: string) => {
     try {
       setConnectingServer(serverId);
-      setConnectionErrors(prev => {
+      setConnectionErrors((prev) => {
         const { [serverId]: _, ...rest } = prev;
         return rest;
       });
       await window.electronAPI.disconnectMCPServer(serverId);
     } catch (error: any) {
-      setConnectionErrors(prev => ({
+      setConnectionErrors((prev) => ({
         ...prev,
-        [serverId]: error.message || 'Disconnect failed',
+        [serverId]: error.message || "Disconnect failed",
       }));
     } finally {
       setConnectingServer(null);
@@ -287,7 +285,7 @@ export function ConnectorsSettings() {
       <div className="mcp-server-list">
         {connectorRows.map(({ connector, config, status }) => {
           const isInstalled = Boolean(config);
-          const serverStatus = status?.status || 'disconnected';
+          const serverStatus = status?.status || "disconnected";
           const isConnecting = connectingServer === config?.id;
           return (
             <div key={connector.key} className="mcp-server-card">
@@ -299,8 +297,11 @@ export function ConnectorsSettings() {
                       className="mcp-server-status"
                       style={{ color: getStatusColor(serverStatus) }}
                     >
-                      <span className="mcp-status-dot" style={{ backgroundColor: getStatusColor(serverStatus) }} />
-                      {isInstalled ? getStatusText(serverStatus) : 'Not installed'}
+                      <span
+                        className="mcp-status-dot"
+                        style={{ backgroundColor: getStatusColor(serverStatus) }}
+                      />
+                      {isInstalled ? getStatusText(serverStatus) : "Not installed"}
                     </span>
                   </div>
                   <span className="mcp-server-command">{connector.description}</span>
@@ -321,17 +322,17 @@ export function ConnectorsSettings() {
                     onClick={() => handleInstall(connector)}
                     disabled={installingId === connector.registryId}
                   >
-                    {installingId === connector.registryId ? 'Installing...' : 'Install'}
+                    {installingId === connector.registryId ? "Installing..." : "Install"}
                   </button>
                 ) : (
                   <>
-                    {serverStatus === 'connected' ? (
+                    {serverStatus === "connected" ? (
                       <button
                         className="button-small button-secondary"
                         onClick={() => handleDisconnectServer(config!.id)}
                         disabled={isConnecting}
                       >
-                        {isConnecting ? 'Disconnecting...' : 'Disconnect'}
+                        {isConnecting ? "Disconnecting..." : "Disconnect"}
                       </button>
                     ) : (
                       <button
@@ -339,7 +340,7 @@ export function ConnectorsSettings() {
                         onClick={() => handleConnectServer(config!.id)}
                         disabled={isConnecting}
                       >
-                        {isConnecting ? 'Connecting...' : 'Connect'}
+                        {isConnecting ? "Connecting..." : "Connect"}
                       </button>
                     )}
 

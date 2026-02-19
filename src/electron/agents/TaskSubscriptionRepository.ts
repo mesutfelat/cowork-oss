@@ -1,11 +1,11 @@
-import Database from 'better-sqlite3';
-import { v4 as uuidv4 } from 'uuid';
-import { TaskSubscription } from '../../shared/types';
+import Database from "better-sqlite3";
+import { v4 as uuidv4 } from "uuid";
+import { TaskSubscription } from "../../shared/types";
 
 /**
  * Subscription reason types
  */
-export type SubscriptionReason = 'assigned' | 'mentioned' | 'commented' | 'manual';
+export type SubscriptionReason = "assigned" | "mentioned" | "commented" | "manual";
 
 /**
  * Query parameters for listing subscriptions
@@ -28,11 +28,7 @@ export class TaskSubscriptionRepository {
    * Subscribe an agent to a task
    * If already subscribed, returns existing subscription
    */
-  subscribe(
-    taskId: string,
-    agentRoleId: string,
-    reason: SubscriptionReason
-  ): TaskSubscription {
+  subscribe(taskId: string, agentRoleId: string, reason: SubscriptionReason): TaskSubscription {
     // Check if already subscribed
     const existing = this.findByTaskAndAgent(taskId, agentRoleId);
     if (existing) {
@@ -59,7 +55,7 @@ export class TaskSubscriptionRepository {
       subscription.taskId,
       subscription.agentRoleId,
       subscription.subscriptionReason,
-      subscription.subscribedAt
+      subscription.subscribedAt,
     );
 
     return subscription;
@@ -69,11 +65,7 @@ export class TaskSubscriptionRepository {
    * Auto-subscribe an agent to a task (convenience method)
    * Used when agent comments, gets mentioned, or gets assigned
    */
-  autoSubscribe(
-    taskId: string,
-    agentRoleId: string,
-    reason: SubscriptionReason
-  ): TaskSubscription {
+  autoSubscribe(taskId: string, agentRoleId: string, reason: SubscriptionReason): TaskSubscription {
     return this.subscribe(taskId, agentRoleId, reason);
   }
 
@@ -82,7 +74,7 @@ export class TaskSubscriptionRepository {
    */
   unsubscribe(taskId: string, agentRoleId: string): boolean {
     const stmt = this.db.prepare(
-      'DELETE FROM task_subscriptions WHERE task_id = ? AND agent_role_id = ?'
+      "DELETE FROM task_subscriptions WHERE task_id = ? AND agent_role_id = ?",
     );
     const result = stmt.run(taskId, agentRoleId);
     return result.changes > 0;
@@ -93,7 +85,7 @@ export class TaskSubscriptionRepository {
    */
   findByTaskAndAgent(taskId: string, agentRoleId: string): TaskSubscription | undefined {
     const stmt = this.db.prepare(
-      'SELECT * FROM task_subscriptions WHERE task_id = ? AND agent_role_id = ?'
+      "SELECT * FROM task_subscriptions WHERE task_id = ? AND agent_role_id = ?",
     );
     const row = stmt.get(taskId, agentRoleId) as any;
     return row ? this.mapRowToSubscription(row) : undefined;
@@ -103,7 +95,7 @@ export class TaskSubscriptionRepository {
    * Find a subscription by ID
    */
   findById(id: string): TaskSubscription | undefined {
-    const stmt = this.db.prepare('SELECT * FROM task_subscriptions WHERE id = ?');
+    const stmt = this.db.prepare("SELECT * FROM task_subscriptions WHERE id = ?");
     const row = stmt.get(id) as any;
     return row ? this.mapRowToSubscription(row) : undefined;
   }
@@ -113,7 +105,7 @@ export class TaskSubscriptionRepository {
    */
   getSubscribers(taskId: string): TaskSubscription[] {
     const stmt = this.db.prepare(
-      'SELECT * FROM task_subscriptions WHERE task_id = ? ORDER BY subscribed_at ASC'
+      "SELECT * FROM task_subscriptions WHERE task_id = ? ORDER BY subscribed_at ASC",
     );
     const rows = stmt.all(taskId) as any[];
     return rows.map((row) => this.mapRowToSubscription(row));
@@ -124,7 +116,7 @@ export class TaskSubscriptionRepository {
    */
   getSubscriberCount(taskId: string): number {
     const stmt = this.db.prepare(
-      'SELECT COUNT(*) as count FROM task_subscriptions WHERE task_id = ?'
+      "SELECT COUNT(*) as count FROM task_subscriptions WHERE task_id = ?",
     );
     const result = stmt.get(taskId) as { count: number };
     return result.count;
@@ -135,7 +127,7 @@ export class TaskSubscriptionRepository {
    */
   getSubscriptionsForAgent(agentRoleId: string): TaskSubscription[] {
     const stmt = this.db.prepare(
-      'SELECT * FROM task_subscriptions WHERE agent_role_id = ? ORDER BY subscribed_at DESC'
+      "SELECT * FROM task_subscriptions WHERE agent_role_id = ? ORDER BY subscribed_at DESC",
     );
     const rows = stmt.all(agentRoleId) as any[];
     return rows.map((row) => this.mapRowToSubscription(row));
@@ -149,20 +141,20 @@ export class TaskSubscriptionRepository {
     const params: any[] = [];
 
     if (query.taskId) {
-      conditions.push('task_id = ?');
+      conditions.push("task_id = ?");
       params.push(query.taskId);
     }
 
     if (query.agentRoleId) {
-      conditions.push('agent_role_id = ?');
+      conditions.push("agent_role_id = ?");
       params.push(query.agentRoleId);
     }
 
-    let sql = 'SELECT * FROM task_subscriptions';
+    let sql = "SELECT * FROM task_subscriptions";
     if (conditions.length > 0) {
-      sql += ` WHERE ${conditions.join(' AND ')}`;
+      sql += ` WHERE ${conditions.join(" AND ")}`;
     }
-    sql += ' ORDER BY subscribed_at DESC';
+    sql += " ORDER BY subscribed_at DESC";
 
     if (query.limit) {
       sql += ` LIMIT ${query.limit}`;
@@ -180,7 +172,7 @@ export class TaskSubscriptionRepository {
    * Delete all subscriptions for a task
    */
   deleteByTask(taskId: string): number {
-    const stmt = this.db.prepare('DELETE FROM task_subscriptions WHERE task_id = ?');
+    const stmt = this.db.prepare("DELETE FROM task_subscriptions WHERE task_id = ?");
     const result = stmt.run(taskId);
     return result.changes;
   }
@@ -189,7 +181,7 @@ export class TaskSubscriptionRepository {
    * Delete all subscriptions for an agent
    */
   deleteByAgent(agentRoleId: string): number {
-    const stmt = this.db.prepare('DELETE FROM task_subscriptions WHERE agent_role_id = ?');
+    const stmt = this.db.prepare("DELETE FROM task_subscriptions WHERE agent_role_id = ?");
     const result = stmt.run(agentRoleId);
     return result.changes;
   }
@@ -199,7 +191,7 @@ export class TaskSubscriptionRepository {
    */
   isSubscribed(taskId: string, agentRoleId: string): boolean {
     const stmt = this.db.prepare(
-      'SELECT 1 FROM task_subscriptions WHERE task_id = ? AND agent_role_id = ? LIMIT 1'
+      "SELECT 1 FROM task_subscriptions WHERE task_id = ? AND agent_role_id = ? LIMIT 1",
     );
     const result = stmt.get(taskId, agentRoleId);
     return !!result;
@@ -209,9 +201,7 @@ export class TaskSubscriptionRepository {
    * Get agent role IDs subscribed to a task (for efficient notification)
    */
   getSubscriberIds(taskId: string): string[] {
-    const stmt = this.db.prepare(
-      'SELECT agent_role_id FROM task_subscriptions WHERE task_id = ?'
-    );
+    const stmt = this.db.prepare("SELECT agent_role_id FROM task_subscriptions WHERE task_id = ?");
     const rows = stmt.all(taskId) as { agent_role_id: string }[];
     return rows.map((row) => row.agent_role_id);
   }

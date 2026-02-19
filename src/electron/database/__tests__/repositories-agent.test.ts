@@ -5,13 +5,13 @@
  * with better-sqlite3 in the test environment.
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import type { Task, AgentConfig, AgentType } from '../../../shared/types';
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import type { Task, AgentConfig, AgentType } from "../../../shared/types";
 
 // Mock electron to avoid getPath errors
-vi.mock('electron', () => ({
+vi.mock("electron", () => ({
   app: {
-    getPath: vi.fn().mockReturnValue('/tmp/test-cowork'),
+    getPath: vi.fn().mockReturnValue("/tmp/test-cowork"),
   },
 }));
 
@@ -22,14 +22,26 @@ let taskIdCounter: number;
 // Simplified mock TaskRepository that mirrors the real implementation's interface
 class MockTaskRepository {
   private static readonly ALLOWED_UPDATE_FIELDS = new Set([
-    'title', 'status', 'error', 'result', 'budgetTokens', 'budgetCost',
-    'successCriteria', 'maxAttempts', 'currentAttempt', 'completedAt',
-    'parentTaskId', 'agentType', 'agentConfig', 'depth', 'resultSummary'
+    "title",
+    "status",
+    "error",
+    "result",
+    "budgetTokens",
+    "budgetCost",
+    "successCriteria",
+    "maxAttempts",
+    "currentAttempt",
+    "completedAt",
+    "parentTaskId",
+    "agentType",
+    "agentConfig",
+    "depth",
+    "resultSummary",
   ]);
 
-  private static readonly JSON_FIELDS = new Set(['successCriteria', 'agentConfig']);
+  private static readonly JSON_FIELDS = new Set(["successCriteria", "agentConfig"]);
 
-  create(task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>): Task {
+  create(task: Omit<Task, "id" | "createdAt" | "updatedAt">): Task {
     const id = `task-${++taskIdCounter}`;
     const now = Date.now();
 
@@ -38,7 +50,7 @@ class MockTaskRepository {
       id,
       createdAt: now,
       updatedAt: now,
-      agentType: task.agentType || 'main',
+      agentType: task.agentType || "main",
       depth: task.depth ?? 0,
     };
 
@@ -90,7 +102,7 @@ class MockTaskRepository {
     });
     // Sort by createdAt
     results.sort((a, b) => a.createdAt - b.createdAt);
-    return results.map(stored => this.mapStoredToTask(stored));
+    return results.map((stored) => this.mapStoredToTask(stored));
   }
 
   private mapStoredToTask(stored: any): Task {
@@ -110,7 +122,7 @@ class MockTaskRepository {
       maxAttempts: stored.maxAttempts || undefined,
       currentAttempt: stored.currentAttempt || undefined,
       parentTaskId: stored.parentTaskId || undefined,
-      agentType: (stored.agentType as AgentType) || 'main',
+      agentType: (stored.agentType as AgentType) || "main",
       agentConfig: stored.agentConfig ? JSON.parse(stored.agentConfig) : undefined,
       depth: stored.depth ?? 0,
       resultSummary: stored.resultSummary || undefined,
@@ -118,7 +130,7 @@ class MockTaskRepository {
   }
 }
 
-describe('TaskRepository - Agent Fields', () => {
+describe("TaskRepository - Agent Fields", () => {
   let repository: MockTaskRepository;
 
   beforeEach(() => {
@@ -127,153 +139,153 @@ describe('TaskRepository - Agent Fields', () => {
     repository = new MockTaskRepository();
   });
 
-  describe('create', () => {
-    it('should create task with default agent fields', () => {
+  describe("create", () => {
+    it("should create task with default agent fields", () => {
       const task = repository.create({
-        title: 'Test Task',
-        prompt: 'Do something',
-        status: 'pending',
-        workspaceId: 'workspace-1',
+        title: "Test Task",
+        prompt: "Do something",
+        status: "pending",
+        workspaceId: "workspace-1",
       });
 
       const retrieved = repository.findById(task.id);
 
       expect(retrieved).toBeDefined();
-      expect(retrieved?.agentType).toBe('main');
+      expect(retrieved?.agentType).toBe("main");
       expect(retrieved?.depth).toBe(0);
       expect(retrieved?.parentTaskId).toBeUndefined();
       expect(retrieved?.agentConfig).toBeUndefined();
       expect(retrieved?.resultSummary).toBeUndefined();
     });
 
-    it('should create task with sub agent type', () => {
+    it("should create task with sub agent type", () => {
       const task = repository.create({
-        title: 'Sub Agent Task',
-        prompt: 'Child task',
-        status: 'pending',
-        workspaceId: 'workspace-1',
-        agentType: 'sub',
-        parentTaskId: 'parent-123',
+        title: "Sub Agent Task",
+        prompt: "Child task",
+        status: "pending",
+        workspaceId: "workspace-1",
+        agentType: "sub",
+        parentTaskId: "parent-123",
         depth: 1,
       });
 
       const retrieved = repository.findById(task.id);
 
-      expect(retrieved?.agentType).toBe('sub');
-      expect(retrieved?.parentTaskId).toBe('parent-123');
+      expect(retrieved?.agentType).toBe("sub");
+      expect(retrieved?.parentTaskId).toBe("parent-123");
       expect(retrieved?.depth).toBe(1);
     });
 
-    it('should create task with parallel agent type', () => {
+    it("should create task with parallel agent type", () => {
       const task = repository.create({
-        title: 'Parallel Agent Task',
-        prompt: 'Parallel task',
-        status: 'pending',
-        workspaceId: 'workspace-1',
-        agentType: 'parallel',
+        title: "Parallel Agent Task",
+        prompt: "Parallel task",
+        status: "pending",
+        workspaceId: "workspace-1",
+        agentType: "parallel",
       });
 
       const retrieved = repository.findById(task.id);
-      expect(retrieved?.agentType).toBe('parallel');
+      expect(retrieved?.agentType).toBe("parallel");
     });
 
-    it('should store and retrieve agentConfig', () => {
+    it("should store and retrieve agentConfig", () => {
       const agentConfig: AgentConfig = {
-        modelKey: 'haiku-4-5',
-        personalityId: 'concise',
+        modelKey: "haiku-4-5",
+        personalityId: "concise",
         maxTurns: 10,
         maxTokens: 5000,
         retainMemory: false,
       };
 
       const task = repository.create({
-        title: 'Configured Agent',
-        prompt: 'Task with config',
-        status: 'pending',
-        workspaceId: 'workspace-1',
-        agentType: 'sub',
+        title: "Configured Agent",
+        prompt: "Task with config",
+        status: "pending",
+        workspaceId: "workspace-1",
+        agentType: "sub",
         agentConfig,
       });
 
       const retrieved = repository.findById(task.id);
 
       expect(retrieved?.agentConfig).toBeDefined();
-      expect(retrieved?.agentConfig?.modelKey).toBe('haiku-4-5');
-      expect(retrieved?.agentConfig?.personalityId).toBe('concise');
+      expect(retrieved?.agentConfig?.modelKey).toBe("haiku-4-5");
+      expect(retrieved?.agentConfig?.personalityId).toBe("concise");
       expect(retrieved?.agentConfig?.maxTurns).toBe(10);
       expect(retrieved?.agentConfig?.maxTokens).toBe(5000);
       expect(retrieved?.agentConfig?.retainMemory).toBe(false);
     });
 
-    it('should store resultSummary', () => {
+    it("should store resultSummary", () => {
       const task = repository.create({
-        title: 'Completed Agent',
-        prompt: 'Task',
-        status: 'completed',
-        workspaceId: 'workspace-1',
-        resultSummary: 'Found 5 files matching the criteria',
+        title: "Completed Agent",
+        prompt: "Task",
+        status: "completed",
+        workspaceId: "workspace-1",
+        resultSummary: "Found 5 files matching the criteria",
       });
 
       const retrieved = repository.findById(task.id);
-      expect(retrieved?.resultSummary).toBe('Found 5 files matching the criteria');
+      expect(retrieved?.resultSummary).toBe("Found 5 files matching the criteria");
     });
   });
 
-  describe('update', () => {
-    it('should update agentType', () => {
+  describe("update", () => {
+    it("should update agentType", () => {
       const task = repository.create({
-        title: 'Test',
-        prompt: 'Test',
-        status: 'pending',
-        workspaceId: 'workspace-1',
+        title: "Test",
+        prompt: "Test",
+        status: "pending",
+        workspaceId: "workspace-1",
       });
 
-      repository.update(task.id, { agentType: 'sub' });
+      repository.update(task.id, { agentType: "sub" });
 
       const retrieved = repository.findById(task.id);
-      expect(retrieved?.agentType).toBe('sub');
+      expect(retrieved?.agentType).toBe("sub");
     });
 
-    it('should update parentTaskId', () => {
+    it("should update parentTaskId", () => {
       const task = repository.create({
-        title: 'Test',
-        prompt: 'Test',
-        status: 'pending',
-        workspaceId: 'workspace-1',
+        title: "Test",
+        prompt: "Test",
+        status: "pending",
+        workspaceId: "workspace-1",
       });
 
-      repository.update(task.id, { parentTaskId: 'new-parent-id' });
+      repository.update(task.id, { parentTaskId: "new-parent-id" });
 
       const retrieved = repository.findById(task.id);
-      expect(retrieved?.parentTaskId).toBe('new-parent-id');
+      expect(retrieved?.parentTaskId).toBe("new-parent-id");
     });
 
-    it('should update agentConfig', () => {
+    it("should update agentConfig", () => {
       const task = repository.create({
-        title: 'Test',
-        prompt: 'Test',
-        status: 'pending',
-        workspaceId: 'workspace-1',
+        title: "Test",
+        prompt: "Test",
+        status: "pending",
+        workspaceId: "workspace-1",
       });
 
       const newConfig: AgentConfig = {
-        modelKey: 'opus-4-5',
+        modelKey: "opus-4-5",
         maxTurns: 20,
       };
 
       repository.update(task.id, { agentConfig: newConfig });
 
       const retrieved = repository.findById(task.id);
-      expect(retrieved?.agentConfig?.modelKey).toBe('opus-4-5');
+      expect(retrieved?.agentConfig?.modelKey).toBe("opus-4-5");
       expect(retrieved?.agentConfig?.maxTurns).toBe(20);
     });
 
-    it('should update depth', () => {
+    it("should update depth", () => {
       const task = repository.create({
-        title: 'Test',
-        prompt: 'Test',
-        status: 'pending',
-        workspaceId: 'workspace-1',
+        title: "Test",
+        prompt: "Test",
+        status: "pending",
+        workspaceId: "workspace-1",
       });
 
       repository.update(task.id, { depth: 2 });
@@ -282,115 +294,115 @@ describe('TaskRepository - Agent Fields', () => {
       expect(retrieved?.depth).toBe(2);
     });
 
-    it('should update resultSummary', () => {
+    it("should update resultSummary", () => {
       const task = repository.create({
-        title: 'Test',
-        prompt: 'Test',
-        status: 'pending',
-        workspaceId: 'workspace-1',
+        title: "Test",
+        prompt: "Test",
+        status: "pending",
+        workspaceId: "workspace-1",
       });
 
-      repository.update(task.id, { resultSummary: 'Analysis complete: 3 issues found' });
+      repository.update(task.id, { resultSummary: "Analysis complete: 3 issues found" });
 
       const retrieved = repository.findById(task.id);
-      expect(retrieved?.resultSummary).toBe('Analysis complete: 3 issues found');
+      expect(retrieved?.resultSummary).toBe("Analysis complete: 3 issues found");
     });
 
-    it('should handle multiple field updates', () => {
+    it("should handle multiple field updates", () => {
       const task = repository.create({
-        title: 'Test',
-        prompt: 'Test',
-        status: 'pending',
-        workspaceId: 'workspace-1',
+        title: "Test",
+        prompt: "Test",
+        status: "pending",
+        workspaceId: "workspace-1",
       });
 
       repository.update(task.id, {
-        status: 'completed',
-        agentType: 'sub',
+        status: "completed",
+        agentType: "sub",
         depth: 1,
-        resultSummary: 'Done',
+        resultSummary: "Done",
       });
 
       const retrieved = repository.findById(task.id);
-      expect(retrieved?.status).toBe('completed');
-      expect(retrieved?.agentType).toBe('sub');
+      expect(retrieved?.status).toBe("completed");
+      expect(retrieved?.agentType).toBe("sub");
       expect(retrieved?.depth).toBe(1);
-      expect(retrieved?.resultSummary).toBe('Done');
+      expect(retrieved?.resultSummary).toBe("Done");
     });
   });
 
-  describe('findByParentId', () => {
-    it('should return empty array when no children exist', () => {
+  describe("findByParentId", () => {
+    it("should return empty array when no children exist", () => {
       const parent = repository.create({
-        title: 'Parent',
-        prompt: 'Parent task',
-        status: 'executing',
-        workspaceId: 'workspace-1',
+        title: "Parent",
+        prompt: "Parent task",
+        status: "executing",
+        workspaceId: "workspace-1",
       });
 
       const children = repository.findByParentId(parent.id);
       expect(children).toHaveLength(0);
     });
 
-    it('should return all child tasks', () => {
+    it("should return all child tasks", () => {
       const parent = repository.create({
-        title: 'Parent',
-        prompt: 'Parent task',
-        status: 'executing',
-        workspaceId: 'workspace-1',
+        title: "Parent",
+        prompt: "Parent task",
+        status: "executing",
+        workspaceId: "workspace-1",
       });
 
       repository.create({
-        title: 'Child 1',
-        prompt: 'Child task 1',
-        status: 'pending',
-        workspaceId: 'workspace-1',
+        title: "Child 1",
+        prompt: "Child task 1",
+        status: "pending",
+        workspaceId: "workspace-1",
         parentTaskId: parent.id,
-        agentType: 'sub',
+        agentType: "sub",
         depth: 1,
       });
 
       repository.create({
-        title: 'Child 2',
-        prompt: 'Child task 2',
-        status: 'executing',
-        workspaceId: 'workspace-1',
+        title: "Child 2",
+        prompt: "Child task 2",
+        status: "executing",
+        workspaceId: "workspace-1",
         parentTaskId: parent.id,
-        agentType: 'sub',
+        agentType: "sub",
         depth: 1,
       });
 
       const children = repository.findByParentId(parent.id);
 
       expect(children).toHaveLength(2);
-      expect(children[0].title).toBe('Child 1');
-      expect(children[1].title).toBe('Child 2');
+      expect(children[0].title).toBe("Child 1");
+      expect(children[1].title).toBe("Child 2");
     });
 
-    it('should order children by created_at', async () => {
+    it("should order children by created_at", async () => {
       const parent = repository.create({
-        title: 'Parent',
-        prompt: 'Parent',
-        status: 'executing',
-        workspaceId: 'workspace-1',
+        title: "Parent",
+        prompt: "Parent",
+        status: "executing",
+        workspaceId: "workspace-1",
       });
 
       const child1 = repository.create({
-        title: 'First Child',
-        prompt: 'First',
-        status: 'pending',
-        workspaceId: 'workspace-1',
+        title: "First Child",
+        prompt: "First",
+        status: "pending",
+        workspaceId: "workspace-1",
         parentTaskId: parent.id,
       });
 
       // Small delay to ensure different timestamps
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       const child2 = repository.create({
-        title: 'Second Child',
-        prompt: 'Second',
-        status: 'pending',
-        workspaceId: 'workspace-1',
+        title: "Second Child",
+        prompt: "Second",
+        status: "pending",
+        workspaceId: "workspace-1",
         parentTaskId: parent.id,
       });
 
@@ -401,28 +413,28 @@ describe('TaskRepository - Agent Fields', () => {
       expect(children[1].id).toBe(child2.id);
     });
 
-    it('should not return grandchildren', () => {
+    it("should not return grandchildren", () => {
       const grandparent = repository.create({
-        title: 'Grandparent',
-        prompt: 'Grandparent',
-        status: 'executing',
-        workspaceId: 'workspace-1',
+        title: "Grandparent",
+        prompt: "Grandparent",
+        status: "executing",
+        workspaceId: "workspace-1",
       });
 
       const parent = repository.create({
-        title: 'Parent',
-        prompt: 'Parent',
-        status: 'executing',
-        workspaceId: 'workspace-1',
+        title: "Parent",
+        prompt: "Parent",
+        status: "executing",
+        workspaceId: "workspace-1",
         parentTaskId: grandparent.id,
         depth: 1,
       });
 
       repository.create({
-        title: 'Grandchild',
-        prompt: 'Grandchild',
-        status: 'pending',
-        workspaceId: 'workspace-1',
+        title: "Grandchild",
+        prompt: "Grandchild",
+        status: "pending",
+        workspaceId: "workspace-1",
         parentTaskId: parent.id,
         depth: 2,
       });
@@ -430,26 +442,26 @@ describe('TaskRepository - Agent Fields', () => {
       const children = repository.findByParentId(grandparent.id);
 
       expect(children).toHaveLength(1);
-      expect(children[0].title).toBe('Parent');
+      expect(children[0].title).toBe("Parent");
     });
   });
 
-  describe('JSON field serialization', () => {
-    it('should handle complex agentConfig', () => {
+  describe("JSON field serialization", () => {
+    it("should handle complex agentConfig", () => {
       const complexConfig: AgentConfig = {
-        providerType: 'bedrock',
-        modelKey: 'sonnet-4-5',
-        personalityId: 'technical',
+        providerType: "bedrock",
+        modelKey: "sonnet-4-5",
+        personalityId: "technical",
         maxTurns: 15,
         maxTokens: 10000,
         retainMemory: true,
       };
 
       const task = repository.create({
-        title: 'Complex Config Task',
-        prompt: 'Task',
-        status: 'pending',
-        workspaceId: 'workspace-1',
+        title: "Complex Config Task",
+        prompt: "Task",
+        status: "pending",
+        workspaceId: "workspace-1",
         agentConfig: complexConfig,
       });
 
@@ -458,12 +470,12 @@ describe('TaskRepository - Agent Fields', () => {
       expect(retrieved?.agentConfig).toEqual(complexConfig);
     });
 
-    it('should handle empty agentConfig', () => {
+    it("should handle empty agentConfig", () => {
       const task = repository.create({
-        title: 'Empty Config Task',
-        prompt: 'Task',
-        status: 'pending',
-        workspaceId: 'workspace-1',
+        title: "Empty Config Task",
+        prompt: "Task",
+        status: "pending",
+        workspaceId: "workspace-1",
         agentConfig: {},
       });
 
@@ -472,12 +484,12 @@ describe('TaskRepository - Agent Fields', () => {
       expect(retrieved?.agentConfig).toEqual({});
     });
 
-    it('should handle null/undefined agentConfig gracefully', () => {
+    it("should handle null/undefined agentConfig gracefully", () => {
       const task = repository.create({
-        title: 'No Config Task',
-        prompt: 'Task',
-        status: 'pending',
-        workspaceId: 'workspace-1',
+        title: "No Config Task",
+        prompt: "Task",
+        status: "pending",
+        workspaceId: "workspace-1",
       });
 
       const retrieved = repository.findById(task.id);

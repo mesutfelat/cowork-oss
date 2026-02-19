@@ -31,8 +31,8 @@ Please read and follow our [Code of Conduct](CODE_OF_CONDUCT.md) to keep our com
 
 ### Prerequisites
 
-- Node.js 18 or higher
-- npm 9 or higher
+- Node.js 24 or higher
+- npm 10 or higher
 - macOS (for Electron native features)
 - Git
 
@@ -59,7 +59,10 @@ npm run dev
 - `npm run dev` - Start development mode with hot reload
 - `npm run build` - Build for production
 - `npm run package` - Package the Electron app
-- `npm run lint` - Run ESLint
+- `npm run fmt` - Format code with Oxfmt
+- `npm run fmt:check` - Check formatting without writing
+- `npm run lint` - Run Oxlint (fast, Rust-based linter)
+- `npm run lint:eslint` - Run ESLint
 - `npm run type-check` - Run TypeScript type checking
 - `npm test` - Run tests
 
@@ -96,6 +99,8 @@ git push && git push --tags
 
 - [ ] All tests passing
 - [ ] Type checking passes
+- [ ] Code formatted (`npm run fmt:check`)
+- [ ] Linting passes (`npm run lint`)
 - [ ] CHANGELOG.md updated
 - [ ] README.md reflects any new features
 - [ ] No sensitive data in committed files

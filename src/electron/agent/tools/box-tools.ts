@@ -1,20 +1,20 @@
-import * as fs from 'fs';
-import * as path from 'path';
-import { Workspace } from '../../../shared/types';
-import { AgentDaemon } from '../daemon';
-import { BoxSettingsManager } from '../../settings/box-manager';
-import { boxRequest, boxUploadFile } from '../../utils/box-api';
+import * as fs from "fs";
+import * as path from "path";
+import { Workspace } from "../../../shared/types";
+import { AgentDaemon } from "../daemon";
+import { BoxSettingsManager } from "../../settings/box-manager";
+import { boxRequest, boxUploadFile } from "../../utils/box-api";
 
 type BoxAction =
-  | 'get_current_user'
-  | 'search'
-  | 'get_file'
-  | 'get_folder'
-  | 'list_folder_items'
-  | 'create_folder'
-  | 'delete_file'
-  | 'delete_folder'
-  | 'upload_file';
+  | "get_current_user"
+  | "search"
+  | "get_file"
+  | "get_folder"
+  | "list_folder_items"
+  | "create_folder"
+  | "delete_file"
+  | "delete_folder"
+  | "upload_file";
 
 interface BoxActionInput {
   action: BoxAction;
@@ -22,7 +22,7 @@ interface BoxActionInput {
   limit?: number;
   offset?: number;
   fields?: string;
-  type?: 'file' | 'folder' | 'web_link';
+  type?: "file" | "folder" | "web_link";
   ancestor_folder_ids?: string;
   file_extensions?: string;
   content_types?: string;
@@ -34,13 +34,13 @@ interface BoxActionInput {
   file_path?: string;
 }
 
-const DEFAULT_FOLDER_ID = '0';
+const DEFAULT_FOLDER_ID = "0";
 
 export class BoxTools {
   constructor(
     private workspace: Workspace,
     private daemon: AgentDaemon,
-    private taskId: string
+    private taskId: string,
   ) {}
 
   setWorkspace(workspace: Workspace): void {
@@ -54,31 +54,35 @@ export class BoxTools {
   private async requireApproval(summary: string, details: Record<string, unknown>): Promise<void> {
     const approved = await this.daemon.requestApproval(
       this.taskId,
-      'external_service',
+      "external_service",
       summary,
-      details
+      details,
     );
 
     if (!approved) {
-      throw new Error('User denied Box action');
+      throw new Error("User denied Box action");
     }
   }
 
   private resolveFilePath(inputPath: string): string {
     if (!this.workspace.permissions.read) {
-      throw new Error('Read permission not granted for uploads');
+      throw new Error("Read permission not granted for uploads");
     }
 
     const workspaceRoot = path.resolve(this.workspace.path);
     const allowedPaths = this.workspace.permissions.allowedPaths || [];
-    const canReadOutside = this.workspace.isTemp || this.workspace.permissions.unrestrictedFileAccess;
+    const canReadOutside =
+      this.workspace.isTemp || this.workspace.permissions.unrestrictedFileAccess;
 
     const isPathAllowed = (absolutePath: string): boolean => {
       if (allowedPaths.length === 0) return false;
       const normalizedPath = path.normalize(absolutePath);
       return allowedPaths.some((allowed) => {
         const normalizedAllowed = path.normalize(allowed);
-        return normalizedPath === normalizedAllowed || normalizedPath.startsWith(normalizedAllowed + path.sep);
+        return (
+          normalizedPath === normalizedAllowed ||
+          normalizedPath.startsWith(normalizedAllowed + path.sep)
+        );
       });
     };
 
@@ -87,9 +91,9 @@ export class BoxTools {
       : path.resolve(workspaceRoot, inputPath);
 
     const relative = path.relative(workspaceRoot, candidate);
-    const isInsideWorkspace = !(relative.startsWith('..') || path.isAbsolute(relative));
+    const isInsideWorkspace = !(relative.startsWith("..") || path.isAbsolute(relative));
     if (!isInsideWorkspace && !canReadOutside && !isPathAllowed(candidate)) {
-      throw new Error('File path must be inside the workspace or in Allowed Paths');
+      throw new Error("File path must be inside the workspace or in Allowed Paths");
     }
     if (!fs.existsSync(candidate)) {
       throw new Error(`File not found: ${inputPath}`);
@@ -104,7 +108,7 @@ export class BoxTools {
   async executeAction(input: BoxActionInput): Promise<any> {
     const settings = BoxSettingsManager.loadSettings();
     if (!settings.enabled) {
-      throw new Error('Box integration is disabled. Enable it in Settings > Integrations > Box.');
+      throw new Error("Box integration is disabled. Enable it in Settings > Integrations > Box.");
     }
 
     const action = input.action;
@@ -115,15 +119,15 @@ export class BoxTools {
     let result;
 
     switch (action) {
-      case 'get_current_user': {
-        result = await boxRequest(settings, { method: 'GET', path: '/users/me' });
+      case "get_current_user": {
+        result = await boxRequest(settings, { method: "GET", path: "/users/me" });
         break;
       }
-      case 'search': {
-        if (!input.query) throw new Error('Missing query for search');
+      case "search": {
+        if (!input.query) throw new Error("Missing query for search");
         result = await boxRequest(settings, {
-          method: 'GET',
-          path: '/search',
+          method: "GET",
+          path: "/search",
           query: {
             query: input.query,
             limit: input.limit,
@@ -138,28 +142,28 @@ export class BoxTools {
         });
         break;
       }
-      case 'get_file': {
-        if (!input.file_id) throw new Error('Missing file_id for get_file');
+      case "get_file": {
+        if (!input.file_id) throw new Error("Missing file_id for get_file");
         result = await boxRequest(settings, {
-          method: 'GET',
+          method: "GET",
           path: `/files/${input.file_id}`,
           query: input.fields ? { fields: input.fields } : undefined,
         });
         break;
       }
-      case 'get_folder': {
-        if (!input.folder_id) throw new Error('Missing folder_id for get_folder');
+      case "get_folder": {
+        if (!input.folder_id) throw new Error("Missing folder_id for get_folder");
         result = await boxRequest(settings, {
-          method: 'GET',
+          method: "GET",
           path: `/folders/${input.folder_id}`,
           query: input.fields ? { fields: input.fields } : undefined,
         });
         break;
       }
-      case 'list_folder_items': {
+      case "list_folder_items": {
         const folderId = input.folder_id || DEFAULT_FOLDER_ID;
         result = await boxRequest(settings, {
-          method: 'GET',
+          method: "GET",
           path: `/folders/${folderId}/items`,
           query: {
             limit: input.limit,
@@ -169,17 +173,17 @@ export class BoxTools {
         });
         break;
       }
-      case 'create_folder': {
-        if (!input.name) throw new Error('Missing name for create_folder');
+      case "create_folder": {
+        if (!input.name) throw new Error("Missing name for create_folder");
         const parentId = input.parent_id || DEFAULT_FOLDER_ID;
-        await this.requireApproval('Create a Box folder', {
-          action: 'create_folder',
+        await this.requireApproval("Create a Box folder", {
+          action: "create_folder",
           parent_id: parentId,
           name: input.name,
         });
         result = await boxRequest(settings, {
-          method: 'POST',
-          path: '/folders',
+          method: "POST",
+          path: "/folders",
           body: {
             name: input.name,
             parent: { id: parentId },
@@ -187,26 +191,35 @@ export class BoxTools {
         });
         break;
       }
-      case 'delete_file': {
-        if (!input.file_id) throw new Error('Missing file_id for delete_file');
-        await this.requireApproval('Delete a Box file', { action: 'delete_file', file_id: input.file_id });
-        result = await boxRequest(settings, { method: 'DELETE', path: `/files/${input.file_id}` });
+      case "delete_file": {
+        if (!input.file_id) throw new Error("Missing file_id for delete_file");
+        await this.requireApproval("Delete a Box file", {
+          action: "delete_file",
+          file_id: input.file_id,
+        });
+        result = await boxRequest(settings, { method: "DELETE", path: `/files/${input.file_id}` });
         break;
       }
-      case 'delete_folder': {
-        if (!input.folder_id) throw new Error('Missing folder_id for delete_folder');
-        await this.requireApproval('Delete a Box folder', { action: 'delete_folder', folder_id: input.folder_id });
-        result = await boxRequest(settings, { method: 'DELETE', path: `/folders/${input.folder_id}` });
+      case "delete_folder": {
+        if (!input.folder_id) throw new Error("Missing folder_id for delete_folder");
+        await this.requireApproval("Delete a Box folder", {
+          action: "delete_folder",
+          folder_id: input.folder_id,
+        });
+        result = await boxRequest(settings, {
+          method: "DELETE",
+          path: `/folders/${input.folder_id}`,
+        });
         break;
       }
-      case 'upload_file': {
-        if (!input.file_path) throw new Error('Missing file_path for upload_file');
+      case "upload_file": {
+        if (!input.file_path) throw new Error("Missing file_path for upload_file");
         const parentId = input.parent_id || DEFAULT_FOLDER_ID;
         const resolved = this.resolveFilePath(input.file_path);
         const data = fs.readFileSync(resolved);
         const fileName = input.name || path.basename(resolved);
         await this.requireApproval(`Upload file to Box: ${fileName}`, {
-          action: 'upload_file',
+          action: "upload_file",
           parent_id: parentId,
           file: fileName,
         });
@@ -221,8 +234,8 @@ export class BoxTools {
         throw new Error(`Unsupported action: ${action}`);
     }
 
-    this.daemon.logEvent(this.taskId, 'tool_result', {
-      tool: 'box_action',
+    this.daemon.logEvent(this.taskId, "tool_result", {
+      tool: "box_action",
       action,
       status: result?.status,
       hasData: result?.data ? true : false,

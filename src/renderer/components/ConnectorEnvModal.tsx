@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState } from "react";
 
 export interface ConnectorEnvField {
   key: string;
   label: string;
   placeholder?: string;
-  type?: 'text' | 'password';
+  type?: "text" | "password";
 }
 
 interface ConnectorEnvModalProps {
@@ -27,7 +27,7 @@ export function ConnectorEnvModal({
   const [values, setValues] = useState<Record<string, string>>(() => {
     const seeded: Record<string, string> = {};
     fields.forEach((field) => {
-      seeded[field.key] = initialEnv[field.key] || '';
+      seeded[field.key] = initialEnv[field.key] || "";
     });
     return seeded;
   });
@@ -64,7 +64,7 @@ export function ConnectorEnvModal({
       onSaved();
       onClose();
     } catch (err: any) {
-      setError(err.message || 'Failed to save credentials');
+      setError(err.message || "Failed to save credentials");
     } finally {
       setSaving(false);
     }
@@ -78,7 +78,14 @@ export function ConnectorEnvModal({
             <h3>{serverName} Configuration</h3>
           </div>
           <button className="mcp-modal-close" onClick={onClose}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
               <path d="M18 6L6 18M6 6l12 12" />
             </svg>
           </button>
@@ -89,9 +96,9 @@ export function ConnectorEnvModal({
               <label>{field.label}</label>
               <input
                 className="settings-input"
-                type={field.type || 'text'}
+                type={field.type || "text"}
                 placeholder={field.placeholder}
-                value={values[field.key] || ''}
+                value={values[field.key] || ""}
                 onChange={(e) => setValues({ ...values, [field.key]: e.target.value })}
               />
             </div>
@@ -99,7 +106,7 @@ export function ConnectorEnvModal({
 
           <div className="connector-setup-actions">
             <button className="button-primary" onClick={handleSave} disabled={saving}>
-              {saving ? 'Saving...' : 'Save Credentials'}
+              {saving ? "Saving..." : "Save Credentials"}
             </button>
           </div>
 

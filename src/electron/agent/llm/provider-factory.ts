@@ -1,6 +1,6 @@
-import * as fs from 'fs';
-import * as path from 'path';
-import { getModels as getPiAiModels } from '@mariozechner/pi-ai';
+import * as fs from "fs";
+import * as path from "path";
+import { getModels as getPiAiModels } from "@mariozechner/pi-ai";
 import {
   LLMProvider,
   LLMProviderConfig,
@@ -17,43 +17,43 @@ import {
   ModelKey,
   DEFAULT_MODEL,
   DEFAULT_PI_MODEL,
-} from './types';
-import { AnthropicProvider } from './anthropic-provider';
-import { BedrockProvider } from './bedrock-provider';
-import { OllamaProvider } from './ollama-provider';
-import { GeminiProvider } from './gemini-provider';
-import { OpenRouterProvider } from './openrouter-provider';
-import { OpenAIProvider } from './openai-provider';
-import { AzureOpenAIProvider } from './azure-openai-provider';
-import { GroqProvider } from './groq-provider';
-import { XAIProvider } from './xai-provider';
-import { KimiProvider } from './kimi-provider';
-import { PiProvider } from './pi-provider';
-import { AnthropicCompatibleProvider } from './anthropic-compatible-provider';
-import { OpenAICompatibleProvider } from './openai-compatible-provider';
-import { GitHubCopilotProvider } from './github-copilot-provider';
-import { SecureSettingsRepository } from '../../database/SecureSettingsRepository';
+} from "./types";
+import { AnthropicProvider } from "./anthropic-provider";
+import { BedrockProvider } from "./bedrock-provider";
+import { OllamaProvider } from "./ollama-provider";
+import { GeminiProvider } from "./gemini-provider";
+import { OpenRouterProvider } from "./openrouter-provider";
+import { OpenAIProvider } from "./openai-provider";
+import { AzureOpenAIProvider } from "./azure-openai-provider";
+import { GroqProvider } from "./groq-provider";
+import { XAIProvider } from "./xai-provider";
+import { KimiProvider } from "./kimi-provider";
+import { PiProvider } from "./pi-provider";
+import { AnthropicCompatibleProvider } from "./anthropic-compatible-provider";
+import { OpenAICompatibleProvider } from "./openai-compatible-provider";
+import { GitHubCopilotProvider } from "./github-copilot-provider";
+import { SecureSettingsRepository } from "../../database/SecureSettingsRepository";
 import {
   CUSTOM_PROVIDER_CATALOG,
   CUSTOM_PROVIDER_MAP,
   CUSTOM_PROVIDER_IDS,
   type ProviderCatalogEntry,
-} from '../../../shared/llm-provider-catalog';
-import type { CustomProviderConfig } from '../../../shared/types';
-import { getUserDataDir } from '../../utils/user-data-dir';
-import { getSafeStorage } from '../../utils/safe-storage';
+} from "../../../shared/llm-provider-catalog";
+import type { CustomProviderConfig } from "../../../shared/types";
+import { getUserDataDir } from "../../utils/user-data-dir";
+import { getSafeStorage } from "../../utils/safe-storage";
 
-const LEGACY_SETTINGS_FILE = 'llm-settings.json';
-const MASKED_VALUE = '***configured***';
-const ENCRYPTED_PREFIX = 'encrypted:';
+const LEGACY_SETTINGS_FILE = "llm-settings.json";
+const MASKED_VALUE = "***configured***";
+const ENCRYPTED_PREFIX = "encrypted:";
 let llmCallLogCounter = 0;
 const observedModelMaxTokens = new Map<string, number>();
 const CUSTOM_PROVIDER_ALIASES: Partial<Record<LLMProviderType, LLMProviderType>> = {
-  'kimi-coding': 'kimi-code',
+  "kimi-coding": "kimi-code",
 };
 
 function safeContentLength(value: unknown): number {
-  if (typeof value === 'string') return value.length;
+  if (typeof value === "string") return value.length;
   if (value == null) return 0;
   try {
     return JSON.stringify(value).length;
@@ -74,11 +74,11 @@ function summarizeLLMRequest(request: LLMRequest): Record<string, unknown> {
   let toolResultErrors = 0;
 
   for (const message of messages) {
-    if (message?.role === 'user') userMessages++;
-    else if (message?.role === 'assistant') assistantMessages++;
+    if (message?.role === "user") userMessages++;
+    else if (message?.role === "assistant") assistantMessages++;
 
     const content: any = (message as any)?.content;
-    if (typeof content === 'string') {
+    if (typeof content === "string") {
       textBlocks++;
       textChars += content.length;
       continue;
@@ -86,17 +86,17 @@ function summarizeLLMRequest(request: LLMRequest): Record<string, unknown> {
 
     if (!Array.isArray(content)) continue;
     for (const block of content) {
-      if (!block || typeof block !== 'object') continue;
+      if (!block || typeof block !== "object") continue;
       const type = (block as any).type;
-      if (type === 'text') {
+      if (type === "text") {
         const text = (block as any).text;
-        if (typeof text === 'string') {
+        if (typeof text === "string") {
           textBlocks++;
           textChars += text.length;
         }
-      } else if (type === 'tool_use') {
+      } else if (type === "tool_use") {
         toolUseBlocks++;
-      } else if (type === 'tool_result') {
+      } else if (type === "tool_result") {
         toolResultBlocks++;
         toolResultChars += safeContentLength((block as any).content);
         if ((block as any).is_error) toolResultErrors++;
@@ -117,7 +117,7 @@ function summarizeLLMRequest(request: LLMRequest): Record<string, unknown> {
     toolResultBlocks,
     toolResultChars,
     toolResultErrors,
-    systemChars: typeof request.system === 'string' ? request.system.length : 0,
+    systemChars: typeof request.system === "string" ? request.system.length : 0,
     signalAborted: request.signal?.aborted === true,
   };
 }
@@ -129,20 +129,19 @@ function summarizeLLMResponse(response: LLMResponse): Record<string, unknown> {
   let toolUseBlocks = 0;
 
   for (const block of content as any[]) {
-    if (!block || typeof block !== 'object') continue;
-    if (block.type === 'text' && typeof block.text === 'string') {
+    if (!block || typeof block !== "object") continue;
+    if (block.type === "text" && typeof block.text === "string") {
       textBlocks++;
       textChars += block.text.length;
-    } else if (block.type === 'tool_use') {
+    } else if (block.type === "tool_use") {
       toolUseBlocks++;
     }
   }
 
   const inputTokens = response?.usage?.inputTokens ?? null;
   const outputTokens = response?.usage?.outputTokens ?? null;
-  const totalTokens = inputTokens != null && outputTokens != null
-    ? inputTokens + outputTokens
-    : null;
+  const totalTokens =
+    inputTokens != null && outputTokens != null ? inputTokens + outputTokens : null;
 
   return {
     stopReason: response?.stopReason,
@@ -157,7 +156,7 @@ function summarizeLLMResponse(response: LLMResponse): Record<string, unknown> {
 }
 
 function parseMaxTokensLimitFromError(error: any): number | null {
-  const message = String(error?.message || '');
+  const message = String(error?.message || "");
   if (!message) return null;
 
   const patterns = [
@@ -179,8 +178,12 @@ function parseMaxTokensLimitFromError(error: any): number | null {
   return null;
 }
 
-function clampRequestToObservedModelLimit(request: LLMRequest): { request: LLMRequest; adjusted: boolean; observedLimit: number | null } {
-  const model = typeof request.model === 'string' ? request.model : '';
+function clampRequestToObservedModelLimit(request: LLMRequest): {
+  request: LLMRequest;
+  adjusted: boolean;
+  observedLimit: number | null;
+} {
+  const model = typeof request.model === "string" ? request.model : "";
   if (!model) return { request, adjusted: false, observedLimit: null };
 
   const observedLimit = observedModelMaxTokens.get(model) ?? null;
@@ -213,28 +216,29 @@ function wrapProviderWithDetailedLogging(provider: LLMProvider): LLMProvider {
       const effectiveRequest = preflight.request;
       // Tag side-channel calls (no tools, very short system, small maxTokens) to avoid
       // confusing them with main agentic loop calls in the logs.
-      const isSideCall = !effectiveRequest.tools?.length &&
+      const isSideCall =
+        !effectiveRequest.tools?.length &&
         effectiveRequest.maxTokens <= 200 &&
-        (typeof effectiveRequest.system === 'string' ? effectiveRequest.system.length : 0) < 120;
-      const tag = isSideCall ? ' [side]' : '';
-      console.log(`[LLM:${provider.type}] #${callId}${tag} start`, summarizeLLMRequest(effectiveRequest));
+        (typeof effectiveRequest.system === "string" ? effectiveRequest.system.length : 0) < 120;
+      const tag = isSideCall ? " [side]" : "";
+      console.log(
+        `[LLM:${provider.type}] #${callId}${tag} start`,
+        summarizeLLMRequest(effectiveRequest),
+      );
       if (preflight.adjusted) {
-        console.log(
-          `[LLM:${provider.type}] #${callId} using observed model token limit`,
-          {
-            model: effectiveRequest.model,
-            observedLimit: preflight.observedLimit,
-            requestedMaxTokens: request.maxTokens,
-            adjustedMaxTokens: effectiveRequest.maxTokens,
-          }
-        );
+        console.log(`[LLM:${provider.type}] #${callId} using observed model token limit`, {
+          model: effectiveRequest.model,
+          observedLimit: preflight.observedLimit,
+          requestedMaxTokens: request.maxTokens,
+          adjustedMaxTokens: effectiveRequest.maxTokens,
+        });
       }
 
       try {
         const response = await provider.createMessage(effectiveRequest);
         console.log(
           `[LLM:${provider.type}] #${callId}${tag} success in ${Date.now() - startedAt}ms`,
-          summarizeLLMResponse(response)
+          summarizeLLMResponse(response),
         );
         return response;
       } catch (error: any) {
@@ -244,22 +248,19 @@ function wrapProviderWithDetailedLogging(provider: LLMProvider): LLMProvider {
           Number.isFinite(effectiveRequest.maxTokens) &&
           effectiveRequest.maxTokens >= parsedLimit
         ) {
-          const model = typeof effectiveRequest.model === 'string' ? effectiveRequest.model : '';
+          const model = typeof effectiveRequest.model === "string" ? effectiveRequest.model : "";
           if (model) {
             observedModelMaxTokens.set(model, parsedLimit);
           }
           const retryMaxTokens = Math.max(1, parsedLimit - 1);
           const shouldRetry = retryMaxTokens !== effectiveRequest.maxTokens;
           if (shouldRetry) {
-            console.warn(
-              `[LLM:${provider.type}] #${callId} retrying with provider token cap`,
-              {
-                model: effectiveRequest.model,
-                parsedLimit,
-                previousMaxTokens: effectiveRequest.maxTokens,
-                retryMaxTokens,
-              }
-            );
+            console.warn(`[LLM:${provider.type}] #${callId} retrying with provider token cap`, {
+              model: effectiveRequest.model,
+              parsedLimit,
+              previousMaxTokens: effectiveRequest.maxTokens,
+              retryMaxTokens,
+            });
             const retriedRequest: LLMRequest = { ...effectiveRequest, maxTokens: retryMaxTokens };
             try {
               const response = await provider.createMessage(retriedRequest);
@@ -269,7 +270,7 @@ function wrapProviderWithDetailedLogging(provider: LLMProvider): LLMProvider {
                   ...summarizeLLMResponse(response),
                   retriedWithMaxTokens: retryMaxTokens,
                   learnedModelLimit: parsedLimit,
-                }
+                },
               );
               return response;
             } catch (retryError: any) {
@@ -278,15 +279,19 @@ function wrapProviderWithDetailedLogging(provider: LLMProvider): LLMProvider {
           }
         }
 
-        const message = String(error?.message || '');
+        const message = String(error?.message || "");
         const lower = message.toLowerCase();
-        const cancelled = error?.name === 'AbortError' || lower.includes('aborted') || lower.includes('cancel');
-        console.error(`[LLM:${provider.type}] #${callId}${tag} ${cancelled ? 'cancelled' : 'error'} in ${Date.now() - startedAt}ms`, {
-          name: error?.name,
-          message,
-          status: error?.status || error?.$metadata?.httpStatusCode,
-          requestId: error?.$metadata?.requestId,
-        });
+        const cancelled =
+          error?.name === "AbortError" || lower.includes("aborted") || lower.includes("cancel");
+        console.error(
+          `[LLM:${provider.type}] #${callId}${tag} ${cancelled ? "cancelled" : "error"} in ${Date.now() - startedAt}ms`,
+          {
+            name: error?.name,
+            message,
+            status: error?.status || error?.$metadata?.httpStatusCode,
+            requestId: error?.$metadata?.requestId,
+          },
+        );
         throw error;
       }
     },
@@ -309,7 +314,7 @@ function getCustomProviderEntry(providerType: LLMProviderType): ProviderCatalogE
 
 function getCustomProviderConfig(
   customProviders: Record<string, CustomProviderConfig> | undefined,
-  providerType: LLMProviderType
+  providerType: LLMProviderType,
 ): CustomProviderConfig | undefined {
   if (!customProviders) return undefined;
   const resolved = resolveCustomProviderId(providerType);
@@ -319,14 +324,16 @@ function getCustomProviderConfig(
   }
   const fallbackConfig = customProviders[providerType];
   if (fallbackConfig && resolved !== providerType) {
-    console.log(`[LLMProviderFactory] Custom provider config not found for "${resolved}", falling back to "${providerType}".`);
+    console.log(
+      `[LLMProviderFactory] Custom provider config not found for "${resolved}", falling back to "${providerType}".`,
+    );
   }
   return fallbackConfig;
 }
 
 function isCustomProviderConfigured(
   entry: ProviderCatalogEntry,
-  config?: CustomProviderConfig
+  config?: CustomProviderConfig,
 ): boolean {
   if (!config) return false;
   const hasApiKey = !!config.apiKey?.trim();
@@ -345,14 +352,14 @@ function isCustomProviderConfigured(
 function createCustomProvider(
   config: LLMProviderConfig,
   entry: ProviderCatalogEntry,
-  resolvedType: LLMProviderType
+  resolvedType: LLMProviderType,
 ): LLMProvider {
-  if (resolvedType === 'github-copilot') {
+  if (resolvedType === "github-copilot") {
     return new GitHubCopilotProvider(config);
   }
 
-  const apiKey = config.providerApiKey || '';
-  const baseUrl = config.providerBaseUrl || entry.baseUrl || '';
+  const apiKey = config.providerApiKey || "";
+  const baseUrl = config.providerBaseUrl || entry.baseUrl || "";
 
   if (entry.requiresBaseUrl && !baseUrl) {
     throw new Error(`${entry.name} base URL is required. Configure it in Settings.`);
@@ -367,7 +374,7 @@ function createCustomProvider(
     throw new Error(`${entry.name} model is required. Configure it in Settings.`);
   }
 
-  if (entry.compatibility === 'openai') {
+  if (entry.compatibility === "openai") {
     return new OpenAICompatibleProvider({
       type: resolvedType,
       providerName: entry.name,
@@ -404,10 +411,10 @@ function encryptSecret(value?: string): string | undefined {
     const safeStorage = getSafeStorage();
     if (safeStorage?.isEncryptionAvailable()) {
       const encrypted = safeStorage.encryptString(trimmed);
-      return ENCRYPTED_PREFIX + encrypted.toString('base64');
+      return ENCRYPTED_PREFIX + encrypted.toString("base64");
     }
   } catch (error) {
-    console.warn('Failed to encrypt secret, storing masked:', error);
+    console.warn("Failed to encrypt secret, storing masked:", error);
   }
   // Fallback to masked value if encryption fails
   return MASKED_VALUE;
@@ -426,19 +433,21 @@ function decryptSecret(value?: string): string | undefined {
       const safeStorage = getSafeStorage();
       const isAvailable = safeStorage?.isEncryptionAvailable?.() ?? false;
       if (isAvailable) {
-        const encrypted = Buffer.from(value.slice(ENCRYPTED_PREFIX.length), 'base64');
+        const encrypted = Buffer.from(value.slice(ENCRYPTED_PREFIX.length), "base64");
         const decrypted = safeStorage!.decryptString(encrypted);
         return decrypted;
       } else {
-        console.error('[LLM Settings] safeStorage encryption not available - cannot decrypt secrets');
-        console.error('[LLM Settings] You may need to re-enter your API credentials in Settings');
+        console.error(
+          "[LLM Settings] safeStorage encryption not available - cannot decrypt secrets",
+        );
+        console.error("[LLM Settings] You may need to re-enter your API credentials in Settings");
       }
     } catch (error: any) {
       // This can happen after app updates when the code signature changes
       // The macOS Keychain ties encryption to the app's signature
-      console.error('[LLM Settings] Failed to decrypt secret - this can happen after app updates');
-      console.error('[LLM Settings] Error:', error.message || error);
-      console.error('[LLM Settings] Please re-enter your API credentials in Settings');
+      console.error("[LLM Settings] Failed to decrypt secret - this can happen after app updates");
+      console.error("[LLM Settings] Error:", error.message || error);
+      console.error("[LLM Settings] Please re-enter your API credentials in Settings");
     }
   }
 
@@ -456,7 +465,8 @@ function decryptSecret(value?: string): string | undefined {
 function normalizeSecret(value?: string): string | undefined {
   if (!value) return undefined;
   const trimmed = value.trim();
-  if (!trimmed || trimmed === MASKED_VALUE || trimmed.startsWith(ENCRYPTED_PREFIX)) return undefined;
+  if (!trimmed || trimmed === MASKED_VALUE || trimmed.startsWith(ENCRYPTED_PREFIX))
+    return undefined;
   return trimmed;
 }
 
@@ -508,13 +518,13 @@ function sanitizeSettings(settings: LLMSettings): LLMSettings {
     const decryptedRefreshToken = decryptSecret(sanitized.openai.refreshToken);
 
     // Log OAuth token status for debugging
-    if (sanitized.openai.authMethod === 'oauth') {
-      console.log('[LLM Settings] Loading OpenAI OAuth settings:');
-      console.log('[LLM Settings]   authMethod:', sanitized.openai.authMethod);
-      console.log('[LLM Settings]   hasAccessToken:', !!sanitized.openai.accessToken);
-      console.log('[LLM Settings]   decryptedAccessToken:', !!decryptedAccessToken);
-      console.log('[LLM Settings]   hasRefreshToken:', !!sanitized.openai.refreshToken);
-      console.log('[LLM Settings]   decryptedRefreshToken:', !!decryptedRefreshToken);
+    if (sanitized.openai.authMethod === "oauth") {
+      console.log("[LLM Settings] Loading OpenAI OAuth settings:");
+      console.log("[LLM Settings]   authMethod:", sanitized.openai.authMethod);
+      console.log("[LLM Settings]   hasAccessToken:", !!sanitized.openai.accessToken);
+      console.log("[LLM Settings]   decryptedAccessToken:", !!decryptedAccessToken);
+      console.log("[LLM Settings]   hasRefreshToken:", !!sanitized.openai.refreshToken);
+      console.log("[LLM Settings]   decryptedRefreshToken:", !!decryptedRefreshToken);
     }
 
     sanitized.openai = {
@@ -582,8 +592,8 @@ export interface CachedModelInfo {
   displayName: string;
   description: string;
   // Additional fields for provider-specific info
-  contextLength?: number;  // For OpenRouter models
-  size?: number;           // For Ollama models (in bytes)
+  contextLength?: number; // For OpenRouter models
+  size?: number; // For Ollama models (in bytes)
 }
 
 /**
@@ -625,7 +635,7 @@ export interface LLMSettings {
     accessToken?: string;
     refreshToken?: string;
     tokenExpiresAt?: number;
-    authMethod?: 'api_key' | 'oauth';
+    authMethod?: "api_key" | "oauth";
   };
   azure?: {
     apiKey?: string;
@@ -650,7 +660,7 @@ export interface LLMSettings {
     baseUrl?: string;
   };
   pi?: {
-    provider?: string;  // pi-ai KnownProvider
+    provider?: string; // pi-ai KnownProvider
     apiKey?: string;
     model?: string;
   };
@@ -668,7 +678,7 @@ export interface LLMSettings {
 }
 
 const DEFAULT_SETTINGS: LLMSettings = {
-  providerType: 'anthropic',
+  providerType: "anthropic",
   modelKey: DEFAULT_MODEL,
 };
 
@@ -683,16 +693,16 @@ export class LLMProviderFactory {
   private static normalizeCustomProviders(settings: LLMSettings): void {
     if (!settings.customProviders) return;
 
-    const legacyKey = settings.customProviders['kimi-coding'];
-    if (legacyKey && !settings.customProviders['kimi-code']) {
-      settings.customProviders['kimi-code'] = legacyKey;
+    const legacyKey = settings.customProviders["kimi-coding"];
+    if (legacyKey && !settings.customProviders["kimi-code"]) {
+      settings.customProviders["kimi-code"] = legacyKey;
     }
-    if (settings.customProviders['kimi-coding']) {
-      delete settings.customProviders['kimi-coding'];
+    if (settings.customProviders["kimi-coding"]) {
+      delete settings.customProviders["kimi-coding"];
     }
 
-    if (settings.providerType === 'kimi-coding') {
-      settings.providerType = 'kimi-code';
+    if (settings.providerType === "kimi-coding") {
+      settings.providerType = "kimi-code";
     }
   }
 
@@ -716,53 +726,57 @@ export class LLMProviderFactory {
     try {
       // Check if SecureSettingsRepository is initialized
       if (!SecureSettingsRepository.isInitialized()) {
-        console.log('[LLMProviderFactory] SecureSettingsRepository not yet initialized, skipping migration');
+        console.log(
+          "[LLMProviderFactory] SecureSettingsRepository not yet initialized, skipping migration",
+        );
         return;
       }
 
       const repository = SecureSettingsRepository.getInstance();
 
       // Check if already migrated to database
-      if (repository.exists('llm')) {
+      if (repository.exists("llm")) {
         this.migrationCompleted = true;
         return;
       }
 
       // Check if legacy file exists
       if (!fs.existsSync(this.legacySettingsPath)) {
-        console.log('[LLMProviderFactory] No legacy settings file found');
+        console.log("[LLMProviderFactory] No legacy settings file found");
         this.migrationCompleted = true;
         return;
       }
 
-      console.log('[LLMProviderFactory] Migrating settings from legacy JSON file to encrypted database...');
+      console.log(
+        "[LLMProviderFactory] Migrating settings from legacy JSON file to encrypted database...",
+      );
 
       // Create backup before migration
-      const backupPath = this.legacySettingsPath + '.migration-backup';
+      const backupPath = this.legacySettingsPath + ".migration-backup";
       fs.copyFileSync(this.legacySettingsPath, backupPath);
 
       try {
         // Read and decrypt legacy settings
-        const data = fs.readFileSync(this.legacySettingsPath, 'utf-8');
+        const data = fs.readFileSync(this.legacySettingsPath, "utf-8");
         const legacySettings = { ...DEFAULT_SETTINGS, ...JSON.parse(data) };
         const decryptedSettings = sanitizeSettings(legacySettings);
 
         // Save to encrypted database
-        repository.save('llm', decryptedSettings);
-        console.log('[LLMProviderFactory] Settings migrated to encrypted database');
+        repository.save("llm", decryptedSettings);
+        console.log("[LLMProviderFactory] Settings migrated to encrypted database");
 
         // Migration successful - delete backup and original
         fs.unlinkSync(backupPath);
         fs.unlinkSync(this.legacySettingsPath);
-        console.log('[LLMProviderFactory] Migration complete, cleaned up legacy files');
+        console.log("[LLMProviderFactory] Migration complete, cleaned up legacy files");
 
         this.migrationCompleted = true;
       } catch (migrationError) {
-        console.error('[LLMProviderFactory] Migration failed, backup preserved at:', backupPath);
+        console.error("[LLMProviderFactory] Migration failed, backup preserved at:", backupPath);
         throw migrationError;
       }
     } catch (error) {
-      console.error('[LLMProviderFactory] Migration failed:', error);
+      console.error("[LLMProviderFactory] Migration failed:", error);
     }
   }
 
@@ -788,7 +802,7 @@ export class LLMProviderFactory {
       // Try to load from encrypted database
       if (SecureSettingsRepository.isInitialized()) {
         const repository = SecureSettingsRepository.getInstance();
-        const stored = repository.load<LLMSettings>('llm');
+        const stored = repository.load<LLMSettings>("llm");
         if (stored) {
           settings = { ...DEFAULT_SETTINGS, ...stored };
           this.normalizeCustomProviders(settings);
@@ -796,7 +810,7 @@ export class LLMProviderFactory {
         }
       }
     } catch (error) {
-      console.error('[LLMProviderFactory] Failed to load settings from database:', error);
+      console.error("[LLMProviderFactory] Failed to load settings from database:", error);
     }
 
     // Auto-detect provider if no settings exist
@@ -820,38 +834,38 @@ export class LLMProviderFactory {
   private static detectProviderFromSettings(settings: LLMSettings): LLMProviderType | null {
     // Check if any provider has credentials configured in settings
     if (settings.anthropic?.apiKey) {
-      return 'anthropic';
+      return "anthropic";
     }
     if (settings.gemini?.apiKey) {
-      return 'gemini';
+      return "gemini";
     }
     if (settings.openrouter?.apiKey) {
-      return 'openrouter';
+      return "openrouter";
     }
     if (settings.openai?.apiKey || settings.openai?.accessToken) {
-      return 'openai';
+      return "openai";
     }
     const azureDeployment = settings.azure?.deployment || settings.azure?.deployments?.[0];
     if (settings.azure?.apiKey && settings.azure?.endpoint && azureDeployment) {
-      return 'azure';
+      return "azure";
     }
     if (settings.groq?.apiKey) {
-      return 'groq';
+      return "groq";
     }
     if (settings.xai?.apiKey) {
-      return 'xai';
+      return "xai";
     }
     if (settings.kimi?.apiKey) {
-      return 'kimi';
+      return "kimi";
     }
     if (settings.bedrock?.accessKeyId || settings.bedrock?.profile) {
-      return 'bedrock';
+      return "bedrock";
     }
     if (settings.ollama?.baseUrl || settings.ollama?.model) {
-      return 'ollama';
+      return "ollama";
     }
     if (settings.pi?.apiKey && settings.pi?.provider) {
-      return 'pi';
+      return "pi";
     }
 
     if (settings.customProviders) {
@@ -873,19 +887,19 @@ export class LLMProviderFactory {
   static saveSettings(settings: LLMSettings): void {
     try {
       if (!SecureSettingsRepository.isInitialized()) {
-        throw new Error('SecureSettingsRepository not initialized');
+        throw new Error("SecureSettingsRepository not initialized");
       }
 
       const repository = SecureSettingsRepository.getInstance();
 
       // Save entire settings object to encrypted database
       // No need for per-field encryption - the entire object is encrypted
-      repository.save('llm', settings);
+      repository.save("llm", settings);
       this.cachedSettings = settings;
 
-      console.log('[LLMProviderFactory] Settings saved to encrypted database');
+      console.log("[LLMProviderFactory] Settings saved to encrypted database");
     } catch (error) {
-      console.error('[LLMProviderFactory] Failed to save settings:', error);
+      console.error("[LLMProviderFactory] Failed to save settings:", error);
       throw error;
     }
   }
@@ -906,9 +920,10 @@ export class LLMProviderFactory {
     const settings = this.loadSettings();
     const providerType = overrideConfig?.type || settings.providerType;
     const customConfig = getCustomProviderConfig(settings.customProviders, providerType);
-    const azureDeployment = overrideConfig?.azureDeployment
-      || settings.azure?.deployment
-      || settings.azure?.deployments?.[0];
+    const azureDeployment =
+      overrideConfig?.azureDeployment ||
+      settings.azure?.deployment ||
+      settings.azure?.deployments?.[0];
 
     const config: LLMProviderConfig = {
       type: providerType,
@@ -924,27 +939,32 @@ export class LLMProviderFactory {
         settings.xai?.model,
         settings.kimi?.model,
         settings.customProviders,
-        settings.bedrock?.model
+        settings.bedrock?.model,
       ),
       // Anthropic config - from settings only
-      anthropicApiKey: normalizeSecret(overrideConfig?.anthropicApiKey) || settings.anthropic?.apiKey,
+      anthropicApiKey:
+        normalizeSecret(overrideConfig?.anthropicApiKey) || settings.anthropic?.apiKey,
       // Bedrock config - from settings only
-      awsRegion: overrideConfig?.awsRegion || settings.bedrock?.region || 'us-east-1',
+      awsRegion: overrideConfig?.awsRegion || settings.bedrock?.region || "us-east-1",
       awsAccessKeyId: overrideConfig?.awsAccessKeyId || settings.bedrock?.accessKeyId,
-      awsSecretAccessKey: normalizeSecret(overrideConfig?.awsSecretAccessKey) || settings.bedrock?.secretAccessKey,
+      awsSecretAccessKey:
+        normalizeSecret(overrideConfig?.awsSecretAccessKey) || settings.bedrock?.secretAccessKey,
       awsSessionToken: overrideConfig?.awsSessionToken || settings.bedrock?.sessionToken,
       awsProfile: overrideConfig?.awsProfile || settings.bedrock?.profile,
       // Ollama config - from settings only
-      ollamaBaseUrl: overrideConfig?.ollamaBaseUrl || settings.ollama?.baseUrl || 'http://localhost:11434',
+      ollamaBaseUrl:
+        overrideConfig?.ollamaBaseUrl || settings.ollama?.baseUrl || "http://localhost:11434",
       ollamaApiKey: normalizeSecret(overrideConfig?.ollamaApiKey) || settings.ollama?.apiKey,
       // Gemini config - from settings only
       geminiApiKey: normalizeSecret(overrideConfig?.geminiApiKey) || settings.gemini?.apiKey,
       // OpenRouter config - from settings only
-      openrouterApiKey: normalizeSecret(overrideConfig?.openrouterApiKey) || settings.openrouter?.apiKey,
+      openrouterApiKey:
+        normalizeSecret(overrideConfig?.openrouterApiKey) || settings.openrouter?.apiKey,
       openrouterBaseUrl: overrideConfig?.openrouterBaseUrl || settings.openrouter?.baseUrl,
       // OpenAI config - from settings only
       openaiApiKey: normalizeSecret(overrideConfig?.openaiApiKey) || settings.openai?.apiKey,
-      openaiAccessToken: normalizeSecret(overrideConfig?.openaiAccessToken) || settings.openai?.accessToken,
+      openaiAccessToken:
+        normalizeSecret(overrideConfig?.openaiAccessToken) || settings.openai?.accessToken,
       openaiRefreshToken: settings.openai?.refreshToken,
       openaiTokenExpiresAt: settings.openai?.tokenExpiresAt,
       // Azure OpenAI config - from settings only
@@ -979,42 +999,44 @@ export class LLMProviderFactory {
     const customEntry = getCustomProviderEntry(config.type);
     if (customEntry) {
       const resolvedType = resolveCustomProviderId(config.type);
-      return wrapProviderWithDetailedLogging(createCustomProvider(config, customEntry, resolvedType));
+      return wrapProviderWithDetailedLogging(
+        createCustomProvider(config, customEntry, resolvedType),
+      );
     }
 
     let provider: LLMProvider;
     switch (config.type) {
-      case 'anthropic':
+      case "anthropic":
         provider = new AnthropicProvider(config);
         break;
-      case 'bedrock':
+      case "bedrock":
         provider = new BedrockProvider(config);
         break;
-      case 'ollama':
+      case "ollama":
         provider = new OllamaProvider(config);
         break;
-      case 'gemini':
+      case "gemini":
         provider = new GeminiProvider(config);
         break;
-      case 'openrouter':
+      case "openrouter":
         provider = new OpenRouterProvider(config);
         break;
-      case 'openai':
+      case "openai":
         provider = new OpenAIProvider(config);
         break;
-      case 'azure':
+      case "azure":
         provider = new AzureOpenAIProvider(config);
         break;
-      case 'groq':
+      case "groq":
         provider = new GroqProvider(config);
         break;
-      case 'xai':
+      case "xai":
         provider = new XAIProvider(config);
         break;
-      case 'kimi':
+      case "kimi":
         provider = new KimiProvider(config);
         break;
-      case 'pi':
+      case "pi":
         provider = new PiProvider(config);
         break;
       default:
@@ -1039,7 +1061,7 @@ export class LLMProviderFactory {
     xaiModel?: string,
     kimiModel?: string,
     customProviders?: Record<string, CustomProviderConfig>,
-    bedrockModel?: string
+    bedrockModel?: string,
   ): string {
     const customEntry = getCustomProviderEntry(providerType);
     if (customEntry) {
@@ -1048,61 +1070,61 @@ export class LLMProviderFactory {
     }
 
     // For Ollama, use the specific Ollama model if provided
-    if (providerType === 'ollama') {
-      return ollamaModel || 'gpt-oss:20b';
+    if (providerType === "ollama") {
+      return ollamaModel || "gpt-oss:20b";
     }
 
     // For Gemini, use the specific Gemini model if provided or default
-    if (providerType === 'gemini') {
-      return geminiModel || 'gemini-2.0-flash';
+    if (providerType === "gemini") {
+      return geminiModel || "gemini-2.0-flash";
     }
 
     // For OpenRouter, use the specific model if provided or default
-    if (providerType === 'openrouter') {
-      return openrouterModel || 'anthropic/claude-3.5-sonnet';
+    if (providerType === "openrouter") {
+      return openrouterModel || "anthropic/claude-3.5-sonnet";
     }
 
     // For OpenAI, use the specific model if provided or default
-    if (providerType === 'openai') {
-      return openaiModel || 'gpt-4o-mini';
+    if (providerType === "openai") {
+      return openaiModel || "gpt-4o-mini";
     }
 
     // For Azure OpenAI, use the deployment name
-    if (providerType === 'azure') {
-      return azureDeployment || '';
+    if (providerType === "azure") {
+      return azureDeployment || "";
     }
 
     // For Groq, use the specific model if provided or default
-    if (providerType === 'groq') {
-      return groqModel || 'llama-3.1-8b-instant';
+    if (providerType === "groq") {
+      return groqModel || "llama-3.1-8b-instant";
     }
 
     // For xAI, use the specific model if provided or default
-    if (providerType === 'xai') {
-      return xaiModel || 'grok-4-fast-non-reasoning';
+    if (providerType === "xai") {
+      return xaiModel || "grok-4-fast-non-reasoning";
     }
 
     // For Kimi, use the specific model if provided or default
-    if (providerType === 'kimi') {
-      return kimiModel || 'kimi-k2.5';
+    if (providerType === "kimi") {
+      return kimiModel || "kimi-k2.5";
     }
 
     // For Pi, use the specific model from settings
-    if (providerType === 'pi') {
+    if (providerType === "pi") {
       const settings = this.loadSettings();
       return settings.pi?.model || DEFAULT_PI_MODEL;
     }
 
     // For Bedrock, prefer an explicit Bedrock model ID if configured.
-    if (providerType === 'bedrock') {
+    if (providerType === "bedrock") {
       const configuredBedrockModel = bedrockModel?.trim();
       if (configuredBedrockModel) {
         return configuredBedrockModel;
       }
 
-      if (typeof modelKey === 'string') {
+      if (typeof modelKey === "string") {
         const trimmedModelKey = modelKey.trim();
-        if (trimmedModelKey.startsWith('anthropic.') || trimmedModelKey.startsWith('us.')) {
+        if (trimmedModelKey.startsWith("anthropic.") || trimmedModelKey.startsWith("us.")) {
           return trimmedModelKey;
         }
       }
@@ -1112,7 +1134,7 @@ export class LLMProviderFactory {
         return mappedBedrockModel;
       }
 
-      if (typeof modelKey === 'string' && modelKey.trim().length > 0) {
+      if (typeof modelKey === "string" && modelKey.trim().length > 0) {
         return modelKey.trim();
       }
     }
@@ -1122,7 +1144,7 @@ export class LLMProviderFactory {
     if (!model) {
       throw new Error(`Unknown model: ${modelKey}`);
     }
-    return model[providerType as 'anthropic' | 'bedrock'];
+    return model[providerType as "anthropic" | "bedrock"];
   }
 
   /**
@@ -1155,62 +1177,62 @@ export class LLMProviderFactory {
 
     const builtIns = [
       {
-        type: 'anthropic' as LLMProviderType,
-        name: 'Anthropic API',
+        type: "anthropic" as LLMProviderType,
+        name: "Anthropic API",
         configured: !!settings.anthropic?.apiKey,
       },
       {
-        type: 'gemini' as LLMProviderType,
-        name: 'Google Gemini',
+        type: "gemini" as LLMProviderType,
+        name: "Google Gemini",
         configured: !!settings.gemini?.apiKey,
       },
       {
-        type: 'openrouter' as LLMProviderType,
-        name: 'OpenRouter',
+        type: "openrouter" as LLMProviderType,
+        name: "OpenRouter",
         configured: !!settings.openrouter?.apiKey,
       },
       {
-        type: 'openai' as LLMProviderType,
-        name: 'OpenAI',
+        type: "openai" as LLMProviderType,
+        name: "OpenAI",
         configured: !!(settings.openai?.apiKey || settings.openai?.accessToken),
       },
       {
-        type: 'azure' as LLMProviderType,
-        name: 'Azure OpenAI',
+        type: "azure" as LLMProviderType,
+        name: "Azure OpenAI",
         configured: !!(
-          settings.azure?.apiKey
-          && settings.azure?.endpoint
-          && (settings.azure?.deployment || settings.azure?.deployments?.length)
+          settings.azure?.apiKey &&
+          settings.azure?.endpoint &&
+          (settings.azure?.deployment || settings.azure?.deployments?.length)
         ),
       },
       {
-        type: 'groq' as LLMProviderType,
-        name: 'Groq',
+        type: "groq" as LLMProviderType,
+        name: "Groq",
         configured: !!settings.groq?.apiKey,
       },
       {
-        type: 'xai' as LLMProviderType,
-        name: 'xAI (Grok)',
+        type: "xai" as LLMProviderType,
+        name: "xAI (Grok)",
         configured: !!settings.xai?.apiKey,
       },
       {
-        type: 'kimi' as LLMProviderType,
-        name: 'Kimi',
+        type: "kimi" as LLMProviderType,
+        name: "Kimi",
         configured: !!settings.kimi?.apiKey,
       },
       {
-        type: 'bedrock' as LLMProviderType,
-        name: 'AWS Bedrock',
+        type: "bedrock" as LLMProviderType,
+        name: "AWS Bedrock",
         configured: !!(settings.bedrock?.accessKeyId || settings.bedrock?.profile),
       },
       {
-        type: 'ollama' as LLMProviderType,
-        name: 'Ollama (Local)',
+        type: "ollama" as LLMProviderType,
+        name: "Ollama (Local)",
         configured: !!(settings.ollama?.baseUrl || settings.ollama?.model),
       },
       {
-        type: 'pi' as LLMProviderType,
-        name: 'Pi (Unified)',
+        type: "pi" as LLMProviderType,
+        name: "Pi (Unified)",
         configured: !!(settings.pi?.apiKey && settings.pi?.provider),
       },
     ];
@@ -1275,7 +1297,7 @@ export class LLMProviderFactory {
     const ensureCurrentModel = (
       modelList: CachedModelInfo[],
       modelKey: string,
-      description = 'Selected model'
+      description = "Selected model",
     ) => {
       if (!modelKey || modelList.some((model) => model.key === modelKey)) {
         return modelList;
@@ -1291,8 +1313,10 @@ export class LLMProviderFactory {
     };
 
     if (customEntry) {
-      const customConfig = settings.customProviders?.[resolvedProviderType] || settings.customProviders?.[settings.providerType];
-      const currentModel = customConfig?.model || customEntry.defaultModel || '';
+      const customConfig =
+        settings.customProviders?.[resolvedProviderType] ||
+        settings.customProviders?.[settings.providerType];
+      const currentModel = customConfig?.model || customEntry.defaultModel || "";
       return {
         currentModel,
         models: [
@@ -1306,16 +1330,16 @@ export class LLMProviderFactory {
     }
 
     switch (settings.providerType) {
-      case 'anthropic': {
+      case "anthropic": {
         const currentModel = settings.modelKey;
         const modelList = Object.entries(MODELS).map(([key, value]) => ({
           key,
           displayName: value.displayName,
-          description: key.includes('opus')
-            ? 'Most capable for complex work'
-            : key.includes('sonnet')
-              ? 'Balanced performance and speed'
-              : 'Fast and efficient',
+          description: key.includes("opus")
+            ? "Most capable for complex work"
+            : key.includes("sonnet")
+              ? "Balanced performance and speed"
+              : "Fast and efficient",
         }));
         return {
           currentModel,
@@ -1323,81 +1347,101 @@ export class LLMProviderFactory {
         };
       }
 
-      case 'bedrock': {
+      case "bedrock": {
         const fallbackModel = MODELS[settings.modelKey as ModelKey]?.bedrock;
         const currentModel = settings.bedrock?.model || fallbackModel || settings.modelKey;
-        const modelList = settings.cachedBedrockModels && settings.cachedBedrockModels.length > 0
-          ? settings.cachedBedrockModels
-          : Object.values(MODELS).map((value) => ({
-            key: value.bedrock,
-            displayName: value.displayName,
-            description: value.displayName.toLowerCase().includes('opus')
-              ? 'Most capable for complex work'
-              : value.displayName.toLowerCase().includes('sonnet')
-                ? 'Balanced performance and speed'
-                : 'Fast and efficient',
-          }));
+        const modelList =
+          settings.cachedBedrockModels && settings.cachedBedrockModels.length > 0
+            ? settings.cachedBedrockModels
+            : Object.values(MODELS).map((value) => ({
+                key: value.bedrock,
+                displayName: value.displayName,
+                description: value.displayName.toLowerCase().includes("opus")
+                  ? "Most capable for complex work"
+                  : value.displayName.toLowerCase().includes("sonnet")
+                    ? "Balanced performance and speed"
+                    : "Fast and efficient",
+              }));
         return {
           currentModel,
           models: ensureCurrentModel(modelList, currentModel),
         };
       }
 
-      case 'gemini': {
-        const currentModel = settings.gemini?.model || 'gemini-2.0-flash';
-        const modelList = settings.cachedGeminiModels && settings.cachedGeminiModels.length > 0
-          ? settings.cachedGeminiModels
-          : Object.values(GEMINI_MODELS).map((value) => ({
-            key: value.id,
-            displayName: value.displayName,
-            description: value.description,
-          }));
+      case "gemini": {
+        const currentModel = settings.gemini?.model || "gemini-2.0-flash";
+        const modelList =
+          settings.cachedGeminiModels && settings.cachedGeminiModels.length > 0
+            ? settings.cachedGeminiModels
+            : Object.values(GEMINI_MODELS).map((value) => ({
+                key: value.id,
+                displayName: value.displayName,
+                description: value.description,
+              }));
         return {
           currentModel,
           models: ensureCurrentModel(modelList, currentModel),
         };
       }
 
-      case 'openrouter': {
-        const currentModel = settings.openrouter?.model || 'anthropic/claude-3.5-sonnet';
-        const modelList = settings.cachedOpenRouterModels && settings.cachedOpenRouterModels.length > 0
-          ? settings.cachedOpenRouterModels
-          : Object.values(OPENROUTER_MODELS).map((value) => ({
-            key: value.id,
-            displayName: value.displayName,
-            description: value.description,
-          }));
+      case "openrouter": {
+        const currentModel = settings.openrouter?.model || "anthropic/claude-3.5-sonnet";
+        const modelList =
+          settings.cachedOpenRouterModels && settings.cachedOpenRouterModels.length > 0
+            ? settings.cachedOpenRouterModels
+            : Object.values(OPENROUTER_MODELS).map((value) => ({
+                key: value.id,
+                displayName: value.displayName,
+                description: value.description,
+              }));
         return {
           currentModel,
           models: ensureCurrentModel(modelList, currentModel),
         };
       }
 
-      case 'openai': {
-        const currentModel = settings.openai?.model || 'gpt-4o-mini';
-        const modelList = settings.cachedOpenAIModels && settings.cachedOpenAIModels.length > 0
-          ? settings.cachedOpenAIModels
-          : [
-            { key: 'gpt-4o', displayName: 'GPT-4o', description: 'Most capable model for complex tasks' },
-            { key: 'gpt-4o-mini', displayName: 'GPT-4o Mini', description: 'Fast and affordable for most tasks' },
-            { key: 'gpt-4-turbo', displayName: 'GPT-4 Turbo', description: 'Previous generation flagship' },
-            { key: 'gpt-3.5-turbo', displayName: 'GPT-3.5 Turbo', description: 'Fast and cost-effective' },
-            { key: 'o1', displayName: 'o1', description: 'Advanced reasoning model' },
-            { key: 'o1-mini', displayName: 'o1 Mini', description: 'Fast reasoning model' },
-          ];
+      case "openai": {
+        const currentModel = settings.openai?.model || "gpt-4o-mini";
+        const modelList =
+          settings.cachedOpenAIModels && settings.cachedOpenAIModels.length > 0
+            ? settings.cachedOpenAIModels
+            : [
+                {
+                  key: "gpt-4o",
+                  displayName: "GPT-4o",
+                  description: "Most capable model for complex tasks",
+                },
+                {
+                  key: "gpt-4o-mini",
+                  displayName: "GPT-4o Mini",
+                  description: "Fast and affordable for most tasks",
+                },
+                {
+                  key: "gpt-4-turbo",
+                  displayName: "GPT-4 Turbo",
+                  description: "Previous generation flagship",
+                },
+                {
+                  key: "gpt-3.5-turbo",
+                  displayName: "GPT-3.5 Turbo",
+                  description: "Fast and cost-effective",
+                },
+                { key: "o1", displayName: "o1", description: "Advanced reasoning model" },
+                { key: "o1-mini", displayName: "o1 Mini", description: "Fast reasoning model" },
+              ];
         return {
           currentModel,
           models: ensureCurrentModel(modelList, currentModel),
         };
       }
 
-      case 'azure': {
+      case "azure": {
         const deployments = (settings.azure?.deployments || []).filter(Boolean);
-        const currentModel = settings.azure?.deployment || deployments[0] || 'deployment-name';
+        const currentModel = settings.azure?.deployment || deployments[0] || "deployment-name";
         const modelList = deployments.map((deployment) => ({
           key: deployment,
           displayName: deployment,
-          description: 'Azure OpenAI deployment',
+          description: "Azure OpenAI deployment",
         }));
         return {
           currentModel,
@@ -1405,75 +1449,80 @@ export class LLMProviderFactory {
         };
       }
 
-      case 'ollama': {
-        const currentModel = settings.ollama?.model || 'llama3.2';
-        const modelList = settings.cachedOllamaModels && settings.cachedOllamaModels.length > 0
-          ? settings.cachedOllamaModels
-          : Object.entries(OLLAMA_MODELS).map(([key, value]) => ({
-            key,
-            displayName: value.displayName,
-            description: `${value.size} parameter model`,
-          }));
+      case "ollama": {
+        const currentModel = settings.ollama?.model || "llama3.2";
+        const modelList =
+          settings.cachedOllamaModels && settings.cachedOllamaModels.length > 0
+            ? settings.cachedOllamaModels
+            : Object.entries(OLLAMA_MODELS).map(([key, value]) => ({
+                key,
+                displayName: value.displayName,
+                description: `${value.size} parameter model`,
+              }));
         return {
           currentModel,
           models: ensureCurrentModel(modelList, currentModel),
         };
       }
 
-      case 'groq': {
-        const currentModel = settings.groq?.model || 'llama-3.1-8b-instant';
-        const modelList = settings.cachedGroqModels && settings.cachedGroqModels.length > 0
-          ? settings.cachedGroqModels
-          : Object.values(GROQ_MODELS).map((value) => ({
-            key: value.id,
-            displayName: value.displayName,
-            description: value.description,
-          }));
+      case "groq": {
+        const currentModel = settings.groq?.model || "llama-3.1-8b-instant";
+        const modelList =
+          settings.cachedGroqModels && settings.cachedGroqModels.length > 0
+            ? settings.cachedGroqModels
+            : Object.values(GROQ_MODELS).map((value) => ({
+                key: value.id,
+                displayName: value.displayName,
+                description: value.description,
+              }));
         return {
           currentModel,
           models: ensureCurrentModel(modelList, currentModel),
         };
       }
 
-      case 'xai': {
-        const currentModel = settings.xai?.model || 'grok-4-fast-non-reasoning';
-        const modelList = settings.cachedXaiModels && settings.cachedXaiModels.length > 0
-          ? settings.cachedXaiModels
-          : Object.values(XAI_MODELS).map((value) => ({
-            key: value.id,
-            displayName: value.displayName,
-            description: value.description,
-          }));
+      case "xai": {
+        const currentModel = settings.xai?.model || "grok-4-fast-non-reasoning";
+        const modelList =
+          settings.cachedXaiModels && settings.cachedXaiModels.length > 0
+            ? settings.cachedXaiModels
+            : Object.values(XAI_MODELS).map((value) => ({
+                key: value.id,
+                displayName: value.displayName,
+                description: value.description,
+              }));
         return {
           currentModel,
           models: ensureCurrentModel(modelList, currentModel),
         };
       }
 
-      case 'kimi': {
-        const currentModel = settings.kimi?.model || 'kimi-k2.5';
-        const modelList = settings.cachedKimiModels && settings.cachedKimiModels.length > 0
-          ? settings.cachedKimiModels
-          : Object.values(KIMI_MODELS).map((value) => ({
-            key: value.id,
-            displayName: value.displayName,
-            description: value.description,
-          }));
+      case "kimi": {
+        const currentModel = settings.kimi?.model || "kimi-k2.5";
+        const modelList =
+          settings.cachedKimiModels && settings.cachedKimiModels.length > 0
+            ? settings.cachedKimiModels
+            : Object.values(KIMI_MODELS).map((value) => ({
+                key: value.id,
+                displayName: value.displayName,
+                description: value.description,
+              }));
         return {
           currentModel,
           models: ensureCurrentModel(modelList, currentModel),
         };
       }
 
-      case 'pi': {
+      case "pi": {
         const currentModel = settings.pi?.model || DEFAULT_PI_MODEL;
-        const modelList = settings.cachedPiModels && settings.cachedPiModels.length > 0
-          ? settings.cachedPiModels
-          : PiProvider.getAvailableModels(settings.pi?.provider).map((m) => ({
-            key: m.id,
-            displayName: m.name,
-            description: m.description,
-          }));
+        const modelList =
+          settings.cachedPiModels && settings.cachedPiModels.length > 0
+            ? settings.cachedPiModels
+            : PiProvider.getAvailableModels(settings.pi?.provider).map((m) => ({
+                key: m.id,
+                displayName: m.name,
+                description: m.description,
+              }));
         return {
           currentModel,
           models: ensureCurrentModel(modelList, currentModel),
@@ -1485,7 +1534,7 @@ export class LLMProviderFactory {
         const modelList = Object.entries(MODELS).map(([key, value]) => ({
           key,
           displayName: value.displayName,
-          description: 'Claude model',
+          description: "Claude model",
         }));
         return {
           currentModel,
@@ -1515,19 +1564,19 @@ export class LLMProviderFactory {
     }
 
     switch (settings.providerType) {
-      case 'gemini':
+      case "gemini":
         updated.gemini = { ...settings.gemini, model: modelKey };
         break;
-      case 'openrouter':
+      case "openrouter":
         updated.openrouter = { ...settings.openrouter, model: modelKey };
         break;
-      case 'ollama':
+      case "ollama":
         updated.ollama = { ...settings.ollama, model: modelKey };
         break;
-      case 'openai':
+      case "openai":
         updated.openai = { ...settings.openai, model: modelKey };
         break;
-      case 'azure': {
+      case "azure": {
         const existingDeployments = (settings.azure?.deployments || []).filter(Boolean);
         const nextDeployments = existingDeployments.includes(modelKey)
           ? existingDeployments
@@ -1539,23 +1588,25 @@ export class LLMProviderFactory {
         };
         break;
       }
-      case 'groq':
+      case "groq":
         updated.groq = { ...settings.groq, model: modelKey };
         break;
-      case 'xai':
+      case "xai":
         updated.xai = { ...settings.xai, model: modelKey };
         break;
-      case 'kimi':
+      case "kimi":
         updated.kimi = { ...settings.kimi, model: modelKey };
         break;
-      case 'pi':
+      case "pi":
         updated.pi = { ...settings.pi, model: modelKey };
         break;
-      case 'anthropic':
+      case "anthropic":
         updated.modelKey = modelKey as ModelKey;
         break;
-      case 'bedrock': {
-        const knownBedrockEntry = Object.entries(MODELS).find(([, value]) => value.bedrock === modelKey);
+      case "bedrock": {
+        const knownBedrockEntry = Object.entries(MODELS).find(
+          ([, value]) => value.bedrock === modelKey,
+        );
         const resolvedBedrockModel = knownBedrockEntry
           ? knownBedrockEntry[1].bedrock
           : MODELS[modelKey as ModelKey]?.bedrock || modelKey;
@@ -1590,14 +1641,16 @@ export class LLMProviderFactory {
   /**
    * Test a provider configuration
    */
-  static async testProvider(config: LLMProviderConfig): Promise<{ success: boolean; error?: string }> {
+  static async testProvider(
+    config: LLMProviderConfig,
+  ): Promise<{ success: boolean; error?: string }> {
     try {
       const provider = this.createProviderFromConfig(config);
       return await provider.testConnection();
     } catch (error: any) {
       return {
         success: false,
-        error: error.message || 'Failed to create provider',
+        error: error.message || "Failed to create provider",
       };
     }
   }
@@ -1612,7 +1665,7 @@ export class LLMProviderFactory {
     profile?: string;
   }): Promise<Array<{ id: string; name: string; provider: string; description: string }>> {
     const settings = this.loadSettings();
-    const region = config?.region || settings.bedrock?.region || 'us-east-1';
+    const region = config?.region || settings.bedrock?.region || "us-east-1";
     const accessKeyId = config?.accessKeyId || settings.bedrock?.accessKeyId;
     const secretAccessKey = config?.secretAccessKey || settings.bedrock?.secretAccessKey;
     const profile = config?.profile || settings.bedrock?.profile;
@@ -1621,16 +1674,19 @@ export class LLMProviderFactory {
     const defaultModels = Object.entries(MODELS).map(([key, value]) => ({
       id: value.bedrock,
       name: value.displayName,
-      provider: 'Anthropic',
-      description: key.includes('opus') ? 'Most capable for complex tasks (inference profile)' :
-                   key.includes('sonnet') ? 'Balanced performance and speed (inference profile)' :
-                   'Fast and efficient (inference profile)',
+      provider: "Anthropic",
+      description: key.includes("opus")
+        ? "Most capable for complex tasks (inference profile)"
+        : key.includes("sonnet")
+          ? "Balanced performance and speed (inference profile)"
+          : "Fast and efficient (inference profile)",
     }));
 
     try {
       // Import BedrockClient for listing inference profiles/models (different from runtime client)
-      const { BedrockClient, ListInferenceProfilesCommand } = await import('@aws-sdk/client-bedrock');
-      const { fromIni } = await import('@aws-sdk/credential-provider-ini');
+      const { BedrockClient, ListInferenceProfilesCommand } =
+        await import("@aws-sdk/client-bedrock");
+      const { fromIni } = await import("@aws-sdk/credential-provider-ini");
 
       const clientConfig: any = { region };
 
@@ -1647,7 +1703,12 @@ export class LLMProviderFactory {
 
       // Prefer inference profiles for Claude models; many newer Bedrock models
       // require an inference profile ID/ARN instead of the foundation model ID.
-      const inferenceProfiles: Array<{ id: string; name: string; provider: string; description: string }> = [];
+      const inferenceProfiles: Array<{
+        id: string;
+        name: string;
+        provider: string;
+        description: string;
+      }> = [];
       let nextToken: string | undefined;
       let pageCount = 0;
 
@@ -1657,25 +1718,29 @@ export class LLMProviderFactory {
           new ListInferenceProfilesCommand({
             maxResults: 100,
             nextToken,
-          })
+          }),
         );
 
         const profiles = response.inferenceProfileSummaries || [];
         for (const profileSummary of profiles as any[]) {
-          if (profileSummary?.status && profileSummary.status !== 'ACTIVE') continue;
+          if (profileSummary?.status && profileSummary.status !== "ACTIVE") continue;
 
           const models = (profileSummary?.models || []) as Array<{ modelArn?: string }>;
           const hasClaudeModel = models.some((m) => {
-            const arn = (m?.modelArn || '').toLowerCase();
-            return arn.includes('anthropic') && arn.includes('claude');
+            const arn = (m?.modelArn || "").toLowerCase();
+            return arn.includes("anthropic") && arn.includes("claude");
           });
           if (!hasClaudeModel) continue;
 
-          const id = (profileSummary?.inferenceProfileId || profileSummary?.inferenceProfileArn || '').trim();
+          const id = (
+            profileSummary?.inferenceProfileId ||
+            profileSummary?.inferenceProfileArn ||
+            ""
+          ).trim();
           if (!id) continue;
 
           const name = (profileSummary?.inferenceProfileName || id).trim();
-          const type = profileSummary?.type ? String(profileSummary.type) : 'INFERENCE_PROFILE';
+          const type = profileSummary?.type ? String(profileSummary.type) : "INFERENCE_PROFILE";
           const description = profileSummary?.description
             ? String(profileSummary.description)
             : `Inference profile (${type})`;
@@ -1683,7 +1748,7 @@ export class LLMProviderFactory {
           inferenceProfiles.push({
             id,
             name,
-            provider: 'Anthropic',
+            provider: "Anthropic",
             description,
           });
         }
@@ -1703,7 +1768,7 @@ export class LLMProviderFactory {
 
       return merged.length > 0 ? merged : defaultModels;
     } catch (error: any) {
-      console.error('Failed to fetch Bedrock models:', error);
+      console.error("Failed to fetch Bedrock models:", error);
       // Return default models on error
       return defaultModels;
     }
@@ -1712,15 +1777,17 @@ export class LLMProviderFactory {
   /**
    * Fetch available Ollama models from the server
    */
-  static async getOllamaModels(baseUrl?: string): Promise<Array<{ name: string; size: number; modified: string }>> {
+  static async getOllamaModels(
+    baseUrl?: string,
+  ): Promise<Array<{ name: string; size: number; modified: string }>> {
     const settings = this.loadSettings();
-    const url = baseUrl || settings.ollama?.baseUrl || 'http://localhost:11434';
+    const url = baseUrl || settings.ollama?.baseUrl || "http://localhost:11434";
 
     try {
       console.log(`[ProviderFactory] Fetching Ollama models from ${url}...`);
       const provider = new OllamaProvider({
-        type: 'ollama',
-        model: '',
+        type: "ollama",
+        model: "",
         ollamaBaseUrl: url,
         ollamaApiKey: settings.ollama?.apiKey,
       });
@@ -1728,7 +1795,7 @@ export class LLMProviderFactory {
       console.log(`[ProviderFactory] Fetched ${models.length} models from Ollama`);
       return models;
     } catch (error: any) {
-      console.error('Failed to fetch Ollama models:', error);
+      console.error("Failed to fetch Ollama models:", error);
       return [];
     }
   }
@@ -1736,7 +1803,9 @@ export class LLMProviderFactory {
   /**
    * Fetch available Gemini models from the API
    */
-  static async getGeminiModels(apiKey?: string): Promise<Array<{ name: string; displayName: string; description: string }>> {
+  static async getGeminiModels(
+    apiKey?: string,
+  ): Promise<Array<{ name: string; displayName: string; description: string }>> {
     const settings = this.loadSettings();
     // Normalize empty strings to undefined
     const normalizedApiKey = apiKey?.trim() || undefined;
@@ -1744,12 +1813,36 @@ export class LLMProviderFactory {
     const key = normalizedApiKey || settingsKey;
 
     const defaultModels = [
-      { name: 'gemini-2.5-pro-preview-05-06', displayName: 'Gemini 2.5 Pro', description: 'Most capable model for complex tasks' },
-      { name: 'gemini-2.5-flash-preview-05-20', displayName: 'Gemini 2.5 Flash', description: 'Fast and efficient for most tasks' },
-      { name: 'gemini-2.0-flash', displayName: 'Gemini 2.0 Flash', description: 'Balanced speed and capability' },
-      { name: 'gemini-2.0-flash-lite', displayName: 'Gemini 2.0 Flash Lite', description: 'Fastest and most cost-effective' },
-      { name: 'gemini-1.5-pro', displayName: 'Gemini 1.5 Pro', description: 'Previous generation pro model' },
-      { name: 'gemini-1.5-flash', displayName: 'Gemini 1.5 Flash', description: 'Previous generation flash model' },
+      {
+        name: "gemini-2.5-pro-preview-05-06",
+        displayName: "Gemini 2.5 Pro",
+        description: "Most capable model for complex tasks",
+      },
+      {
+        name: "gemini-2.5-flash-preview-05-20",
+        displayName: "Gemini 2.5 Flash",
+        description: "Fast and efficient for most tasks",
+      },
+      {
+        name: "gemini-2.0-flash",
+        displayName: "Gemini 2.0 Flash",
+        description: "Balanced speed and capability",
+      },
+      {
+        name: "gemini-2.0-flash-lite",
+        displayName: "Gemini 2.0 Flash Lite",
+        description: "Fastest and most cost-effective",
+      },
+      {
+        name: "gemini-1.5-pro",
+        displayName: "Gemini 1.5 Pro",
+        description: "Previous generation pro model",
+      },
+      {
+        name: "gemini-1.5-flash",
+        displayName: "Gemini 1.5 Flash",
+        description: "Previous generation flash model",
+      },
     ];
 
     if (!key) {
@@ -1759,13 +1852,13 @@ export class LLMProviderFactory {
 
     try {
       const provider = new GeminiProvider({
-        type: 'gemini',
-        model: '',
+        type: "gemini",
+        model: "",
         geminiApiKey: key,
       });
       return await provider.getAvailableModels();
     } catch (error: any) {
-      console.error('Failed to fetch Gemini models:', error);
+      console.error("Failed to fetch Gemini models:", error);
       // Return default models on error instead of empty array
       return defaultModels;
     }
@@ -1774,7 +1867,10 @@ export class LLMProviderFactory {
   /**
    * Fetch available OpenRouter models from the API
    */
-  static async getOpenRouterModels(apiKey?: string, baseUrl?: string): Promise<Array<{ id: string; name: string; context_length: number }>> {
+  static async getOpenRouterModels(
+    apiKey?: string,
+    baseUrl?: string,
+  ): Promise<Array<{ id: string; name: string; context_length: number }>> {
     const settings = this.loadSettings();
     // Normalize empty strings to undefined
     const normalizedApiKey = apiKey?.trim() || undefined;
@@ -1783,12 +1879,12 @@ export class LLMProviderFactory {
     const resolvedBaseUrl = normalizedBaseUrl || settings.openrouter?.baseUrl;
 
     const defaultModels = [
-      { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', context_length: 200000 },
-      { id: 'anthropic/claude-3-opus', name: 'Claude 3 Opus', context_length: 200000 },
-      { id: 'openai/gpt-4o', name: 'GPT-4o', context_length: 128000 },
-      { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', context_length: 128000 },
-      { id: 'google/gemini-pro-1.5', name: 'Gemini Pro 1.5', context_length: 1000000 },
-      { id: 'meta-llama/llama-3.1-405b-instruct', name: 'Llama 3.1 405B', context_length: 131072 },
+      { id: "anthropic/claude-3.5-sonnet", name: "Claude 3.5 Sonnet", context_length: 200000 },
+      { id: "anthropic/claude-3-opus", name: "Claude 3 Opus", context_length: 200000 },
+      { id: "openai/gpt-4o", name: "GPT-4o", context_length: 128000 },
+      { id: "openai/gpt-4o-mini", name: "GPT-4o Mini", context_length: 128000 },
+      { id: "google/gemini-pro-1.5", name: "Gemini Pro 1.5", context_length: 1000000 },
+      { id: "meta-llama/llama-3.1-405b-instruct", name: "Llama 3.1 405B", context_length: 131072 },
     ];
 
     if (!key) {
@@ -1798,14 +1894,14 @@ export class LLMProviderFactory {
 
     try {
       const provider = new OpenRouterProvider({
-        type: 'openrouter',
-        model: '',
+        type: "openrouter",
+        model: "",
         openrouterApiKey: key,
         openrouterBaseUrl: resolvedBaseUrl,
       });
       return await provider.getAvailableModels();
     } catch (error: any) {
-      console.error('Failed to fetch OpenRouter models:', error);
+      console.error("Failed to fetch OpenRouter models:", error);
       // Return default models on error instead of empty array
       return defaultModels;
     }
@@ -1816,7 +1912,9 @@ export class LLMProviderFactory {
    * For API key auth: uses the models.list API via OpenAI SDK
    * For OAuth auth: uses pi-ai SDK's model list for openai-codex provider
    */
-  static async getOpenAIModels(apiKey?: string): Promise<Array<{ id: string; name: string; description: string }>> {
+  static async getOpenAIModels(
+    apiKey?: string,
+  ): Promise<Array<{ id: string; name: string; description: string }>> {
     const settings = this.loadSettings();
     // Normalize empty strings to undefined
     const normalizedApiKey = apiKey?.trim() || undefined;
@@ -1826,19 +1924,19 @@ export class LLMProviderFactory {
     const refreshToken = settings.openai?.refreshToken;
 
     const defaultModels = [
-      { id: 'gpt-4o', name: 'GPT-4o', description: 'Most capable model for complex tasks' },
-      { id: 'gpt-4o-mini', name: 'GPT-4o Mini', description: 'Fast and affordable for most tasks' },
-      { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', description: 'Previous generation flagship' },
-      { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', description: 'Fast and cost-effective' },
-      { id: 'o1', name: 'o1', description: 'Advanced reasoning model' },
-      { id: 'o1-mini', name: 'o1 Mini', description: 'Fast reasoning model' },
+      { id: "gpt-4o", name: "GPT-4o", description: "Most capable model for complex tasks" },
+      { id: "gpt-4o-mini", name: "GPT-4o Mini", description: "Fast and affordable for most tasks" },
+      { id: "gpt-4-turbo", name: "GPT-4 Turbo", description: "Previous generation flagship" },
+      { id: "gpt-3.5-turbo", name: "GPT-3.5 Turbo", description: "Fast and cost-effective" },
+      { id: "o1", name: "o1", description: "Advanced reasoning model" },
+      { id: "o1-mini", name: "o1 Mini", description: "Fast reasoning model" },
     ];
 
     // For OAuth users, use pi-ai SDK's model list directly
     if (accessToken && refreshToken && !key) {
-      console.log('[OpenAI] Using OAuth - fetching models from pi-ai SDK...');
+      console.log("[OpenAI] Using OAuth - fetching models from pi-ai SDK...");
       try {
-        const piAiModels = getPiAiModels('openai-codex');
+        const piAiModels = getPiAiModels("openai-codex");
         const models = piAiModels.map((m) => ({
           id: m.id,
           name: m.name || this.formatOpenAIModelName(m.id),
@@ -1848,12 +1946,12 @@ export class LLMProviderFactory {
         // Sort by priority (ChatGPT internal models)
         models.sort((a, b) => {
           const priority = (id: string) => {
-            if (id.includes('5.1-codex-mini')) return 0;
-            if (id.includes('5.1-codex-max')) return 1;
-            if (id === 'gpt-5.1') return 2;
-            if (id.includes('5.3-codex')) return 3;
-            if (id.includes('5.2-codex')) return 3;
-            if (id === 'gpt-5.2') return 4;
+            if (id.includes("5.1-codex-mini")) return 0;
+            if (id.includes("5.1-codex-max")) return 1;
+            if (id === "gpt-5.1") return 2;
+            if (id.includes("5.3-codex")) return 3;
+            if (id.includes("5.2-codex")) return 3;
+            if (id === "gpt-5.2") return 4;
             return 5;
           };
           return priority(a.id) - priority(b.id);
@@ -1862,15 +1960,23 @@ export class LLMProviderFactory {
         console.log(`[OpenAI] Found ${models.length} models via pi-ai SDK`);
         return models;
       } catch (error) {
-        console.error('[OpenAI] Failed to get models from pi-ai SDK:', error);
+        console.error("[OpenAI] Failed to get models from pi-ai SDK:", error);
         // Return ChatGPT-specific defaults for OAuth users
         return [
-          { id: 'gpt-5.1-codex-mini', name: 'GPT-5.1 Codex Mini', description: 'Fast and efficient for most tasks' },
-          { id: 'gpt-5.1-codex-max', name: 'GPT-5.1 Codex Max', description: 'Maximum capability for complex tasks' },
-          { id: 'gpt-5.1', name: 'GPT-5.1', description: 'Balanced performance and capability' },
-          { id: 'gpt-5.2-codex', name: 'GPT-5.2 Codex', description: 'Advanced reasoning model' },
-          { id: 'gpt-5.3-codex', name: 'GPT-5.3 Codex', description: 'Advanced reasoning model' },
-          { id: 'gpt-5.2', name: 'GPT-5.2', description: 'Most advanced reasoning' },
+          {
+            id: "gpt-5.1-codex-mini",
+            name: "GPT-5.1 Codex Mini",
+            description: "Fast and efficient for most tasks",
+          },
+          {
+            id: "gpt-5.1-codex-max",
+            name: "GPT-5.1 Codex Max",
+            description: "Maximum capability for complex tasks",
+          },
+          { id: "gpt-5.1", name: "GPT-5.1", description: "Balanced performance and capability" },
+          { id: "gpt-5.2-codex", name: "GPT-5.2 Codex", description: "Advanced reasoning model" },
+          { id: "gpt-5.3-codex", name: "GPT-5.3 Codex", description: "Advanced reasoning model" },
+          { id: "gpt-5.2", name: "GPT-5.2", description: "Most advanced reasoning" },
         ];
       }
     }
@@ -1883,13 +1989,13 @@ export class LLMProviderFactory {
     try {
       // For API key, use the OpenAI provider
       const provider = new OpenAIProvider({
-        type: 'openai',
-        model: '',
+        type: "openai",
+        model: "",
         openaiApiKey: key,
       });
       return await provider.getAvailableModels();
     } catch (error: any) {
-      console.error('Failed to fetch OpenAI models:', error);
+      console.error("Failed to fetch OpenAI models:", error);
       // Return default models on error instead of empty array
       return defaultModels;
     }
@@ -1898,7 +2004,10 @@ export class LLMProviderFactory {
   /**
    * Fetch available Groq models from the API
    */
-  static async getGroqModels(apiKey?: string, baseUrl?: string): Promise<Array<{ id: string; name: string }>> {
+  static async getGroqModels(
+    apiKey?: string,
+    baseUrl?: string,
+  ): Promise<Array<{ id: string; name: string }>> {
     const settings = this.loadSettings();
     const normalizedApiKey = apiKey?.trim() || undefined;
     const key = normalizedApiKey || settings.groq?.apiKey;
@@ -1906,8 +2015,8 @@ export class LLMProviderFactory {
     const resolvedBaseUrl = normalizedBaseUrl || settings.groq?.baseUrl;
 
     const defaultModels = [
-      { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B Instant' },
-      { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B Versatile' },
+      { id: "llama-3.1-8b-instant", name: "Llama 3.1 8B Instant" },
+      { id: "llama-3.3-70b-versatile", name: "Llama 3.3 70B Versatile" },
     ];
 
     if (!key) {
@@ -1916,14 +2025,14 @@ export class LLMProviderFactory {
 
     try {
       const provider = new GroqProvider({
-        type: 'groq',
-        model: '',
+        type: "groq",
+        model: "",
         groqApiKey: key,
         groqBaseUrl: resolvedBaseUrl,
       });
       return await provider.getAvailableModels();
     } catch (error: any) {
-      console.error('Failed to fetch Groq models:', error);
+      console.error("Failed to fetch Groq models:", error);
       return defaultModels;
     }
   }
@@ -1931,7 +2040,10 @@ export class LLMProviderFactory {
   /**
    * Fetch available xAI models from the API
    */
-  static async getXAIModels(apiKey?: string, baseUrl?: string): Promise<Array<{ id: string; name: string }>> {
+  static async getXAIModels(
+    apiKey?: string,
+    baseUrl?: string,
+  ): Promise<Array<{ id: string; name: string }>> {
     const settings = this.loadSettings();
     const normalizedApiKey = apiKey?.trim() || undefined;
     const key = normalizedApiKey || settings.xai?.apiKey;
@@ -1939,9 +2051,9 @@ export class LLMProviderFactory {
     const resolvedBaseUrl = normalizedBaseUrl || settings.xai?.baseUrl;
 
     const defaultModels = [
-      { id: 'grok-4', name: 'Grok 4' },
-      { id: 'grok-4-fast-non-reasoning', name: 'Grok 4 Fast (Non-Reasoning)' },
-      { id: 'grok-4-fast-reasoning', name: 'Grok 4 Fast (Reasoning)' },
+      { id: "grok-4", name: "Grok 4" },
+      { id: "grok-4-fast-non-reasoning", name: "Grok 4 Fast (Non-Reasoning)" },
+      { id: "grok-4-fast-reasoning", name: "Grok 4 Fast (Reasoning)" },
     ];
 
     if (!key) {
@@ -1950,14 +2062,14 @@ export class LLMProviderFactory {
 
     try {
       const provider = new XAIProvider({
-        type: 'xai',
-        model: '',
+        type: "xai",
+        model: "",
         xaiApiKey: key,
         xaiBaseUrl: resolvedBaseUrl,
       });
       return await provider.getAvailableModels();
     } catch (error: any) {
-      console.error('Failed to fetch xAI models:', error);
+      console.error("Failed to fetch xAI models:", error);
       return defaultModels;
     }
   }
@@ -1965,7 +2077,10 @@ export class LLMProviderFactory {
   /**
    * Fetch available Kimi models from the API
    */
-  static async getKimiModels(apiKey?: string, baseUrl?: string): Promise<Array<{ id: string; name: string }>> {
+  static async getKimiModels(
+    apiKey?: string,
+    baseUrl?: string,
+  ): Promise<Array<{ id: string; name: string }>> {
     const settings = this.loadSettings();
     const normalizedApiKey = apiKey?.trim() || undefined;
     const key = normalizedApiKey || settings.kimi?.apiKey;
@@ -1973,11 +2088,11 @@ export class LLMProviderFactory {
     const resolvedBaseUrl = normalizedBaseUrl || settings.kimi?.baseUrl;
 
     const defaultModels = [
-      { id: 'kimi-k2.5', name: 'Kimi K2.5' },
-      { id: 'kimi-k2-0905-preview', name: 'Kimi K2.5 Preview' },
-      { id: 'kimi-k2-turbo-preview', name: 'Kimi K2 Turbo (Preview)' },
-      { id: 'kimi-k2-thinking', name: 'Kimi K2 Thinking' },
-      { id: 'kimi-k2-thinking-turbo', name: 'Kimi K2 Thinking Turbo' },
+      { id: "kimi-k2.5", name: "Kimi K2.5" },
+      { id: "kimi-k2-0905-preview", name: "Kimi K2.5 Preview" },
+      { id: "kimi-k2-turbo-preview", name: "Kimi K2 Turbo (Preview)" },
+      { id: "kimi-k2-thinking", name: "Kimi K2 Thinking" },
+      { id: "kimi-k2-thinking-turbo", name: "Kimi K2 Thinking Turbo" },
     ];
 
     if (!key) {
@@ -1986,14 +2101,14 @@ export class LLMProviderFactory {
 
     try {
       const provider = new KimiProvider({
-        type: 'kimi',
-        model: '',
+        type: "kimi",
+        model: "",
         kimiApiKey: key,
         kimiBaseUrl: resolvedBaseUrl,
       });
       return await provider.getAvailableModels();
     } catch (error: any) {
-      console.error('Failed to fetch Kimi models:', error);
+      console.error("Failed to fetch Kimi models:", error);
       return defaultModels;
     }
   }
@@ -2001,7 +2116,9 @@ export class LLMProviderFactory {
   /**
    * Fetch available Pi models for a given Pi backend provider
    */
-  static async getPiModels(piProvider?: string): Promise<Array<{ id: string; name: string; description: string }>> {
+  static async getPiModels(
+    piProvider?: string,
+  ): Promise<Array<{ id: string; name: string; description: string }>> {
     return PiProvider.getAvailableModels(piProvider);
   }
 
@@ -2017,23 +2134,23 @@ export class LLMProviderFactory {
    */
   private static formatOpenAIModelName(modelId: string): string {
     // Public API models
-    if (modelId === 'gpt-4o') return 'GPT-4o';
-    if (modelId === 'gpt-4o-mini') return 'GPT-4o Mini';
-    if (modelId.includes('gpt-4o-')) return `GPT-4o (${modelId.replace('gpt-4o-', '')})`;
-    if (modelId === 'gpt-4-turbo') return 'GPT-4 Turbo';
-    if (modelId === 'gpt-4') return 'GPT-4';
-    if (modelId === 'gpt-3.5-turbo') return 'GPT-3.5 Turbo';
-    if (modelId === 'o1') return 'o1';
-    if (modelId === 'o1-mini') return 'o1 Mini';
-    if (modelId === 'o1-preview') return 'o1 Preview';
-    if (modelId === 'o3-mini') return 'o3 Mini';
+    if (modelId === "gpt-4o") return "GPT-4o";
+    if (modelId === "gpt-4o-mini") return "GPT-4o Mini";
+    if (modelId.includes("gpt-4o-")) return `GPT-4o (${modelId.replace("gpt-4o-", "")})`;
+    if (modelId === "gpt-4-turbo") return "GPT-4 Turbo";
+    if (modelId === "gpt-4") return "GPT-4";
+    if (modelId === "gpt-3.5-turbo") return "GPT-3.5 Turbo";
+    if (modelId === "o1") return "o1";
+    if (modelId === "o1-mini") return "o1 Mini";
+    if (modelId === "o1-preview") return "o1 Preview";
+    if (modelId === "o3-mini") return "o3 Mini";
     // ChatGPT internal models
-    if (modelId === 'gpt-5.1') return 'GPT-5.1';
-    if (modelId === 'gpt-5.1-codex-mini') return 'GPT-5.1 Codex Mini';
-    if (modelId === 'gpt-5.1-codex-max') return 'GPT-5.1 Codex Max';
-    if (modelId === 'gpt-5.2') return 'GPT-5.2';
-    if (modelId === 'gpt-5.2-codex') return 'GPT-5.2 Codex';
-    if (modelId === 'gpt-5.3-codex') return 'GPT-5.3 Codex';
+    if (modelId === "gpt-5.1") return "GPT-5.1";
+    if (modelId === "gpt-5.1-codex-mini") return "GPT-5.1 Codex Mini";
+    if (modelId === "gpt-5.1-codex-max") return "GPT-5.1 Codex Max";
+    if (modelId === "gpt-5.2") return "GPT-5.2";
+    if (modelId === "gpt-5.2-codex") return "GPT-5.2 Codex";
+    if (modelId === "gpt-5.3-codex") return "GPT-5.3 Codex";
     return modelId;
   }
 
@@ -2042,59 +2159,69 @@ export class LLMProviderFactory {
    */
   private static getOpenAIModelDescription(modelId: string): string {
     // Public API models
-    if (modelId.includes('gpt-4o') && !modelId.includes('mini')) return 'Most capable model for complex tasks';
-    if (modelId.includes('gpt-4o-mini')) return 'Fast and affordable for most tasks';
-    if (modelId.includes('gpt-4-turbo')) return 'Previous generation flagship';
-    if (modelId.includes('gpt-4')) return 'High capability model';
-    if (modelId.includes('gpt-3.5')) return 'Fast and cost-effective';
-    if (modelId === 'o1' || modelId === 'o1-preview') return 'Advanced reasoning model';
-    if (modelId === 'o1-mini') return 'Fast reasoning model';
-    if (modelId.includes('o3')) return 'Next generation reasoning';
+    if (modelId.includes("gpt-4o") && !modelId.includes("mini"))
+      return "Most capable model for complex tasks";
+    if (modelId.includes("gpt-4o-mini")) return "Fast and affordable for most tasks";
+    if (modelId.includes("gpt-4-turbo")) return "Previous generation flagship";
+    if (modelId.includes("gpt-4")) return "High capability model";
+    if (modelId.includes("gpt-3.5")) return "Fast and cost-effective";
+    if (modelId === "o1" || modelId === "o1-preview") return "Advanced reasoning model";
+    if (modelId === "o1-mini") return "Fast reasoning model";
+    if (modelId.includes("o3")) return "Next generation reasoning";
     // ChatGPT internal models
-    if (modelId === 'gpt-5.1') return 'Balanced performance and capability';
-    if (modelId === 'gpt-5.1-codex-mini') return 'Fast and efficient for most tasks';
-    if (modelId === 'gpt-5.1-codex-max') return 'Maximum capability for complex tasks';
-    if (modelId === 'gpt-5.2') return 'Most advanced reasoning';
-    if (modelId === 'gpt-5.2-codex') return 'Advanced reasoning model';
-    if (modelId === 'gpt-5.3-codex') return 'Advanced reasoning model';
-    return 'OpenAI model';
+    if (modelId === "gpt-5.1") return "Balanced performance and capability";
+    if (modelId === "gpt-5.1-codex-mini") return "Fast and efficient for most tasks";
+    if (modelId === "gpt-5.1-codex-max") return "Maximum capability for complex tasks";
+    if (modelId === "gpt-5.2") return "Most advanced reasoning";
+    if (modelId === "gpt-5.2-codex") return "Advanced reasoning model";
+    if (modelId === "gpt-5.3-codex") return "Advanced reasoning model";
+    return "OpenAI model";
   }
 
   /**
    * Save cached models for a provider
    */
   static saveCachedModels(
-    providerType: 'gemini' | 'openrouter' | 'ollama' | 'bedrock' | 'openai' | 'groq' | 'xai' | 'kimi' | 'pi',
-    models: CachedModelInfo[]
+    providerType:
+      | "gemini"
+      | "openrouter"
+      | "ollama"
+      | "bedrock"
+      | "openai"
+      | "groq"
+      | "xai"
+      | "kimi"
+      | "pi",
+    models: CachedModelInfo[],
   ): void {
     const settings = this.loadSettings();
 
     switch (providerType) {
-      case 'gemini':
+      case "gemini":
         settings.cachedGeminiModels = models;
         break;
-      case 'openrouter':
+      case "openrouter":
         settings.cachedOpenRouterModels = models;
         break;
-      case 'ollama':
+      case "ollama":
         settings.cachedOllamaModels = models;
         break;
-      case 'bedrock':
+      case "bedrock":
         settings.cachedBedrockModels = models;
         break;
-      case 'openai':
+      case "openai":
         settings.cachedOpenAIModels = models;
         break;
-      case 'groq':
+      case "groq":
         settings.cachedGroqModels = models;
         break;
-      case 'xai':
+      case "xai":
         settings.cachedXaiModels = models;
         break;
-      case 'kimi':
+      case "kimi":
         settings.cachedKimiModels = models;
         break;
-      case 'pi':
+      case "pi":
         settings.cachedPiModels = models;
         break;
     }
@@ -2106,28 +2233,37 @@ export class LLMProviderFactory {
    * Get cached models for a provider
    */
   static getCachedModels(
-    providerType: 'gemini' | 'openrouter' | 'ollama' | 'bedrock' | 'openai' | 'groq' | 'xai' | 'kimi' | 'pi'
+    providerType:
+      | "gemini"
+      | "openrouter"
+      | "ollama"
+      | "bedrock"
+      | "openai"
+      | "groq"
+      | "xai"
+      | "kimi"
+      | "pi",
   ): CachedModelInfo[] | undefined {
     const settings = this.loadSettings();
 
     switch (providerType) {
-      case 'gemini':
+      case "gemini":
         return settings.cachedGeminiModels;
-      case 'openrouter':
+      case "openrouter":
         return settings.cachedOpenRouterModels;
-      case 'ollama':
+      case "ollama":
         return settings.cachedOllamaModels;
-      case 'bedrock':
+      case "bedrock":
         return settings.cachedBedrockModels;
-      case 'openai':
+      case "openai":
         return settings.cachedOpenAIModels;
-      case 'groq':
+      case "groq":
         return settings.cachedGroqModels;
-      case 'xai':
+      case "xai":
         return settings.cachedXaiModels;
-      case 'kimi':
+      case "kimi":
         return settings.cachedKimiModels;
-      case 'pi':
+      case "pi":
         return settings.cachedPiModels;
       default:
         return undefined;

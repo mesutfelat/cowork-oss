@@ -1,6 +1,7 @@
-import type { AgentRole } from '../../shared/types';
+import type { AgentRole } from "../../shared/types";
 
-const normalizeMentionToken = (value: string): string => value.toLowerCase().replace(/[^a-z0-9]/g, '');
+const normalizeMentionToken = (value: string): string =>
+  value.toLowerCase().replace(/[^a-z0-9]/g, "");
 
 const buildAgentMentionIndex = (roles: AgentRole[]) => {
   const index = new Map<string, AgentRole>();
@@ -8,10 +9,10 @@ const buildAgentMentionIndex = (roles: AgentRole[]) => {
     const baseTokens = [
       role.name,
       role.displayName,
-      role.name.replace(/[_-]+/g, ''),
-      role.displayName.replace(/\s+/g, ''),
-      role.displayName.replace(/\s+/g, '_'),
-      role.displayName.replace(/\s+/g, '-'),
+      role.name.replace(/[_-]+/g, ""),
+      role.displayName.replace(/\s+/g, ""),
+      role.displayName.replace(/\s+/g, "_"),
+      role.displayName.replace(/\s+/g, "-"),
     ];
     baseTokens.forEach((token) => {
       const normalized = normalizeMentionToken(token);
@@ -24,27 +25,59 @@ const buildAgentMentionIndex = (roles: AgentRole[]) => {
 };
 
 const CAPABILITY_KEYWORDS: Record<string, string[]> = {
-  code: ['code', 'implement', 'build', 'develop', 'feature', 'api', 'backend', 'frontend', 'refactor', 'bug', 'fix'],
-  review: ['review', 'audit', 'best practices', 'quality', 'lint'],
-  test: ['test', 'testing', 'qa', 'unit', 'integration', 'e2e', 'regression', 'coverage'],
-  design: ['design', 'ui', 'ux', 'wireframe', 'mockup', 'figma', 'layout', 'visual', 'brand'],
-  ops: ['deploy', 'ci', 'cd', 'devops', 'infra', 'infrastructure', 'docker', 'kubernetes', 'pipeline', 'monitor'],
-  security: ['security', 'vulnerability', 'threat', 'audit', 'compliance', 'encryption'],
-  research: ['research', 'investigate', 'compare', 'comparison', 'competitive', 'competitor', 'benchmark', 'study'],
-  analyze: ['analyze', 'analysis', 'data', 'metrics', 'insights', 'report', 'trend', 'dashboard'],
-  plan: ['plan', 'strategy', 'roadmap', 'architecture', 'outline', 'spec'],
-  document: ['document', 'documentation', 'docs', 'guide', 'manual', 'readme', 'spec'],
-  write: ['write', 'draft', 'copy', 'blog', 'post', 'article', 'content', 'summary'],
-  communicate: ['email', 'support', 'customer', 'communication', 'outreach', 'reply', 'respond'],
-  market: ['marketing', 'growth', 'campaign', 'social', 'seo', 'launch', 'newsletter', 'ads'],
-  manage: ['manage', 'project', 'timeline', 'milestone', 'coordination', 'sprint', 'backlog'],
-  product: ['product', 'feature', 'user story', 'requirements', 'prioritize', 'mvp'],
+  code: [
+    "code",
+    "implement",
+    "build",
+    "develop",
+    "feature",
+    "api",
+    "backend",
+    "frontend",
+    "refactor",
+    "bug",
+    "fix",
+  ],
+  review: ["review", "audit", "best practices", "quality", "lint"],
+  test: ["test", "testing", "qa", "unit", "integration", "e2e", "regression", "coverage"],
+  design: ["design", "ui", "ux", "wireframe", "mockup", "figma", "layout", "visual", "brand"],
+  ops: [
+    "deploy",
+    "ci",
+    "cd",
+    "devops",
+    "infra",
+    "infrastructure",
+    "docker",
+    "kubernetes",
+    "pipeline",
+    "monitor",
+  ],
+  security: ["security", "vulnerability", "threat", "audit", "compliance", "encryption"],
+  research: [
+    "research",
+    "investigate",
+    "compare",
+    "comparison",
+    "competitive",
+    "competitor",
+    "benchmark",
+    "study",
+  ],
+  analyze: ["analyze", "analysis", "data", "metrics", "insights", "report", "trend", "dashboard"],
+  plan: ["plan", "strategy", "roadmap", "architecture", "outline", "spec"],
+  document: ["document", "documentation", "docs", "guide", "manual", "readme", "spec"],
+  write: ["write", "draft", "copy", "blog", "post", "article", "content", "summary"],
+  communicate: ["email", "support", "customer", "communication", "outreach", "reply", "respond"],
+  market: ["marketing", "growth", "campaign", "social", "seo", "launch", "newsletter", "ads"],
+  manage: ["manage", "project", "timeline", "milestone", "coordination", "sprint", "backlog"],
+  product: ["product", "feature", "user story", "requirements", "prioritize", "mvp"],
 };
 
 const scoreAgentForTask = (role: AgentRole, text: string) => {
   const lowerText = text.toLowerCase();
   let score = 0;
-  const roleText = `${role.name} ${role.displayName} ${role.description ?? ''}`.toLowerCase();
+  const roleText = `${role.name} ${role.displayName} ${role.description ?? ""}`.toLowerCase();
   const tokens = roleText.split(/[^a-z0-9]+/).filter((token) => token.length > 2);
   tokens.forEach((token) => {
     if (lowerText.includes(token)) {
@@ -83,11 +116,13 @@ const selectBestAgentsForTask = (text: string, roles: AgentRole[], maxAgents = M
       .filter((entry) => entry.score >= threshold)
       .slice(0, maxAgents)
       .map((entry) => entry.role);
-    return selected.length > 0 ? selected : withScore.slice(0, maxAgents).map((entry) => entry.role);
+    return selected.length > 0
+      ? selected
+      : withScore.slice(0, maxAgents).map((entry) => entry.role);
   }
 
   const leads = roles
-    .filter((role) => role.autonomyLevel === 'lead')
+    .filter((role) => role.autonomyLevel === "lead")
     .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
   if (leads.length > 0) {
     return leads.slice(0, maxAgents);
@@ -109,7 +144,7 @@ export const extractMentionedRoles = (text: string, roles: AgentRole[]) => {
   const regex = /@([a-zA-Z0-9][a-zA-Z0-9 _-]{0,50})/g;
   let match: RegExpExecArray | null;
   while ((match = regex.exec(text)) !== null) {
-    const raw = match[1].replace(/[.,:;!?)]*$/, '').trim();
+    const raw = match[1].replace(/[.,:;!?)]*$/, "").trim();
     const token = normalizeMentionToken(raw);
     const role = index.get(token);
     if (role) {
@@ -132,7 +167,7 @@ export const extractMentionedRoles = (text: string, roles: AgentRole[]) => {
     return Array.from(matches.values());
   }
 
-  const normalizedWithAt = text.toLowerCase().replace(/[^a-z0-9@]/g, '');
+  const normalizedWithAt = text.toLowerCase().replace(/[^a-z0-9@]/g, "");
 
   index.forEach((role, token) => {
     if (normalizedWithAt.includes(`@${token}`)) {
@@ -149,4 +184,3 @@ export const extractMentionedRoles = (text: string, roles: AgentRole[]) => {
 
 export const extractMentionedRoleIds = (text: string, roles: AgentRole[]): string[] =>
   extractMentionedRoles(text, roles).map((role) => role.id);
-

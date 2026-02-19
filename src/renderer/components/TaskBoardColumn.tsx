@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState } from "react";
 import {
   TaskBoardColumn as ColumnType,
   TaskLabelData,
   AgentRoleData,
-} from '../../electron/preload';
-import { TaskBoardCard } from './TaskBoardCard';
-import { useAgentContext } from '../hooks/useAgentContext';
+} from "../../electron/preload";
+import { TaskBoardCard } from "./TaskBoardCard";
+import { useAgentContext } from "../hooks/useAgentContext";
 
 interface Task {
   id: string;
@@ -59,7 +59,7 @@ export function TaskBoardColumn({
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
+    e.dataTransfer.dropEffect = "move";
     setIsDragOver(true);
   };
 
@@ -70,7 +70,7 @@ export function TaskBoardColumn({
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
-    const taskId = e.dataTransfer.getData('text/plain');
+    const taskId = e.dataTransfer.getData("text/plain");
     if (taskId) {
       onTaskMove(taskId, column);
     }
@@ -85,7 +85,7 @@ export function TaskBoardColumn({
 
   return (
     <div
-      className={`task-board-column ${isDragOver ? 'drag-over' : ''}`}
+      className={`task-board-column ${isDragOver ? "drag-over" : ""}`}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -94,7 +94,7 @@ export function TaskBoardColumn({
         <div className="column-title">
           <span className="column-indicator" style={{ backgroundColor: color }} />
           <span className="column-name">{title}</span>
-          <span className={`column-count ${isOverLimit ? 'over-limit' : ''}`}>
+          <span className={`column-count ${isOverLimit ? "over-limit" : ""}`}>
             {tasks.length}
             {limit !== null && `/${limit}`}
           </span>
@@ -102,7 +102,7 @@ export function TaskBoardColumn({
       </div>
 
       <div className="column-content">
-        {sortedTasks.map(task => (
+        {sortedTasks.map((task) => (
           <TaskBoardCard
             key={task.id}
             task={task}
@@ -114,8 +114,8 @@ export function TaskBoardColumn({
         ))}
         {tasks.length === 0 && (
           <div className="column-empty">
-            <p>{agentContext.getUiCopy('taskBoardEmptyTitle')}</p>
-            <p className="hint">{agentContext.getUiCopy('taskBoardEmptyHint')}</p>
+            <p>{agentContext.getUiCopy("taskBoardEmptyTitle")}</p>
+            <p className="hint">{agentContext.getUiCopy("taskBoardEmptyHint")}</p>
           </div>
         )}
       </div>

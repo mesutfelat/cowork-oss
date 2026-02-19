@@ -1,5 +1,5 @@
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from "fs";
+import * as path from "path";
 import {
   SearchProvider,
   SearchProviderConfig,
@@ -8,15 +8,15 @@ import {
   SearchQuery,
   SearchResponse,
   SEARCH_PROVIDER_INFO,
-} from './types';
-import { TavilyProvider } from './tavily-provider';
-import { BraveProvider } from './brave-provider';
-import { SerpApiProvider } from './serpapi-provider';
-import { GoogleProvider } from './google-provider';
-import { SecureSettingsRepository } from '../../database/SecureSettingsRepository';
-import { getUserDataDir } from '../../utils/user-data-dir';
+} from "./types";
+import { TavilyProvider } from "./tavily-provider";
+import { BraveProvider } from "./brave-provider";
+import { SerpApiProvider } from "./serpapi-provider";
+import { GoogleProvider } from "./google-provider";
+import { SecureSettingsRepository } from "../../database/SecureSettingsRepository";
+import { getUserDataDir } from "../../utils/user-data-dir";
 
-const LEGACY_SETTINGS_FILE = 'search-settings.json';
+const LEGACY_SETTINGS_FILE = "search-settings.json";
 
 /**
  * Stored settings for Search provider
@@ -49,11 +49,11 @@ const DEFAULT_SETTINGS: SearchSettings = {
  */
 export class SearchProviderFactory {
   private static async sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   private static isTransientSearchError(error: any): boolean {
-    const message = String(error?.message || '');
+    const message = String(error?.message || "");
     return (
       /rate limit/i.test(message) ||
       /429/.test(message) ||
@@ -69,7 +69,11 @@ export class SearchProviderFactory {
     );
   }
 
-  private static async searchWithRetry(provider: SearchProvider, query: SearchQuery, maxAttempts = 3): Promise<SearchResponse> {
+  private static async searchWithRetry(
+    provider: SearchProvider,
+    query: SearchQuery,
+    maxAttempts = 3,
+  ): Promise<SearchResponse> {
     let lastError: any;
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -87,7 +91,7 @@ export class SearchProviderFactory {
       }
     }
 
-    throw lastError || new Error('Search failed');
+    throw lastError || new Error("Search failed");
   }
   private static legacySettingsPath: string;
   private static cachedSettings: SearchSettings | null = null;
@@ -113,34 +117,38 @@ export class SearchProviderFactory {
     try {
       // Check if SecureSettingsRepository is initialized
       if (!SecureSettingsRepository.isInitialized()) {
-        console.log('[SearchProviderFactory] SecureSettingsRepository not yet initialized, skipping migration');
+        console.log(
+          "[SearchProviderFactory] SecureSettingsRepository not yet initialized, skipping migration",
+        );
         return;
       }
 
       const repository = SecureSettingsRepository.getInstance();
 
       // Check if already migrated to database
-      if (repository.exists('search')) {
+      if (repository.exists("search")) {
         this.migrationCompleted = true;
         return;
       }
 
       // Check if legacy file exists
       if (!fs.existsSync(this.legacySettingsPath)) {
-        console.log('[SearchProviderFactory] No legacy settings file found');
+        console.log("[SearchProviderFactory] No legacy settings file found");
         this.migrationCompleted = true;
         return;
       }
 
-      console.log('[SearchProviderFactory] Migrating settings from legacy JSON file to encrypted database...');
+      console.log(
+        "[SearchProviderFactory] Migrating settings from legacy JSON file to encrypted database...",
+      );
 
       // Create backup before migration
-      const backupPath = this.legacySettingsPath + '.migration-backup';
+      const backupPath = this.legacySettingsPath + ".migration-backup";
       fs.copyFileSync(this.legacySettingsPath, backupPath);
 
       try {
         // Read legacy settings
-        const data = fs.readFileSync(this.legacySettingsPath, 'utf-8');
+        const data = fs.readFileSync(this.legacySettingsPath, "utf-8");
         const parsed = JSON.parse(data);
 
         // Handle migration from old format (providerType -> primaryProvider)
@@ -152,21 +160,21 @@ export class SearchProviderFactory {
         const legacySettings = { ...DEFAULT_SETTINGS, ...parsed };
 
         // Save to encrypted database
-        repository.save('search', legacySettings);
-        console.log('[SearchProviderFactory] Settings migrated to encrypted database');
+        repository.save("search", legacySettings);
+        console.log("[SearchProviderFactory] Settings migrated to encrypted database");
 
         // Migration successful - delete backup and original
         fs.unlinkSync(backupPath);
         fs.unlinkSync(this.legacySettingsPath);
-        console.log('[SearchProviderFactory] Migration complete, cleaned up legacy files');
+        console.log("[SearchProviderFactory] Migration complete, cleaned up legacy files");
 
         this.migrationCompleted = true;
       } catch (migrationError) {
-        console.error('[SearchProviderFactory] Migration failed, backup preserved at:', backupPath);
+        console.error("[SearchProviderFactory] Migration failed, backup preserved at:", backupPath);
         throw migrationError;
       }
     } catch (error) {
-      console.error('[SearchProviderFactory] Migration failed:', error);
+      console.error("[SearchProviderFactory] Migration failed:", error);
     }
   }
 
@@ -191,13 +199,13 @@ export class SearchProviderFactory {
       // Try to load from encrypted database
       if (SecureSettingsRepository.isInitialized()) {
         const repository = SecureSettingsRepository.getInstance();
-        const stored = repository.load<SearchSettings>('search');
+        const stored = repository.load<SearchSettings>("search");
         if (stored) {
           settings = { ...DEFAULT_SETTINGS, ...stored };
         }
       }
     } catch (error) {
-      console.error('[SearchProviderFactory] Failed to load settings from database:', error);
+      console.error("[SearchProviderFactory] Failed to load settings from database:", error);
     }
 
     // Auto-detect and select providers if primaryProvider is not set
@@ -205,10 +213,14 @@ export class SearchProviderFactory {
       const orderedProviders = this.getProviderExecutionOrder(settings);
       if (orderedProviders.length > 0) {
         settings.primaryProvider = orderedProviders[0];
-        console.log(`[SearchProviderFactory] Auto-selected primary provider: ${orderedProviders[0]}`);
+        console.log(
+          `[SearchProviderFactory] Auto-selected primary provider: ${orderedProviders[0]}`,
+        );
         if (orderedProviders.length > 1 && !settings.fallbackProvider) {
           settings.fallbackProvider = orderedProviders[1];
-          console.log(`[SearchProviderFactory] Auto-selected fallback provider: ${orderedProviders[1]}`);
+          console.log(
+            `[SearchProviderFactory] Auto-selected fallback provider: ${orderedProviders[1]}`,
+          );
         }
       }
     }
@@ -221,24 +233,26 @@ export class SearchProviderFactory {
    * Get list of configured provider types from settings only
    * Note: Environment variables are no longer used for security reasons.
    */
-  private static getConfiguredProvidersFromSettings(settings: SearchSettings): SearchProviderType[] {
+  private static getConfiguredProvidersFromSettings(
+    settings: SearchSettings,
+  ): SearchProviderType[] {
     const configured: SearchProviderType[] = [];
 
     // Check Tavily
     if (settings.tavily?.apiKey) {
-      configured.push('tavily');
+      configured.push("tavily");
     }
     // Check Brave
     if (settings.brave?.apiKey) {
-      configured.push('brave');
+      configured.push("brave");
     }
     // Check SerpAPI
     if (settings.serpapi?.apiKey) {
-      configured.push('serpapi');
+      configured.push("serpapi");
     }
     // Check Google (requires both API key and Search Engine ID)
     if (settings.google?.apiKey && settings.google?.searchEngineId) {
-      configured.push('google');
+      configured.push("google");
     }
 
     return configured;
@@ -250,14 +264,14 @@ export class SearchProviderFactory {
   static saveSettings(settings: SearchSettings): void {
     try {
       if (!SecureSettingsRepository.isInitialized()) {
-        throw new Error('SecureSettingsRepository not initialized');
+        throw new Error("SecureSettingsRepository not initialized");
       }
 
       const repository = SecureSettingsRepository.getInstance();
 
       // Load existing settings to preserve API keys that weren't changed
       let existingSettings: SearchSettings = { ...DEFAULT_SETTINGS };
-      const stored = repository.load<SearchSettings>('search');
+      const stored = repository.load<SearchSettings>("search");
       if (stored) {
         existingSettings = stored;
       }
@@ -266,27 +280,22 @@ export class SearchProviderFactory {
       const settingsToSave: SearchSettings = {
         primaryProvider: settings.primaryProvider,
         fallbackProvider: settings.fallbackProvider,
-        tavily: settings.tavily?.apiKey
-          ? settings.tavily
-          : existingSettings.tavily,
-        brave: settings.brave?.apiKey
-          ? settings.brave
-          : existingSettings.brave,
-        serpapi: settings.serpapi?.apiKey
-          ? settings.serpapi
-          : existingSettings.serpapi,
-        google: settings.google?.apiKey || settings.google?.searchEngineId
-          ? { ...existingSettings.google, ...settings.google }
-          : existingSettings.google,
+        tavily: settings.tavily?.apiKey ? settings.tavily : existingSettings.tavily,
+        brave: settings.brave?.apiKey ? settings.brave : existingSettings.brave,
+        serpapi: settings.serpapi?.apiKey ? settings.serpapi : existingSettings.serpapi,
+        google:
+          settings.google?.apiKey || settings.google?.searchEngineId
+            ? { ...existingSettings.google, ...settings.google }
+            : existingSettings.google,
       };
 
       // Save to encrypted database
-      repository.save('search', settingsToSave);
+      repository.save("search", settingsToSave);
       this.cachedSettings = settingsToSave;
 
-      console.log('[SearchProviderFactory] Settings saved to encrypted database');
+      console.log("[SearchProviderFactory] Settings saved to encrypted database");
     } catch (error) {
-      console.error('[SearchProviderFactory] Failed to save settings:', error);
+      console.error("[SearchProviderFactory] Failed to save settings:", error);
       throw error;
     }
   }
@@ -322,7 +331,7 @@ export class SearchProviderFactory {
     const providerType = overrideType || settings.primaryProvider;
 
     if (!providerType) {
-      throw new Error('No search provider configured');
+      throw new Error("No search provider configured");
     }
 
     const config = this.getProviderConfig(providerType);
@@ -334,13 +343,13 @@ export class SearchProviderFactory {
    */
   static createProviderFromConfig(config: SearchProviderConfig): SearchProvider {
     switch (config.type) {
-      case 'tavily':
+      case "tavily":
         return new TavilyProvider(config);
-      case 'brave':
+      case "brave":
         return new BraveProvider(config);
-      case 'serpapi':
+      case "serpapi":
         return new SerpApiProvider(config);
-      case 'google':
+      case "google":
         return new GoogleProvider(config);
       default:
         throw new Error(`Unknown search provider type: ${config.type}`);
@@ -355,7 +364,7 @@ export class SearchProviderFactory {
     const primaryType = query.provider || settings.primaryProvider;
 
     if (!primaryType) {
-      throw new Error('No search provider configured');
+      throw new Error("No search provider configured");
     }
 
     if (query.provider) {
@@ -366,7 +375,7 @@ export class SearchProviderFactory {
 
     const providersToTry = this.getProviderExecutionOrder(settings);
     if (!providersToTry.length) {
-      throw new Error('No search provider configured');
+      throw new Error("No search provider configured");
     }
 
     const providerErrors: Array<{ provider: SearchProviderType; error: string }> = [];
@@ -379,7 +388,7 @@ export class SearchProviderFactory {
         const provider = this.createProviderFromConfig(providerConfig);
         return await this.searchWithRetry(provider, query);
       } catch (error: any) {
-        const message = error?.message || 'Search provider request failed';
+        const message = error?.message || "Search provider request failed";
         providerErrors.push({ provider: providerType, error: message });
         console.error(`Search provider (${providerType}) failed:`, message);
 
@@ -397,7 +406,7 @@ export class SearchProviderFactory {
     throw new Error(
       `Search failed after trying all configured providers: ${providerErrors
         .map((entry) => `${entry.provider}: ${entry.error}`)
-        .join('; ')}`
+        .join("; ")}`,
     );
   }
 
@@ -415,28 +424,28 @@ export class SearchProviderFactory {
     const settings = this.loadSettings();
     return [
       {
-        type: 'tavily',
+        type: "tavily",
         name: SEARCH_PROVIDER_INFO.tavily.displayName,
         description: SEARCH_PROVIDER_INFO.tavily.description,
         configured: !!settings.tavily?.apiKey,
         supportedTypes: [...SEARCH_PROVIDER_INFO.tavily.supportedTypes],
       },
       {
-        type: 'brave',
+        type: "brave",
         name: SEARCH_PROVIDER_INFO.brave.displayName,
         description: SEARCH_PROVIDER_INFO.brave.description,
         configured: !!settings.brave?.apiKey,
         supportedTypes: [...SEARCH_PROVIDER_INFO.brave.supportedTypes],
       },
       {
-        type: 'serpapi',
+        type: "serpapi",
         name: SEARCH_PROVIDER_INFO.serpapi.displayName,
         description: SEARCH_PROVIDER_INFO.serpapi.description,
         configured: !!settings.serpapi?.apiKey,
         supportedTypes: [...SEARCH_PROVIDER_INFO.serpapi.supportedTypes],
       },
       {
-        type: 'google',
+        type: "google",
         name: SEARCH_PROVIDER_INFO.google.displayName,
         description: SEARCH_PROVIDER_INFO.google.description,
         configured: !!(settings.google?.apiKey && settings.google?.searchEngineId),
@@ -466,7 +475,11 @@ export class SearchProviderFactory {
 
     const orderedProviders: SearchProviderType[] = [];
     const addProviderIfConfigured = (provider?: SearchProviderType | null) => {
-      if (provider && configuredProviders.includes(provider) && !orderedProviders.includes(provider)) {
+      if (
+        provider &&
+        configuredProviders.includes(provider) &&
+        !orderedProviders.includes(provider)
+      ) {
         orderedProviders.push(provider);
       }
     };
@@ -481,8 +494,8 @@ export class SearchProviderFactory {
     }
 
     // Prefer Brave when available and multiple providers are configured.
-    if (orderedProviders.length > 1 && orderedProviders.includes('brave')) {
-      return ['brave', ...orderedProviders.filter((provider) => provider !== 'brave')];
+    if (orderedProviders.length > 1 && orderedProviders.includes("brave")) {
+      return ["brave", ...orderedProviders.filter((provider) => provider !== "brave")];
     }
 
     return orderedProviders;
@@ -516,7 +529,7 @@ export class SearchProviderFactory {
    * Test a provider configuration
    */
   static async testProvider(
-    providerType: SearchProviderType
+    providerType: SearchProviderType,
   ): Promise<{ success: boolean; error?: string }> {
     try {
       const config = this.getProviderConfig(providerType);
@@ -525,7 +538,7 @@ export class SearchProviderFactory {
     } catch (error: any) {
       return {
         success: false,
-        error: error.message || 'Failed to create provider',
+        error: error.message || "Failed to create provider",
       };
     }
   }

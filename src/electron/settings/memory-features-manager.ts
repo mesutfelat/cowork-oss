@@ -4,8 +4,8 @@
  * Stores global toggles for memory-related features in encrypted settings storage.
  */
 
-import { SecureSettingsRepository } from '../database/SecureSettingsRepository';
-import { MemoryFeaturesSettings } from '../../shared/types';
+import { SecureSettingsRepository } from "../database/SecureSettingsRepository";
+import { MemoryFeaturesSettings } from "../../shared/types";
 
 const DEFAULT_SETTINGS: MemoryFeaturesSettings = {
   contextPackInjectionEnabled: true,
@@ -17,7 +17,7 @@ export class MemoryFeaturesManager {
 
   static initialize(): void {
     // No migration required currently; kept for parity with other managers.
-    console.log('[MemoryFeaturesManager] Initialized');
+    console.log("[MemoryFeaturesManager] Initialized");
   }
 
   static loadSettings(): MemoryFeaturesSettings {
@@ -30,13 +30,13 @@ export class MemoryFeaturesManager {
     try {
       if (SecureSettingsRepository.isInitialized()) {
         const repository = SecureSettingsRepository.getInstance();
-        const stored = repository.load<MemoryFeaturesSettings>('memory');
+        const stored = repository.load<MemoryFeaturesSettings>("memory");
         if (stored) {
           settings = { ...DEFAULT_SETTINGS, ...stored };
         }
       }
     } catch (error) {
-      console.error('[MemoryFeaturesManager] Failed to load settings:', error);
+      console.error("[MemoryFeaturesManager] Failed to load settings:", error);
     }
 
     // Normalize to booleans (defensive against corrupted values).
@@ -51,7 +51,7 @@ export class MemoryFeaturesManager {
 
   static saveSettings(settings: MemoryFeaturesSettings): void {
     if (!SecureSettingsRepository.isInitialized()) {
-      throw new Error('SecureSettingsRepository not initialized');
+      throw new Error("SecureSettingsRepository not initialized");
     }
 
     const normalized: MemoryFeaturesSettings = {
@@ -60,9 +60,9 @@ export class MemoryFeaturesManager {
     };
 
     const repository = SecureSettingsRepository.getInstance();
-    repository.save('memory', normalized);
+    repository.save("memory", normalized);
     this.cachedSettings = normalized;
-    console.log('[MemoryFeaturesManager] Settings saved');
+    console.log("[MemoryFeaturesManager] Settings saved");
   }
 
   static clearCache(): void {

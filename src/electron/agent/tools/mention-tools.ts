@@ -1,9 +1,9 @@
-import { AgentDaemon } from '../daemon';
-import { LLMTool } from '../llm/types';
-import { MentionRepository } from '../../agents/MentionRepository';
-import { AgentRoleRepository } from '../../agents/AgentRoleRepository';
-import { DatabaseManager } from '../../database/schema';
-import { MentionType, AgentRole } from '../../../shared/types';
+import { AgentDaemon } from "../daemon";
+import { LLMTool } from "../llm/types";
+import { MentionRepository } from "../../agents/MentionRepository";
+import { AgentRoleRepository } from "../../agents/AgentRoleRepository";
+import { DatabaseManager } from "../../database/schema";
+import { MentionType, AgentRole } from "../../../shared/types";
 
 /**
  * MentionTools provides tools for agents to @mention and communicate with other specialized agents
@@ -17,7 +17,7 @@ export class MentionTools {
     private workspaceId: string,
     private taskId: string,
     private daemon: AgentDaemon,
-    private currentAgentRoleId?: string
+    private currentAgentRoleId?: string,
   ) {
     // Get repositories from the database manager
     const dbManager = DatabaseManager.getInstance();
@@ -47,8 +47,8 @@ export class MentionTools {
       capabilities: string[];
     }>;
   }> {
-    this.daemon.logEvent(this.taskId, 'tool_call', {
-      tool: 'list_agent_roles',
+    this.daemon.logEvent(this.taskId, "tool_call", {
+      tool: "list_agent_roles",
     });
 
     const roles = this.agentRoleRepo.findAll(false); // false = only active roles
@@ -63,8 +63,8 @@ export class MentionTools {
       })),
     };
 
-    this.daemon.logEvent(this.taskId, 'tool_result', {
-      tool: 'list_agent_roles',
+    this.daemon.logEvent(this.taskId, "tool_result", {
+      tool: "list_agent_roles",
       success: true,
       count: result.agents.length,
     });
@@ -87,20 +87,20 @@ export class MentionTools {
   }> {
     const { agentRole, mentionType, context } = params;
 
-    if (!agentRole || typeof agentRole !== 'string') {
-      throw new Error('Invalid agentRole: must be a non-empty string');
+    if (!agentRole || typeof agentRole !== "string") {
+      throw new Error("Invalid agentRole: must be a non-empty string");
     }
 
-    if (!['request', 'handoff', 'review', 'fyi'].includes(mentionType)) {
-      throw new Error('Invalid mentionType: must be one of request, handoff, review, fyi');
+    if (!["request", "handoff", "review", "fyi"].includes(mentionType)) {
+      throw new Error("Invalid mentionType: must be one of request, handoff, review, fyi");
     }
 
-    if (!context || typeof context !== 'string') {
-      throw new Error('Invalid context: must be a non-empty string');
+    if (!context || typeof context !== "string") {
+      throw new Error("Invalid context: must be a non-empty string");
     }
 
-    this.daemon.logEvent(this.taskId, 'tool_call', {
-      tool: 'mention_agent',
+    this.daemon.logEvent(this.taskId, "tool_call", {
+      tool: "mention_agent",
       agentRole,
       mentionType,
     });
@@ -110,19 +110,17 @@ export class MentionTools {
     const targetRole = allRoles.find(
       (r: AgentRole) =>
         r.name.toLowerCase() === agentRole.toLowerCase() ||
-        r.displayName.toLowerCase() === agentRole.toLowerCase()
+        r.displayName.toLowerCase() === agentRole.toLowerCase(),
     );
 
     if (!targetRole) {
-      const availableRoles = allRoles.map((r: AgentRole) => r.name).join(', ');
-      throw new Error(
-        `Agent role "${agentRole}" not found. Available roles: ${availableRoles}`
-      );
+      const availableRoles = allRoles.map((r: AgentRole) => r.name).join(", ");
+      throw new Error(`Agent role "${agentRole}" not found. Available roles: ${availableRoles}`);
     }
 
     // Don't allow self-mentions
     if (this.currentAgentRoleId && targetRole.id === this.currentAgentRoleId) {
-      throw new Error('Cannot mention yourself. Please choose a different agent.');
+      throw new Error("Cannot mention yourself. Please choose a different agent.");
     }
 
     // Create the mention
@@ -136,14 +134,14 @@ export class MentionTools {
     });
 
     const typeDescriptions: Record<MentionType, string> = {
-      request: 'requested help from',
-      handoff: 'handed off work to',
-      review: 'requested a review from',
-      fyi: 'shared information with',
+      request: "requested help from",
+      handoff: "handed off work to",
+      review: "requested a review from",
+      fyi: "shared information with",
     };
 
-    this.daemon.logEvent(this.taskId, 'tool_result', {
-      tool: 'mention_agent',
+    this.daemon.logEvent(this.taskId, "tool_result", {
+      tool: "mention_agent",
       success: true,
       mentionId: mention.id,
       toAgentRoleId: targetRole.id,
@@ -173,14 +171,11 @@ export class MentionTools {
       return { mentions: [] };
     }
 
-    this.daemon.logEvent(this.taskId, 'tool_call', {
-      tool: 'get_pending_mentions',
+    this.daemon.logEvent(this.taskId, "tool_call", {
+      tool: "get_pending_mentions",
     });
 
-    const pending = this.mentionRepo.getPendingForAgent(
-      this.currentAgentRoleId,
-      this.workspaceId
-    );
+    const pending = this.mentionRepo.getPendingForAgent(this.currentAgentRoleId, this.workspaceId);
 
     const mentions = pending.map((m) => {
       let fromAgent: string | null = null;
@@ -198,8 +193,8 @@ export class MentionTools {
       };
     });
 
-    this.daemon.logEvent(this.taskId, 'tool_result', {
-      tool: 'get_pending_mentions',
+    this.daemon.logEvent(this.taskId, "tool_result", {
+      tool: "get_pending_mentions",
       success: true,
       count: mentions.length,
     });
@@ -214,12 +209,12 @@ export class MentionTools {
     success: boolean;
     message: string;
   }> {
-    if (!mentionId || typeof mentionId !== 'string') {
-      throw new Error('Invalid mentionId: must be a non-empty string');
+    if (!mentionId || typeof mentionId !== "string") {
+      throw new Error("Invalid mentionId: must be a non-empty string");
     }
 
-    this.daemon.logEvent(this.taskId, 'tool_call', {
-      tool: 'acknowledge_mention',
+    this.daemon.logEvent(this.taskId, "tool_call", {
+      tool: "acknowledge_mention",
       mentionId,
     });
 
@@ -229,14 +224,14 @@ export class MentionTools {
       throw new Error(`Mention "${mentionId}" not found or already processed`);
     }
 
-    this.daemon.logEvent(this.taskId, 'tool_result', {
-      tool: 'acknowledge_mention',
+    this.daemon.logEvent(this.taskId, "tool_result", {
+      tool: "acknowledge_mention",
       success: true,
     });
 
     return {
       success: true,
-      message: 'Mention acknowledged. You can now work on the requested task.',
+      message: "Mention acknowledged. You can now work on the requested task.",
     };
   }
 
@@ -247,12 +242,12 @@ export class MentionTools {
     success: boolean;
     message: string;
   }> {
-    if (!mentionId || typeof mentionId !== 'string') {
-      throw new Error('Invalid mentionId: must be a non-empty string');
+    if (!mentionId || typeof mentionId !== "string") {
+      throw new Error("Invalid mentionId: must be a non-empty string");
     }
 
-    this.daemon.logEvent(this.taskId, 'tool_call', {
-      tool: 'complete_mention',
+    this.daemon.logEvent(this.taskId, "tool_call", {
+      tool: "complete_mention",
       mentionId,
     });
 
@@ -262,14 +257,14 @@ export class MentionTools {
       throw new Error(`Mention "${mentionId}" not found`);
     }
 
-    this.daemon.logEvent(this.taskId, 'tool_result', {
-      tool: 'complete_mention',
+    this.daemon.logEvent(this.taskId, "tool_result", {
+      tool: "complete_mention",
       success: true,
     });
 
     return {
       success: true,
-      message: 'Mention completed successfully.',
+      message: "Mention completed successfully.",
     };
   }
 
@@ -279,91 +274,89 @@ export class MentionTools {
   static getToolDefinitions(): LLMTool[] {
     return [
       {
-        name: 'list_agent_roles',
+        name: "list_agent_roles",
         description:
-          'List all available specialized agent roles that can be mentioned. ' +
-          'Use this to see what experts are available for collaboration.',
+          "List all available specialized agent roles that can be mentioned. " +
+          "Use this to see what experts are available for collaboration.",
         input_schema: {
-          type: 'object',
+          type: "object",
           properties: {},
           required: [],
         },
       },
       {
-        name: 'mention_agent',
+        name: "mention_agent",
         description:
-          'Mention another specialized agent to request help, delegate work, request a review, or share information. ' +
-          'This sends a notification to the specified agent role. ' +
-          'Example uses: ask the Reviewer to check your code, ask the Researcher to find information, ' +
-          'hand off a task to the Tester, or notify the Architect about a design decision.',
+          "Mention another specialized agent to request help, delegate work, request a review, or share information. " +
+          "This sends a notification to the specified agent role. " +
+          "Example uses: ask the Reviewer to check your code, ask the Researcher to find information, " +
+          "hand off a task to the Tester, or notify the Architect about a design decision.",
         input_schema: {
-          type: 'object',
+          type: "object",
           properties: {
             agentRole: {
-              type: 'string',
+              type: "string",
               description:
                 'The name of the agent role to mention (e.g., "Reviewer", "Researcher", "Tester", "Architect"). ' +
-                'Use list_agent_roles to see available options.',
+                "Use list_agent_roles to see available options.",
             },
             mentionType: {
-              type: 'string',
-              enum: ['request', 'handoff', 'review', 'fyi'],
+              type: "string",
+              enum: ["request", "handoff", "review", "fyi"],
               description:
-                'Type of mention: ' +
+                "Type of mention: " +
                 '"request" - ask for help with a specific task, ' +
                 '"handoff" - fully delegate the task to another agent, ' +
                 '"review" - request a review of completed work, ' +
                 '"fyi" - informational, no action needed.',
             },
             context: {
-              type: 'string',
+              type: "string",
               description:
-                'Detailed context for the mention. Explain what you need, what you have done so far, ' +
-                'and any relevant information the other agent needs to help.',
+                "Detailed context for the mention. Explain what you need, what you have done so far, " +
+                "and any relevant information the other agent needs to help.",
             },
           },
-          required: ['agentRole', 'mentionType', 'context'],
+          required: ["agentRole", "mentionType", "context"],
         },
       },
       {
-        name: 'get_pending_mentions',
+        name: "get_pending_mentions",
         description:
-          'Get any pending mentions directed to this agent. ' +
-          'Use this to check if other agents have requested your help.',
+          "Get any pending mentions directed to this agent. " +
+          "Use this to check if other agents have requested your help.",
         input_schema: {
-          type: 'object',
+          type: "object",
           properties: {},
           required: [],
         },
       },
       {
-        name: 'acknowledge_mention',
-        description:
-          'Acknowledge a mention, indicating you have seen it and will work on it.',
+        name: "acknowledge_mention",
+        description: "Acknowledge a mention, indicating you have seen it and will work on it.",
         input_schema: {
-          type: 'object',
+          type: "object",
           properties: {
             mentionId: {
-              type: 'string',
-              description: 'The ID of the mention to acknowledge',
+              type: "string",
+              description: "The ID of the mention to acknowledge",
             },
           },
-          required: ['mentionId'],
+          required: ["mentionId"],
         },
       },
       {
-        name: 'complete_mention',
-        description:
-          'Mark a mention as completed after finishing the requested work.',
+        name: "complete_mention",
+        description: "Mark a mention as completed after finishing the requested work.",
         input_schema: {
-          type: 'object',
+          type: "object",
           properties: {
             mentionId: {
-              type: 'string',
-              description: 'The ID of the mention to mark as completed',
+              type: "string",
+              description: "The ID of the mention to mark as completed",
             },
           },
-          required: ['mentionId'],
+          required: ["mentionId"],
         },
       },
     ];

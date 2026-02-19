@@ -6,16 +6,12 @@
  * this manager provides the higher-level Conway-specific operations.
  */
 
-import { EventEmitter } from 'events';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
-import { BrowserWindow } from 'electron';
-import { MCPSettingsManager } from '../mcp/settings';
-import { MCPClientManager } from '../mcp/client/MCPClientManager';
-import { ConwaySettingsManager } from './conway-settings';
+import { EventEmitter } from "events";
+import { BrowserWindow } from "electron";
+import { MCPSettingsManager } from "../mcp/settings";
+import { MCPClientManager } from "../mcp/client/MCPClientManager";
+import { ConwaySettingsManager } from "./conway-settings";
+import { ConwayWalletManager } from "./conway-wallet";
 import {
   ConwaySetupStatus,
   ConwaySetupState,
@@ -23,19 +19,15 @@ import {
   ConwayCreditsBalance,
   ConwayCreditHistoryEntry,
   IPC_CHANNELS,
-} from '../../shared/types';
+} from "../../shared/types";
 
-const execAsync = promisify(exec);
-
-const CONWAY_SERVER_NAME = 'Conway Terminal';
-const CONWAY_COMMAND = 'npx';
-const CONWAY_ARGS = ['-y', 'conway-terminal'];
-const CONWAY_WALLET_DIR = path.join(os.homedir(), '.conway');
-const CONWAY_WALLET_FILE = path.join(CONWAY_WALLET_DIR, 'wallet.json');
+const CONWAY_SERVER_NAME = "Conway Terminal";
+const CONWAY_COMMAND = "npx";
+const CONWAY_ARGS = ["-y", "conway-terminal"];
 
 export class ConwayManager extends EventEmitter {
   private static instance: ConwayManager | null = null;
-  private setupState: ConwaySetupState = 'not_installed';
+  private setupState: ConwaySetupState = "not_installed";
   private balancePollingTimer: NodeJS.Timeout | null = null;
   private cachedBalance: ConwayCreditsBalance | null = null;
   private cachedWallet: ConwayWalletInfo | null = null;
@@ -53,73 +45,74 @@ export class ConwayManager extends EventEmitter {
   }
 
   /**
-   * Initialize — detect existing Conway server and restore state
+   * Initialize — verify wallet integrity, detect MCP server, restore state
    */
   async initialize(): Promise<void> {
     await this.withExclusiveOperation(async () => {
-    const settings = ConwaySettingsManager.loadSettings();
-    const server = this.findConwayServer();
+      const settings = ConwaySettingsManager.loadSettings();
 
-    // Verify wallet file integrity and permissions on every startup
-    if (this.walletFileExists()) {
-      this.verifyWalletFilePermissions();
-    } else if (settings.enabled && settings.walletAddressBackup) {
-      console.warn('[Conway] WARNING: Wallet file ~/.conway/wallet.json is missing but was previously configured!');
-      console.warn(`[Conway] Backed-up wallet address: ${settings.walletAddressBackup}`);
-      console.warn('[Conway] The wallet private key may have been lost. Check ~/.conway/ directory.');
-    }
-
-    if (server) {
-      this.setupState = 'ready';
-
-      if (settings.enabled && settings.autoConnect) {
-        try {
-          const mcpManager = MCPClientManager.getInstance();
-          const status = mcpManager.getServerStatus(server.id);
-          if (!status || status.status === 'disconnected' || status.status === 'error') {
-            await mcpManager.connectServer(server.id);
-          }
-          this.refreshCachedData().catch(() => {});
-          this.startBalancePolling();
-        } catch (error) {
-          console.warn('[Conway] Auto-connect failed:', error);
-        }
+      // Wallet integrity check — import, restore, or verify as needed
+      const walletCheck = ConwayWalletManager.startupCheck();
+      if (walletCheck.status !== "no_wallet") {
+        console.log(`[Conway] Wallet check: ${walletCheck.status}, address: ${walletCheck.address}`);
       }
-    } else if (settings.enabled) {
-      // Settings say enabled but server is missing — mark as installed but not connected
-      this.setupState = 'installed';
-    }
 
-    console.log(`[Conway] Initialized, state: ${this.setupState}`);
+      const server = this.findConwayServer();
+
+      if (server) {
+        this.setupState = "ready";
+
+        if (settings.enabled && settings.autoConnect) {
+          try {
+            const mcpManager = MCPClientManager.getInstance();
+            const status = mcpManager.getServerStatus(server.id);
+            if (!status || status.status === "disconnected" || status.status === "error") {
+              await mcpManager.connectServer(server.id);
+            }
+            this.refreshCachedData().catch(() => {});
+            this.startBalancePolling();
+          } catch (error) {
+            console.warn("[Conway] Auto-connect failed:", error);
+          }
+        }
+      } else if (settings.enabled) {
+        // Settings say enabled but server is missing — mark as installed but not connected
+        this.setupState = "installed";
+      }
+
+      console.log(`[Conway] Initialized, state: ${this.setupState}`);
     });
   }
 
   /**
-   * Full setup flow: install, init, create MCP server, connect
+   * Full setup flow: generate wallet, create MCP server, connect
    */
   async setup(): Promise<ConwaySetupStatus> {
     return this.withExclusiveOperation(async () => {
       try {
-        // Step 1: Install via npx (which also checks if already installed)
-        this.setupState = 'installing';
+        // Step 1: Generate wallet (or verify existing one)
+        this.setupState = "installing";
         this.emitStatusChange();
 
-        console.log('[Conway] Running conway-terminal --init...');
-        try {
-          await execAsync('npx -y conway-terminal --init', {
-            timeout: 120000,
-            env: { ...process.env, NODE_ENV: 'production' },
-          });
-        } catch (initError: any) {
-          // --init may exit with non-zero but still succeed (e.g. wallet already exists)
-          console.log('[Conway] Init output:', initError.stdout || '', initError.stderr || '');
+        if (!ConwayWalletManager.hasWallet()) {
+          console.log("[Conway] Generating new wallet...");
+          const { address } = ConwayWalletManager.generate();
+          console.log(`[Conway] Wallet generated: ${address}`);
+        } else {
+          // Wallet already exists — just ensure the file is present
+          console.log("[Conway] Wallet already exists in encrypted store");
+          const integrity = ConwayWalletManager.verifyIntegrity();
+          if (integrity !== "ok") {
+            console.log(`[Conway] Wallet file status: ${integrity} — restoring`);
+            ConwayWalletManager.restoreWalletFile();
+          }
         }
 
-        this.setupState = 'installed';
+        this.setupState = "installed";
         this.emitStatusChange();
 
         // Step 2: Create or find MCP server entry
-        this.setupState = 'initializing';
+        this.setupState = "initializing";
         this.emitStatusChange();
 
         let server = this.findConwayServer();
@@ -127,11 +120,11 @@ export class ConwayManager extends EventEmitter {
           server = MCPSettingsManager.addServer({
             name: CONWAY_SERVER_NAME,
             enabled: true,
-            transport: 'stdio' as const,
+            transport: "stdio" as const,
             command: CONWAY_COMMAND,
             args: [...CONWAY_ARGS],
           });
-          console.log('[Conway] Created MCP server entry:', server.id);
+          console.log("[Conway] Created MCP server entry:", server.id);
         } else if (!server.enabled) {
           MCPSettingsManager.updateServer(server.id, { enabled: true });
         }
@@ -139,18 +132,22 @@ export class ConwayManager extends EventEmitter {
         // Step 3: Connect the MCP server (skip if already connected)
         const mcpManager = MCPClientManager.getInstance();
         const existingStatus = mcpManager.getServerStatus(server.id);
-        if (!existingStatus || existingStatus.status !== 'connected') {
+        if (!existingStatus || existingStatus.status !== "connected") {
           await mcpManager.connectServer(server.id);
         }
 
-        // Step 4: Update Conway settings
+        // Step 4: Update Conway settings with wallet address backup
         const conwaySettings = ConwaySettingsManager.loadSettings();
+        const walletInfo = ConwayWalletManager.getWalletInfo();
         ConwaySettingsManager.saveSettings({
           ...conwaySettings,
           enabled: true,
+          walletAddressBackup: walletInfo?.address || conwaySettings.walletAddressBackup,
+          walletNetworkBackup: walletInfo?.network || conwaySettings.walletNetworkBackup,
+          walletBackupTimestamp: walletInfo ? Date.now() : conwaySettings.walletBackupTimestamp,
         });
 
-        this.setupState = 'ready';
+        this.setupState = "ready";
         this.emitStatusChange();
 
         // Step 5: Fetch initial data in background
@@ -159,7 +156,7 @@ export class ConwayManager extends EventEmitter {
 
         return this.getStatus();
       } catch (error: any) {
-        this.setupState = 'error';
+        this.setupState = "error";
         this.emitStatusChange();
         const status = this.getStatus();
         status.error = error instanceof Error ? error.message : String(error);
@@ -175,8 +172,7 @@ export class ConwayManager extends EventEmitter {
     const settings = MCPSettingsManager.loadSettings();
     return settings.servers.find(
       (s) =>
-        s.name === CONWAY_SERVER_NAME ||
-        (s.args || []).some((a) => a.includes('conway-terminal'))
+        s.name === CONWAY_SERVER_NAME || (s.args || []).some((a) => a.includes("conway-terminal")),
     );
   }
 
@@ -186,9 +182,9 @@ export class ConwayManager extends EventEmitter {
   async getWalletInfo(): Promise<ConwayWalletInfo | null> {
     try {
       const mcpManager = MCPClientManager.getInstance();
-      if (!mcpManager.hasTool('wallet_info')) return this.cachedWallet;
+      if (!mcpManager.hasTool("wallet_info")) return this.cachedWallet;
 
-      const result = await mcpManager.callTool('wallet_info', {});
+      const result = await mcpManager.callTool("wallet_info", {});
       const text = this.extractText(result);
       if (!text) return this.cachedWallet;
 
@@ -196,12 +192,10 @@ export class ConwayManager extends EventEmitter {
       const wallet = this.parseWalletInfo(text);
       if (wallet) {
         this.cachedWallet = wallet;
-        // Back up wallet address to encrypted database (public address only, never the private key)
-        this.backupWalletAddress(wallet);
       }
       return this.cachedWallet;
     } catch (error) {
-      console.warn('[Conway] Failed to get wallet info:', error);
+      console.warn("[Conway] Failed to get wallet info:", error);
       return this.cachedWallet;
     }
   }
@@ -212,9 +206,9 @@ export class ConwayManager extends EventEmitter {
   async getBalance(): Promise<ConwayCreditsBalance | null> {
     try {
       const mcpManager = MCPClientManager.getInstance();
-      if (!mcpManager.hasTool('credits_balance')) return this.cachedBalance;
+      if (!mcpManager.hasTool("credits_balance")) return this.cachedBalance;
 
-      const result = await mcpManager.callTool('credits_balance', {});
+      const result = await mcpManager.callTool("credits_balance", {});
       const text = this.extractText(result);
       if (!text) return this.cachedBalance;
 
@@ -224,7 +218,7 @@ export class ConwayManager extends EventEmitter {
       }
       return this.cachedBalance;
     } catch (error) {
-      console.warn('[Conway] Failed to get balance:', error);
+      console.warn("[Conway] Failed to get balance:", error);
       return this.cachedBalance;
     }
   }
@@ -235,15 +229,15 @@ export class ConwayManager extends EventEmitter {
   async getCreditHistory(): Promise<ConwayCreditHistoryEntry[]> {
     try {
       const mcpManager = MCPClientManager.getInstance();
-      if (!mcpManager.hasTool('credits_history')) return [];
+      if (!mcpManager.hasTool("credits_history")) return [];
 
-      const result = await mcpManager.callTool('credits_history', {});
+      const result = await mcpManager.callTool("credits_history", {});
       const text = this.extractText(result);
       if (!text) return [];
 
       return this.parseCreditHistory(text);
     } catch (error) {
-      console.warn('[Conway] Failed to get credit history:', error);
+      console.warn("[Conway] Failed to get credit history:", error);
       return [];
     }
   }
@@ -253,26 +247,26 @@ export class ConwayManager extends EventEmitter {
    */
   getStatus(): ConwaySetupStatus {
     const server = this.findConwayServer();
-    let mcpConnectionStatus: ConwaySetupStatus['mcpConnectionStatus'] = 'disconnected';
+    let mcpConnectionStatus: ConwaySetupStatus["mcpConnectionStatus"] = "disconnected";
     let toolCount = 0;
 
     if (server) {
       const mcpStatus = MCPClientManager.getInstance().getServerStatus(server.id);
       if (mcpStatus) {
-        mcpConnectionStatus = mcpStatus.status as ConwaySetupStatus['mcpConnectionStatus'];
+        mcpConnectionStatus = mcpStatus.status as ConwaySetupStatus["mcpConnectionStatus"];
         toolCount = mcpStatus.tools?.length || 0;
       }
     }
 
-    // Use cached wallet, or fall back to backed-up address from encrypted db
+    // Use cached wallet from MCP, or fall back to encrypted store
     let walletInfo = this.cachedWallet || undefined;
     if (!walletInfo) {
-      const backup = this.getBackedUpWalletAddress();
-      if (backup) {
+      const stored = ConwayWalletManager.getWalletInfo();
+      if (stored) {
         walletInfo = {
-          address: backup.address,
-          publicKey: backup.address,
-          network: backup.network,
+          address: stored.address,
+          publicKey: stored.address,
+          network: stored.network,
         };
       }
     }
@@ -284,7 +278,7 @@ export class ConwayManager extends EventEmitter {
       mcpServerId: server?.id,
       mcpConnectionStatus,
       toolCount,
-      walletFileExists: this.walletFileExists(),
+      walletFileExists: ConwayWalletManager.walletFileExists(),
     };
   }
 
@@ -298,7 +292,7 @@ export class ConwayManager extends EventEmitter {
         server = MCPSettingsManager.addServer({
           name: CONWAY_SERVER_NAME,
           enabled: true,
-          transport: 'stdio' as const,
+          transport: "stdio" as const,
           command: CONWAY_COMMAND,
           args: [...CONWAY_ARGS],
         });
@@ -306,10 +300,10 @@ export class ConwayManager extends EventEmitter {
 
       const mcpManager = MCPClientManager.getInstance();
       const existingStatus = mcpManager.getServerStatus(server.id);
-      if (!existingStatus || existingStatus.status !== 'connected') {
+      if (!existingStatus || existingStatus.status !== "connected") {
         await mcpManager.connectServer(server.id);
       }
-      this.setupState = 'ready';
+      this.setupState = "ready";
       this.startBalancePolling();
       this.refreshCachedData().catch(() => {});
       this.emitStatusChange();
@@ -348,7 +342,7 @@ export class ConwayManager extends EventEmitter {
       this.stopBalancePolling();
       this.cachedBalance = null;
       this.cachedWallet = null;
-      this.setupState = 'not_installed';
+      this.setupState = "not_installed";
 
       ConwaySettingsManager.saveSettings({
         ...ConwaySettingsManager.getDefaults(),
@@ -356,84 +350,22 @@ export class ConwayManager extends EventEmitter {
       });
 
       this.emitStatusChange();
-      console.log('[Conway] Reset complete — wallet file at ~/.conway/wallet.json is preserved');
+      console.log("[Conway] Reset complete — wallet file at ~/.conway/wallet.json is preserved");
     });
   }
 
   private async withExclusiveOperation<T>(operation: () => Promise<T>): Promise<T> {
     const current = this.inFlightOperation;
     const next = current.then(operation);
-    this.inFlightOperation = next.then(() => undefined, () => undefined);
+    this.inFlightOperation = next.then(
+      () => undefined,
+      () => undefined,
+    );
     try {
       return await next;
     } catch (error) {
       throw error;
     }
-  }
-
-  /**
-   * Check if the Conway wallet file exists on disk
-   */
-  walletFileExists(): boolean {
-    return fs.existsSync(CONWAY_WALLET_FILE);
-  }
-
-  /**
-   * Verify wallet file permissions are secure (owner-only read/write)
-   */
-  private verifyWalletFilePermissions(): void {
-    try {
-      if (!this.walletFileExists()) return;
-
-      const stats = fs.statSync(CONWAY_WALLET_FILE);
-      const mode = stats.mode & 0o777;
-
-      // Warn if file is readable by group or others (should be 0600)
-      if (mode & 0o077) {
-        console.warn(`[Conway] Wallet file has loose permissions (${mode.toString(8)}), tightening to 0600`);
-        fs.chmodSync(CONWAY_WALLET_FILE, 0o600);
-      }
-    } catch (error) {
-      console.warn('[Conway] Could not verify wallet file permissions:', error);
-    }
-  }
-
-  /**
-   * Back up the wallet address (public info only) to the encrypted database.
-   * This allows us to show the address even if the MCP server is disconnected,
-   * and serves as a reference for users to verify their wallet.
-   * The private key is NEVER stored in our database — it stays in ~/.conway/wallet.json.
-   */
-  private backupWalletAddress(wallet: ConwayWalletInfo): void {
-    try {
-      const settings = ConwaySettingsManager.loadSettings();
-      if (settings.walletAddressBackup === wallet.address) return; // Already backed up
-
-      ConwaySettingsManager.saveSettings({
-        ...settings,
-        walletAddressBackup: wallet.address,
-        walletNetworkBackup: wallet.network,
-        walletBackupTimestamp: Date.now(),
-      });
-      console.log('[Conway] Wallet address backed up to encrypted database');
-    } catch (error) {
-      console.warn('[Conway] Failed to backup wallet address:', error);
-    }
-  }
-
-  /**
-   * Get the backed-up wallet address from the encrypted database.
-   * Used as fallback when MCP server is disconnected.
-   */
-  getBackedUpWalletAddress(): { address: string; network: string } | null {
-    const settings = ConwaySettingsManager.loadSettings();
-    if (settings.walletAddressBackup) {
-      return {
-        address: settings.walletAddressBackup,
-        network: settings.walletNetworkBackup || 'base',
-      };
-    }
-    return null;
   }
 
   /**
@@ -480,7 +412,7 @@ export class ConwayManager extends EventEmitter {
    */
   private emitStatusChange(): void {
     const status = this.getStatus();
-    this.emit('statusChange', status);
+    this.emit("statusChange", status);
 
     try {
       const windows = BrowserWindow.getAllWindows();
@@ -500,7 +432,7 @@ export class ConwayManager extends EventEmitter {
   private extractText(result: any): string | null {
     if (!result || !result.content) return null;
     for (const item of result.content) {
-      if (item.type === 'text' && item.text) {
+      if (item.type === "text" && item.text) {
         return item.text;
       }
     }
@@ -514,8 +446,8 @@ export class ConwayManager extends EventEmitter {
    * Safely extract a string from a value that may be a string or object
    */
   private toStr(val: any, fallback: string): string {
-    if (typeof val === 'string') return val;
-    if (val && typeof val === 'object') return val.name || val.id || JSON.stringify(val);
+    if (typeof val === "string") return val;
+    if (val && typeof val === "object") return val.name || val.id || JSON.stringify(val);
     if (val !== undefined && val !== null) return String(val);
     return fallback;
   }
@@ -525,9 +457,9 @@ export class ConwayManager extends EventEmitter {
       const data = JSON.parse(text);
       if (data.address) {
         return {
-          address: this.toStr(data.address, ''),
-          publicKey: this.toStr(data.publicKey || data.public_key || data.address, ''),
-          network: this.toStr(data.network || data.chain, 'base'),
+          address: this.toStr(data.address, ""),
+          publicKey: this.toStr(data.publicKey || data.public_key || data.address, ""),
+          network: this.toStr(data.network || data.chain, "base"),
         };
       }
     } catch {
@@ -536,7 +468,7 @@ export class ConwayManager extends EventEmitter {
         return {
           address: addressMatch[1],
           publicKey: addressMatch[1],
-          network: 'base',
+          network: "base",
         };
       }
     }
@@ -551,7 +483,7 @@ export class ConwayManager extends EventEmitter {
       const data = JSON.parse(text);
       const balance = data.balance ?? data.credits ?? data.amount;
       if (balance !== undefined) {
-        const balStr = this.toStr(balance, '0');
+        const balStr = this.toStr(balance, "0");
         return {
           balance: balStr,
           balanceUsd: parseFloat(balStr) || 0,
@@ -583,14 +515,19 @@ export class ConwayManager extends EventEmitter {
         id: this.toStr(entry.id, String(index)),
         type: (() => {
           const parsedAmount = this.parseCreditAmount(entry.amount ?? entry.value);
-          if ((entry.type === 'debit' || entry.type === 'DEBIT' || entry.type === 'Debit') || (parsedAmount < 0)) {
-            return 'debit' as const;
+          if (
+            entry.type === "debit" ||
+            entry.type === "DEBIT" ||
+            entry.type === "Debit" ||
+            parsedAmount < 0
+          ) {
+            return "debit" as const;
           }
-          return 'credit' as const;
+          return "credit" as const;
         })(),
-        amount: this.toStr(Math.abs(this.parseCreditAmount(entry.amount ?? entry.value)), '0'),
-        description: this.toStr(entry.description || entry.memo || entry.label, ''),
-        service: this.toStr(entry.service || entry.category, 'unknown'),
+        amount: this.toStr(Math.abs(this.parseCreditAmount(entry.amount ?? entry.value)), "0"),
+        description: this.toStr(entry.description || entry.memo || entry.label, ""),
+        service: this.toStr(entry.service || entry.category, "unknown"),
         timestamp: this.parseTimestamp(entry.timestamp || entry.created_at),
       }));
     } catch {
@@ -599,8 +536,8 @@ export class ConwayManager extends EventEmitter {
   }
 
   private parseCreditAmount(amount: unknown): number {
-    if (typeof amount === 'number') return Number.isFinite(amount) ? amount : 0;
-    if (typeof amount === 'string') {
+    if (typeof amount === "number") return Number.isFinite(amount) ? amount : 0;
+    if (typeof amount === "string") {
       const parsed = Number.parseFloat(amount.trim());
       return Number.isFinite(parsed) ? parsed : 0;
     }
@@ -608,10 +545,10 @@ export class ConwayManager extends EventEmitter {
   }
 
   private parseTimestamp(value: unknown): number {
-    if (typeof value === 'number' && Number.isFinite(value)) {
+    if (typeof value === "number" && Number.isFinite(value)) {
       return value;
     }
-    if (typeof value === 'string') {
+    if (typeof value === "string") {
       const parsed = Date.parse(value);
       return Number.isFinite(parsed) ? parsed : Date.now();
     }

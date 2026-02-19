@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import { StandupReport } from '../../electron/preload';
-import { useAgentContext } from '../hooks/useAgentContext';
+import { useState, useEffect } from "react";
+import { StandupReport } from "../../electron/preload";
+import { useAgentContext } from "../hooks/useAgentContext";
 
 interface Task {
   id: string;
@@ -37,7 +37,7 @@ export function StandupReportViewer({ workspaceId, onClose }: StandupReportViewe
         await loadTaskDetails(loadedReports[0]);
       }
     } catch (err) {
-      console.error('Failed to load standup reports:', err);
+      console.error("Failed to load standup reports:", err);
     } finally {
       setLoading(false);
     }
@@ -67,7 +67,7 @@ export function StandupReportViewer({ workspaceId, onClose }: StandupReportViewe
 
       setTaskMap(newTaskMap);
     } catch (err) {
-      console.error('Failed to load task details:', err);
+      console.error("Failed to load task details:", err);
     }
   };
 
@@ -84,7 +84,7 @@ export function StandupReportViewer({ workspaceId, onClose }: StandupReportViewe
       setSelectedReport(newReport);
       await loadTaskDetails(newReport);
     } catch (err) {
-      console.error('Failed to generate standup report:', err);
+      console.error("Failed to generate standup report:", err);
     } finally {
       setGenerating(false);
     }
@@ -96,28 +96,28 @@ export function StandupReportViewer({ workspaceId, onClose }: StandupReportViewe
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
 
-    if (dateStr === today.toISOString().split('T')[0]) {
-      return 'Today';
-    } else if (dateStr === yesterday.toISOString().split('T')[0]) {
-      return 'Yesterday';
+    if (dateStr === today.toISOString().split("T")[0]) {
+      return "Today";
+    } else if (dateStr === yesterday.toISOString().split("T")[0]) {
+      return "Yesterday";
     }
 
-    return date.toLocaleDateString('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
+    return date.toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
     });
   };
 
   const formatCreatedAt = (timestamp: number) => {
     const date = new Date(timestamp);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
 
   if (loading) {
     return (
       <div className="standup-viewer">
-        <div className="loading-state">{agentContext.getUiCopy('standupLoading')}</div>
+        <div className="loading-state">{agentContext.getUiCopy("standupLoading")}</div>
         <style>{styles}</style>
       </div>
     );
@@ -127,20 +127,23 @@ export function StandupReportViewer({ workspaceId, onClose }: StandupReportViewe
     <div className="standup-viewer">
       <div className="viewer-header">
         <div className="header-content">
-          <h2>{agentContext.getUiCopy('standupTitle')}</h2>
-          <button
-            className="btn-generate"
-            onClick={handleGenerateReport}
-            disabled={generating}
-          >
+          <h2>{agentContext.getUiCopy("standupTitle")}</h2>
+          <button className="btn-generate" onClick={handleGenerateReport} disabled={generating}>
             {generating
-              ? agentContext.getUiCopy('standupGenerating')
-              : agentContext.getUiCopy('standupGenerate')}
+              ? agentContext.getUiCopy("standupGenerating")
+              : agentContext.getUiCopy("standupGenerate")}
           </button>
         </div>
         {onClose && (
           <button className="btn-close" onClick={onClose}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
               <path d="M18 6L6 18M6 6l12 12" />
             </svg>
           </button>
@@ -149,23 +152,21 @@ export function StandupReportViewer({ workspaceId, onClose }: StandupReportViewe
 
       <div className="viewer-content">
         <div className="report-sidebar">
-          <h3>{agentContext.getUiCopy('standupHistoryTitle')}</h3>
+          <h3>{agentContext.getUiCopy("standupHistoryTitle")}</h3>
           <div className="report-list">
             {reports.length === 0 ? (
-              <div className="empty-state">
-                {agentContext.getUiCopy('standupEmpty')}
-              </div>
+              <div className="empty-state">{agentContext.getUiCopy("standupEmpty")}</div>
             ) : (
               reports.map((report) => (
                 <button
                   key={report.id}
-                  className={`report-item ${selectedReport?.id === report.id ? 'selected' : ''}`}
+                  className={`report-item ${selectedReport?.id === report.id ? "selected" : ""}`}
                   onClick={() => handleSelectReport(report)}
                 >
                   <span className="report-date">{formatDate(report.reportDate)}</span>
                   <span className="report-summary-mini">
-                    {report.completedTaskIds.length} completed,{' '}
-                    {report.inProgressTaskIds.length} in progress
+                    {report.completedTaskIds.length} completed, {report.inProgressTaskIds.length} in
+                    progress
                   </span>
                 </button>
               ))
@@ -179,7 +180,9 @@ export function StandupReportViewer({ workspaceId, onClose }: StandupReportViewe
               <div className="report-header">
                 <h3>{formatDate(selectedReport.reportDate)}</h3>
                 <span className="report-time">
-                  {agentContext.getUiCopy('standupGeneratedAt', { time: formatCreatedAt(selectedReport.createdAt) })}
+                  {agentContext.getUiCopy("standupGeneratedAt", {
+                    time: formatCreatedAt(selectedReport.createdAt),
+                  })}
                 </span>
               </div>
 
@@ -188,11 +191,13 @@ export function StandupReportViewer({ workspaceId, onClose }: StandupReportViewe
                 <div className="report-section completed">
                   <div className="section-header">
                     <span className="section-icon">✅</span>
-                    <h4>{agentContext.getUiCopy('standupCompletedTitle')}</h4>
+                    <h4>{agentContext.getUiCopy("standupCompletedTitle")}</h4>
                     <span className="section-count">{selectedReport.completedTaskIds.length}</span>
                   </div>
                   {selectedReport.completedTaskIds.length === 0 ? (
-                    <div className="section-empty">{agentContext.getUiCopy('standupCompletedEmpty')}</div>
+                    <div className="section-empty">
+                      {agentContext.getUiCopy("standupCompletedEmpty")}
+                    </div>
                   ) : (
                     <ul className="task-list">
                       {selectedReport.completedTaskIds.map((taskId) => {
@@ -211,11 +216,13 @@ export function StandupReportViewer({ workspaceId, onClose }: StandupReportViewe
                 <div className="report-section in-progress">
                   <div className="section-header">
                     <span className="section-icon">🔄</span>
-                    <h4>{agentContext.getUiCopy('standupInProgressTitle')}</h4>
+                    <h4>{agentContext.getUiCopy("standupInProgressTitle")}</h4>
                     <span className="section-count">{selectedReport.inProgressTaskIds.length}</span>
                   </div>
                   {selectedReport.inProgressTaskIds.length === 0 ? (
-                    <div className="section-empty">{agentContext.getUiCopy('standupInProgressEmpty')}</div>
+                    <div className="section-empty">
+                      {agentContext.getUiCopy("standupInProgressEmpty")}
+                    </div>
                   ) : (
                     <ul className="task-list">
                       {selectedReport.inProgressTaskIds.map((taskId) => {
@@ -234,11 +241,13 @@ export function StandupReportViewer({ workspaceId, onClose }: StandupReportViewe
                 <div className="report-section blocked">
                   <div className="section-header">
                     <span className="section-icon">🚫</span>
-                    <h4>{agentContext.getUiCopy('standupBlockedTitle')}</h4>
+                    <h4>{agentContext.getUiCopy("standupBlockedTitle")}</h4>
                     <span className="section-count">{selectedReport.blockedTaskIds.length}</span>
                   </div>
                   {selectedReport.blockedTaskIds.length === 0 ? (
-                    <div className="section-empty">{agentContext.getUiCopy('standupBlockedEmpty')}</div>
+                    <div className="section-empty">
+                      {agentContext.getUiCopy("standupBlockedEmpty")}
+                    </div>
                   ) : (
                     <ul className="task-list">
                       {selectedReport.blockedTaskIds.map((taskId) => {
