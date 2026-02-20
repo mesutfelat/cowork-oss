@@ -242,6 +242,7 @@ function wrapProviderWithDetailedLogging(provider: LLMProvider): LLMProvider {
         );
         return response;
       } catch (error: any) {
+        let effectiveError = error;
         const parsedLimit = parseMaxTokensLimitFromError(error);
         if (
           parsedLimit &&
@@ -274,25 +275,27 @@ function wrapProviderWithDetailedLogging(provider: LLMProvider): LLMProvider {
               );
               return response;
             } catch (retryError: any) {
-              error = retryError;
+              effectiveError = retryError;
             }
           }
         }
 
-        const message = String(error?.message || "");
+        const message = String(effectiveError?.message || "");
         const lower = message.toLowerCase();
         const cancelled =
-          error?.name === "AbortError" || lower.includes("aborted") || lower.includes("cancel");
+          effectiveError?.name === "AbortError" ||
+          lower.includes("aborted") ||
+          lower.includes("cancel");
         console.error(
           `[LLM:${provider.type}] #${callId}${tag} ${cancelled ? "cancelled" : "error"} in ${Date.now() - startedAt}ms`,
           {
-            name: error?.name,
+            name: effectiveError?.name,
             message,
-            status: error?.status || error?.$metadata?.httpStatusCode,
-            requestId: error?.$metadata?.requestId,
+            status: effectiveError?.status || effectiveError?.$metadata?.httpStatusCode,
+            requestId: effectiveError?.$metadata?.requestId,
           },
         );
-        throw error;
+        throw effectiveError;
       }
     },
     async testConnection(): Promise<{ success: boolean; error?: string }> {
@@ -1656,6 +1659,70 @@ export class LLMProviderFactory {
   }
 
   /**
+   * Format verbose AWS Bedrock inference profile names into concise display names.
+   *
+   * Examples:
+   *   "US Anthropic Claude Opus 4.6"      → "Opus 4.6 US"
+   *   "Global Anthropic Claude Sonnet 4.6" → "Sonnet 4.6 GL"
+   *   "US Anthropic Claude 3.5 Sonnet"     → "Sonnet 3.5 US"
+   *   "US Claude Opus 4"                   → "Opus 4 US"
+   *   "GLOBAL Anthropic Claude Haiku 4.5"  → "Haiku 4.5 GL"
+   *
+   * Names that don't match the expected pattern are returned as-is.
+   */
+  private static formatBedrockProfileName(rawName: string): string {
+    const name = rawName.trim();
+    if (!name) return name;
+
+    // Extract region prefix (US / Global / EU / AP etc.)
+    let regionTag = "";
+    let rest = name;
+    const regionMatch = name.match(/^(US|Global|EU|AP(?:-\w+)?)\s+/i);
+    if (regionMatch) {
+      const prefix = regionMatch[1].toUpperCase();
+      regionTag = prefix === "GLOBAL" ? "GL" : prefix;
+      rest = name.slice(regionMatch[0].length);
+    }
+
+    // Strip "Anthropic" and "Claude" keywords
+    rest = rest
+      .replace(/\bAnthropic\b/gi, "")
+      .replace(/\bClaude\b/gi, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    // Extract model family and version from whatever remains.
+    // Handles both "Family Version" (Opus 4.6) and "Version Family" (3.5 Sonnet).
+    const families = ["Opus", "Sonnet", "Haiku"];
+    let family = "";
+    let version = "";
+
+    for (const f of families) {
+      // Pattern: "Family Version" e.g. "Opus 4.6"
+      const fv = rest.match(new RegExp(`\\b${f}\\s+([\\d.]+)`, "i"));
+      if (fv) {
+        family = f;
+        version = fv[1];
+        break;
+      }
+      // Pattern: "Version Family" e.g. "3.5 Sonnet"
+      const vf = rest.match(new RegExp(`([\\d.]+)\\s+${f}`, "i"));
+      if (vf) {
+        family = f;
+        version = vf[1];
+        break;
+      }
+    }
+
+    if (family && version) {
+      return regionTag ? `${family} ${version} ${regionTag}` : `${family} ${version}`;
+    }
+
+    // Couldn't parse — return cleaned-up name with region suffix if available
+    return regionTag ? `${rest} ${regionTag}` : name;
+  }
+
+  /**
    * Fetch available Bedrock models from AWS
    */
   static async getBedrockModels(config?: {
@@ -1739,7 +1806,9 @@ export class LLMProviderFactory {
           ).trim();
           if (!id) continue;
 
-          const name = (profileSummary?.inferenceProfileName || id).trim();
+          const name = this.formatBedrockProfileName(
+            (profileSummary?.inferenceProfileName || id).trim(),
+          );
           const type = profileSummary?.type ? String(profileSummary.type) : "INFERENCE_PROFILE";
           const description = profileSummary?.description
             ? String(profileSummary.description)
