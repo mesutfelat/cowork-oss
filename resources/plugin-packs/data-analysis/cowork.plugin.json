@@ -1,0 +1,60 @@
+{
+  "name": "data-analysis-pack",
+  "displayName": "Data Analysis Pack",
+  "version": "1.0.0",
+  "description": "Skills for CSV analysis, data visualization, reporting, and statistical insights",
+  "type": "pack",
+  "author": "CoWork-OSS",
+  "keywords": ["data", "analysis", "csv", "visualization", "reporting"],
+  "skills": [
+    {
+      "id": "data-csv-analysis",
+      "name": "CSV Analysis",
+      "description": "Analyze a CSV file and provide summary statistics, patterns, and insights",
+      "icon": "📈",
+      "category": "Data",
+      "prompt": "Analyze the CSV data and provide comprehensive insights.\n\nFile path or data:\n{{data_source}}\n\nPlease provide:\n1. Data overview (rows, columns, data types)\n2. Summary statistics for numerical columns\n3. Missing data report\n4. Key patterns and correlations\n5. Outlier detection\n6. Top 3 actionable insights\n7. Suggested visualizations",
+      "parameters": [
+        { "name": "data_source", "type": "string", "description": "CSV file path or pasted data", "required": true }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "data-report-generator",
+      "name": "Report Generator",
+      "description": "Generate a formatted report with charts and tables from raw data",
+      "icon": "📋",
+      "category": "Data",
+      "prompt": "Generate a comprehensive data report.\n\nData source: {{data_source}}\nReport focus: {{focus}}\n\nPlease create:\n1. Executive summary (3-5 key findings)\n2. Methodology description\n3. Detailed findings with supporting data\n4. Trend analysis\n5. Recommendations\n6. Include relevant tables with the data\n7. Suggest chart types for key metrics",
+      "parameters": [
+        { "name": "data_source", "type": "string", "description": "Data to analyze", "required": true },
+        { "name": "focus", "type": "string", "description": "Report focus area", "required": false }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "data-sql-query",
+      "name": "SQL Query Builder",
+      "description": "Generate SQL queries from natural language descriptions",
+      "icon": "🗃️",
+      "category": "Data",
+      "prompt": "Generate a SQL query based on the following request.\n\nRequest: {{request}}\nTable schema: {{schema}}\n\nPlease provide:\n1. The SQL query\n2. Explanation of what the query does\n3. Performance considerations\n4. Alternative approaches if applicable",
+      "parameters": [
+        { "name": "request", "type": "string", "description": "What data do you need?", "required": true },
+        { "name": "schema", "type": "string", "description": "Table schema or description", "required": false }
+      ],
+      "enabled": true
+    }
+  ],
+  "agentRoles": [
+    {
+      "name": "data-analyst",
+      "displayName": "Data Analyst",
+      "description": "Specializes in data analysis, visualization, SQL queries, and statistical reporting",
+      "icon": "📊",
+      "color": "#f59e0b",
+      "capabilities": ["analyze", "research", "code", "write"],
+      "systemPrompt": "You are a Data Analyst agent. You excel at analyzing datasets, writing SQL queries, generating statistical insights, and creating clear reports. You prioritize accuracy, use appropriate statistical methods, and present findings in an accessible way."
+    }
+  ]
+}

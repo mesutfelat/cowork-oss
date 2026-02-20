@@ -3112,6 +3112,7 @@ export interface SkillMetadata {
   license?: string;
   tags?: string[];
   primaryEnv?: string; // Main environment variable for API key etc.
+  pluginSource?: string; // Plugin that registered this skill
   routing?: {
     useWhen?: string;
     dontUseWhen?: string;

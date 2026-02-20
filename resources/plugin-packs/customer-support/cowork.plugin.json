@@ -1,0 +1,71 @@
+{
+  "name": "customer-support-pack",
+  "displayName": "Customer Support Pack",
+  "version": "1.0.0",
+  "description": "Skills for ticket triage, response templates, escalation workflows, and customer communication",
+  "type": "pack",
+  "author": "CoWork-OSS",
+  "keywords": ["support", "tickets", "triage", "customer-service"],
+  "skills": [
+    {
+      "id": "support-ticket-triage",
+      "name": "Ticket Triage",
+      "description": "Analyze and categorize a support ticket with priority, category, and suggested response",
+      "icon": "🏷️",
+      "category": "Support",
+      "prompt": "Triage the following support ticket.\n\nTicket content:\n{{ticket}}\n\nPlease provide:\n1. Priority level (P1-Critical, P2-High, P3-Medium, P4-Low)\n2. Category (Bug, Feature Request, How-To, Billing, Account, Other)\n3. Sentiment analysis (Frustrated, Neutral, Positive)\n4. Key issue summary (1-2 sentences)\n5. Suggested initial response\n6. Recommended escalation path (if needed)",
+      "parameters": [
+        { "name": "ticket", "type": "string", "description": "The support ticket content to triage", "required": true }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "support-response-draft",
+      "name": "Response Draft",
+      "description": "Draft a support response using the appropriate tone and including resolution steps",
+      "icon": "✍️",
+      "category": "Support",
+      "prompt": "Draft a support response for the following customer issue.\n\nCustomer message: {{message}}\nContext/Resolution: {{resolution}}\n\nGuidelines:\n- Be empathetic and acknowledge their frustration\n- Provide clear step-by-step instructions\n- Use simple language (avoid jargon)\n- Include relevant links or documentation references\n- End with an offer for further assistance",
+      "parameters": [
+        { "name": "message", "type": "string", "description": "The customer's message", "required": true },
+        { "name": "resolution", "type": "string", "description": "Known resolution or context", "required": true }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "support-escalation-summary",
+      "name": "Escalation Summary",
+      "description": "Create a structured escalation summary for engineering or management",
+      "icon": "⬆️",
+      "category": "Support",
+      "prompt": "Create an escalation summary for the following support issue.\n\nIssue details:\n{{issue}}\n\nPlease format as:\n1. Issue Summary (2-3 sentences)\n2. Customer Impact (severity, number of affected users)\n3. Steps Already Taken\n4. Root Cause Hypothesis\n5. Recommended Next Steps\n6. Timeline Expectations",
+      "parameters": [
+        { "name": "issue", "type": "string", "description": "Issue details and history", "required": true }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "support-kb-article",
+      "name": "KB Article Draft",
+      "description": "Draft a knowledge base article from a resolved support case",
+      "icon": "📖",
+      "category": "Support",
+      "prompt": "Create a knowledge base article based on the following resolved support case.\n\nResolved case:\n{{case_details}}\n\nArticle format:\n1. Title (clear, searchable)\n2. Problem Description\n3. Symptoms\n4. Solution (step-by-step)\n5. Additional Notes\n6. Related Articles (suggest topics)",
+      "parameters": [
+        { "name": "case_details", "type": "string", "description": "Details of the resolved support case", "required": true }
+      ],
+      "enabled": true
+    }
+  ],
+  "agentRoles": [
+    {
+      "name": "support-specialist",
+      "displayName": "Support Specialist",
+      "description": "Specializes in customer support workflows, ticket triage, and knowledge base management",
+      "icon": "🎧",
+      "color": "#6366f1",
+      "capabilities": ["communicate", "write", "analyze", "research"],
+      "systemPrompt": "You are a Customer Support Specialist agent. You excel at triaging tickets, drafting empathetic responses, creating escalation summaries, and maintaining knowledge base articles. You prioritize customer satisfaction and clear communication."
+    }
+  ]
+}

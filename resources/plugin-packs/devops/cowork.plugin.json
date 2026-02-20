@@ -1,0 +1,72 @@
+{
+  "name": "devops-pack",
+  "displayName": "DevOps Pack",
+  "version": "1.0.0",
+  "description": "Skills for deployment automation, monitoring, incident response, and infrastructure management",
+  "type": "pack",
+  "author": "CoWork-OSS",
+  "keywords": ["devops", "deployment", "monitoring", "incident-response", "infrastructure"],
+  "skills": [
+    {
+      "id": "devops-incident-response",
+      "name": "Incident Response",
+      "description": "Generate an incident response plan with triage steps, communication templates, and post-mortem outline",
+      "icon": "🚨",
+      "category": "DevOps",
+      "prompt": "Create an incident response plan for the following issue.\n\nIncident description: {{incident}}\nSeverity: {{severity}}\n\nPlease provide:\n1. Incident classification and severity assessment\n2. Immediate triage steps\n3. Communication template (internal and external)\n4. Escalation path\n5. Root cause investigation checklist\n6. Mitigation and rollback options\n7. Post-mortem outline template\n8. Follow-up action items",
+      "parameters": [
+        { "name": "incident", "type": "string", "description": "Description of the incident", "required": true },
+        { "name": "severity", "type": "string", "description": "Severity level (SEV1-SEV4)", "required": false }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "devops-deployment-checklist",
+      "name": "Deployment Checklist",
+      "description": "Generate a comprehensive deployment checklist with pre/post-deployment steps",
+      "icon": "🚀",
+      "category": "DevOps",
+      "prompt": "Create a deployment checklist for the following release.\n\nRelease details: {{release}}\nEnvironment: {{environment}}\n\nPlease provide:\n1. Pre-deployment checklist\n   - Code review status\n   - Test coverage verification\n   - Database migration review\n   - Configuration changes\n   - Dependency updates\n2. Deployment steps\n3. Post-deployment verification\n   - Health checks\n   - Smoke tests\n   - Monitoring alerts\n4. Rollback procedure\n5. Communication plan",
+      "parameters": [
+        { "name": "release", "type": "string", "description": "Release details and changes", "required": true },
+        { "name": "environment", "type": "string", "description": "Target environment (staging, production)", "required": false }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "devops-monitoring-setup",
+      "name": "Monitoring Setup",
+      "description": "Design monitoring and alerting configuration for a service or infrastructure component",
+      "icon": "📡",
+      "category": "DevOps",
+      "prompt": "Design a monitoring and alerting setup for the following system.\n\nSystem description: {{system}}\n\nPlease provide:\n1. Key metrics to monitor (latency, throughput, errors, saturation)\n2. Alert thresholds and escalation rules\n3. Dashboard layout recommendations\n4. Log aggregation strategy\n5. Health check endpoints\n6. On-call runbook entries\n7. SLO/SLA targets",
+      "parameters": [
+        { "name": "system", "type": "string", "description": "System or service to monitor", "required": true }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "devops-postmortem",
+      "name": "Post-mortem Report",
+      "description": "Generate a blameless post-mortem report from incident details",
+      "icon": "📋",
+      "category": "DevOps",
+      "prompt": "Write a blameless post-mortem report for the following incident.\n\nIncident details: {{incident_details}}\n\nPlease format as:\n1. Incident Summary\n2. Timeline of Events\n3. Impact Assessment (duration, affected users, financial impact)\n4. Root Cause Analysis (5 Whys)\n5. Contributing Factors\n6. What Went Well\n7. What Could Be Improved\n8. Action Items (with owners and deadlines)\n9. Lessons Learned",
+      "parameters": [
+        { "name": "incident_details", "type": "string", "description": "Full incident details and timeline", "required": true }
+      ],
+      "enabled": true
+    }
+  ],
+  "agentRoles": [
+    {
+      "name": "devops-engineer",
+      "displayName": "DevOps Engineer",
+      "description": "Specializes in deployment automation, monitoring, incident response, and infrastructure management",
+      "icon": "⚙️",
+      "color": "#ef4444",
+      "capabilities": ["ops", "code", "analyze", "security"],
+      "systemPrompt": "You are a DevOps Engineer agent. You excel at deployment automation, monitoring setup, incident response, infrastructure-as-code, and reliability engineering. You prioritize system stability, observability, and automation."
+    }
+  ]
+}

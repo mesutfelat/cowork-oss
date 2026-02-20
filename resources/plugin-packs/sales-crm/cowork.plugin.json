@@ -1,0 +1,74 @@
+{
+  "name": "sales-crm-pack",
+  "displayName": "Sales CRM Pack",
+  "version": "1.0.0",
+  "description": "Skills for prospecting, CRM workflows, follow-ups, and sales pipeline management",
+  "type": "pack",
+  "author": "CoWork-OSS",
+  "keywords": ["sales", "crm", "prospecting", "pipeline"],
+  "skills": [
+    {
+      "id": "sales-prospect-research",
+      "name": "Prospect Research",
+      "description": "Research and compile information about a prospect or company for sales outreach",
+      "icon": "🔍",
+      "category": "Sales",
+      "prompt": "Research the following prospect/company and compile a detailed briefing for sales outreach.\n\nCompany: {{company}}\nContact: {{contact}}\n\nPlease provide:\n1. Company overview (size, industry, recent news)\n2. Key decision makers and their roles\n3. Potential pain points and needs\n4. Suggested talking points for outreach\n5. Any recent funding, partnerships, or product launches",
+      "parameters": [
+        { "name": "company", "type": "string", "description": "Company name to research", "required": true },
+        { "name": "contact", "type": "string", "description": "Contact name (optional)", "required": false }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "sales-followup-email",
+      "name": "Follow-up Email",
+      "description": "Draft a personalized follow-up email based on previous interaction context",
+      "icon": "📧",
+      "category": "Sales",
+      "prompt": "Draft a professional follow-up email for a sales conversation.\n\nContact: {{contact}}\nCompany: {{company}}\nPrevious interaction: {{context}}\n\nGuidelines:\n- Keep it concise (under 150 words)\n- Reference specific points from the previous interaction\n- Include a clear call-to-action\n- Maintain a professional but warm tone\n- Suggest a specific next step (meeting, demo, etc.)",
+      "parameters": [
+        { "name": "contact", "type": "string", "description": "Contact name", "required": true },
+        { "name": "company", "type": "string", "description": "Company name", "required": true },
+        { "name": "context", "type": "string", "description": "Previous interaction notes", "required": true }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "sales-pipeline-review",
+      "name": "Pipeline Review",
+      "description": "Analyze and summarize the current sales pipeline with action items",
+      "icon": "📊",
+      "category": "Sales",
+      "prompt": "Review the current sales pipeline and generate a comprehensive status update.\n\nPipeline data:\n{{pipeline_data}}\n\nPlease provide:\n1. Pipeline summary (total deals, total value, weighted value)\n2. Deals by stage breakdown\n3. Top 3 deals most likely to close this month\n4. Deals at risk and recommended actions\n5. Specific action items for this week",
+      "parameters": [
+        { "name": "pipeline_data", "type": "string", "description": "Pipeline data or notes to analyze", "required": true }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "sales-objection-handler",
+      "name": "Objection Handler",
+      "description": "Prepare responses to common sales objections for a specific product or service",
+      "icon": "🛡️",
+      "category": "Sales",
+      "prompt": "Generate response strategies for the following sales objection.\n\nObjection: {{objection}}\nProduct/Service: {{product}}\n\nFor each response strategy, provide:\n1. Acknowledge the concern\n2. Reframe the objection\n3. Provide evidence or social proof\n4. Bridge to value proposition\n5. Suggest a next step",
+      "parameters": [
+        { "name": "objection", "type": "string", "description": "The customer objection to address", "required": true },
+        { "name": "product", "type": "string", "description": "Product or service name", "required": false }
+      ],
+      "enabled": true
+    }
+  ],
+  "agentRoles": [
+    {
+      "name": "sales-specialist",
+      "displayName": "Sales Specialist",
+      "description": "Specializes in sales workflows, prospecting, CRM management, and deal acceleration",
+      "icon": "💼",
+      "color": "#10b981",
+      "capabilities": ["communicate", "research", "write", "analyze"],
+      "systemPrompt": "You are a Sales Specialist agent. You excel at prospecting, pipeline management, follow-up communications, deal strategy, and CRM workflows. You write concise, persuasive copy and provide data-driven sales recommendations."
+    }
+  ]
+}

@@ -270,6 +270,28 @@ export class CustomSkillLoader {
   }
 
   /**
+   * Register a skill from a plugin (not from a file on disk).
+   * Plugin skills have "managed" source and are stored only in memory.
+   * Workspace skills take precedence and will not be overridden.
+   */
+  registerPluginSkill(skill: CustomSkill): void {
+    if (!this.validateSkill(skill)) {
+      console.warn(`[CustomSkillLoader] Invalid plugin skill: ${skill.id}`);
+      return;
+    }
+    // Plugin skills don't override workspace skills
+    const existing = this.skills.get(skill.id);
+    if (existing && existing.source === "workspace") {
+      console.log(
+        `[CustomSkillLoader] Skipping plugin skill ${skill.id} (workspace override exists)`,
+      );
+      return;
+    }
+    this.skills.set(skill.id, skill);
+    console.log(`[CustomSkillLoader] Plugin skill registered: ${skill.id}`);
+  }
+
+  /**
    * List all loaded skills
    */
   listSkills(): CustomSkill[] {
