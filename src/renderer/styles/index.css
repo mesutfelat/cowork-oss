@@ -1727,6 +1727,8 @@ a,
   max-width: 85%;
   border-radius: var(--radius-lg);
   padding: 14px 18px;
+  overflow: hidden;
+  min-width: 0;
 }
 
 /* User bubble - right aligned, accent colored */
@@ -1946,6 +1948,36 @@ a,
   animation: spin 1s linear infinite;
 }
 
+/* Streaming token counter */
+.streaming-stats {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+.streaming-separator {
+  color: var(--color-text-muted);
+  margin: 0 1px;
+}
+
+.streaming-token-up {
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+
+.streaming-token-down {
+  color: var(--color-accent);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.streaming-elapsed {
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+
 @keyframes spin {
   from {
     transform: rotate(0deg);
@@ -1960,6 +1992,9 @@ a,
   color: var(--color-text);
   line-height: 1.7;
   font-size: 14px;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  min-width: 0;
 }
 
 .chat-bubble-content p {
@@ -2045,7 +2080,71 @@ a,
   gap: 12px;
 }
 
-/* Verbose toggle button */
+/* Verbose on/off toggle switch */
+.verbose-switch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.verbose-switch-label {
+  font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+  transition: color 0.15s ease;
+}
+
+.verbose-switch:hover .verbose-switch-label {
+  color: var(--text-primary);
+}
+
+.verbose-switch-track {
+  position: relative;
+  width: 32px;
+  height: 18px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 9px;
+  padding: 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.verbose-switch-track:hover {
+  border-color: var(--border-color-strong);
+}
+
+.verbose-switch-track.on {
+  background: var(--accent-color);
+  border-color: var(--accent-color);
+}
+
+.verbose-switch-track.on:hover {
+  background: var(--accent-color-hover);
+  border-color: var(--accent-color-hover);
+}
+
+.verbose-switch-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  background: var(--text-secondary);
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.verbose-switch-track.on .verbose-switch-thumb {
+  left: 16px;
+  background: var(--bg-primary);
+}
+
+/* Verbose toggle button (code previews etc.) */
 .verbose-toggle-btn {
   display: flex;
   align-items: center;
@@ -2686,6 +2785,7 @@ a,
 .markdown-content a {
   color: var(--color-accent);
   text-decoration: none;
+  word-break: break-all;
 }
 
 .markdown-content a:hover {
@@ -18470,6 +18570,16 @@ button {
   border-radius: var(--radius-md);
 }
 
+.visual-oblivion .verbose-switch-label {
+  font-family: var(--font-ui);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.visual-oblivion .verbose-switch-track {
+  border-radius: var(--radius-md);
+}
+
 .visual-oblivion .event-title,
 .visual-oblivion .event-time {
   letter-spacing: 0;
@@ -19206,9 +19316,18 @@ button {
 .density-focused .main-header-status {
   display: none;
 }
-/* Hide verbose/code toggle buttons — just keep View steps */
+/* Hide code toggle button in focused mode — keep verbose switch visible */
 .density-focused .verbose-toggle-btn {
   display: none;
+}
+.density-focused .verbose-switch {
+  display: flex;
+}
+.density-focused .verbose-switch-label {
+  font-family: var(--font-ui);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 11px;
 }
 /* Hide talk mode button — advanced feature */
 .density-focused .talk-mode-btn {
