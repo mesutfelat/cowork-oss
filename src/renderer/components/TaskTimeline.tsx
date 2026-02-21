@@ -231,8 +231,8 @@ export function TaskTimeline({ events, agentContext }: TaskTimelineProps) {
         return event.payload.summary ? (
           <div className="event-details context-summary">
             <div className="context-summary-header">
-              This session is being continued with a summarized context. The summary below covers the
-              earlier portion of the conversation.
+              This session is being continued with a summarized context. The summary below covers
+              the earlier portion of the conversation.
             </div>
             <div className="context-summary-body">{event.payload.summary}</div>
           </div>

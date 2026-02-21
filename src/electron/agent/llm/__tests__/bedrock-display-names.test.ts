@@ -67,8 +67,6 @@ describe("formatBedrockModelId", () => {
     expect(factory.formatBedrockProfileName("us.anthropic.claude-sonnet-4-6-v1:0")).toBe(
       "Sonnet 4.6 US",
     );
-    expect(factory.formatBedrockProfileName("anthropic.claude-opus-4-5-20251101")).toBe(
-      "Opus 4.5",
-    );
+    expect(factory.formatBedrockProfileName("anthropic.claude-opus-4-5-20251101")).toBe("Opus 4.5");
   });
 });

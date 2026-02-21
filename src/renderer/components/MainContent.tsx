@@ -1512,7 +1512,12 @@ interface MainContentProps {
   workspace: Workspace | null;
   events: TaskEvent[];
   onSendMessage: (message: string, images?: ImageAttachment[]) => void;
-  onCreateTask?: (title: string, prompt: string, options?: CreateTaskOptions, images?: ImageAttachment[]) => void;
+  onCreateTask?: (
+    title: string,
+    prompt: string,
+    options?: CreateTaskOptions,
+    images?: ImageAttachment[],
+  ) => void;
   onChangeWorkspace?: () => void;
   onSelectWorkspace?: (workspace: Workspace) => void;
   onOpenSettings?: (tab?: SettingsTab) => void;
@@ -4168,8 +4173,7 @@ export function MainContent({
                 <span className="streaming-separator"> · </span>
                 <span className="streaming-token-up" title="Input tokens">
                   ↑{formatTokenCount(streamingProgress.totalInputTokens)}
-                </span>
-                {" "}
+                </span>{" "}
                 <span className="streaming-token-down" title="Output tokens">
                   ↓{formatTokenCount(streamingProgress.totalOutputTokens)}
                 </span>

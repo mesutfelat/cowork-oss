@@ -1307,9 +1307,7 @@ export class LLMProviderFactory {
       }
       // For Bedrock, try to format the raw model ID into a readable display name
       const displayName =
-        settings.providerType === "bedrock"
-          ? this.formatBedrockProfileName(modelKey)
-          : modelKey;
+        settings.providerType === "bedrock" ? this.formatBedrockProfileName(modelKey) : modelKey;
       return [
         {
           key: modelKey,
@@ -1909,8 +1907,8 @@ export class LLMProviderFactory {
           // Skip defaults whose display name (e.g. "Opus 4.5") is a prefix of an API profile name
           // (e.g. "Opus 4.5 US"), since the API version is more informative
           const baseName = entry.name.toLowerCase();
-          const hasApiEquivalent = apiNameKeys.has(baseName) ||
-            [...apiNameKeys].some((k) => k.startsWith(baseName + " "));
+          const hasApiEquivalent =
+            apiNameKeys.has(baseName) || [...apiNameKeys].some((k) => k.startsWith(baseName + " "));
           if (hasApiEquivalent) continue;
           seen.add(entry.id);
           merged.push(entry);
