@@ -1305,10 +1305,15 @@ export class LLMProviderFactory {
       if (!modelKey || modelList.some((model) => model.key === modelKey)) {
         return modelList;
       }
+      // For Bedrock, try to format the raw model ID into a readable display name
+      const displayName =
+        settings.providerType === "bedrock"
+          ? this.formatBedrockProfileName(modelKey)
+          : modelKey;
       return [
         {
           key: modelKey,
-          displayName: modelKey,
+          displayName,
           description,
         },
         ...modelList,
@@ -1661,23 +1666,28 @@ export class LLMProviderFactory {
   /**
    * Format verbose AWS Bedrock inference profile names into concise display names.
    *
-   * Examples:
-   *   "US Anthropic Claude Opus 4.6"      → "Opus 4.6 US"
-   *   "Global Anthropic Claude Sonnet 4.6" → "Sonnet 4.6 GL"
-   *   "US Anthropic Claude 3.5 Sonnet"     → "Sonnet 3.5 US"
-   *   "US Claude Opus 4"                   → "Opus 4 US"
-   *   "GLOBAL Anthropic Claude Haiku 4.5"  → "Haiku 4.5 GL"
-   *
-   * Names that don't match the expected pattern are returned as-is.
+   * Handles both human-readable profile names and raw Bedrock model IDs:
+   *   "US Anthropic Claude Opus 4.6"               → "Opus 4.6 US"
+   *   "Global Anthropic Claude Sonnet 4.6"          → "Sonnet 4.6 GL"
+   *   "US Anthropic Claude 3.5 Sonnet"              → "Sonnet 3.5 US"
+   *   "US Claude Opus 4"                            → "Opus 4 US"
+   *   "GLOBAL Anthropic Claude Haiku 4.5"           → "Haiku 4.5 GL"
+   *   "us.anthropic.claude-sonnet-4-6-v1:0"         → "Sonnet 4.6 US"
+   *   "anthropic.claude-opus-4-5-20251101"           → "Opus 4.5"
+   *   "eu.anthropic.claude-3-5-sonnet-20241022-v2:0" → "Sonnet 3.5 EU"
    */
   private static formatBedrockProfileName(rawName: string): string {
     const name = rawName.trim();
     if (!name) return name;
 
-    // Extract region prefix (US / Global / EU / AP etc.)
+    // Try to parse raw Bedrock model IDs first (e.g. "us.anthropic.claude-opus-4-5-20251101-v1:0")
+    const idResult = this.formatBedrockModelId(name);
+    if (idResult) return idResult;
+
+    // Extract region prefix (US / Global / EU / AP / SA etc.)
     let regionTag = "";
     let rest = name;
-    const regionMatch = name.match(/^(US|Global|EU|AP(?:-\w+)?)\s+/i);
+    const regionMatch = name.match(/^(US|Global|EU|AP(?:-\w+)?|SA)\s+/i);
     if (regionMatch) {
       const prefix = regionMatch[1].toUpperCase();
       regionTag = prefix === "GLOBAL" ? "GL" : prefix;
@@ -1720,6 +1730,55 @@ export class LLMProviderFactory {
 
     // Couldn't parse — return cleaned-up name with region suffix if available
     return regionTag ? `${rest} ${regionTag}` : name;
+  }
+
+  /**
+   * Parse a raw Bedrock model/inference-profile ID into a concise display name.
+   *
+   * Examples:
+   *   "us.anthropic.claude-sonnet-4-6-v1:0"           → "Sonnet 4.6 US"
+   *   "eu.anthropic.claude-3-5-sonnet-20241022-v2:0"   → "Sonnet 3.5 EU"
+   *   "anthropic.claude-opus-4-5-20251101"              → "Opus 4.5"
+   *   "us.anthropic.claude-3-5-haiku-20241022-v1:0"    → "Haiku 3.5 US"
+   *
+   * Returns null if the string doesn't look like a Bedrock model ID.
+   */
+  private static formatBedrockModelId(raw: string): string | null {
+    // Match Bedrock model ID patterns:
+    //  [region.]anthropic.claude-<family>-<version>[-date][-vN:M]
+    //  [region.]anthropic.claude-<version>-<family>[-date][-vN:M]
+    const idMatch = raw.match(
+      /^(?:(us|eu|ap[\w-]*|sa)\.)?anthropic\.claude-(.+?)(?:-\d{8,})?(?:-v\d+:\d+)?$/i,
+    );
+    if (!idMatch) return null;
+
+    const regionPrefix = idMatch[1]?.toUpperCase() || "";
+    const slug = idMatch[2]; // e.g. "opus-4-5", "3-5-sonnet", "sonnet-4-6"
+
+    const families = ["opus", "sonnet", "haiku"];
+    let family = "";
+    let version = "";
+
+    for (const f of families) {
+      // "family-M-N" e.g. "opus-4-5" → Opus 4.5
+      const fv = slug.match(new RegExp(`^${f}-(\\d+(?:-\\d+)?)$`, "i"));
+      if (fv) {
+        family = f.charAt(0).toUpperCase() + f.slice(1);
+        version = fv[1].replace(/-/g, ".");
+        break;
+      }
+      // "M-N-family" e.g. "3-5-sonnet" → Sonnet 3.5
+      const vf = slug.match(new RegExp(`^(\\d+(?:-\\d+)?)-${f}$`, "i"));
+      if (vf) {
+        family = f.charAt(0).toUpperCase() + f.slice(1);
+        version = vf[1].replace(/-/g, ".");
+        break;
+      }
+    }
+
+    if (!family || !version) return null;
+
+    return regionPrefix ? `${family} ${version} ${regionPrefix}` : `${family} ${version}`;
   }
 
   /**
@@ -1826,16 +1885,41 @@ export class LLMProviderFactory {
         // Safety cap to avoid unexpectedly huge listings.
       } while (nextToken && pageCount < 10);
 
-      const seen = new Set<string>();
-      const merged: Array<{ id: string; name: string; provider: string; description: string }> = [];
+      // When we have API results, prefer inference profiles over defaults.
+      // Defaults use bare model IDs (e.g. "anthropic.claude-opus-4-5-20251101")
+      // while API profiles use inference profile IDs (e.g. "us.anthropic.claude-opus-4-5-20251101-v1:0").
+      // Deduplicate so users see only the formatted API profiles with region tags.
+      if (inferenceProfiles.length > 0) {
+        // Build a set of model family+version keys from API profiles for dedup
+        const apiNameKeys = new Set(inferenceProfiles.map((p) => p.name.toLowerCase()));
+        const seen = new Set<string>();
+        const merged: Array<{ id: string; name: string; provider: string; description: string }> =
+          [];
 
-      for (const entry of [...defaultModels, ...inferenceProfiles]) {
-        if (!entry.id || seen.has(entry.id)) continue;
-        seen.add(entry.id);
-        merged.push(entry);
+        // Add inference profiles first (they have region info)
+        for (const entry of inferenceProfiles) {
+          if (!entry.id || seen.has(entry.id)) continue;
+          seen.add(entry.id);
+          merged.push(entry);
+        }
+
+        // Only add defaults that don't overlap with an API profile by display name
+        for (const entry of defaultModels) {
+          if (!entry.id || seen.has(entry.id)) continue;
+          // Skip defaults whose display name (e.g. "Opus 4.5") is a prefix of an API profile name
+          // (e.g. "Opus 4.5 US"), since the API version is more informative
+          const baseName = entry.name.toLowerCase();
+          const hasApiEquivalent = apiNameKeys.has(baseName) ||
+            [...apiNameKeys].some((k) => k.startsWith(baseName + " "));
+          if (hasApiEquivalent) continue;
+          seen.add(entry.id);
+          merged.push(entry);
+        }
+
+        return merged;
       }
 
-      return merged.length > 0 ? merged : defaultModels;
+      return defaultModels;
     } catch (error: any) {
       console.error("Failed to fetch Bedrock models:", error);
       // Return default models on error
