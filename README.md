@@ -23,68 +23,65 @@
 
 **The operating system for personal AI assistants**
 
-Your AI needs a secure home. CoWork OS provides the runtime, security layers, and I/O channels to run AI agents across WhatsApp, Telegram, Discord, Slack, Microsoft Teams, Google Chat, iMessage, Signal, Mattermost, Matrix, Twitch, LINE, BlueBubbles, and Email — with the control you expect from an operating system.
+CoWork OS is a local-first runtime for secure, multi-channel AI agents. It combines a desktop control plane, gateway channels, plugin/skill extensibility, and strict execution guardrails so assistants can operate safely across real workflows.
 
-| | |
+| Capability | Current scope |
 |---|---|
-| **20+ AI Providers** | Claude, OpenAI, Gemini, Bedrock, OpenRouter, Ollama (free/local), Groq, xAI, Kimi, Mistral, Cerebras, MiniMax, Qwen, Copilot, and more |
+| **30+ LLM Providers** | 11 built-in providers plus 20+ custom provider types (OpenAI/Anthropic-compatible, Copilot, Cerebras, Mistral, MiniMax, Qwen, and more) |
 | **14 Messaging Channels** | WhatsApp, Telegram, Discord, Slack, Teams, Google Chat, iMessage, Signal, Mattermost, Matrix, Twitch, LINE, BlueBubbles, Email |
 | **9 Enterprise Connectors** | Salesforce, Jira, HubSpot, Zendesk, ServiceNow, Linear, Asana, Okta, Resend |
-| **6 Cloud Storage** | Notion, Box, OneDrive, Google Workspace (Drive/Gmail/Calendar), Dropbox, SharePoint |
-| **Voice Calls** | Outbound phone calls via ElevenLabs Agents |
-| **Agent Teams** | Multi-agent collaboration with shared checklists and coordinated runs |
-| **Workspace Kit** | Workspace `.cowork/` kit (projects, access rules, context injection, per-workspace settings) |
-| **Intent Routing** | Per-message routing across chat/advice/planning/execution/mixed modes |
-| **Relationship Memory** | Layered continuity memory (identity, preferences, context, history, commitments) |
-| **Completion-First** | Answer-first responses, soft-deadline fallback, timeout recovery finalization |
-| **Security-First** | 2800+ unit tests, configurable guardrails, approval workflows, gateway hardening |
-| **Local-First** | Your data stays on your machine. BYOK (Bring Your Own Key) |
+| **6 Cloud Storage Integrations** | Notion, Box, OneDrive, Google Workspace (Drive/Gmail/Calendar), Dropbox, SharePoint |
+| **100+ Built-in Skills** | Developer, productivity, communication, document, and automation skills in `resources/skills/` |
+| **Declarative Plugin System** | Plugins can register skills, agent roles, connectors, and slash commands via manifests |
+| **5 Built-in Plugin Packs** | content-marketing, customer-support, data-analysis, devops, sales-crm |
+| **Agent Teams + Child Control** | Coordinated multi-agent runs with child-task control and telemetry export |
+| **Multimodal Runtime** | Vision/image support across providers, task image attachments, spreadsheet preview/extraction |
+| **Security-First Execution** | Approval workflows, IPC/input validation hardening, redaction, and gateway safety controls |
+| **Local-First + BYOK** | Your data and keys stay with you |
 
-### What’s new in 0.3.73
+### Latest Release: 0.3.89 (2026-02-20)
 
-- **Release and install reliability**: fixed publish-blocking type/lint regressions so npm desktop/client releases can be published reliably.
-- **Task config validation**: stricter `personalityId` validation for task `agentConfig` avoids malformed IDs reaching task execution.
-- **Control-plane/LLM error handling alignment**: tests and runtime error codes now match shared validation shapes for predictable client behavior.
-- **Workspace auto-switch confidence**: improved ambiguous temp-task preflight handling when preferred workspace signals are available.
+- **Declarative plugin architecture shipped**: manifest-based extensions now register connectors, skills, roles, and slash commands.
+- **Built-in plugin packs included**: reusable vertical packs for marketing, support, data, DevOps, and sales.
+- **Agent toolchain expanded**: native `create_spreadsheet` and `create_presentation` workflows.
+- **Provider UX and model quality updates**: Bedrock profile/display-name cleanup and Sonnet 4.6 model defaults.
+- **Security hardening pass**: stricter preload/IPC/channel validation and attachment safety checks.
 
-### Current Branch Enhancements (Unreleased)
+### Released Highlights Since 0.3.73
 
-- **Executor reliability**: tasks can no longer get stuck in `executing` status after follow-ups; varied-failure loop detection nudges the agent to switch strategy after 5 persistent tool failures.
-- **Smarter artifact handling**: read-only analysis steps no longer require artifact output; verification evidence is skipped when the task already produced files; document creation only triggers for explicit DOCX/PDF requests (attachment filenames no longer cause false positives).
-- **Gateway connection resilience**: Slack Socket Mode uses relaxed ping/pong timeouts (15s/60s) to reduce reconnection churn; WhatsApp adds connection-flap detection with enforced backoff when rapid disconnect/reconnect cycles are detected.
-- **XLSX file support**: Excel spreadsheets (.xlsx/.xls) can now be read and extracted as tab-separated text in the file viewer, with support for formulas, rich text, and dates.
-- **Attachment chips in chat**: user message bubbles now show compact attachment chips instead of raw file listings; the collapsible bubble toggle shows both "Show more" and "Show less".
-- **User identity hardening**: the personality prompt now explicitly instructs the LLM to ignore names found in file paths, filenames, and OS metadata when a preferred name is stored, preventing identity leakage.
-- **Hooks auto-token**: enabled hooks server auto-generates a missing authentication token instead of silently disabling.
-- **Reduced log noise**: suppressed zero-count startup messages for plugins, canvas sessions, and legacy settings; demoted MCP stderr to debug level.
-- **Relationship-agent runtime**: tasks are now intent-routed (`chat`, `advice`, `planning`, `execution`, `mixed`) and strategy-bound before execution.
-- **Answer-first behavior**: strategy-marked prompts emit a direct user answer early, then continue with deeper execution when needed.
-- **Soft-deadline execution control**: long-running steps switch to best-effort finalization before hard timeout to reduce unfinished tasks.
-- **Timeout cancellation recovery**: timeout-triggered cancellation paths now attempt best-effort final answers instead of silent termination.
-- **Relationship memory controls**: new layered memory CRUD and commitment APIs (`open`, `done`, `due soon`) are exposed through IPC/preload and renderer memory settings.
-- **Image attachments for tasks**: images (JPEG, PNG, GIF, WebP) can now be attached when creating tasks or sending follow-up messages; the LLM receives the actual image pixels via vision instead of OCR text only.
-- **Anthropic streaming**: the Anthropic provider now supports streaming responses with real-time token count and elapsed-time progress callbacks, enabling live UI progress indicators.
-- **Bedrock display names**: raw Bedrock model/inference-profile IDs (e.g. `us.anthropic.claude-sonnet-4-6-v1:0`) are now formatted into concise display names (e.g. `Sonnet 4.6 US`); AP regions with numeric suffixes are matched correctly; duplicate default/inference-profile entries are deduplicated.
-- **Executor plan completion**: the `planCompletedEffectively` flag is now set based solely on unrecovered failures, avoiding false negatives; "review" steps containing mutation verbs (e.g. "Review and tighten the article") are no longer misclassified as pure verification; artifact evidence checks accept substantive text responses when no file creation was attempted.
-- **Verbose toggle switch**: the verbose/summary toggle in the step viewer is now a compact on/off switch with proper `role="switch"` accessibility attributes.
-- **Chat bubble overflow fixes**: long URLs and text in chat bubbles no longer break layout; `overflow-wrap`, `word-break`, and `min-width: 0` are applied to bubble content and markdown links.
-- **Follow-up completion events**: chat-only follow-ups on completed tasks now emit `task_completed` instead of a generic `task_status` event, so the renderer correctly recognises the terminal state.
+| Release(s) | Date(s) | Shipped highlights |
+|---|---|---|
+| **0.3.89** | 2026-02-20 | Declarative plugin system, built-in plugin packs, spreadsheet/presentation creation tools, Bedrock/model UX cleanup, security hardening |
+| **0.3.88** | 2026-02-19 | Vision support across providers, task image attachments, LOOM email protocol, Conway Terminal integration with safety caps, Electron launch reliability fixes |
+| **0.3.87** | 2026-02-17 | ChatGPT history import wizard, child-task control tools, task telemetry export, role stage presets, CI/runtime hardening |
+| **0.3.86** | 2026-02-14 | ACP + Canvas control-plane endpoints, canvas checkpoint tooling, i18n (EN/JA/ZH), Talk Mode UX, shell approval/runtime hardening |
+| **0.3.74–0.3.85** | 2026-02-14 | Release/install reliability wave: npm/macOS setup stability, SIGKILL mitigation, native dependency recovery, release pipeline hardening |
+
+#### Capability Deltas Shipped After 0.3.73
+
+- **Agent runtime quality**: stuck-`executing` safety fixes, varied-failure loop detection, smarter artifact verification, answer-first response behavior, soft-deadline finalization, and timeout recovery with final answers.
+- **Memory and context**: relationship memory lifecycle APIs + UI controls, commitments management (`open`/`done`/`due soon`), stronger identity-leakage prevention, and richer context composition.
+- **Channels and gateway resilience**: Slack Socket Mode timeout tuning, WhatsApp connection-flap backoff, LOOM email support, and slash-command UX improvements (including autocomplete).
+- **LLM and multimodal execution**: cross-provider vision/image support, task image attachments for creation and follow-ups, Bedrock model/profile naming cleanup, and updated Sonnet 4.6 defaults.
+- **Extensibility and control plane**: declarative plugin manifests, built-in plugin packs, ACP/Canvas APIs, canvas checkpoint/restore tools, and expanded child-task/team orchestration controls.
+- **UI and operator experience**: XLSX extraction + inline spreadsheet preview, compact attachment chips in chat, language selection (English/Japanese/Simplified Chinese), Talk Mode controls, and cleaner operational logging.
+- **Operational reliability**: broad install/release hardening from `0.3.74` onward (first-install stability, native dependency recovery, publish pipeline resilience).
+
+For full per-version details, see `CHANGELOG.md`.
 
 > **Status**: macOS desktop app + headless/server mode (Linux/VPS). Cross-platform desktop support planned.
 
 ---
 
-## Relationship-Agent Validation (Recommended)
+## Upgrade Validation (Recommended)
 
-Use this quick runbook after upgrades:
+1. Create a task and confirm it transitions to `completed` with a final user-facing answer.
+2. Send a strategic prompt and verify answer-first behavior (direct answer before deeper execution).
+3. Attach an image to a task/follow-up and verify multimodal analysis is available.
+4. In **Settings > Memory**, verify relationship memory and commitments can be edited/forgotten.
+5. In **Settings > LLM**, verify provider/model selection (including Bedrock display names) is functioning.
 
-1. Send a strategic prompt in a channel (for example: "How should I position this product, who should I target, and what should I achieve?").
-2. Confirm you receive a direct answer early (not only research chatter).
-3. Confirm task ends in `completed` with a final response.
-4. If timeout occurs, confirm logs show timeout recovery/finalization instead of silent cancellation.
-5. In **Settings > Memory**, confirm relationship items and commitments can be edited/forgotten and commitment status can be toggled.
-
-For a full acceptance checklist, see `docs/relationship-agent-uat.md`.
+For a detailed acceptance checklist, see `docs/relationship-agent-uat.md`.
 
 ---
 
@@ -260,6 +257,102 @@ For production/persistent setup and Docker/systemd options, use:
 
 ---
 
+## Uninstall
+
+There are two ways to uninstall CoWork OS depending on whether you want to keep local data.
+
+### Option 1: Uninstall app/binaries only (keep database)
+
+This removes installed application files and CLI/package artifacts while keeping workspace, settings, and task data for later restore.
+
+- macOS app (manual drag-installed build):
+
+```bash
+pkill -f '/Applications/CoWork OS.app' || true
+rm -rf "/Applications/CoWork OS.app"
+```
+
+- npm global package install:
+
+```bash
+npm uninstall -g cowork-os
+```
+
+- Local install in a folder:
+
+```bash
+rm -rf ~/cowork-run
+```
+
+- Source/development clone:
+
+```bash
+rm -rf /path/to/CoWork-OS
+```
+
+- VPS/headless Docker install:
+
+```bash
+cd /path/to/docker-compose-dir
+docker compose down
+```
+
+- VPS/headless systemd install:
+
+```bash
+sudo systemctl stop cowork-os cowork-os-node
+sudo systemctl disable cowork-os cowork-os-node
+sudo rm -f /etc/systemd/system/cowork-os.service
+sudo rm -f /etc/systemd/system/cowork-os-node.service
+sudo systemctl daemon-reload
+```
+
+Data locations to keep (choose the one used by your install):
+
+- macOS (Electron): `~/Library/Application Support/cowork-os/`
+- Linux desktop/Electron: `~/.config/cowork-os/`
+- Linux daemon/headless fallback: `~/.cowork/`
+- Node daemon custom path: value passed in `COWORK_USER_DATA_DIR` or `--user-data-dir`
+- Docker/systemd example paths: named volume `cowork_data`, `/var/lib/cowork-os`, and any host bind mount in `/workspace`
+
+### Option 2: Full uninstall + data deletion (database included) — irrecoverable
+
+> ⚠️ **WARNING:** This removes all application data and settings (tasks, tasks timeline, memory, credentials, channel/session state, and the local database). **All data will be deleted and everything will be gone forever.**
+
+Use this only when you are sure you want to destroy local state.
+
+- Delete all user-data locations:
+
+```bash
+rm -rf ~/Library/Application\ Support/cowork-os
+rm -rf ~/.config/cowork-os
+rm -rf ~/.cowork
+```
+
+- Remove with custom user-data path:
+
+```bash
+rm -rf "$COWORK_USER_DATA_DIR"
+```
+
+- Fully remove Docker install data:
+
+```bash
+cd /path/to/docker-compose-dir
+docker compose down -v
+docker compose rm -f
+```
+
+- Fully remove systemd/headless example data:
+
+```bash
+sudo rm -rf /var/lib/cowork-os
+```
+
+After the data wipe, also remove remaining app binaries/shell package entries from Option 1 if you haven't already.
+
+---
+
 ### Security Verified by ZeroLeaks
 
 <p align="center">
@@ -309,7 +402,7 @@ For production/persistent setup and Docker/systemd options, use:
 
 - Claude Code-style tools: `glob`, `grep`, `edit_file`
 - Browser automation with Playwright
-- 85+ bundled skills for popular services
+- 100+ bundled skills for popular services
 - MCP (Model Context Protocol) support for extensibility
 
 ---
@@ -467,7 +560,7 @@ Configure in **Settings** > **Appearance**.
 
 - **Task-Based Workflow**: Multi-step execution with plan-execute-observe loops
 - **Dynamic Re-Planning**: Agent can revise its plan mid-execution
-- **85+ Built-in Skills**: GitHub, Slack, Notion, Spotify, Apple Notes, and more
+- **100+ Built-in Skills**: GitHub, Slack, Notion, Spotify, Apple Notes, and more
 - **Document Creation**: Excel, Word, PDF, PowerPoint with professional formatting
 - **Persistent Memory**: Cross-session context with privacy-aware observation capture
 - **Workspace Kit**: `.cowork/` project kit + markdown indexing with context injection
@@ -717,7 +810,7 @@ Customize agent behavior via Settings or conversation:
 ┌─────────────────────────────────────────────────────────────────┐
 │                    Execution Layer                               │
 │  File Operations | Document Skills | Browser Automation          │
-│  LLM Providers (20+) | Search Providers (4) | MCP Client          │
+│  LLM Providers (30+) | Search Providers (4) | MCP Client          │
 └─────────────────────────────────────────────────────────────────┘
                               ↕
 ┌─────────────────────────────────────────────────────────────────┐
@@ -2131,7 +2224,7 @@ Configure these in **Settings** > **LLM Provider** by entering API keys/tokens, 
 
 ---
 
-## Built-in Skills (85+)
+## Built-in Skills (100+)
 
 | Category | Skills |
 |----------|--------|
@@ -2267,7 +2360,7 @@ Users must comply with their model provider's terms:
 
 ### Completed
 
-- [x] Multi-provider LLM support (20+ providers including Groq, xAI, Kimi, GitHub Copilot, OpenAI/Anthropic-compatible)
+- [x] Multi-provider LLM support (30+ provider types including Groq, xAI, Kimi, GitHub Copilot, OpenAI/Anthropic-compatible)
 - [x] Multi-channel messaging (14 channels)
 - [x] Configurable guardrails and security
 - [x] Browser automation with Playwright
@@ -2277,7 +2370,7 @@ Users must comply with their model provider's terms:
 - [x] WebSocket Control Plane with API
 - [x] Tailscale and SSH remote access
 - [x] Personality system
-- [x] 85+ bundled skills (code reviewer, PRD, multi-PR review, frontend design, local websearch, developer growth, React Native, Supabase, bird)
+- [x] 100+ bundled skills (code reviewer, PRD, multi-PR review, frontend design, local websearch, developer growth, React Native, Supabase, bird)
 - [x] 2800+ unit tests
 - [x] Docker-based sandboxing (cross-platform)
 - [x] Per-context security policies (DM vs group)
