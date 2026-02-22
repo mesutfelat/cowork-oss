@@ -18,7 +18,6 @@
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <a href="https://www.apple.com/macos/"><img src="https://img.shields.io/badge/platform-macOS-blue.svg" alt="macOS"></a>
   <a href="https://www.electronjs.org/"><img src="https://img.shields.io/badge/electron-40.4.1-47848F.svg" alt="Electron"></a>
-  <a href="https://github.com/sponsors/CoWork-OS"><img src="https://img.shields.io/badge/Sponsor-CoWork%20OS-ff4d4f?logo=github-sponsors&logoColor=white" alt="Sponsor on GitHub"></a>
 </p>
 
 **The operating system for personal AI assistants**
