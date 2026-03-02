@@ -107,6 +107,7 @@ import {
   StringIdSchema,
   MCPConnectorOAuthSchema,
   ChatGPTImportSchema,
+  TextMemoryImportSchema,
   FindImportedSchema,
   StepFeedbackSchema,
 } from "../utils/validation";
@@ -564,6 +565,163 @@ export async function setupIpcHandlers(
     return !relative.startsWith("..") && !path.isAbsolute(relative);
   };
 
+  const normalizePotentialPath = (rawPath: string): string => {
+    const trimmed = String(rawPath || "").trim();
+    if (!trimmed) return "";
+
+    const expandedHome =
+      trimmed === "~"
+        ? os.homedir()
+        : trimmed.startsWith("~/") || trimmed.startsWith("~\\")
+          ? path.join(os.homedir(), trimmed.slice(2))
+          : trimmed;
+
+    // Event payloads may normalize separators to "/" regardless of platform.
+    return path.sep === "/" ? expandedHome.replace(/\\/g, "/") : expandedHome.replace(/\//g, "\\");
+  };
+
+  const buildViewerPathCandidates = (filePath: string, workspacePath?: string): string[] => {
+    const normalizedInput = normalizePotentialPath(filePath);
+    const candidates: string[] = [];
+    const seen = new Set<string>();
+    const addCandidate = (candidate: string) => {
+      if (!candidate) return;
+      const resolved = path.resolve(candidate);
+      if (seen.has(resolved)) return;
+      seen.add(resolved);
+      candidates.push(resolved);
+    };
+
+    if (!normalizedInput) return candidates;
+    const hasWorkspace = typeof workspacePath === "string" && workspacePath.trim().length > 0;
+    const normalizedWorkspace = hasWorkspace
+      ? path.resolve(normalizePotentialPath(workspacePath as string))
+      : "";
+    const basename = path.basename(normalizedInput);
+    const pathSegments = normalizedInput.split(/[\\/]+/).filter(Boolean);
+    const hasParentTraversal = pathSegments.includes("..");
+    const normalizedRelativeInput = normalizedInput
+      .replace(/^\.([\\/])/, "")
+      .replace(/^[\\/]+/, "");
+
+    if (path.isAbsolute(normalizedInput)) {
+      addCandidate(normalizedInput);
+      if (hasWorkspace) {
+        if (basename && basename !== "." && basename !== "..") {
+          addCandidate(path.join(normalizedWorkspace, basename));
+          addCandidate(path.join(normalizedWorkspace, ".cowork", basename));
+          addCandidate(path.join(normalizedWorkspace, "artifacts", basename));
+        }
+
+        // If a legacy absolute path points into ".cowork/" or "artifacts/", remap to active workspace.
+        const segments = normalizedInput.split(/[\\/]+/).filter(Boolean);
+        const coworkIdx = segments.lastIndexOf(".cowork");
+        if (coworkIdx >= 0 && coworkIdx < segments.length - 1) {
+          addCandidate(path.join(normalizedWorkspace, ".cowork", ...segments.slice(coworkIdx + 1)));
+        }
+        const artifactsIdx = segments.lastIndexOf("artifacts");
+        if (artifactsIdx >= 0 && artifactsIdx < segments.length - 1) {
+          addCandidate(
+            path.join(normalizedWorkspace, "artifacts", ...segments.slice(artifactsIdx + 1)),
+          );
+        }
+      }
+      return candidates;
+    }
+
+    if (hasWorkspace) {
+      addCandidate(path.join(normalizedWorkspace, normalizedInput));
+
+      if (!hasParentTraversal) {
+        addCandidate(path.join(normalizedWorkspace, ".cowork", normalizedRelativeInput));
+        addCandidate(path.join(normalizedWorkspace, "artifacts", normalizedRelativeInput));
+
+        if (basename && basename !== normalizedRelativeInput) {
+          addCandidate(path.join(normalizedWorkspace, basename));
+          addCandidate(path.join(normalizedWorkspace, ".cowork", basename));
+          addCandidate(path.join(normalizedWorkspace, "artifacts", basename));
+        }
+      }
+    } else {
+      addCandidate(normalizedInput);
+    }
+
+    return candidates;
+  };
+
+  const resolveExistingPathForViewer = async (
+    filePath: string,
+    workspacePath?: string,
+    options?: { requireWorkspaceContainment?: boolean },
+  ): Promise<{ resolvedPath: string | null; attemptedPaths: string[] }> => {
+    const requireWorkspaceContainment = options?.requireWorkspaceContainment === true;
+    const candidates = buildViewerPathCandidates(filePath, workspacePath);
+    const attemptedPaths: string[] = [];
+    const workspaceRoot =
+      workspacePath && workspacePath.trim().length > 0
+        ? path.resolve(normalizePotentialPath(workspacePath))
+        : "";
+    let sawOutOfWorkspaceCandidate = false;
+
+    for (const candidate of candidates) {
+      if (requireWorkspaceContainment && workspaceRoot) {
+        if (!isPathWithinWorkspace(candidate, workspaceRoot)) {
+          sawOutOfWorkspaceCandidate = true;
+          continue;
+        }
+      }
+      attemptedPaths.push(candidate);
+      try {
+        await fs.access(candidate);
+        return { resolvedPath: candidate, attemptedPaths };
+      } catch {
+        // Continue trying fallback candidates.
+      }
+    }
+
+    if (requireWorkspaceContainment && attemptedPaths.length === 0 && sawOutOfWorkspaceCandidate) {
+      throw new Error("Access denied: file path is outside the workspace");
+    }
+
+    return { resolvedPath: null, attemptedPaths };
+  };
+
+  const renderPdfFirstPageThumbnail = async (pdfPath: string): Promise<string | undefined> => {
+    let tempDir: string | undefined;
+    try {
+      tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "cowork-pdf-thumb-"));
+      const outputPrefix = path.join(tempDir, "page-1");
+      await execFileAsync(
+        "pdftoppm",
+        [
+          "-f",
+          "1",
+          "-singlefile",
+          "-png",
+          "-scale-to-x",
+          "960",
+          "-scale-to-y",
+          "-1",
+          pdfPath,
+          outputPrefix,
+        ],
+        { timeout: 15_000 },
+      );
+
+      const pngPath = `${outputPrefix}.png`;
+      const pngBytes = await fs.readFile(pngPath);
+      return `data:image/png;base64,${pngBytes.toString("base64")}`;
+    } catch {
+      return undefined;
+    } finally {
+      if (tempDir) {
+        await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {
+          // Best-effort temp cleanup.
+        });
+      }
+    }
+  };
+
   const MANAGED_IMAGE_TEMP_PREFIX = "cowork-image-";
 
   const isManagedImageTempFile = (filePath: string): boolean => {
@@ -726,14 +884,11 @@ export async function setupIpcHandlers(
       throw new Error("Workspace path is required for file operations");
     }
 
-    // Resolve the path relative to workspace
-    const resolvedPath = path.isAbsolute(filePath)
-      ? filePath
-      : path.resolve(workspacePath, filePath);
-
-    // Validate path is within workspace (prevent path traversal)
-    if (!isPathWithinWorkspace(resolvedPath, workspacePath)) {
-      throw new Error("Access denied: file path is outside the workspace");
+    const { resolvedPath } = await resolveExistingPathForViewer(filePath, workspacePath, {
+      requireWorkspaceContainment: true,
+    });
+    if (!resolvedPath) {
+      return "File not found";
     }
 
     return shell.openPath(resolvedPath);
@@ -745,14 +900,11 @@ export async function setupIpcHandlers(
       throw new Error("Workspace path is required for file operations");
     }
 
-    // Resolve the path relative to workspace
-    const resolvedPath = path.isAbsolute(filePath)
-      ? filePath
-      : path.resolve(workspacePath, filePath);
-
-    // Validate path is within workspace (prevent path traversal)
-    if (!isPathWithinWorkspace(resolvedPath, workspacePath)) {
-      throw new Error("Access denied: file path is outside the workspace");
+    const { resolvedPath } = await resolveExistingPathForViewer(filePath, workspacePath, {
+      requireWorkspaceContainment: true,
+    });
+    if (!resolvedPath) {
+      throw new Error("File not found");
     }
 
     shell.showItemInFolder(resolvedPath);
@@ -804,18 +956,14 @@ export async function setupIpcHandlers(
         includeImageContent = true,
       } = data;
 
-      // Resolve the path - if absolute use directly, otherwise resolve relative to workspace or cwd
-      const resolvedPath = path.isAbsolute(filePath)
-        ? filePath
-        : workspacePath
-          ? path.resolve(workspacePath, filePath)
-          : path.resolve(filePath);
-
-      // Check if file exists
-      try {
-        await fs.access(resolvedPath);
-      } catch {
-        return { success: false, error: "File not found" };
+      const { resolvedPath, attemptedPaths } = await resolveExistingPathForViewer(
+        filePath,
+        workspacePath,
+      );
+      if (!resolvedPath) {
+        const attempted =
+          attemptedPaths.length > 0 ? ` (tried ${attemptedPaths.length} location(s))` : "";
+        return { success: false, error: `File not found: ${filePath}${attempted}` };
       }
 
       // Get file stats
@@ -931,6 +1079,7 @@ export async function setupIpcHandlers(
         let content: string | null = null;
         let htmlContent: string | undefined;
         let ocrText: string | undefined;
+        let pdfThumbnailDataUrl: string | undefined;
 
         switch (fileType) {
           case "markdown":
@@ -952,6 +1101,7 @@ export async function setupIpcHandlers(
             const buffer = await fs.readFile(resolvedPath);
             const pdfData = await parsePdfBuffer(buffer);
             content = pdfData.text;
+            pdfThumbnailDataUrl = await renderPdfFirstPageThumbnail(resolvedPath);
             break;
           }
 
@@ -1037,6 +1187,7 @@ export async function setupIpcHandlers(
             htmlContent,
             size: stats.size,
             ocrText,
+            pdfThumbnailDataUrl,
           },
         };
       } catch (error: Any) {
@@ -2015,84 +2166,81 @@ export async function setupIpcHandlers(
     return { success: true };
   });
 
-  ipcMain.handle(
-    IPC_CHANNELS.LLM_RESET_PROVIDER_CREDENTIALS,
-    async (_, providerType: string) => {
-      checkRateLimit(IPC_CHANNELS.LLM_RESET_PROVIDER_CREDENTIALS);
+  ipcMain.handle(IPC_CHANNELS.LLM_RESET_PROVIDER_CREDENTIALS, async (_, providerType: string) => {
+    checkRateLimit(IPC_CHANNELS.LLM_RESET_PROVIDER_CREDENTIALS);
 
-      const resolvedProviderType = resolveCustomProviderId(providerType);
-      const settings = LLMProviderFactory.loadSettings();
-      const updatedSettings = { ...settings };
+    const resolvedProviderType = resolveCustomProviderId(providerType);
+    const settings = LLMProviderFactory.loadSettings();
+    const updatedSettings = { ...settings };
 
-      const clearCustomProviderConfig = (providerId: string) => {
-        if (!updatedSettings.customProviders) return;
+    const clearCustomProviderConfig = (providerId: string) => {
+      if (!updatedSettings.customProviders) return;
 
-        const nextCustomProviders = { ...updatedSettings.customProviders };
-        delete nextCustomProviders[providerId];
-        if (providerId === "kimi-code") {
-          delete nextCustomProviders["kimi-coding"];
-        }
-        updatedSettings.customProviders =
-          Object.keys(nextCustomProviders).length > 0 ? nextCustomProviders : undefined;
-      };
-
-      switch (resolvedProviderType) {
-        case "anthropic":
-          updatedSettings.anthropic = undefined;
-          break;
-        case "bedrock":
-          updatedSettings.bedrock = undefined;
-          updatedSettings.cachedBedrockModels = undefined;
-          break;
-        case "ollama":
-          updatedSettings.ollama = undefined;
-          updatedSettings.cachedOllamaModels = undefined;
-          break;
-        case "gemini":
-          updatedSettings.gemini = undefined;
-          updatedSettings.cachedGeminiModels = undefined;
-          break;
-        case "openrouter":
-          updatedSettings.openrouter = undefined;
-          updatedSettings.cachedOpenRouterModels = undefined;
-          break;
-        case "openai":
-          updatedSettings.openai = undefined;
-          updatedSettings.cachedOpenAIModels = undefined;
-          break;
-        case "azure":
-          updatedSettings.azure = undefined;
-          break;
-        case "groq":
-          updatedSettings.groq = undefined;
-          updatedSettings.cachedGroqModels = undefined;
-          break;
-        case "xai":
-          updatedSettings.xai = undefined;
-          updatedSettings.cachedXaiModels = undefined;
-          break;
-        case "kimi":
-          updatedSettings.kimi = undefined;
-          updatedSettings.cachedKimiModels = undefined;
-          break;
-        case "pi":
-          updatedSettings.pi = undefined;
-          updatedSettings.cachedPiModels = undefined;
-          break;
-        case "openai-compatible":
-          updatedSettings.openaiCompatible = undefined;
-          updatedSettings.cachedOpenAICompatibleModels = undefined;
-          break;
-        default:
-          clearCustomProviderConfig(resolvedProviderType);
-          break;
+      const nextCustomProviders = { ...updatedSettings.customProviders };
+      delete nextCustomProviders[providerId];
+      if (providerId === "kimi-code") {
+        delete nextCustomProviders["kimi-coding"];
       }
+      updatedSettings.customProviders =
+        Object.keys(nextCustomProviders).length > 0 ? nextCustomProviders : undefined;
+    };
 
-      LLMProviderFactory.saveSettings(updatedSettings);
-      LLMProviderFactory.clearCache();
-      return { success: true };
-    },
-  );
+    switch (resolvedProviderType) {
+      case "anthropic":
+        updatedSettings.anthropic = undefined;
+        break;
+      case "bedrock":
+        updatedSettings.bedrock = undefined;
+        updatedSettings.cachedBedrockModels = undefined;
+        break;
+      case "ollama":
+        updatedSettings.ollama = undefined;
+        updatedSettings.cachedOllamaModels = undefined;
+        break;
+      case "gemini":
+        updatedSettings.gemini = undefined;
+        updatedSettings.cachedGeminiModels = undefined;
+        break;
+      case "openrouter":
+        updatedSettings.openrouter = undefined;
+        updatedSettings.cachedOpenRouterModels = undefined;
+        break;
+      case "openai":
+        updatedSettings.openai = undefined;
+        updatedSettings.cachedOpenAIModels = undefined;
+        break;
+      case "azure":
+        updatedSettings.azure = undefined;
+        break;
+      case "groq":
+        updatedSettings.groq = undefined;
+        updatedSettings.cachedGroqModels = undefined;
+        break;
+      case "xai":
+        updatedSettings.xai = undefined;
+        updatedSettings.cachedXaiModels = undefined;
+        break;
+      case "kimi":
+        updatedSettings.kimi = undefined;
+        updatedSettings.cachedKimiModels = undefined;
+        break;
+      case "pi":
+        updatedSettings.pi = undefined;
+        updatedSettings.cachedPiModels = undefined;
+        break;
+      case "openai-compatible":
+        updatedSettings.openaiCompatible = undefined;
+        updatedSettings.cachedOpenAICompatibleModels = undefined;
+        break;
+      default:
+        clearCustomProviderConfig(resolvedProviderType);
+        break;
+    }
+
+    LLMProviderFactory.saveSettings(updatedSettings);
+    LLMProviderFactory.clearCache();
+    return { success: true };
+  });
 
   ipcMain.handle(IPC_CHANNELS.LLM_TEST_PROVIDER, async (_, config: Any) => {
     checkRateLimit(IPC_CHANNELS.LLM_TEST_PROVIDER);
@@ -3823,14 +3971,11 @@ export async function setupIpcHandlers(
     };
   });
 
-  ipcMain.handle(
-    IPC_CHANNELS.EVAL_CREATE_CASE_FROM_TASK,
-    async (_, data: { taskId: string }) => {
-      checkRateLimit(IPC_CHANNELS.EVAL_CREATE_CASE_FROM_TASK);
-      const taskId = validateInput(UUIDSchema, data?.taskId, "task ID");
-      return evalService.createCaseFromTask(taskId);
-    },
-  );
+  ipcMain.handle(IPC_CHANNELS.EVAL_CREATE_CASE_FROM_TASK, async (_, data: { taskId: string }) => {
+    checkRateLimit(IPC_CHANNELS.EVAL_CREATE_CASE_FROM_TASK);
+    const taskId = validateInput(UUIDSchema, data?.taskId, "task ID");
+    return evalService.createCaseFromTask(taskId);
+  });
 
   ipcMain.handle(IPC_CHANNELS.EVAL_GET_CASE, async (_, caseId: string) => {
     const validated = validateInput(UUIDSchema, caseId, "eval case ID");
@@ -6029,7 +6174,7 @@ function setupMemoryHandlers(): void {
     }
   });
 
-  // Get imported ChatGPT memory stats
+  // Get imported memory stats
   ipcMain.handle(IPC_CHANNELS.MEMORY_GET_IMPORTED_STATS, async (_, workspaceId: string) => {
     try {
       return MemoryService.getImportedStats(workspaceId);
@@ -6039,7 +6184,7 @@ function setupMemoryHandlers(): void {
     }
   });
 
-  // Find imported ChatGPT memories with pagination
+  // Find imported memories with pagination
   ipcMain.handle(IPC_CHANNELS.MEMORY_FIND_IMPORTED, async (_, data: unknown) => {
     const validated = validateInput(FindImportedSchema, data, "find imported memories");
     try {
@@ -6050,7 +6195,7 @@ function setupMemoryHandlers(): void {
     }
   });
 
-  // Delete all imported ChatGPT memories
+  // Delete all imported memories
   ipcMain.handle(IPC_CHANNELS.MEMORY_DELETE_IMPORTED, async (_, workspaceId: string) => {
     checkRateLimit(IPC_CHANNELS.MEMORY_DELETE_IMPORTED, RATE_LIMIT_CONFIGS.limited);
     try {
@@ -6246,6 +6391,18 @@ function setupMemoryHandlers(): void {
     return { cancelled: false };
   });
 
+  // Text-based memory import handler (provider-agnostic)
+  ipcMain.handle(IPC_CHANNELS.MEMORY_IMPORT_TEXT, async (_, options: unknown) => {
+    checkRateLimit(IPC_CHANNELS.MEMORY_IMPORT_TEXT, RATE_LIMIT_CONFIGS.limited);
+    const validated = validateInput(TextMemoryImportSchema, options, "text memory import");
+    try {
+      return MemoryService.importFromText(validated);
+    } catch (error) {
+      console.error("[Memory] Text import failed:", error);
+      throw error;
+    }
+  });
+
   logger.debug("[Memory] Handlers initialized");
 
   // === Migration Status Handlers ===
@@ -6306,6 +6463,12 @@ function setupMemoryHandlers(): void {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   // oxlint-disable-next-line typescript-eslint(no-require-imports)
   const { getPluginRegistry } = require("../extensions/registry");
+  const normalizePluginAuthor = (author?: string): string | undefined => {
+    if (typeof author !== "string") return undefined;
+    const trimmed = author.trim();
+    if (!trimmed) return undefined;
+    return /^cowork-oss$/i.test(trimmed) ? "CoWork OS" : trimmed;
+  };
 
   // List all extensions
   ipcMain.handle(IPC_CHANNELS.EXTENSIONS_LIST, async () => {
@@ -6317,7 +6480,7 @@ function setupMemoryHandlers(): void {
         displayName: p.manifest.displayName,
         version: p.manifest.version,
         description: p.manifest.description,
-        author: p.manifest.author,
+        author: normalizePluginAuthor(p.manifest.author),
         type: p.manifest.type,
         state: p.state,
         path: p.path,
@@ -6343,7 +6506,7 @@ function setupMemoryHandlers(): void {
         displayName: plugin.manifest.displayName,
         version: plugin.manifest.version,
         description: plugin.manifest.description,
-        author: plugin.manifest.author,
+        author: normalizePluginAuthor(plugin.manifest.author),
         type: plugin.manifest.type,
         state: plugin.state,
         path: plugin.path,
