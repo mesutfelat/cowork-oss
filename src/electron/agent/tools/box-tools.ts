@@ -20,7 +20,10 @@ interface BoxActionInput {
   action: BoxAction;
   query?: string;
   limit?: number;
+  maxResults?: number;
   offset?: number;
+  use_marker?: boolean;
+  marker?: string;
   fields?: string;
   type?: "file" | "folder" | "web_link";
   ancestor_folder_ids?: string;
@@ -32,6 +35,7 @@ interface BoxActionInput {
   parent_id?: string;
   name?: string;
   file_path?: string;
+  include_raw?: boolean;
 }
 
 const DEFAULT_FOLDER_ID = "0";
@@ -130,7 +134,7 @@ export class BoxTools {
           path: "/search",
           query: {
             query: input.query,
-            limit: input.limit,
+            limit: input.limit ?? input.maxResults,
             offset: input.offset,
             fields: input.fields,
             type: input.type,
@@ -166,8 +170,10 @@ export class BoxTools {
           method: "GET",
           path: `/folders/${folderId}/items`,
           query: {
-            limit: input.limit,
+            limit: input.limit ?? input.maxResults,
             offset: input.offset,
+            usemarker: input.use_marker,
+            marker: input.marker,
             fields: input.fields,
           },
         });
@@ -246,7 +252,7 @@ export class BoxTools {
       action,
       status: result?.status,
       data: result?.data,
-      raw: result?.raw,
+      raw: input.include_raw ? result?.raw : undefined,
     };
   }
 }
