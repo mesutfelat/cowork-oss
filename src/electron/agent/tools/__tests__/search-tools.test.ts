@@ -21,9 +21,19 @@ vi.mock("../../search", () => ({
   },
 }));
 
+vi.mock("../../../guardrails/guardrail-manager", () => ({
+  GuardrailManager: {
+    loadSettings: vi.fn().mockReturnValue({
+      webSearchAllowedDomains: [],
+      webSearchBlockedDomains: [],
+    }),
+  },
+}));
+
 // Import after mocking
 import { SearchTools } from "../search-tools";
 import { SearchProviderFactory } from "../../search";
+import { GuardrailManager } from "../../../guardrails/guardrail-manager";
 import { Workspace } from "../../../../shared/types";
 
 // Mock daemon
@@ -63,6 +73,10 @@ describe("SearchTools", () => {
       searchType: "web",
       results: [],
       provider: "tavily",
+    } as Any);
+    vi.mocked(GuardrailManager.loadSettings).mockReturnValue({
+      webSearchAllowedDomains: [],
+      webSearchBlockedDomains: [],
     } as Any);
   });
 
@@ -245,6 +259,59 @@ describe("SearchTools", () => {
         message: expect.stringContaining("via duckduckgo"),
       });
     });
+
+    it("applies blocked domains before allowlist when filtering search results", async () => {
+      vi.mocked(GuardrailManager.loadSettings).mockReturnValue({
+        webSearchAllowedDomains: ["example.com", "trusted.com"],
+        webSearchBlockedDomains: ["example.com"],
+      } as Any);
+      vi.mocked(SearchProviderFactory.searchWithFallback).mockResolvedValue({
+        query: "policy test",
+        searchType: "web",
+        provider: "tavily",
+        results: [
+          { title: "Blocked", url: "https://example.com/a", snippet: "blocked" },
+          { title: "Allowed", url: "https://trusted.com/b", snippet: "allowed" },
+          { title: "Filtered by allowlist", url: "https://other.com/c", snippet: "other" },
+        ],
+      } as Any);
+
+      const result = await searchTools.webSearch({ query: "policy test" });
+
+      expect(result.success).toBe(true);
+      expect(result.results.map((item) => item.url)).toEqual(["https://trusted.com/b"]);
+      expect(mockDaemon.logEvent).toHaveBeenCalledWith(
+        "test-task-id",
+        "log",
+        expect.objectContaining({
+          metric: "web_search_domain_filtered_result_count",
+          originalCount: 3,
+          filteredCount: 1,
+          filteredOutCount: 2,
+        }),
+      );
+    });
+
+    it("returns structured policy error when domain filtering removes all results", async () => {
+      vi.mocked(GuardrailManager.loadSettings).mockReturnValue({
+        webSearchAllowedDomains: ["trusted.com"],
+        webSearchBlockedDomains: [],
+      } as Any);
+      vi.mocked(SearchProviderFactory.searchWithFallback).mockResolvedValue({
+        query: "policy empty",
+        searchType: "web",
+        provider: "tavily",
+        results: [{ title: "Filtered", url: "https://other.com/a", snippet: "other" }],
+      } as Any);
+
+      const result = await searchTools.webSearch({ query: "policy empty" });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("filtered by domain policy");
+      expect(result.metadata?.policyReason).toBe("domain_policy_filtered");
+      expect(result.metadata?.originalResultCount).toBe(1);
+      expect(result.metadata?.filteredOutCount).toBe(1);
+    });
   });
 
   describe("setWorkspace", () => {
@@ -259,6 +326,33 @@ describe("SearchTools", () => {
 
       // The workspace should be updated (internal state)
       expect((searchTools as Any).workspace).toBe(newWorkspace);
+    });
+  });
+
+  describe("domain policy override", () => {
+    it("uses executor-provided domain policy override when set", async () => {
+      vi.mocked(GuardrailManager.loadSettings).mockReturnValue({
+        webSearchAllowedDomains: ["from-settings.com"],
+        webSearchBlockedDomains: [],
+      } as Any);
+      searchTools.setDomainPolicy({
+        allowedDomains: ["from-executor.com"],
+        blockedDomains: [],
+      });
+      vi.mocked(SearchProviderFactory.searchWithFallback).mockResolvedValue({
+        query: "policy override",
+        searchType: "web",
+        provider: "tavily",
+        results: [
+          { title: "Executor", url: "https://from-executor.com/a", snippet: "ok" },
+          { title: "Settings", url: "https://from-settings.com/b", snippet: "filtered" },
+        ],
+      } as Any);
+
+      const result = await searchTools.webSearch({ query: "policy override" });
+
+      expect(result.success).toBe(true);
+      expect(result.results.map((item) => item.url)).toEqual(["https://from-executor.com/a"]);
     });
   });
 });
