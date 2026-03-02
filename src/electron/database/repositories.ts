@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 import {
   Task,
   TaskEvent,
+  EventType,
   Artifact,
   Workspace,
   ApprovalRequest,
@@ -16,6 +17,7 @@ import {
   ComparisonSessionStatus,
   ComparisonResult,
 } from "../../shared/types";
+import { isTimelineEventType, normalizeTaskEventToTimelineV2 } from "../../shared/timeline-v2";
 
 /**
  * Safely parse JSON with error handling
@@ -176,8 +178,8 @@ export class TaskRepository {
     };
 
     const stmt = this.db.prepare(`
-      INSERT INTO tasks (id, title, prompt, raw_prompt, user_prompt, status, workspace_id, created_at, updated_at, budget_tokens, budget_cost, success_criteria, max_attempts, current_attempt, parent_task_id, agent_type, agent_config, depth, result_summary, source, strategy_lock, budget_profile, terminal_status, failure_class, budget_usage, risk_level, eval_case_id, eval_run_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO tasks (id, title, prompt, raw_prompt, user_prompt, status, workspace_id, created_at, updated_at, budget_tokens, budget_cost, success_criteria, max_attempts, current_attempt, parent_task_id, agent_type, agent_config, depth, result_summary, source, strategy_lock, budget_profile, terminal_status, failure_class, budget_usage, continuation_count, continuation_window, lifetime_turns_used, last_progress_score, auto_continue_block_reason, compaction_count, last_compaction_at, last_compaction_tokens_before, last_compaction_tokens_after, no_progress_streak, last_loop_fingerprint, risk_level, eval_case_id, eval_run_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     stmt.run(
@@ -206,6 +208,21 @@ export class TaskRepository {
       newTask.terminalStatus || null,
       newTask.failureClass || null,
       newTask.budgetUsage ? JSON.stringify(newTask.budgetUsage) : null,
+      newTask.continuationCount ?? 0,
+      newTask.continuationWindow ?? 1,
+      newTask.lifetimeTurnsUsed ?? 0,
+      typeof newTask.lastProgressScore === "number" ? newTask.lastProgressScore : null,
+      newTask.autoContinueBlockReason || null,
+      newTask.compactionCount ?? 0,
+      typeof newTask.lastCompactionAt === "number" ? newTask.lastCompactionAt : null,
+      typeof newTask.lastCompactionTokensBefore === "number"
+        ? Math.floor(newTask.lastCompactionTokensBefore)
+        : null,
+      typeof newTask.lastCompactionTokensAfter === "number"
+        ? Math.floor(newTask.lastCompactionTokensAfter)
+        : null,
+      newTask.noProgressStreak ?? 0,
+      newTask.lastLoopFingerprint || null,
       newTask.riskLevel || null,
       newTask.evalCaseId || null,
       newTask.evalRunId || null,
@@ -250,6 +267,17 @@ export class TaskRepository {
     "terminalStatus",
     "failureClass",
     "budgetUsage",
+    "continuationCount",
+    "continuationWindow",
+    "lifetimeTurnsUsed",
+    "lastProgressScore",
+    "autoContinueBlockReason",
+    "compactionCount",
+    "lastCompactionAt",
+    "lastCompactionTokensBefore",
+    "lastCompactionTokensAfter",
+    "noProgressStreak",
+    "lastLoopFingerprint",
     "riskLevel",
     "evalCaseId",
     "evalRunId",
@@ -548,6 +576,29 @@ export class TaskRepository {
       budgetProfile: row.budget_profile || undefined,
       terminalStatus: row.terminal_status || undefined,
       failureClass: row.failure_class || undefined,
+      continuationCount:
+        typeof row.continuation_count === "number" ? row.continuation_count : undefined,
+      continuationWindow:
+        typeof row.continuation_window === "number" ? row.continuation_window : undefined,
+      lifetimeTurnsUsed:
+        typeof row.lifetime_turns_used === "number" ? row.lifetime_turns_used : undefined,
+      lastProgressScore:
+        typeof row.last_progress_score === "number" ? row.last_progress_score : undefined,
+      autoContinueBlockReason: row.auto_continue_block_reason || undefined,
+      compactionCount: typeof row.compaction_count === "number" ? row.compaction_count : undefined,
+      lastCompactionAt:
+        typeof row.last_compaction_at === "number" ? row.last_compaction_at : undefined,
+      lastCompactionTokensBefore:
+        typeof row.last_compaction_tokens_before === "number"
+          ? row.last_compaction_tokens_before
+          : undefined,
+      lastCompactionTokensAfter:
+        typeof row.last_compaction_tokens_after === "number"
+          ? row.last_compaction_tokens_after
+          : undefined,
+      noProgressStreak:
+        typeof row.no_progress_streak === "number" ? row.no_progress_streak : undefined,
+      lastLoopFingerprint: row.last_loop_fingerprint || undefined,
       riskLevel: row.risk_level || undefined,
       evalCaseId: row.eval_case_id || undefined,
       evalRunId: row.eval_run_id || undefined,
@@ -690,15 +741,43 @@ export class TaskRepository {
 export class TaskEventRepository {
   constructor(private db: Database.Database) {}
 
-  create(event: Omit<TaskEvent, "id">): TaskEvent {
+  create(event: Omit<TaskEvent, "id"> & { id?: string }): TaskEvent {
     const newEvent: TaskEvent = {
       ...event,
-      id: uuidv4(),
+      id: event.id || uuidv4(),
+      schemaVersion: 2,
+      eventId:
+        typeof event.eventId === "string" && event.eventId.trim().length > 0
+          ? event.eventId.trim()
+          : event.id || "",
+      ts: typeof event.ts === "number" && Number.isFinite(event.ts) ? event.ts : event.timestamp,
+      seq:
+        typeof event.seq === "number" && Number.isFinite(event.seq) && event.seq > 0
+          ? Math.floor(event.seq)
+          : undefined,
     };
+    if (!newEvent.eventId) {
+      newEvent.eventId = newEvent.id;
+    }
 
     const stmt = this.db.prepare(`
-      INSERT INTO task_events (id, task_id, timestamp, type, payload)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO task_events (
+        id,
+        task_id,
+        timestamp,
+        type,
+        payload,
+        schema_version,
+        event_id,
+        seq,
+        ts,
+        status,
+        step_id,
+        group_id,
+        actor,
+        legacy_type
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     stmt.run(
@@ -707,6 +786,15 @@ export class TaskEventRepository {
       newEvent.timestamp,
       newEvent.type,
       JSON.stringify(newEvent.payload),
+      2,
+      newEvent.eventId || newEvent.id,
+      typeof newEvent.seq === "number" ? newEvent.seq : null,
+      typeof newEvent.ts === "number" ? newEvent.ts : newEvent.timestamp,
+      typeof newEvent.status === "string" ? newEvent.status : null,
+      typeof newEvent.stepId === "string" ? newEvent.stepId : null,
+      typeof newEvent.groupId === "string" ? newEvent.groupId : null,
+      typeof newEvent.actor === "string" ? newEvent.actor : null,
+      typeof newEvent.legacyType === "string" ? newEvent.legacyType : null,
     );
 
     return newEvent;
@@ -716,10 +804,10 @@ export class TaskEventRepository {
     const stmt = this.db.prepare(`
       SELECT * FROM task_events
       WHERE task_id = ?
-      ORDER BY timestamp ASC
+      ORDER BY COALESCE(seq, timestamp) ASC, timestamp ASC
     `);
     const rows = stmt.all(taskId) as Any[];
-    return rows.map((row) => this.mapRowToEvent(row));
+    return this.mapRowsToEvents(rows).events;
   }
 
   findByTaskIds(taskIds: string[], types?: string[]): TaskEvent[] {
@@ -754,27 +842,206 @@ export class TaskEventRepository {
 
       if (normalizedTypes.length > 0) {
         const typePlaceholders = normalizedTypes.map(() => "?").join(", ");
-        sql += ` AND type IN (${typePlaceholders})`;
-        args.push(...normalizedTypes);
+        sql += ` AND (type IN (${typePlaceholders}) OR legacy_type IN (${typePlaceholders}))`;
+        args.push(...normalizedTypes, ...normalizedTypes);
       }
 
-      sql += " ORDER BY task_id ASC, timestamp ASC";
+      sql += " ORDER BY task_id ASC, COALESCE(seq, timestamp) ASC, timestamp ASC";
 
       const stmt = this.db.prepare(sql);
       allRows.push(...(stmt.all(...args) as Any[]));
     }
 
-    return allRows.map((row) => this.mapRowToEvent(row));
+    return this.mapRowsToEvents(allRows).events;
   }
 
-  private mapRowToEvent(row: Any): TaskEvent {
-    return {
-      id: row.id,
-      taskId: row.task_id,
-      timestamp: row.timestamp,
-      type: row.type,
-      payload: safeJsonParse(row.payload, {}, "taskEvent.payload"),
-    };
+  updatePayloadById(eventId: string, payload: Record<string, unknown>): void {
+    const normalizedEventId = typeof eventId === "string" ? eventId.trim() : "";
+    if (!normalizedEventId) return;
+    const stmt = this.db.prepare(`
+      UPDATE task_events
+      SET payload = ?
+      WHERE id = ?
+    `);
+    stmt.run(JSON.stringify(payload ?? {}), normalizedEventId);
+  }
+
+  private mapRowsToEvents(rows: Any[]): { events: TaskEvent[]; migratedCount: number } {
+    const events: TaskEvent[] = [];
+    const migratedRows: TaskEvent[] = [];
+    const perTaskSeq = new Map<string, number>();
+
+    for (const row of rows) {
+      const taskId = typeof row.task_id === "string" ? row.task_id : "";
+      if (!taskId) continue;
+
+      const payload = safeJsonParse(row.payload, {}, "taskEvent.payload");
+      const seqFromRow =
+        typeof row.seq === "number" && Number.isFinite(row.seq) && row.seq > 0
+          ? Math.floor(row.seq)
+          : undefined;
+      const seq = seqFromRow ?? (perTaskSeq.get(taskId) || 0) + 1;
+      perTaskSeq.set(taskId, Math.max(seq, perTaskSeq.get(taskId) || 0));
+
+      const rowEventId =
+        typeof row.event_id === "string" && row.event_id.trim().length > 0 ? row.event_id : row.id;
+      const rowTs =
+        typeof row.ts === "number" && Number.isFinite(row.ts) ? row.ts : Number(row.timestamp) || 0;
+
+      const isV2 = Number(row.schema_version) === 2 && isTimelineEventType(row.type);
+      if (isV2) {
+        events.push({
+          id: row.id,
+          taskId,
+          timestamp: Number(row.timestamp) || rowTs || Date.now(),
+          type: row.type as EventType,
+          payload,
+          schemaVersion: 2,
+          eventId: rowEventId,
+          seq,
+          ts: rowTs,
+          status: typeof row.status === "string" ? row.status : undefined,
+          stepId: typeof row.step_id === "string" ? row.step_id : undefined,
+          groupId: typeof row.group_id === "string" ? row.group_id : undefined,
+          actor: typeof row.actor === "string" ? row.actor : undefined,
+          legacyType: typeof row.legacy_type === "string" ? row.legacy_type : undefined,
+        });
+        continue;
+      }
+
+      try {
+        const normalized = normalizeTaskEventToTimelineV2({
+          taskId,
+          type: String(row.type || "error"),
+          payload,
+          timestamp: Number(row.timestamp) || Date.now(),
+          eventId: rowEventId,
+          seq,
+        });
+        const migratedEvent: TaskEvent = {
+          ...normalized,
+          id: row.id,
+        };
+        events.push(migratedEvent);
+        migratedRows.push(migratedEvent);
+      } catch (error) {
+        const fallback: TaskEvent = {
+          id: row.id,
+          taskId,
+          timestamp: Number(row.timestamp) || Date.now(),
+          type: "timeline_error",
+          payload: {
+            message: "Legacy event migration failed",
+            migrationError: error instanceof Error ? error.message : String(error),
+            rawType: row.type,
+            rawPayload: payload,
+            legacyType: "error",
+          },
+          schemaVersion: 2,
+          eventId: rowEventId,
+          seq,
+          ts: Number(row.timestamp) || Date.now(),
+          status: "failed",
+          stepId: `migration:${taskId}`,
+          actor: "system",
+          legacyType: "error",
+        };
+        events.push(fallback);
+        migratedRows.push(fallback);
+      }
+    }
+
+    if (migratedRows.length > 0) {
+      this.persistMigratedRows(migratedRows);
+    }
+
+    return { events, migratedCount: migratedRows.length };
+  }
+
+  private persistMigratedRows(rows: TaskEvent[]): void {
+    if (rows.length === 0) return;
+    const stmt = this.db.prepare(`
+      UPDATE task_events
+      SET
+        type = ?,
+        payload = ?,
+        schema_version = 2,
+        event_id = ?,
+        seq = ?,
+        ts = ?,
+        status = ?,
+        step_id = ?,
+        group_id = ?,
+        actor = ?,
+        legacy_type = ?
+      WHERE id = ?
+    `);
+    const tx = this.db.transaction((items: TaskEvent[]) => {
+      for (const event of items) {
+        stmt.run(
+          event.type,
+          JSON.stringify(event.payload ?? {}),
+          event.eventId || event.id,
+          typeof event.seq === "number" ? event.seq : null,
+          typeof event.ts === "number" ? event.ts : event.timestamp,
+          typeof event.status === "string" ? event.status : null,
+          typeof event.stepId === "string" ? event.stepId : null,
+          typeof event.groupId === "string" ? event.groupId : null,
+          typeof event.actor === "string" ? event.actor : null,
+          typeof event.legacyType === "string" ? event.legacyType : null,
+          event.id,
+        );
+      }
+    });
+    tx(rows);
+  }
+
+  getLatestSeq(taskId: string): number {
+    const row = this.db
+      .prepare("SELECT MAX(COALESCE(seq, 0)) as max_seq FROM task_events WHERE task_id = ?")
+      .get(taskId) as { max_seq?: number } | undefined;
+    const maxSeq = row?.max_seq;
+    return typeof maxSeq === "number" && Number.isFinite(maxSeq) ? Math.floor(maxSeq) : 0;
+  }
+
+  migrateLegacyEventsForTask(taskId: string): number {
+    const legacyCountRow = this.db
+      .prepare(
+        `
+        SELECT COUNT(1) as count
+        FROM task_events
+        WHERE task_id = ?
+          AND (COALESCE(schema_version, 0) <> 2 OR type NOT LIKE 'timeline_%')
+      `,
+      )
+      .get(taskId) as { count?: number } | undefined;
+    const legacyCount =
+      typeof legacyCountRow?.count === "number" && Number.isFinite(legacyCountRow.count)
+        ? legacyCountRow.count
+        : 0;
+    if (legacyCount <= 0) return 0;
+
+    const rows = this.db
+      .prepare(
+        `
+        SELECT *
+        FROM task_events
+        WHERE task_id = ?
+        ORDER BY COALESCE(seq, timestamp) ASC, timestamp ASC
+      `,
+      )
+      .all(taskId) as Any[];
+
+    return this.mapRowsToEvents(rows).migratedCount;
+  }
+
+  migrateLegacyEventsForTasks(taskIds: string[]): number {
+    let migrated = 0;
+    for (const taskId of taskIds) {
+      if (typeof taskId !== "string" || taskId.trim().length === 0) continue;
+      migrated += this.migrateLegacyEventsForTask(taskId.trim());
+    }
+    return migrated;
   }
 
   /**
@@ -785,7 +1052,11 @@ export class TaskEventRepository {
     // Find all conversation_snapshot events for this task, ordered by timestamp descending
     const findStmt = this.db.prepare(`
       SELECT id, timestamp FROM task_events
-      WHERE task_id = ? AND type = 'conversation_snapshot'
+      WHERE task_id = ?
+        AND (
+          type = 'conversation_snapshot'
+          OR (type LIKE 'timeline_%' AND legacy_type = 'conversation_snapshot')
+        )
       ORDER BY timestamp DESC
     `);
     const snapshots = findStmt.all(taskId) as { id: string; timestamp: number }[];
@@ -2542,7 +2813,7 @@ export class MemoryRepository {
       let rows: Record<string, unknown>[] = [];
       try {
         rows = stmt.all(raw, workspaceId, limit) as Record<string, unknown>[];
-      } catch  {
+      } catch {
         // Raw query may be invalid FTS syntax; retry below with tokenized query.
         rows = [];
       }
@@ -2603,7 +2874,7 @@ export class MemoryRepository {
   }
 
   /**
-   * Search imported ChatGPT memories across ALL workspaces.
+   * Search imported memories across ALL workspaces.
    * This is intentionally global so sessions from any workspace can retrieve imported history.
    */
   searchImportedGlobal(query: string, limit = 20, includePrivate = false): MemorySearchResult[] {
@@ -2615,7 +2886,7 @@ export class MemoryRepository {
         FROM memories_fts f
         JOIN memories m ON f.rowid = m.rowid
         WHERE memories_fts MATCH ?
-          AND m.content LIKE '[Imported from ChatGPT %'
+          AND m.content LIKE '[Imported from %'
           ${privacyFilter}
         ORDER BY score
         LIMIT ?
@@ -2673,7 +2944,7 @@ export class MemoryRepository {
     const stmt = this.db.prepare(`
       SELECT m.id, m.summary, m.content, m.type, m.created_at, m.task_id
       FROM memories m
-      WHERE m.content LIKE '[Imported from ChatGPT %'
+      WHERE m.content LIKE '[Imported from %'
         ${includePrivate ? "" : "AND m.is_private = 0"}
         ${where}
       ORDER BY m.created_at DESC
@@ -2754,7 +3025,7 @@ export class MemoryRepository {
     const privacyFilter = includePrivate ? "" : "AND is_private = 0";
     const stmt = this.db.prepare(`
       SELECT * FROM memories
-      WHERE content LIKE '[Imported from ChatGPT %' ${privacyFilter}
+      WHERE content LIKE '[Imported from %' ${privacyFilter}
       ORDER BY created_at DESC
       LIMIT ?
     `);
@@ -2917,13 +3188,13 @@ export class MemoryRepository {
   }
 
   /**
-   * Get statistics for imported ChatGPT memories
+   * Get statistics for imported memories
    */
   getImportedStats(workspaceId: string): { count: number; totalTokens: number } {
     const stmt = this.db.prepare(`
       SELECT COUNT(*) as count, COALESCE(SUM(tokens), 0) as total_tokens
       FROM memories
-      WHERE workspace_id = ? AND content LIKE '[Imported from ChatGPT %'
+      WHERE workspace_id = ? AND content LIKE '[Imported from %'
     `);
     const row = stmt.get(workspaceId) as Record<string, unknown>;
     return {
@@ -2933,12 +3204,12 @@ export class MemoryRepository {
   }
 
   /**
-   * Find imported ChatGPT memories with pagination
+   * Find imported memories with pagination
    */
   findImported(workspaceId: string, limit = 50, offset = 0): Memory[] {
     const stmt = this.db.prepare(`
       SELECT * FROM memories
-      WHERE workspace_id = ? AND content LIKE '[Imported from ChatGPT %'
+      WHERE workspace_id = ? AND content LIKE '[Imported from %'
       ORDER BY created_at DESC
       LIMIT ? OFFSET ?
     `);
@@ -2947,11 +3218,11 @@ export class MemoryRepository {
   }
 
   /**
-   * Delete all imported ChatGPT memories for a workspace
+   * Delete all imported memories for a workspace
    */
   deleteImported(workspaceId: string): number {
     const stmt = this.db.prepare(
-      `DELETE FROM memories WHERE workspace_id = ? AND content LIKE '[Imported from ChatGPT %'`,
+      `DELETE FROM memories WHERE workspace_id = ? AND content LIKE '[Imported from %'`,
     );
     const result = stmt.run(workspaceId);
     return result.changes;
@@ -3091,7 +3362,7 @@ export class MemoryEmbeddingRepository {
       SELECT e.memory_id, e.workspace_id, e.embedding, e.updated_at
       FROM memory_embeddings e
       JOIN memories m ON m.id = e.memory_id
-      WHERE m.content LIKE '[Imported from ChatGPT %'
+      WHERE m.content LIKE '[Imported from %'
       ORDER BY e.updated_at DESC
       LIMIT ? OFFSET ?
     `);
@@ -3131,7 +3402,7 @@ export class MemoryEmbeddingRepository {
       SELECT m.id as memory_id, m.workspace_id, m.updated_at, m.content, m.summary, e.updated_at as emb_updated_at
       FROM memories m
       LEFT JOIN memory_embeddings e ON e.memory_id = m.id
-      WHERE m.content LIKE '[Imported from ChatGPT %'
+      WHERE m.content LIKE '[Imported from %'
         AND (e.memory_id IS NULL OR e.updated_at < m.updated_at)
       ORDER BY m.updated_at DESC
       LIMIT ?
@@ -3177,7 +3448,7 @@ export class MemoryEmbeddingRepository {
       WHERE workspace_id = ?
         AND memory_id IN (
           SELECT id FROM memories
-          WHERE workspace_id = ? AND content LIKE '[Imported from ChatGPT %'
+          WHERE workspace_id = ? AND content LIKE '[Imported from %'
         )
     `);
     const result = stmt.run(workspaceId, workspaceId);
