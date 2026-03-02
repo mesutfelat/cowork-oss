@@ -204,6 +204,14 @@ export interface LLMResponse {
   };
 }
 
+export interface LLMProviderError extends Error {
+  code?: string;
+  retryable?: boolean;
+  phase?: string;
+  status?: number;
+  cause?: unknown;
+}
+
 /**
  * Abstract LLM Provider interface
  */
