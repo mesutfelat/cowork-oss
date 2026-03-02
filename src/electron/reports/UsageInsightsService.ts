@@ -39,7 +39,7 @@ export interface UsageInsights {
   topSkills: Array<{ skill: string; count: number }>;
 
   awuMetrics: {
-    /** Number of successfully completed tasks (terminal_status = 'ok' or 'partial_success') */
+    /** Number of successfully completed tasks (terminal_status = 'ok', 'partial_success', or 'needs_user_action') */
     awuCount: number;
     /** Total tokens consumed across all tasks in the period */
     totalTokens: number;
@@ -280,7 +280,7 @@ export class UsageInsightsService {
           `SELECT COUNT(*) as count FROM tasks
            WHERE ${ws.clause}completed_at >= ? AND completed_at <= ?
              AND status = 'completed'
-             AND (terminal_status IN ('ok', 'partial_success') OR terminal_status IS NULL)`,
+             AND (terminal_status IN ('ok', 'partial_success', 'needs_user_action') OR terminal_status IS NULL)`,
         )
         .get(...ws.params, periodStart, periodEnd) as { count: number } | undefined;
       return row?.count ?? 0;
