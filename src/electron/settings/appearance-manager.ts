@@ -13,6 +13,7 @@ import {
   VisualTheme,
   AccentColor,
   UiDensity,
+  TimelineVerbosity,
 } from "../../shared/types";
 import { SecureSettingsRepository } from "../database/SecureSettingsRepository";
 import { getUserDataDir } from "../utils/user-data-dir";
@@ -24,6 +25,7 @@ const DEFAULT_SETTINGS: AppearanceSettings = {
   visualTheme: "warm",
   accentColor: "cyan",
   uiDensity: "focused",
+  timelineVerbosity: "summary",
   disclaimerAccepted: false,
   onboardingCompleted: false,
   onboardingCompletedAt: undefined,
@@ -127,8 +129,8 @@ export class AppearanceManager {
         const stored = repository.load<AppearanceSettings>("appearance");
         if (stored) {
           settings = { ...DEFAULT_SETTINGS, ...stored };
-          // If stored data was missing uiDensity, persist the default back
-          if (!isValidUiDensity(stored.uiDensity)) {
+          // Persist defaults for newly added fields when missing/invalid.
+          if (!isValidUiDensity(stored.uiDensity) || !isValidTimelineVerbosity(stored.timelineVerbosity)) {
             needsWrite = true;
           }
         }
@@ -150,6 +152,10 @@ export class AppearanceManager {
       }
       if (!isValidUiDensity(settings.uiDensity)) {
         settings.uiDensity = DEFAULT_SETTINGS.uiDensity;
+        needsWrite = true;
+      }
+      if (!isValidTimelineVerbosity(settings.timelineVerbosity)) {
+        settings.timelineVerbosity = DEFAULT_SETTINGS.timelineVerbosity;
         needsWrite = true;
       }
     } catch (error) {
@@ -211,6 +217,9 @@ export class AppearanceManager {
         uiDensity: isValidUiDensity(settings.uiDensity)
           ? settings.uiDensity
           : existingSettings.uiDensity,
+        timelineVerbosity: isValidTimelineVerbosity(settings.timelineVerbosity)
+          ? settings.timelineVerbosity
+          : existingSettings.timelineVerbosity,
       };
 
       const repository = SecureSettingsRepository.getInstance();
@@ -256,4 +265,8 @@ function isValidAccentColor(value: unknown): value is AccentColor {
 
 function isValidUiDensity(value: unknown): value is UiDensity {
   return value === "focused" || value === "full";
+}
+
+function isValidTimelineVerbosity(value: unknown): value is TimelineVerbosity {
+  return value === "summary" || value === "verbose";
 }
