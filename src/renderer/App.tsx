@@ -10,6 +10,7 @@ import { BrowserView } from "./components/BrowserView";
 import { ToastContainer } from "./components/Toast";
 import { QuickTaskFAB } from "./components/QuickTaskFAB";
 import { NotificationPanel } from "./components/NotificationPanel";
+import { WebAccessClient } from "./components/WebAccessClient";
 import {
   Task,
   Workspace,
@@ -33,6 +34,7 @@ import {
 } from "../shared/types";
 import { TASK_EVENT_STATUS_MAP } from "../shared/task-event-status-map";
 import { applyPersistedLanguage } from "./i18n";
+import { getEffectiveTaskEventType } from "./utils/task-event-compat";
 import {
   hasTaskOutputs,
   resolveTaskOutputSummaryFromCompletionEvent,
@@ -716,7 +718,12 @@ export function App() {
   useEffect(() => {
     if (!window.electronAPI?.onTaskEvent) return;
 
-    const unsubscribe = window.electronAPI.onTaskEvent((event: TaskEvent) => {
+    const unsubscribe = window.electronAPI.onTaskEvent((rawEvent: TaskEvent) => {
+      const effectiveType = getEffectiveTaskEventType(rawEvent);
+      const event = {
+        ...rawEvent,
+        type: effectiveType,
+      } as TaskEvent;
       // Update task status based on event type
       // Check if this is a new task we don't know about (e.g., sub-agent created)
       const isNewTask = !tasksRef.current.some((t) => t.id === event.taskId);
@@ -926,6 +933,10 @@ export function App() {
             taskId: event.taskId,
             taskTitle: task?.title,
             outputSummary,
+            terminalStatus:
+              typeof event.payload?.terminalStatus === "string"
+                ? event.payload.terminalStatus
+                : undefined,
             actionDependencies: hasTaskOutputs(outputSummary)
               ? {
                   resolveWorkspacePath: resolveWorkspacePathForTask,
@@ -1012,22 +1023,22 @@ export function App() {
           // Replace the previous streaming event to avoid array bloat
           setEvents((prev) => {
             const lastIdx = prev.length - 1;
-            if (lastIdx >= 0 && prev[lastIdx].type === "llm_streaming") {
+            if (lastIdx >= 0 && getEffectiveTaskEventType(prev[lastIdx]) === "llm_streaming") {
               const updated = [...prev];
-              updated[lastIdx] = event;
+              updated[lastIdx] = rawEvent;
               return updated;
             }
-            return capTaskEvents([...prev, event]);
+            return capTaskEvents([...prev, rawEvent]);
           });
         } else {
-          setEvents((prev) => capTaskEvents([...prev, event]));
+          setEvents((prev) => capTaskEvents([...prev, rawEvent]));
         }
       }
 
       // Capture events from dispatched child tasks for DispatchedAgentsPanel
       if (!isSelectedTask && childTaskIdsRef.current.has(event.taskId)) {
         if (event.type !== "llm_streaming" && event.type !== "llm_usage") {
-          setChildEvents((prev) => [...prev, event]);
+          setChildEvents((prev) => [...prev, rawEvent]);
         }
       }
     });
@@ -1182,16 +1193,22 @@ export function App() {
     const taskDomain = options?.taskDomain;
     const llmProfile = options?.llmProfile;
     const llmProfileForced = options?.llmProfileForced;
+    const hasSelectedModelInCurrentProvider = availableModels.some((m) => m.key === selectedModel);
+    const sessionModelOverride = hasSelectedModelInCurrentProvider ? selectedModel.trim() : "";
+    const effectiveLlmProfile = sessionModelOverride ? undefined : llmProfile;
+    const effectiveLlmProfileForced = sessionModelOverride ? false : llmProfileForced;
 
     const agentConfig =
+      sessionModelOverride ||
       autonomousMode ||
       collaborativeMode ||
       multiLlmMode ||
       verificationAgent ||
       executionMode ||
       taskDomain ||
-      llmProfile
+      effectiveLlmProfile
         ? {
+            ...(sessionModelOverride ? { modelKey: sessionModelOverride } : {}),
             ...(autonomousMode ? { allowUserInput: false, autonomousMode: true } : {}),
             ...(collaborativeMode ? { collaborativeMode: true } : {}),
             ...(multiLlmMode
@@ -1200,8 +1217,8 @@ export function App() {
             ...(verificationAgent ? { verificationAgent: true } : {}),
             ...(executionMode ? { executionMode } : {}),
             ...(taskDomain ? { taskDomain } : {}),
-            ...(llmProfile ? { llmProfile } : {}),
-            ...(llmProfileForced ? { llmProfileForced: true } : {}),
+            ...(effectiveLlmProfile ? { llmProfile: effectiveLlmProfile } : {}),
+            ...(effectiveLlmProfileForced ? { llmProfileForced: true } : {}),
           }
         : undefined;
 
@@ -1337,8 +1354,8 @@ export function App() {
 
   const handleModelChange = (modelKey: string) => {
     setSelectedModel(modelKey);
-    // Persist to main process
-    void window.electronAPI?.setLLMModel?.(modelKey);
+    // Session-only override: do not persist to provider settings here.
+    // The selected model is attached as task agentConfig.modelKey on task creation.
     // When model changes during a task, clear the current task to start fresh
     if (selectedTaskId) {
       setSelectedTaskId(null);
@@ -1417,6 +1434,17 @@ export function App() {
   }, [tasks]);
 
   if (!hasElectronAPI) {
+    const isHttpContext =
+      typeof window !== "undefined" &&
+      (window.location.protocol === "http:" || window.location.protocol === "https:");
+    const isViteDevServer =
+      typeof window !== "undefined" &&
+      (window.location.host === "localhost:5173" || window.location.host === "127.0.0.1:5173");
+
+    if (isHttpContext && !isViteDevServer) {
+      return <WebAccessClient />;
+    }
+
     return (
       <div className="app">
         <div className="title-bar" />
