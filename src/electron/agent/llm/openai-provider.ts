@@ -24,6 +24,14 @@ import { imageToTextFallback } from "./image-utils";
 // Default model for openai-codex (ChatGPT backend)
 const DEFAULT_CODEX_MODEL = "gpt-5.1-codex-mini";
 
+type OpenAIProviderErrorPhase = "api_key" | "oauth";
+
+class OpenAIProviderError extends Error {
+  code?: string;
+  retryable?: boolean;
+  phase?: OpenAIProviderErrorPhase;
+}
+
 /**
  * OpenAI API provider implementation
  * Supports both API key and OAuth token authentication
@@ -107,6 +115,38 @@ export class OpenAIProvider implements LLMProvider {
     }
   }
 
+  private isTransientInterruptionMessage(message: string): boolean {
+    const normalized = String(message || "").toLowerCase();
+    if (!normalized) return false;
+    return (
+      normalized.includes("terminated") ||
+      normalized.includes("stream disconnected") ||
+      normalized.includes("connection reset") ||
+      normalized.includes("unexpected eof") ||
+      normalized.includes("socket hang up")
+    );
+  }
+
+  private toStructuredProviderError(error: Any, phase: OpenAIProviderErrorPhase): Error {
+    const message = String(error?.message || "OpenAI request failed");
+    const wrapped = new OpenAIProviderError(message);
+    wrapped.name = error?.name || "OpenAIProviderError";
+    wrapped.phase = phase;
+    wrapped.code = String(error?.code || error?.cause?.code || "").trim() || undefined;
+    wrapped.retryable =
+      this.isTransientInterruptionMessage(message) ||
+      wrapped.code === "ECONNRESET" ||
+      wrapped.code === "ETIMEDOUT" ||
+      wrapped.code === "ENOTFOUND" ||
+      wrapped.code === "EAI_AGAIN" ||
+      wrapped.code === "ECONNREFUSED";
+    if (error?.status !== undefined) {
+      (wrapped as Any).status = error.status;
+    }
+    (wrapped as Any).cause = error;
+    return wrapped;
+  }
+
   /**
    * Create message using API key (standard OpenAI SDK)
    */
@@ -144,7 +184,7 @@ export class OpenAIProvider implements LLMProvider {
         message: error.message,
         type: error.type || error.name,
       });
-      throw error;
+      throw this.toStructuredProviderError(error, "api_key");
     }
   }
 
@@ -239,7 +279,10 @@ export class OpenAIProvider implements LLMProvider {
         throw new Error("Request cancelled");
       }
       if (response?.stopReason === "error") {
-        throw new Error(response?.errorMessage || "OpenAI request failed");
+        throw this.toStructuredProviderError(
+          { message: response?.errorMessage || "OpenAI request failed", code: "PI_AI_ERROR" },
+          "oauth",
+        );
       }
 
       // Convert pi-ai response to our format
@@ -255,7 +298,7 @@ export class OpenAIProvider implements LLMProvider {
         message: error.message,
         type: error.type || error.name,
       });
-      throw error;
+      throw this.toStructuredProviderError(error, "oauth");
     }
   }
 
