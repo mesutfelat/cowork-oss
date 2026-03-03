@@ -166,4 +166,20 @@ describe("ToolFailureTracker browser HTTP status handling", () => {
     ).toBe(false);
     expect(tracker.isDisabled("web_search")).toBe(false);
   });
+
+  it("treats missing-module runtime errors as input-dependent before disabling monty_run", () => {
+    const tracker = new ToolFailureTracker();
+
+    for (let i = 0; i < 3; i++) {
+      expect(
+        tracker.recordFailure("monty_run", "ModuleNotFoundError: No module named 'datetime'"),
+      ).toBe(false);
+    }
+    expect(tracker.isDisabled("monty_run")).toBe(false);
+
+    expect(
+      tracker.recordFailure("monty_run", "ModuleNotFoundError: No module named 'datetime'"),
+    ).toBe(true);
+    expect(tracker.isDisabled("monty_run")).toBe(true);
+  });
 });
