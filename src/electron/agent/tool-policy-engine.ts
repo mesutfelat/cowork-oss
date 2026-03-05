@@ -133,6 +133,11 @@ export function normalizeTaskDomain(taskDomain: TaskDomain | undefined): TaskDom
 }
 
 function applyModeGate(toolName: string, mode: ExecutionMode): string | null {
+  if (toolName === "request_user_input") {
+    if (mode === "propose") return null;
+    return `Tool "${toolName}" is only available in propose mode. Switch mode to propose to request structured user input.`;
+  }
+
   if (mode === "execute") return null;
   if (!isMutatingTool(toolName)) return null;
 
