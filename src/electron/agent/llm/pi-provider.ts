@@ -1,14 +1,10 @@
-import {
-  getModel as _getModel,
-  getModels,
-  getProviders,
-  complete as piAiComplete,
-  type Model,
-  type AssistantMessage as PiAiAssistantMessage,
-  type Message as PiAiMessage,
-  type Context as PiAiContext,
-  type Tool as PiAiTool,
-  type KnownProvider,
+import type {
+  Model,
+  AssistantMessage as PiAiAssistantMessage,
+  Message as PiAiMessage,
+  Context as PiAiContext,
+  Tool as PiAiTool,
+  KnownProvider,
 } from "@mariozechner/pi-ai";
 import {
   LLMProvider,
@@ -23,6 +19,7 @@ import {
   PiProviderKey as _PiProviderKey,
 } from "./types";
 import { imageToTextFallback } from "./image-utils";
+import { loadPiAiModule } from "./pi-ai-loader";
 
 const DEFAULT_PI_PROVIDER: KnownProvider = "anthropic";
 
@@ -72,8 +69,9 @@ export class PiProvider implements LLMProvider {
 
   async createMessage(request: LLMRequest): Promise<LLMResponse> {
     try {
+      const { complete: piAiComplete } = await loadPiAiModule();
       // Resolve the model from pi-ai's registry
-      const model = this.resolveModel(request.model);
+      const model = await this.resolveModel(request.model);
 
       console.log(
         `[Pi] Calling ${this.piProvider} with model: ${model.id} (requested: ${request.model})`,
@@ -117,7 +115,8 @@ export class PiProvider implements LLMProvider {
 
   async testConnection(): Promise<{ success: boolean; error?: string }> {
     try {
-      const model = this.resolveModel(this.modelId);
+      const { complete: piAiComplete } = await loadPiAiModule();
+      const model = await this.resolveModel(this.modelId);
 
       await piAiComplete(
         model,
@@ -145,11 +144,12 @@ export class PiProvider implements LLMProvider {
   /**
    * Get available models for the configured Pi provider
    */
-  static getAvailableModels(
+  static async getAvailableModels(
     piProvider?: string,
-  ): Array<{ id: string; name: string; description: string }> {
+  ): Promise<Array<{ id: string; name: string; description: string }>> {
     const provider = (piProvider as KnownProvider) || DEFAULT_PI_PROVIDER;
     try {
+      const { getModels } = await loadPiAiModule();
       const models = getModels(provider);
       return models.map((m) => ({
         id: m.id,
@@ -165,11 +165,12 @@ export class PiProvider implements LLMProvider {
   /**
    * Get available Pi providers from pi-ai
    */
-  static getAvailableProviders(): Array<{
+  static async getAvailableProviders(): Promise<Array<{
     id: string;
     name: string;
-  }> {
+  }>> {
     try {
+      const { getProviders } = await loadPiAiModule();
       const providers = getProviders();
       return providers.map((p) => ({
         id: p,
@@ -190,7 +191,8 @@ export class PiProvider implements LLMProvider {
    * Requires an exact match — no partial or fallback matching to avoid
    * silently routing to an unintended (and potentially costly) model.
    */
-  private resolveModel(modelId: string): Model<Any> {
+  private async resolveModel(modelId: string): Promise<Model<Any>> {
+    const { getModels } = await loadPiAiModule();
     const availableModels = getModels(this.piProvider);
     const found = availableModels.find((m) => m.id === modelId);
     if (found) {
