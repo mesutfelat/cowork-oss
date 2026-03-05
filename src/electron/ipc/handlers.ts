@@ -85,6 +85,7 @@ import {
   FileImportSchema,
   FileImportDataSchema,
   ApprovalResponseSchema,
+  InputRequestResponseSchema,
   LLMSettingsSchema,
   SearchSettingsSchema,
   XSettingsSchema,
@@ -1947,6 +1948,33 @@ export async function setupIpcHandlers(
     await agentDaemon.respondToApproval(validated.approvalId, validated.approved);
   });
 
+  ipcMain.handle(IPC_CHANNELS.INPUT_REQUEST_LIST, async (_, data) => {
+    const limit =
+      typeof data?.limit === "number" && Number.isFinite(data.limit)
+        ? Math.min(500, Math.max(1, Math.floor(data.limit)))
+        : 200;
+    const offset =
+      typeof data?.offset === "number" && Number.isFinite(data.offset)
+        ? Math.max(0, Math.floor(data.offset))
+        : 0;
+    const taskId = typeof data?.taskId === "string" ? data.taskId.trim() : "";
+    const status = typeof data?.status === "string" ? data.status.trim() : "";
+    const normalizedStatus =
+      status === "pending" || status === "submitted" || status === "dismissed" ? status : undefined;
+
+    return agentDaemon.listInputRequests({
+      limit,
+      offset,
+      ...(taskId ? { taskId } : {}),
+      ...(normalizedStatus ? { status: normalizedStatus } : {}),
+    });
+  });
+
+  ipcMain.handle(IPC_CHANNELS.INPUT_REQUEST_RESPOND, async (_, data) => {
+    const validated = validateInput(InputRequestResponseSchema, data, "input request response");
+    return agentDaemon.respondToInputRequest(validated);
+  });
+
   // Session auto-approve handlers
   ipcMain.handle(IPC_CHANNELS.APPROVAL_SESSION_AUTO_APPROVE_SET, async (_, enabled: boolean) => {
     agentDaemon.setSessionAutoApproveAll(!!enabled);
@@ -2459,7 +2487,7 @@ export async function setupIpcHandlers(
 
   ipcMain.handle(IPC_CHANNELS.LLM_GET_PI_PROVIDERS, async () => {
     checkRateLimit(IPC_CHANNELS.LLM_GET_PI_PROVIDERS);
-    return LLMProviderFactory.getPiProviders();
+    return await LLMProviderFactory.getPiProviders();
   });
 
   ipcMain.handle(
