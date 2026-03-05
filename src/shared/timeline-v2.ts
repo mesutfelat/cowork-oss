@@ -128,6 +128,11 @@ function inferLegacyTimelineType(
     legacyType === "step_failed" ||
     legacyType === "verification_failed" ||
     legacyType === "tool_error" ||
+    legacyType === "tool_protocol_violation" ||
+    legacyType === "workspace_path_alias_recovery_failed" ||
+    legacyType === "task_path_recovery_failed" ||
+    legacyType === "follow_up_turn_recovery_blocked" ||
+    legacyType === "safety_stop_triggered" ||
     legacyType === "llm_error" ||
     legacyType === "step_timeout" ||
     legacyType === "follow_up_failed"
@@ -166,6 +171,8 @@ function inferLegacyStatus(
       return "pending";
     case "task_paused":
     case "approval_requested":
+    case "input_request_created":
+    case "input_request_dismissed":
       return "blocked";
     case "step_started":
     case "task_created":
@@ -176,6 +183,7 @@ function inferLegacyStatus(
     case "step_completed":
     case "verification_passed":
     case "task_completed":
+    case "input_request_resolved":
       return "completed";
     case "verification_pending_user_action":
       return "blocked";
@@ -184,12 +192,26 @@ function inferLegacyStatus(
     case "task_cancelled":
       return "cancelled";
     case "auto_continuation_blocked":
+    case "follow_up_turn_recovery_blocked":
+    case "safety_stop_triggered":
     case "no_progress_circuit_breaker":
+    case "workspace_path_alias_recovery_failed":
+    case "task_path_recovery_failed":
       return "failed";
+    case "workspace_path_alias_recovery_attempted":
+    case "task_path_recovery_attempted":
+      return "completed";
+    case "task_path_root_pinned":
+    case "task_path_rewrite_applied":
+    case "tool_disable_suppressed_recoverable_path_drift":
+      return "in_progress";
+    case "follow_up_turn_recovery_completed":
+      return "completed";
     case "error":
     case "step_failed":
     case "verification_failed":
     case "tool_error":
+    case "tool_protocol_violation":
     case "llm_error":
     case "step_timeout":
     case "approval_denied":
@@ -322,6 +344,36 @@ export function inferTimelineStageForLegacyType(type: EventType): TimelineStage 
     case "context_compaction_completed":
     case "context_compaction_failed":
     case "step_contract_escalated":
+    case "execution_mode_auto_promoted":
+    case "plan_contract_conflict":
+    case "workspace_boundary_recovery":
+    case "workspace_path_alias_normalized":
+    case "workspace_path_alias_recovery_attempted":
+    case "workspace_path_alias_recovery_failed":
+    case "task_path_root_pinned":
+    case "task_path_rewrite_applied":
+    case "task_path_recovery_attempted":
+    case "task_path_recovery_failed":
+    case "tool_disable_suppressed_recoverable_path_drift":
+    case "mutation_checkpoint_retry_applied":
+    case "step_contract_satisfied_by_prior_mutation":
+    case "required_tool_inference_decision":
+    case "mutation_duplicate_bypass_applied":
+    case "step_contract_reconciled_posthoc":
+    case "verification_checklist_evaluated":
+    case "verification_mode_selected":
+    case "follow_up_tool_lock_forced_finalization":
+    case "tool_protocol_violation":
+    case "turn_window_soft_exhausted":
+    case "follow_up_turn_recovery_started":
+    case "follow_up_turn_recovery_completed":
+    case "follow_up_turn_recovery_blocked":
+    case "safety_stop_triggered":
+    case "turn_policy_selected":
+    case "verification_preflight_policy_applied":
+    case "verification_artifact_output_downgraded":
+    case "verification_missing_artifact_ignored":
+    case "verification_text_checklist_evaluated":
     case "no_progress_circuit_breaker":
     case "step_failed":
     case "tool_error":
