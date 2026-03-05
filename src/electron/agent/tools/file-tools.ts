@@ -1,7 +1,7 @@
 import * as fs from "fs/promises";
 import * as fsSync from "fs";
 import * as path from "path";
-import { Workspace } from "../../../shared/types";
+import { Workspace, WorkspacePathAliasPolicy } from "../../../shared/types";
 import { AgentDaemon } from "../daemon";
 import { GuardrailManager } from "../../guardrails/guardrail-manager";
 import {
@@ -12,6 +12,10 @@ import {
 import mammoth from "mammoth";
 import { extractPptxContentFromFile } from "../../utils/pptx-extractor";
 import { parsePdfBuffer } from "../../utils/pdf-parser";
+import {
+  detectWorkspacePathAlias,
+  shouldRewriteWorkspaceAliasPath,
+} from "../path-alias";
 
 // Limits to prevent context overflow
 const DEFAULT_READ_WINDOW_CHARS = 300 * 1024; // 300KB default read window
@@ -48,6 +52,8 @@ function getElectronShell(): Any | null {
  * FileTools implements safe file operations within the workspace
  */
 export class FileTools {
+  private workspacePathAliasPolicy: WorkspacePathAliasPolicy = "rewrite_and_retry";
+
   constructor(
     private workspace: Workspace,
     private daemon: AgentDaemon,
@@ -59,6 +65,17 @@ export class FileTools {
    */
   setWorkspace(workspace: Workspace): void {
     this.workspace = workspace;
+  }
+
+  setWorkspacePathAliasPolicy(policy: WorkspacePathAliasPolicy | undefined): void {
+    this.workspacePathAliasPolicy = this.resolveWorkspacePathAliasPolicy(policy);
+  }
+
+  private resolveWorkspacePathAliasPolicy(value: unknown): WorkspacePathAliasPolicy {
+    if (value === "rewrite_and_retry" || value === "strict_fail" || value === "disabled") {
+      return value;
+    }
+    return "rewrite_and_retry";
   }
 
   /**
@@ -137,6 +154,36 @@ export class FileTools {
     return remapped;
   }
 
+  private remapWorkspaceAliasAbsolutePathToWorkspace(
+    absolutePath: string,
+    normalizedWorkspace: string,
+    operation: "read" | "write" | "delete",
+  ): string | null {
+    const aliasMatch = detectWorkspacePathAlias(absolutePath, normalizedWorkspace);
+    if (!aliasMatch) return null;
+
+    const policy = this.resolveWorkspacePathAliasPolicy(this.workspacePathAliasPolicy);
+    if (policy === "strict_fail") {
+      throw new Error(
+        `Workspace alias path "${absolutePath}" is blocked by strict alias policy. ` +
+          `Use a workspace-relative path (for example "${aliasMatch.normalizedPath}") instead.`,
+      );
+    }
+    if (!shouldRewriteWorkspaceAliasPath(aliasMatch, policy, { requireSourceMissing: true })) {
+      return null;
+    }
+
+    this.daemon.logEvent(this.taskId, "workspace_path_alias_normalized", {
+      tool: "file_tools",
+      operation,
+      attemptedPath: absolutePath,
+      normalizedPath: aliasMatch.normalizedPath,
+      workspace: normalizedWorkspace,
+      source: "file_tools_resolve_path",
+    });
+    return aliasMatch.normalizedAbsolutePath;
+  }
+
   /**
    * Resolve path, supporting both workspace-relative and absolute paths
    * When unrestrictedFileAccess is enabled, allows absolute paths anywhere (except protected locations)
@@ -166,6 +213,15 @@ export class FileTools {
           message: `Remapped stale absolute path to workspace: ${absolutePath} -> ${remappedPath}`,
         });
         return remappedPath;
+      }
+
+      const aliasRemappedPath = this.remapWorkspaceAliasAbsolutePathToWorkspace(
+        absolutePath,
+        normalizedWorkspace,
+        operation,
+      );
+      if (aliasRemappedPath) {
+        return aliasRemappedPath;
       }
 
       // Outside workspace - check permissions
@@ -220,6 +276,56 @@ export class FileTools {
     }
 
     return resolved;
+  }
+
+  private normalizeWorkspaceBoundaryReadPath(
+    inputPath: string,
+    toolName: "list_directory" | "list_directory_with_sizes" | "search_files",
+  ): string {
+    const normalizedInput = typeof inputPath === "string" && inputPath.trim().length > 0 ? inputPath : ".";
+    if (path.isAbsolute(normalizedInput) && normalizedInput !== "/") {
+      const normalizedWorkspace = path.resolve(this.workspace.path);
+      const aliasMatch = detectWorkspacePathAlias(normalizedInput, normalizedWorkspace);
+      if (aliasMatch) {
+        const policy = this.resolveWorkspacePathAliasPolicy(this.workspacePathAliasPolicy);
+        if (policy === "strict_fail") {
+          throw new Error(
+            `Workspace alias path "${normalizedInput}" is blocked by strict alias policy. ` +
+              `Use a workspace-relative path (for example "${aliasMatch.normalizedPath}") instead.`,
+          );
+        }
+        if (shouldRewriteWorkspaceAliasPath(aliasMatch, policy, { requireSourceMissing: true })) {
+          this.daemon.logEvent(this.taskId, "workspace_path_alias_normalized", {
+            tool: toolName,
+            attemptedPath: normalizedInput,
+            normalizedPath: aliasMatch.normalizedPath,
+            workspace: normalizedWorkspace,
+            source: "file_tools_read_preflight",
+          });
+          return aliasMatch.normalizedPath;
+        }
+      }
+    }
+    if (normalizedInput !== "/") return normalizedInput;
+
+    const rootPath = path.normalize("/");
+    if (
+      this.workspace.isTemp ||
+      this.workspace.permissions.unrestrictedFileAccess ||
+      this.isPathAllowed(rootPath)
+    ) {
+      return normalizedInput;
+    }
+
+    this.daemon.logEvent(this.taskId, "workspace_boundary_recovery", {
+      tool: toolName,
+      attemptedPath: normalizedInput,
+      normalizedPath: ".",
+      workspace: path.resolve(this.workspace.path),
+      recovered: true,
+      source: "file_tools",
+    });
+    return ".";
   }
 
   /**
@@ -873,10 +979,12 @@ export class FileTools {
         content.length > MAX_PREVIEW_CHARS ? content.slice(0, MAX_PREVIEW_CHARS) : content;
       const previewTruncated = content.length > MAX_PREVIEW_CHARS;
       const ext = path.extname(relativePath).toLowerCase().replace(".", "");
+      const reportedPath =
+        getWorkspaceRelativePosixPath(this.workspace.path, fullPath) || relativePath;
 
       // Log artifact
       this.daemon.logEvent(this.taskId, "file_created", {
-        path: relativePath,
+        path: reportedPath,
         size: content.length,
         lineCount: lines.length,
         contentPreview: preview,
@@ -886,7 +994,7 @@ export class FileTools {
 
       return {
         success: true,
-        path: relativePath,
+        path: reportedPath,
       };
     } catch (error: Any) {
       throw new Error(`Failed to write file: ${error.message}`);
@@ -903,9 +1011,10 @@ export class FileTools {
   }> {
     // Validate and normalize input (use default if null/undefined)
     const pathToUse = relativePath && typeof relativePath === "string" ? relativePath : ".";
+    const normalizedPathInput = this.normalizeWorkspaceBoundaryReadPath(pathToUse, "list_directory");
 
     this.checkPermission("read");
-    const fullPath = this.resolvePath(pathToUse, "read");
+    const fullPath = this.resolvePath(normalizedPathInput, "read");
     await this.enforceProjectAccess(fullPath);
     await this.enforceSymlinkSafeAccess(fullPath, "read");
 
@@ -958,9 +1067,13 @@ export class FileTools {
     combinedSize: number;
   }> {
     const pathToUse = relativePath && typeof relativePath === "string" ? relativePath : ".";
+    const normalizedPathInput = this.normalizeWorkspaceBoundaryReadPath(
+      pathToUse,
+      "list_directory_with_sizes",
+    );
 
     this.checkPermission("read");
-    const fullPath = this.resolvePath(pathToUse, "read");
+    const fullPath = this.resolvePath(normalizedPathInput, "read");
     await this.enforceProjectAccess(fullPath);
     await this.enforceSymlinkSafeAccess(fullPath, "read");
 
@@ -1264,7 +1377,8 @@ export class FileTools {
     }
 
     this.checkPermission("read");
-    const fullPath = this.resolvePath(relativePath, "read");
+    const normalizedPathInput = this.normalizeWorkspaceBoundaryReadPath(relativePath, "search_files");
+    const fullPath = this.resolvePath(normalizedPathInput, "read");
     await this.enforceProjectAccess(fullPath);
     await this.enforceSymlinkSafeAccess(fullPath, "read");
     const matches: Array<{ path: string; type: "filename" | "content" }> = [];
