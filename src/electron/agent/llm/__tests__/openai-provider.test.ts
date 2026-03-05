@@ -5,6 +5,7 @@ import { OpenAIProvider } from "../openai-provider";
 const completeMock = vi.fn();
 const getModelsMock = vi.fn();
 const getApiKeyFromTokensMock = vi.fn();
+const loadPiAiModuleMock = vi.fn();
 
 vi.mock("openai", () => ({
   default: vi.fn().mockImplementation(function OpenAIClientMock() {
@@ -16,10 +17,8 @@ vi.mock("openai", () => ({
   }),
 }));
 
-vi.mock("@mariozechner/pi-ai", () => ({
-  getModel: vi.fn(),
-  getModels: (...args: Any[]) => getModelsMock(...args),
-  complete: (...args: Any[]) => completeMock(...args),
+vi.mock("../pi-ai-loader", () => ({
+  loadPiAiModule: (...args: Any[]) => loadPiAiModuleMock(...args),
 }));
 
 vi.mock("../openai-oauth", () => ({
@@ -52,6 +51,10 @@ describe("OpenAIProvider structured errors", () => {
     vi.clearAllMocks();
     getModelsMock.mockReturnValue([{ id: "gpt-5.3-codex-spark" }]);
     getApiKeyFromTokensMock.mockResolvedValue({ apiKey: "test-key", newTokens: null });
+    loadPiAiModuleMock.mockResolvedValue({
+      getModels: (...args: Any[]) => getModelsMock(...args),
+      complete: (...args: Any[]) => completeMock(...args),
+    });
   });
 
   it("marks terminated OAuth stopReason errors as retryable", async () => {
