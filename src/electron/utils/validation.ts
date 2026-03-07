@@ -597,6 +597,13 @@ export const GuardrailSettingsSchema = z.object({
   globalNoProgressCircuitBreaker: z.number().int().min(1).max(1000).default(20),
   sideChannelDuringExecution: z.enum(["paused", "limited", "enabled"]).default("paused"),
   sideChannelMaxCallsPerWindow: z.number().int().min(0).max(100).default(2),
+
+  // Adaptive Style Engine
+  adaptiveStyleEnabled: z.boolean().default(false),
+  adaptiveStyleMaxDriftPerWeek: z.number().int().min(0).max(10).default(1),
+
+  // Cross-Channel Persona Coherence
+  channelPersonaEnabled: z.boolean().default(false),
 });
 
 // ============ Infrastructure Settings Schema ============

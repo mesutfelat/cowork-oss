@@ -262,7 +262,7 @@ export class AdaptiveStyleEngine {
     const state = this.loadState();
     this.resetWeekIfNeeded(state);
 
-    const guardrails = GuardrailManager.getSettings();
+    const guardrails = GuardrailManager.loadSettings();
     const maxDrift = guardrails.adaptiveStyleMaxDriftPerWeek ?? 1;
 
     if (state.weeklyAdaptationCount >= maxDrift) return;
@@ -350,7 +350,7 @@ export class AdaptiveStyleEngine {
     lastAdaptationAt: number;
   } {
     const state = this.loadState();
-    const guardrails = GuardrailManager.getSettings();
+    const guardrails = GuardrailManager.loadSettings();
     return {
       totalMessages: state.totalMessages,
       weeklyAdaptations: state.weeklyAdaptationCount,
@@ -371,7 +371,7 @@ export class AdaptiveStyleEngine {
 
   private static isEnabled(): boolean {
     try {
-      const guardrails = GuardrailManager.getSettings();
+      const guardrails = GuardrailManager.loadSettings();
       return guardrails.adaptiveStyleEnabled === true;
     } catch {
       return false;
@@ -386,7 +386,7 @@ export class AdaptiveStyleEngine {
       explanationDepth: "balanced",
     };
     try {
-      const settings = PersonalityManager.getSettings();
+      const settings = PersonalityManager.loadSettings();
       return { ...defaults, ...settings.responseStyle };
     } catch {
       return defaults;

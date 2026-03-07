@@ -224,7 +224,7 @@ export class ChannelPersonaAdapter {
   ): string {
     // Check guardrail
     const settings = GuardrailManager.loadSettings();
-    if (!(settings as Record<string, unknown>).channelPersonaEnabled) {
+    if (!settings.channelPersonaEnabled) {
       return "";
     }
 
