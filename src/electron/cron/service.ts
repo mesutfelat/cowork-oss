@@ -299,6 +299,8 @@ export class CronService {
         name: input.name,
         description: input.description,
         enabled: input.enabled,
+        shellAccess: input.shellAccess ?? false,
+        allowUserInput: input.allowUserInput ?? false,
         deleteAfterRun: input.deleteAfterRun,
         createdAtMs: nowMs,
         updatedAtMs: nowMs,
@@ -367,6 +369,8 @@ export class CronService {
       if (patch.name !== undefined) job.name = patch.name;
       if (patch.description !== undefined) job.description = patch.description;
       if (patch.enabled !== undefined) job.enabled = patch.enabled;
+      if (patch.shellAccess !== undefined) job.shellAccess = patch.shellAccess;
+      if (patch.allowUserInput !== undefined) job.allowUserInput = patch.allowUserInput;
       if (patch.deleteAfterRun !== undefined) job.deleteAfterRun = patch.deleteAfterRun;
       if (patch.schedule !== undefined) job.schedule = patch.schedule;
       if (patch.workspaceId !== undefined) job.workspaceId = patch.workspaceId;
@@ -587,8 +591,19 @@ export class CronService {
         prompt: renderedPrompt,
         workspaceId: workspaceIdForRun,
         modelKey: job.modelKey,
-        allowUserInput: false,
-        agentConfig: job.taskAgentConfig,
+        allowUserInput: job.allowUserInput ?? false,
+        agentConfig: {
+          ...(job.taskAgentConfig ?? {}),
+          // Only restrict run_command when shellAccess is explicitly set to false.
+          // undefined (legacy jobs) means unrestricted, preserving prior behavior.
+          ...(job.shellAccess === false
+            ? {
+                toolRestrictions: Array.from(
+                  new Set([...(job.taskAgentConfig?.toolRestrictions ?? []), "run_command"]),
+                ),
+              }
+            : {}),
+        },
       });
 
       taskId = result.id;
