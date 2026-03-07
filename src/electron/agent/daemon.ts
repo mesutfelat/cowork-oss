@@ -1738,10 +1738,19 @@ export class AgentDaemon extends EventEmitter {
 
     const planSummary = this.buildPlanSummary(plan);
 
+    // Compute file ownership zones to prevent overlapping output directories between agents.
+    const roleZones = rolesToDispatch.map((role) => ({
+      role: role.displayName,
+      zone: `output/${role.displayName.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "")}`,
+    }));
+
     for (const role of rolesToDispatch) {
       const workspacePath = task.workspaceId
         ? this.workspaceRepo.findById(task.workspaceId)?.path
         : undefined;
+
+      const myZone = roleZones.find((z) => z.role === role.displayName);
+      const peerZones = roleZones.filter((z) => z.role !== role.displayName);
 
       const childPrompt = buildAgentDispatchPrompt(
         role,
@@ -1751,6 +1760,8 @@ export class AgentDaemon extends EventEmitter {
           includeRoleDetails: false,
           includeRoleProfile: true,
           workspacePath,
+          fileOwnershipZone: myZone?.zone,
+          peerAgentZones: peerZones,
         },
       );
       const childTask = await this.createChildTask({
