@@ -1852,7 +1852,7 @@ interface CreateTaskOptions {
   taskDomain?: TaskDomain;
 }
 
-const EXECUTION_MODE_ORDER: ExecutionMode[] = ["execute", "propose", "analyze"];
+const EXECUTION_MODE_ORDER: ExecutionMode[] = ["execute", "propose", "analyze", "verified"];
 const TASK_DOMAIN_ORDER: TaskDomain[] = [
   "auto",
   "code",
@@ -1865,11 +1865,13 @@ const EXECUTION_MODE_LABEL: Record<ExecutionMode, string> = {
   execute: "Execute",
   propose: "Propose",
   analyze: "Analyze",
+  verified: "Verified",
 };
 const EXECUTION_MODE_HINT: Record<ExecutionMode, string> = {
   execute: "Allows full tool execution",
   propose: "Planning mode, no mutating tools",
   analyze: "Read-only analysis mode",
+  verified: "Execute with external verification after each step",
 };
 const TASK_DOMAIN_LABEL: Record<TaskDomain, string> = {
   auto: "Auto",
