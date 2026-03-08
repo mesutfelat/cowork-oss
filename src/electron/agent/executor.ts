@@ -17,6 +17,7 @@ import {
   InfraStatus,
   TASK_ERROR_CODES,
   EvidenceRef,
+  TaskBestKnownOutcome,
   VerificationOutcome,
   VerificationScope,
   VerificationEvidenceMode,
@@ -80,6 +81,7 @@ import { BuiltinToolsSettingsManager } from "./tools/builtin-settings";
 import { describeSchedule, parseIntervalToMs } from "../cron/types";
 import { InfraManager } from "../infra/infra-manager";
 import { InfraSettingsManager } from "../infra/infra-settings";
+import { buildBestKnownOutcome, mergeBestKnownOutcome } from "./outcome-policy";
 
 import {
   AwaitingUserInputError,
@@ -3396,6 +3398,7 @@ ${transcript}
   private autoRecoveryStepsPlanned = 0;
   private terminalStatus: Task["terminalStatus"] = "ok";
   private failureClass: Task["failureClass"] = undefined;
+  private bestKnownOutcome: TaskBestKnownOutcome | undefined;
 
   // Global turn tracking (across all steps) - similar to Claude Agent SDK's maxTurns
   private globalTurnCount: number = 0; // Window turns
@@ -3546,6 +3549,7 @@ ${transcript}
       ? daemon.getAgentRoleById(task.assignedAgentRoleId)?.displayName
       : undefined;
     this.logTag = roleName ? `[Executor:${shortId}][${roleName}]` : `[Executor:${shortId}]`;
+    this.bestKnownOutcome = task.bestKnownOutcome;
     const requestedMaxTurns =
       typeof task.agentConfig?.maxTurns === "number" && task.agentConfig.maxTurns > 0
         ? task.agentConfig.maxTurns
@@ -5058,9 +5062,53 @@ ${transcript}
     const trimmed = String(candidate || "").trim();
     const outputSummary = this.buildTaskOutputSummary();
     if ((outputSummary?.outputCount || 0) > 0) return true;
+    if ((this.bestKnownOutcome?.outputSummary?.outputCount || 0) > 0) return true;
     if (trimmed.length < 160) return false;
     const completedSteps = this.plan?.steps?.filter((step) => step.status === "completed").length || 0;
     return completedSteps > 0 || this.hasExecutionEvidence();
+  }
+
+  private buildBestKnownOutcomeSnapshot(
+    resultSummary?: string,
+    terminalStatus?: Task["terminalStatus"],
+    failureClass?: Task["failureClass"],
+    blockingIssue?: string,
+  ): TaskBestKnownOutcome | undefined {
+    const summary =
+      typeof resultSummary === "string" && resultSummary.trim()
+        ? resultSummary.trim()
+        : this.task.resultSummary || this.buildResultSummary() || this.getContentFallback() || "";
+    const completedStepIds = (this.plan?.steps || [])
+      .filter((step) => step.status === "completed")
+      .map((step) => String(step.id || "").trim())
+      .filter((stepId) => stepId.length > 0);
+    return buildBestKnownOutcome({
+      resultSummary: summary,
+      outputSummary: this.buildTaskOutputSummary(),
+      completedStepIds,
+      blockingIssues: blockingIssue ? [blockingIssue] : [],
+      terminalStatus: terminalStatus || this.task.terminalStatus || this.terminalStatus,
+      failureClass: failureClass || this.task.failureClass || this.failureClass,
+    });
+  }
+
+  private persistBestKnownOutcome(
+    resultSummary?: string,
+    terminalStatus?: Task["terminalStatus"],
+    failureClass?: Task["failureClass"],
+    blockingIssue?: string,
+  ): void {
+    const snapshot = this.buildBestKnownOutcomeSnapshot(
+      resultSummary,
+      terminalStatus,
+      failureClass,
+      blockingIssue,
+    );
+    const merged = mergeBestKnownOutcome(this.bestKnownOutcome, snapshot);
+    if (!merged) return;
+    this.bestKnownOutcome = merged;
+    this.task.bestKnownOutcome = merged;
+    this.daemon.updateTask(this.task.id, { bestKnownOutcome: merged });
   }
 
   private shouldFinalizeAsPartialSuccess(error: unknown): boolean {
@@ -5140,6 +5188,35 @@ ${transcript}
     return this.classifyFailure(error);
   }
 
+  private shouldFinalizeAsNeedsUserAction(error: unknown): boolean {
+    const message = String((error as Any)?.message || error || "").toLowerCase();
+    if (
+      !/user denied approval|approval request timed out|structured input request dismissed|user action required|awaiting user input/i.test(
+        message,
+      )
+    ) {
+      return false;
+    }
+    return this.hasSubstantivePartialSuccessEvidence(
+      this.buildResultSummary() || this.getContentFallback() || "",
+    );
+  }
+
+  private maybeFinalizeAsNeedsUserAction(error: unknown): boolean {
+    if (!this.shouldFinalizeAsNeedsUserAction(error)) return false;
+    const summary =
+      this.buildResultSummary() ||
+      this.getContentFallback() ||
+      "Task is waiting for your approval or input before it can continue.";
+    this.terminalStatus = "needs_user_action";
+    this.failureClass = undefined;
+    this.finalizeTaskBestEffort(summary, "Task paused pending user approval or input.", {
+      terminalStatus: "needs_user_action",
+      failureClass: undefined,
+    });
+    return true;
+  }
+
   private maybeFinalizeAsPartialSuccess(error: unknown): boolean {
     if (!this.shouldFinalizeAsPartialSuccess(error)) return false;
 
@@ -5165,6 +5242,7 @@ ${transcript}
     try {
       this.finalizeTask(resultSummary);
     } catch (error) {
+      if (this.maybeFinalizeAsNeedsUserAction(error)) return;
       if (this.maybeFinalizeAsPartialSuccess(error)) return;
       throw error;
     }
@@ -7767,6 +7845,7 @@ ${transcript}
     this.task.lifetimeTurnsUsed = this.lifetimeTurnCount;
     this.task.resultSummary = summary;
     const outputSummary = this.buildTaskOutputSummary();
+    this.persistBestKnownOutcome(summary, terminalStatus, failureClass);
     const verificationMetadata =
       this.verificationOutcomeV2Enabled && this.completionVerificationMetadata
         ? {
@@ -7787,6 +7866,7 @@ ${transcript}
       failureClass: this.task.failureClass,
       budgetUsage: this.getBudgetUsage(),
       outputSummary,
+      bestKnownOutcome: this.bestKnownOutcome,
       waiveFailedStepIds: waivableFailedStepIds,
       failedMutationRequiredStepIds,
       waivedVerificationStepIds,
@@ -7873,6 +7953,7 @@ ${transcript}
     this.task.lifetimeTurnsUsed = this.lifetimeTurnCount;
     this.task.resultSummary = summary;
     const outputSummary = this.buildTaskOutputSummary();
+    this.persistBestKnownOutcome(summary, this.task.terminalStatus, this.task.failureClass, reason);
     const verificationMetadata =
       this.verificationOutcomeV2Enabled && this.completionVerificationMetadata
         ? {
@@ -7891,6 +7972,7 @@ ${transcript}
       failureClass: this.task.failureClass,
       budgetUsage: this.getBudgetUsage(),
       outputSummary,
+      bestKnownOutcome: this.bestKnownOutcome,
       waiveFailedStepIds: waivableFailedStepIds,
       failedMutationRequiredStepIds,
       waivedVerificationStepIds,
@@ -15617,6 +15699,10 @@ You are continuing a previous conversation. The context from the previous conver
         }
       }
 
+      if (this.maybeFinalizeAsNeedsUserAction(error)) {
+        return;
+      }
+
       if (this.maybeFinalizeAsPartialSuccess(error)) {
         return;
       }
@@ -15666,12 +15752,19 @@ You are continuing a previous conversation. The context from the previous conver
       this.saveConversationSnapshot();
       this.capturePlaybookOutcome("failure", error?.message || String(error));
       const failureClass = this.classifyFailure(error);
+      this.persistBestKnownOutcome(
+        this.buildResultSummary() || this.getContentFallback() || "",
+        "failed",
+        failureClass,
+        error?.message || String(error),
+      );
       this.daemon.updateTask(this.task.id, {
         status: "failed",
         error: error?.message || String(error),
         completedAt: Date.now(),
         terminalStatus: "failed",
         failureClass,
+        bestKnownOutcome: this.bestKnownOutcome,
         budgetUsage: this.getBudgetUsage(),
         continuationCount: this.continuationCount,
         continuationWindow: this.continuationWindow,
@@ -21017,6 +21110,7 @@ TASK / CONVERSATION HISTORY:
         step.status = "completed";
         step.error = undefined;
         step.completedAt = Date.now();
+        this.persistBestKnownOutcome();
         delete (step as Any).__verificationRewindAttempted;
         this.nonBlockingVerificationFailedStepIds.delete(step.id);
         this.blockingVerificationFailedStepIds.delete(step.id);
@@ -21952,7 +22046,10 @@ TASK / CONVERSATION HISTORY:
     const coreOutcome: "ok" | "partial" | "failed" =
       terminalStatus === "failed"
         ? "failed"
-        : terminalStatus === "partial_success" || terminalStatus === "needs_user_action"
+        : terminalStatus === "partial_success" ||
+            terminalStatus === "needs_user_action" ||
+            terminalStatus === "awaiting_approval" ||
+            terminalStatus === "resume_available"
           ? "partial"
           : "ok";
 
