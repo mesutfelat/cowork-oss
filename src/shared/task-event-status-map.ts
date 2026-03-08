@@ -39,7 +39,6 @@ export const TASK_EVENT_STATUS_MAP: Readonly<Partial<Record<string, Task["status
   timeline_evidence_attached: "executing",
   timeline_artifact_emitted: "executing",
   timeline_command_output: "executing",
-  timeline_error: "failed",
   verification_passed: "executing",
   verification_pending_user_action: "executing",
   file_created: "executing",
