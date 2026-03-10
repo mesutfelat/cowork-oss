@@ -6,6 +6,10 @@ import type { AgentRoleData } from "../../electron/preload";
 interface PersonaTemplateGalleryProps {
   onClose: () => void;
   onActivated: (agentRole: AgentRoleData) => void;
+  initialCategory?: string;
+  companyId?: string | null;
+  companyName?: string | null;
+  recommendedTemplateNames?: string[];
 }
 
 interface CategoryInfo {
@@ -31,15 +35,31 @@ const CATEGORY_ICONS: Record<string, string> = {
   operations: "\ud83d\udee0\ufe0f",
 };
 
-export function PersonaTemplateGallery({ onClose, onActivated }: PersonaTemplateGalleryProps) {
+function buildTwinName(companyName: string | null | undefined, templateName: string): string {
+  const normalizedCompany = companyName?.trim();
+  return normalizedCompany ? `${normalizedCompany} ${templateName}` : `${templateName} Twin`;
+}
+
+export function PersonaTemplateGallery({
+  onClose,
+  onActivated,
+  initialCategory = "all",
+  companyId = null,
+  companyName = null,
+  recommendedTemplateNames = [],
+}: PersonaTemplateGalleryProps) {
   const [templates, setTemplates] = useState<PersonaTemplateData[]>([]);
   const [categories, setCategories] = useState<CategoryInfo[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [selectedCategory, setSelectedCategory] = useState<string>(initialCategory);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activationState, setActivationState] = useState<ActivationState | null>(null);
   const [activating, setActivating] = useState(false);
+
+  useEffect(() => {
+    setSelectedCategory(initialCategory);
+  }, [initialCategory]);
 
   useEffect(() => {
     let cancelled = false;
@@ -70,18 +90,27 @@ export function PersonaTemplateGallery({ onClose, onActivated }: PersonaTemplate
     };
   }, []);
 
-  const filteredTemplates = templates.filter((t) => {
-    if (selectedCategory !== "all" && t.category !== selectedCategory) return false;
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      return (
-        t.name.toLowerCase().includes(q) ||
-        t.description.toLowerCase().includes(q) ||
-        t.tags.some((tag) => tag.toLowerCase().includes(q))
-      );
-    }
-    return true;
-  });
+  const recommendedNameSet = new Set(recommendedTemplateNames.map((name) => name.toLowerCase()));
+
+  const filteredTemplates = templates
+    .filter((t) => {
+      if (selectedCategory !== "all" && t.category !== selectedCategory) return false;
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        return (
+          t.name.toLowerCase().includes(q) ||
+          t.description.toLowerCase().includes(q) ||
+          t.tags.some((tag) => tag.toLowerCase().includes(q))
+        );
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      const aRecommended = recommendedNameSet.has(a.name.toLowerCase()) ? 1 : 0;
+      const bRecommended = recommendedNameSet.has(b.name.toLowerCase()) ? 1 : 0;
+      if (aRecommended !== bRecommended) return bRecommended - aRecommended;
+      return a.name.localeCompare(b.name);
+    });
 
   const handleActivateClick = (template: PersonaTemplateData) => {
     const enabledTasks = new Set(
@@ -89,7 +118,7 @@ export function PersonaTemplateGallery({ onClose, onActivated }: PersonaTemplate
     );
     setActivationState({
       template,
-      customName: template.name + " Twin",
+      customName: buildTwinName(companyName, template.name),
       customIcon: template.icon,
       customColor: template.color,
       heartbeatInterval: template.heartbeat.intervalMinutes,
@@ -105,6 +134,7 @@ export function PersonaTemplateGallery({ onClose, onActivated }: PersonaTemplate
       const result = await window.electronAPI.activatePersonaTemplate({
         templateId: activationState.template.id,
         customization: {
+          companyId: companyId ?? undefined,
           displayName: activationState.customName,
           icon: activationState.customIcon,
           color: activationState.customColor,
@@ -159,9 +189,22 @@ export function PersonaTemplateGallery({ onClose, onActivated }: PersonaTemplate
             </button>
           </div>
           <p className="pt-gallery-subtitle">
-            Choose a persona template to create an AI digital twin that absorbs cognitively draining
-            tasks so you can stay in flow.
+            {companyName
+              ? `Create operators for ${companyName}. Start with venture/operator templates, then activate the twins you want running against that company context.`
+              : "Choose a persona template to create an AI digital twin that absorbs cognitively draining tasks so you can stay in flow."}
           </p>
+          {companyName && recommendedTemplateNames.length > 0 ? (
+            <div className="pt-company-context">
+              <span className="pt-company-context-label">Recommended starter operators</span>
+              <div className="pt-company-context-tags">
+                {recommendedTemplateNames.map((name) => (
+                  <span key={name} className="pt-company-context-tag">
+                    {name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
 
         {/* Filters */}
@@ -220,6 +263,11 @@ export function PersonaTemplateGallery({ onClose, onActivated }: PersonaTemplate
                 <span style={{ fontSize: "1.5em" }}>{activationState.customIcon}</span> Activate{" "}
                 {activationState.template.name}
               </h3>
+              {companyName ? (
+                <p className="pt-activation-subtitle">
+                  This twin will be created for <strong>{companyName}</strong>.
+                </p>
+              ) : null}
 
               <div className="pt-activation-form">
                 <label className="pt-form-label">
@@ -370,6 +418,36 @@ export function PersonaTemplateGallery({ onClose, onActivated }: PersonaTemplate
           font-size: 12px;
           color: var(--color-text-muted);
           line-height: 1.4;
+        }
+
+        .pt-company-context {
+          margin-top: 12px;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        .pt-company-context-label {
+          font-size: 12px;
+          font-weight: 600;
+          color: var(--color-text-secondary);
+        }
+
+        .pt-company-context-tags {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+
+        .pt-company-context-tag {
+          display: inline-flex;
+          align-items: center;
+          padding: 4px 10px;
+          border-radius: 999px;
+          font-size: 11px;
+          border: 1px solid var(--color-border-subtle);
+          background: var(--color-bg-secondary);
+          color: var(--color-text-secondary);
         }
 
         .pt-gallery-filters {
@@ -565,6 +643,12 @@ export function PersonaTemplateGallery({ onClose, onActivated }: PersonaTemplate
           display: flex;
           align-items: center;
           gap: 8px;
+        }
+
+        .pt-activation-subtitle {
+          margin: -6px 0 16px;
+          font-size: 12px;
+          color: var(--color-text-secondary);
         }
 
         .pt-activation-form {
