@@ -2,7 +2,7 @@
 
 Mission Control is a centralized agent orchestration and monitoring dashboard. It provides a command center for managing agents, tracking tasks across a Kanban board, monitoring real-time activity, and overseeing team-based collaboration.
 
-Access it from **Settings** > **Mission Control**.
+Access it from **Settings** > **Mission Control**. For company-ops workflows, you can also jump into it directly from **Settings** > **Companies** with the selected company preloaded.
 
 ## Layout
 
@@ -80,7 +80,7 @@ Each card shows:
 
 ## Feed & Task Details (Right)
 
-Tabbed panel with two views.
+Tabbed panel with three views.
 
 ### Live Feed Tab
 
@@ -110,6 +110,47 @@ Click any task card to see its full details:
 - **Updates**: Activity feed for this task with comment box to post updates
 - **Mentions**: Create and manage mentions with status tracking (pending, acknowledged, completed, dismissed)
 
+### Ops Tab
+
+The `Ops` tab is the company-operations view used by the zero-human-company workflow.
+
+It exposes:
+
+- company snapshot
+- goals and projects
+- planner-managed issues
+- planner-cycle issue drill-down
+- issue comments
+- issue execution runs
+- run timeline events
+- linked task navigation
+
+Use it together with the strategic planner strip to watch company-level planning move into executable task work.
+
+The `Ops` tab is most useful when the company graph is maintained in **Settings** > **Companies**, since that tab is where companies, goals, projects, issues, and linked operators are created and edited.
+
+---
+
+## Strategic Planner Strip
+
+Mission Control now includes a planner strip above the three-panel layout for company-ops configuration and review.
+
+Available controls:
+
+- company selector
+- planner enabled/disabled toggle
+- auto-dispatch toggle
+- planner interval
+- planning workspace selector
+- planner-agent selector
+- approval preset selector
+- manual `Run Planner`
+- recent planner cycle history
+
+This is the main desktop entry point for zero-human-company planning loops.
+
+Companies created in **Settings** > **Companies** appear here in the company selector. If you opened Mission Control from a company page, that company is preselected.
+
 ---
 
 ## Agent Teams
@@ -135,6 +176,15 @@ Browse pre-built persona templates — Software Engineer, Engineering Manager, P
 - **Proactive heartbeat tasks** that run automatically (PR triage, status digests, dependency scans)
 - **Cognitive offload categories** targeting the mental work that fragments focus
 - **Recommended skills** for on-demand use (meeting prep, decision packages, status reports)
+
+Mission Control is also the best place to monitor venture/operator twins such as:
+
+- `Founder Office Operator`
+- `Company Planner`
+- `Growth Operator`
+- `Customer Ops Lead`
+
+If those twins were created from a company context, they still appear in Mission Control as normal agents, but they retain their company assignment for use in `Ops`, `Companies`, and company-aware Digital Twins views.
 
 See [Digital Twins](digital-twins.md) for full documentation, enterprise scenarios, and template reference.
 
@@ -181,8 +231,11 @@ Mission Control subscribes to live event streams — no manual refresh needed:
 | Action | How |
 |--------|-----|
 | Open Mission Control | Settings > Mission Control |
+| Open company-scoped Mission Control | Settings > Companies > Open in Mission Control |
 | Add a new agent | Click "Add Agent" in the agents panel |
 | Add a digital twin | Click "Add Digital Twin" in the agents panel ([details](digital-twins.md)) |
+| Configure the company planner | Use the planner strip above the board |
+| Inspect company ops | Open the `Ops` tab in the right panel |
 | Edit an agent | Double-click the agent card |
 | Wake an idle agent | Click "Wake Agent" on the agent card |
 | Move a task to a new stage | Drag the task card to the target column |
@@ -192,3 +245,5 @@ Mission Control subscribes to live event streams — no manual refresh needed:
 | Create a team | Header > Teams > create team |
 | Generate a performance review | Header > Reviews > select agent > Generate |
 | Generate a standup report | Header > Standup > Generate Standup Report |
+
+For a full founder-directed autonomous-company setup, see [Zero-Human Company Operations](zero-human-company.md).
