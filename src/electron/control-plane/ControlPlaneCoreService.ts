@@ -6,6 +6,7 @@ import { TaskRepository } from "../database/repositories";
 import type {
   AgentRole,
   Company,
+  CompanyCreateInput,
   CompanyImportResult,
   CompanyUpdate,
   CompanyTemplateExport,
@@ -80,6 +81,59 @@ export class ControlPlaneCoreService {
     return this.mapCompany(row);
   }
 
+  createCompany(input: CompanyCreateInput): Company {
+    const now = Date.now();
+    const normalizedName = input.name.trim();
+    const resolvedName = this.resolveAvailableCompanyName(normalizedName || "Company");
+    const resolvedSlug = this.resolveAvailableCompanySlug(
+      this.normalizeCompanySlug(input.slug) || this.normalizeCompanySlug(resolvedName),
+    );
+    const shouldBeDefault =
+      typeof input.isDefault === "boolean"
+        ? input.isDefault
+        : !this.db.prepare("SELECT 1 FROM companies LIMIT 1").get();
+    const company: Company = {
+      id: randomUUID(),
+      name: resolvedName,
+      slug: resolvedSlug,
+      description: input.description,
+      status: input.status || "active",
+      isDefault: shouldBeDefault,
+      monthlyBudgetCost: input.monthlyBudgetCost ?? undefined,
+      budgetPausedAt: input.budgetPausedAt ?? undefined,
+      createdAt: now,
+      updatedAt: now,
+    };
+    const tx = this.db.transaction(() => {
+      if (company.isDefault) {
+        this.db.prepare("UPDATE companies SET is_default = 0").run();
+      }
+      this.db
+        .prepare(
+          `
+            INSERT INTO companies (
+              id, name, slug, description, status, is_default, monthly_budget_cost, budget_paused_at,
+              created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `,
+        )
+        .run(
+          company.id,
+          company.name,
+          company.slug,
+          company.description || null,
+          company.status,
+          company.isDefault ? 1 : 0,
+          company.monthlyBudgetCost ?? null,
+          company.budgetPausedAt ?? null,
+          company.createdAt,
+          company.updatedAt,
+        );
+      return company;
+    });
+    return tx();
+  }
+
   updateCompany(id: string, updates: CompanyUpdate): Company | undefined {
     const fields: string[] = [];
     const values: Any[] = [];
@@ -114,8 +168,14 @@ export class ControlPlaneCoreService {
     if (fields.length === 0) return this.getCompany(id);
     fields.push("updated_at = ?");
     values.push(Date.now(), id);
-    this.db.prepare(`UPDATE companies SET ${fields.join(", ")} WHERE id = ?`).run(...values);
-    return this.getCompany(id);
+    const tx = this.db.transaction(() => {
+      if (updates.isDefault) {
+        this.db.prepare("UPDATE companies SET is_default = 0 WHERE id != ?").run(id);
+      }
+      this.db.prepare(`UPDATE companies SET ${fields.join(", ")} WHERE id = ?`).run(...values);
+      return this.getCompany(id);
+    });
+    return tx();
   }
 
   listGoals(companyId?: string): Goal[] {
@@ -1377,23 +1437,42 @@ export class ControlPlaneCoreService {
   }
 
   private resolveImportedCompanyName(baseName: string): string {
-    let candidate = baseName || "Imported Company";
+    return this.resolveAvailableCompanyName(baseName || "Imported Company");
+  }
+
+  private resolveImportedCompanySlug(baseSlug: string): string {
+    return this.resolveAvailableCompanySlug(this.normalizeCompanySlug(baseSlug) || "imported-company");
+  }
+
+  private resolveAvailableCompanyName(baseName: string): string {
+    let candidate = baseName.trim() || "Company";
+    const base = candidate;
     let index = 2;
     while (this.db.prepare("SELECT 1 FROM companies WHERE name = ? LIMIT 1").get(candidate)) {
-      candidate = `${baseName} (${index})`;
+      candidate = `${base} (${index})`;
       index += 1;
     }
     return candidate;
   }
 
-  private resolveImportedCompanySlug(baseSlug: string): string {
-    let candidate = (baseSlug || "imported-company").trim() || "imported-company";
+  private resolveAvailableCompanySlug(baseSlug: string): string {
+    let candidate = baseSlug.trim() || "company";
+    const base = candidate;
     let index = 2;
     while (this.db.prepare("SELECT 1 FROM companies WHERE slug = ? LIMIT 1").get(candidate)) {
-      candidate = `${baseSlug}-${index}`;
+      candidate = `${base}-${index}`;
       index += 1;
     }
     return candidate;
+  }
+
+  private normalizeCompanySlug(value?: string): string {
+    const normalized = typeof value === "string" ? value.trim().toLowerCase() : "";
+    const slug = normalized
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+/, "")
+      .replace(/-+$/, "");
+    return slug.length > 0 ? slug.slice(0, 60) : "";
   }
 
   private resolveImportedProjectName(companyId: string, baseName: string): string {
