@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Zero-human-company docs refresh**: documented the `Settings > Companies` workflow, persisted company-linked digital twins, and company-aware handoff between Companies, Digital Twins, and Mission Control.
+
+### Changed
+- **Self-improvement documentation**: added detailed architecture and troubleshooting coverage for autonomous improvement startup ordering, worktree requirements, notification flow, and `logs/dev-latest.log` verification steps.
+
+### Fixed
+- **Autonomous improvement startup race**: `ImprovementLoopService` now starts after `MemoryService` initialization, skips non-worktree-capable workspaces when isolated git execution is required, and suppresses misleading legacy `ERR_UNHANDLED_ERROR` log noise from unhandled `"error"` alias emission during startup failures.
+
 ## [0.4.13] - 2026-03-05
 
 ### Added
