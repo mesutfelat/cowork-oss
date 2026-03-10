@@ -197,3 +197,118 @@ ClawHub's `pskoett/self-improving-agent` (v1.0.11) is a Claude Code skill that "
 | **Agent-initiated memory** | None | `memory_save` tool for explicit mid-task persistence + `search_memories` for on-demand recall |
 
 The ClawHub skill provides a useful starting pattern for basic learning capture. CoWork OS extends this concept into a full multi-layered learning architecture with offline search, privacy controls, and institutional knowledge management.
+
+## Autonomous Improvement Loop
+
+In addition to the passive learning layers above, CoWork OS now includes an autonomous improvement loop that can:
+
+- mine recurring failures and regressions into ranked improvement candidates
+- launch isolated experiments as autonomous tasks
+- evaluate the result against before/after metrics
+- surface review decisions and notifications
+- promote successful runs by merge or GitHub PR
+
+### Execution model
+
+Each autonomous improvement run is created as a normal task with stricter agent policy:
+
+- `source: "improvement"`
+- `autonomousMode: true`
+- `allowUserInput: false`
+- `requireWorktree: true` by default
+- `autoApproveTypes: ["run_command"]`
+- verified execution and strict review settings
+
+This keeps the loop inside the same task runtime, timeline, approvals, and notification system as the rest of the app, but with tighter isolation rules.
+
+### Why worktrees are required
+
+Self-improvement runs are intentionally branch-scoped. They should not edit the shared workspace directly because the loop is designed to try risky changes, validate them, and then either promote or discard them.
+
+When `requireWorktree` is enabled:
+
+- the task must target a real git-backed workspace
+- the workspace must not be temporary
+- worktree support must be enabled in settings
+- `WorktreeManager.shouldUseWorktree(...)` must succeed before the run is launched
+
+If a workspace does not satisfy those constraints, the improvement loop now skips that workspace when selecting candidates instead of launching a task that is guaranteed to fail.
+
+### Startup ordering requirements
+
+The autonomous loop writes normal task events, and those events may be captured by `MemoryService`. Because of that, startup ordering matters.
+
+Correct initialization order:
+
+1. initialize core app services
+2. initialize `MemoryService`
+3. start `ImprovementLoopService`
+
+If the loop starts too early, the app may still boot successfully, but early task events can try to persist memory before `MemoryService.initialize(...)` has run. That produces a warning like:
+
+```text
+[AgentDaemon] Memory capture failed: Error: [MemoryService] Not initialized. Call MemoryService.initialize() first.
+```
+
+This was a startup-order race, not a fatal crash. The fix is to start `ImprovementLoopService` only after `MemoryService` has been initialized.
+
+### What happened in the startup warning case
+
+The observed startup warnings came from three separate conditions stacking together:
+
+1. The improvement loop auto-started before memory initialization completed.
+2. The top-ranked improvement candidate belonged to a workspace that could not provide git worktree isolation.
+3. The daemon re-emitted a legacy alias literally named `"error"`, which triggered Node's special `EventEmitter` error behavior and produced extra log noise.
+
+That produced this sequence:
+
+- improvement loop starts
+- autonomous improvement task is created immediately
+- task requires a worktree
+- workspace cannot use worktrees
+- daemon records a task error
+- legacy `"error"` alias emission logs `ERR_UNHANDLED_ERROR`
+- event persistence attempts memory capture before memory initialization is complete
+
+The app still finishes startup; the warnings are noisy but were not the actual startup failure.
+
+### Current behavior after the fix
+
+The startup and candidate-selection behavior now works like this:
+
+- `ImprovementLoopService` starts after `MemoryService`
+- when `requireWorktree` is enabled, candidate selection filters out workspaces that cannot use worktrees
+- the daemon no longer re-emits a legacy `"error"` alias when nothing is listening for it
+- timeline events still continue to flow normally
+
+This means self-improvement no longer creates guaranteed-failure tasks during startup for non-git workspaces, and the earlier misleading `ERR_UNHANDLED_ERROR` noise is gone.
+
+### Monitoring and notifications
+
+Improvement runs can be monitored in several places:
+
+- the task timeline for the underlying improvement task
+- the Self-Improve settings/review UI
+- in-app notifications
+- desktop notifications
+
+The loop emits notifications for:
+
+- run started
+- review required
+- PR created
+- merge succeeded
+- experiment failed
+- promotion failed
+- review dismissed
+
+### Operational guidance
+
+For the best autonomous-improvement behavior:
+
+- keep at least one active workspace as a real git repository
+- enable git worktree support for development workspaces
+- use `npm run dev:log` when debugging startup or autonomous-loop behavior
+- check `logs/dev-latest.log` first when diagnosing warnings or ordering issues
+
+If you want improvement candidates to run against a specific project, make sure that project is added as a workspace and is a usable git repository from the app's perspective.
