@@ -34,6 +34,9 @@ import {
   shouldImportEnvSettingsFromArgsOrEnv,
 } from "../electron/utils/runtime-mode";
 import { getUserDataDir } from "../electron/utils/user-data-dir";
+import { registerControlPlaneCoreMethods } from "../electron/control-plane/registerControlPlaneCoreMethods";
+import { registerStrategicPlannerMethods } from "../electron/control-plane/registerStrategicPlannerMethods";
+import { getStrategicPlannerService } from "../electron/control-plane/StrategicPlannerService";
 
 export interface ControlPlaneMethodDeps {
   agentDaemon: AgentDaemon;
@@ -755,6 +758,17 @@ export function registerControlPlaneMethods(
     securityConfig: channel.securityConfig ? { mode: channel.securityConfig.mode } : undefined,
     createdAt: channel.createdAt,
     updatedAt: channel.updatedAt,
+  });
+
+  registerControlPlaneCoreMethods({
+    server,
+    db,
+    requireScope,
+  });
+  registerStrategicPlannerMethods({
+    server,
+    plannerService: getStrategicPlannerService(),
+    requireScope,
   });
 
   // Managed Accounts (API-first signup/account lifecycle)
