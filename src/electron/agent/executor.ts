@@ -8838,10 +8838,16 @@ ${transcript}
       "read_multiple_files",
       "web_search",
       "web_fetch",
+      "http_request",
       "get_file_info",
       "count_text",
       "text_metrics",
       "analyze_image",
+      "browser_navigate",
+      "browser_get_content",
+      "browser_get_text",
+      "browser_screenshot",
+      "browser_wait",
     ]);
 
     const mutation = new Set<string>([
@@ -22188,17 +22194,23 @@ TASK / CONVERSATION HISTORY:
       console.log(
         `${this.logTag} Provider/model changed mid-session: ${this.provider.type}/${this.modelId} → ${newSelection.providerType}/${newSelection.modelId}`,
       );
-      this.provider = LLMProviderFactory.createProvider({
-        type: newSelection.providerType,
-        model: newSelection.modelId,
-      });
-      this.modelId = newSelection.modelId;
-      this.modelKey = newSelection.modelKey;
-      this.llmProfileUsed = newSelection.llmProfileUsed;
-      this.resolvedModelKey = newSelection.resolvedModelKey;
-      this.emitEvent("log", {
-        message: `LLM provider updated mid-session: provider=${newSelection.providerType}, model=${newSelection.modelId}`,
-      });
+      try {
+        this.provider = LLMProviderFactory.createProvider({
+          type: newSelection.providerType,
+          model: newSelection.modelId,
+        });
+        this.modelId = newSelection.modelId;
+        this.modelKey = newSelection.modelKey;
+        this.llmProfileUsed = newSelection.llmProfileUsed;
+        this.resolvedModelKey = newSelection.resolvedModelKey;
+        this.emitEvent("log", {
+          message: `LLM provider updated mid-session: provider=${newSelection.providerType}, model=${newSelection.modelId}`,
+        });
+      } catch (err: Any) {
+        console.warn(
+          `${this.logTag} Failed to switch provider mid-session to ${newSelection.providerType}: ${err?.message}. Keeping current provider.`,
+        );
+      }
     }
   }
 
