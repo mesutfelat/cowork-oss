@@ -103,4 +103,35 @@ describe("AgentDaemon.emitTaskEvent legacy alias bridge", () => {
       }),
     );
   });
+
+  it("skips legacy error aliases when no error listener is registered", () => {
+    const emit = vi.fn();
+    const daemonLike = {
+      emit,
+      listenerCount: vi.fn().mockReturnValue(0),
+      resolveLegacyTaskEventAlias: (AgentDaemon.prototype as Any).resolveLegacyTaskEventAlias,
+    } as Any;
+
+    (AgentDaemon.prototype as Any).emitTaskEvent.call(daemonLike, {
+      id: "event-2",
+      taskId: "task-1",
+      timestamp: Date.now(),
+      type: "timeline_task_status",
+      payload: {
+        message: "Task failed before execution started",
+        legacyType: "error",
+      },
+      schemaVersion: 2,
+      legacyType: "error",
+    } as Any);
+
+    expect(emit).toHaveBeenCalledTimes(1);
+    expect(emit).toHaveBeenCalledWith(
+      "timeline_task_status",
+      expect.objectContaining({
+        taskId: "task-1",
+        type: "timeline_task_status",
+      }),
+    );
+  });
 });
