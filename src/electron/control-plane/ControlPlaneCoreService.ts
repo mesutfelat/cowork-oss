@@ -1,8 +1,11 @@
 import Database from "better-sqlite3";
 import { randomUUID } from "crypto";
+import fs from "fs";
+import path from "path";
 import { AgentRoleRepository } from "../agents/AgentRoleRepository";
 import { AgentTeamRepository } from "../agents/AgentTeamRepository";
-import { TaskRepository } from "../database/repositories";
+import { TaskRepository, WorkspaceRepository } from "../database/repositories";
+import { getUserDataDir } from "../utils/user-data-dir";
 import type {
   AgentRole,
   Company,
@@ -49,14 +52,18 @@ function currentMonthWindow(now = Date.now()): { start: number; end: number } {
 }
 
 export class ControlPlaneCoreService {
+  private static readonly provisionedDatabases = new WeakSet<Database.Database>();
   private taskRepo: TaskRepository;
+  private workspaceRepo: WorkspaceRepository;
   private agentRoleRepo: AgentRoleRepository;
   private agentTeamRepo: AgentTeamRepository;
 
   constructor(private db: Database.Database) {
     this.taskRepo = new TaskRepository(db);
+    this.workspaceRepo = new WorkspaceRepository(db);
     this.agentRoleRepo = new AgentRoleRepository(db);
     this.agentTeamRepo = new AgentTeamRepository(db);
+    this.ensureDefaultWorkspacesProvisioned();
   }
 
   listCompanies(): Company[] {
@@ -99,6 +106,8 @@ export class ControlPlaneCoreService {
       description: input.description,
       status: input.status || "active",
       isDefault: shouldBeDefault,
+      defaultWorkspaceId:
+        typeof input.defaultWorkspaceId === "string" ? input.defaultWorkspaceId.trim() || undefined : undefined,
       monthlyBudgetCost: input.monthlyBudgetCost ?? undefined,
       budgetPausedAt: input.budgetPausedAt ?? undefined,
       createdAt: now,
@@ -112,9 +121,9 @@ export class ControlPlaneCoreService {
         .prepare(
           `
             INSERT INTO companies (
-              id, name, slug, description, status, is_default, monthly_budget_cost, budget_paused_at,
-              created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              id, name, slug, description, status, is_default, default_workspace_id,
+              monthly_budget_cost, budget_paused_at, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `,
         )
         .run(
@@ -124,12 +133,13 @@ export class ControlPlaneCoreService {
           company.description || null,
           company.status,
           company.isDefault ? 1 : 0,
+          company.defaultWorkspaceId || null,
           company.monthlyBudgetCost ?? null,
           company.budgetPausedAt ?? null,
           company.createdAt,
           company.updatedAt,
         );
-      return company;
+      return this.ensureCompanyDefaultWorkspace(company);
     });
     return tx();
   }
@@ -157,6 +167,10 @@ export class ControlPlaneCoreService {
       fields.push("is_default = ?");
       values.push(updates.isDefault ? 1 : 0);
     }
+    if (updates.defaultWorkspaceId !== undefined) {
+      fields.push("default_workspace_id = ?");
+      values.push(updates.defaultWorkspaceId || null);
+    }
     if (updates.monthlyBudgetCost !== undefined) {
       fields.push("monthly_budget_cost = ?");
       values.push(updates.monthlyBudgetCost ?? null);
@@ -173,7 +187,8 @@ export class ControlPlaneCoreService {
         this.db.prepare("UPDATE companies SET is_default = 0 WHERE id != ?").run(id);
       }
       this.db.prepare(`UPDATE companies SET ${fields.join(", ")} WHERE id = ?`).run(...values);
-      return this.getCompany(id);
+      const updated = this.getCompany(id);
+      return updated ? this.ensureCompanyDefaultWorkspace(updated) : updated;
     });
     return tx();
   }
@@ -317,6 +332,14 @@ export class ControlPlaneCoreService {
         project.createdAt,
         project.updatedAt,
       );
+    const company = this.getCompany(project.companyId);
+    if (company?.defaultWorkspaceId && this.listProjectWorkspaces(project.id).length === 0) {
+      this.linkProjectWorkspace({
+        projectId: project.id,
+        workspaceId: company.defaultWorkspaceId,
+        isPrimary: true,
+      });
+    }
     return project;
   }
 
@@ -1409,6 +1432,7 @@ export class ControlPlaneCoreService {
       description: source.description,
       status: source.status || "active",
       isDefault: false,
+      defaultWorkspaceId: undefined,
       monthlyBudgetCost: source.monthlyBudgetCost,
       budgetPausedAt: undefined,
       createdAt: now,
@@ -1418,9 +1442,9 @@ export class ControlPlaneCoreService {
       .prepare(
         `
           INSERT INTO companies (
-            id, name, slug, description, status, is_default, monthly_budget_cost, budget_paused_at,
-            created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, 0, ?, NULL, ?, ?)
+            id, name, slug, description, status, is_default, default_workspace_id,
+            monthly_budget_cost, budget_paused_at, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, 0, NULL, ?, NULL, ?, ?)
         `,
       )
       .run(
@@ -1433,7 +1457,7 @@ export class ControlPlaneCoreService {
         company.createdAt,
         company.updatedAt,
       );
-    return company;
+    return this.ensureCompanyDefaultWorkspace(company);
   }
 
   private resolveImportedCompanyName(baseName: string): string {
@@ -1551,12 +1575,95 @@ export class ControlPlaneCoreService {
       description: row.description || undefined,
       status: row.status,
       isDefault: Number(row.is_default) === 1,
+      defaultWorkspaceId: row.default_workspace_id || undefined,
       monthlyBudgetCost:
         typeof row.monthly_budget_cost === "number" ? row.monthly_budget_cost : undefined,
       budgetPausedAt: row.budget_paused_at || undefined,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
+  }
+
+  private ensureCompanyDefaultWorkspace(company: Company): Company {
+    const existingWorkspace = company.defaultWorkspaceId
+      ? this.workspaceRepo.findById(company.defaultWorkspaceId)
+      : undefined;
+    if (existingWorkspace?.id) {
+      this.ensureCompanyWorkspaceStructure(existingWorkspace.path);
+      this.backfillCompanyProjectWorkspaces(company.id, existingWorkspace.id);
+      return {
+        ...company,
+        defaultWorkspaceId: existingWorkspace.id,
+      };
+    }
+
+    const workspacePath = this.buildCompanyWorkspacePath(company.slug || company.name);
+    this.ensureCompanyWorkspaceStructure(workspacePath);
+    const byPath = this.workspaceRepo.findByPath(workspacePath);
+    const workspace =
+      byPath ||
+      this.workspaceRepo.create(`Company: ${company.name}`, workspacePath, {
+        read: true,
+        write: true,
+        delete: false,
+        network: true,
+        shell: false,
+      });
+
+    const now = Date.now();
+    this.db
+      .prepare("UPDATE companies SET default_workspace_id = ?, updated_at = ? WHERE id = ?")
+      .run(workspace.id, now, company.id);
+
+    this.backfillCompanyProjectWorkspaces(company.id, workspace.id);
+
+    return {
+      ...company,
+      defaultWorkspaceId: workspace.id,
+      updatedAt: now,
+    };
+  }
+
+  private backfillCompanyProjectWorkspaces(companyId: string, workspaceId: string): void {
+    const projects = this.listProjects({ companyId, includeArchived: true });
+    for (const project of projects) {
+      if (this.listProjectWorkspaces(project.id).length > 0) continue;
+      this.linkProjectWorkspace({
+        projectId: project.id,
+        workspaceId,
+        isPrimary: true,
+      });
+    }
+  }
+
+  private buildCompanyWorkspacePath(slugOrName: string): string {
+    return path.join(getUserDataDir(), "company-workspaces", this.normalizeCompanySlug(slugOrName) || "company");
+  }
+
+  private ensureCompanyWorkspaceStructure(workspacePath: string): void {
+    fs.mkdirSync(workspacePath, { recursive: true });
+    for (const entry of [".cowork", "projects", "ops", "research", "artifacts"]) {
+      fs.mkdirSync(path.join(workspacePath, entry), { recursive: true });
+    }
+  }
+
+  private ensureDefaultWorkspacesProvisioned(): void {
+    if (ControlPlaneCoreService.provisionedDatabases.has(this.db)) {
+      return;
+    }
+    this.provisionCompanyDefaultWorkspaces();
+    ControlPlaneCoreService.provisionedDatabases.add(this.db);
+  }
+
+  private provisionCompanyDefaultWorkspaces(): void {
+    const companyIds = (this.db.prepare("SELECT id FROM companies ORDER BY created_at ASC").all() as Any[]).map(
+      (row) => String(row.id),
+    );
+    for (const companyId of companyIds) {
+      const company = this.getCompany(companyId);
+      if (!company) continue;
+      this.ensureCompanyDefaultWorkspace(company);
+    }
   }
 
   private mapGoal(row: Any): Goal {
