@@ -8,7 +8,12 @@ describe("TaskExecutor tool allow-list semantics", () => {
     executor.toolRegistry = {
       getTools: vi
         .fn()
-        .mockReturnValue([{ name: "read_file" }, { name: "write_file" }, { name: "canvas_push" }]),
+        .mockReturnValue([
+          { name: "read_file" },
+          { name: "write_file" },
+          { name: "canvas_push" },
+          { name: "create_diagram" },
+        ]),
     };
     executor.toolFailureTracker = {
       getDisabledTools: vi.fn().mockReturnValue([]),
@@ -31,7 +36,11 @@ describe("TaskExecutor tool allow-list semantics", () => {
     const executor = createExecutor(undefined);
     const availableTools = (executor as Any).getAvailableTools();
 
-    expect(availableTools).toEqual([{ name: "read_file" }, { name: "write_file" }]);
+    expect(availableTools).toEqual([
+      { name: "read_file" },
+      { name: "write_file" },
+      { name: "create_diagram" },
+    ]);
     expect((executor as Any).isToolRestrictedByPolicy("read_file")).toBe(false);
   });
 
@@ -52,5 +61,20 @@ describe("TaskExecutor tool allow-list semantics", () => {
 
     expect(requiredTools.has("custom_picker")).toBe(true);
     expect(executor.getAvailableTools).not.toHaveBeenCalled();
+  });
+
+  it("infers create_diagram for inline diagram steps", () => {
+    const executor = Object.create(TaskExecutor.prototype) as Any;
+    executor.getEffectiveExecutionMode = vi.fn().mockReturnValue("execute");
+    executor.normalizeToolName = vi.fn((name: string) => ({ name }));
+    executor.toolRegistry = {
+      getTools: vi.fn().mockReturnValue([{ name: "create_diagram" }]),
+    };
+
+    const requiredTools = (executor as Any).extractRequiredToolsFromStepDescription(
+      "Create a Mermaid flowchart showing the CI/CD pipeline stages.",
+    ) as Set<string>;
+
+    expect(requiredTools.has("create_diagram")).toBe(true);
   });
 });
