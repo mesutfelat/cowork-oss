@@ -7633,7 +7633,11 @@ ${transcript}
     const createdFiles = (this.fileOperationTracker?.getCreatedFiles?.() || []).map((file) =>
       String(file),
     );
-    return hasArtifactEvidenceUtil({ contract, createdFiles });
+    const modifiedFiles = this.daemon
+      .getTaskEvents(this.task.id, { types: ["file_modified"] })
+      .map((event) => String(event.payload?.path || event.payload?.to || event.payload?.from || ""))
+      .filter((file) => file.length > 0);
+    return hasArtifactEvidenceUtil({ contract, createdFiles, modifiedFiles });
   }
 
   private hasSuccessfulToolEvidence(toolName: string): boolean {
