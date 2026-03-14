@@ -112,6 +112,7 @@
     "skills:check:core": "npm run skills:validate-routing && npm run skills:validate-content && npm run skills:audit",
     "skills:check": "node scripts/qa/skills-check.mjs",
     "type-check": "tsc --noEmit",
+    "kit:lint": "npm run build:electron && node dist/electron/electron/context/kit-lint-cli.js",
     "test": "npm run skills:check && vitest run",
     "test:watch": "vitest",
     "test:coverage": "npm run skills:check && vitest run --coverage"
