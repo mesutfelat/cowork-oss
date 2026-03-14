@@ -5,8 +5,11 @@ import {
   addUniqueTaskId,
   buildTaskCompletionToast,
   decideCompletionPanelBehavior,
+  getAllOutputPathsFromSummary,
+  recordCompletionToastShown,
   removeTaskId,
   shouldClearUnseenOutputBadges,
+  shouldShowCompletionToast,
   shouldTrackUnseenCompletion,
 } from "../task-completion-ux";
 
@@ -32,7 +35,7 @@ describe("task completion UX helpers", () => {
     });
 
     expect(toast.title).toBe("Task complete");
-    expect(toast.message).toBe("1 output ready: negotiation-analysis.md");
+    expect(toast.message).toBe("negotiation-analysis.md");
     expect(toast.actions?.map((a) => a.label)).toEqual([
       "Open file",
       "Show in Finder",
@@ -136,6 +139,73 @@ describe("task completion UX helpers", () => {
         panelCollapsed: true,
       }),
     ).toEqual({ autoOpenPanel: false, markUnseenOutput: true });
+  });
+
+  it("builds output message for multiple files", () => {
+    const multiOutput: TaskOutputSummary = {
+      created: ["out/canvas_display.html", "out/a.png", "out/b.png", "out/c.png", "out/d.png"],
+      primaryOutputPath: "out/canvas_display.html",
+      outputCount: 5,
+      folders: ["out"],
+    };
+    const toast = buildTaskCompletionToast({
+      taskId: "task-1",
+      outputSummary: multiOutput,
+    });
+    expect(toast.message).toBe("canvas_display.html + 4 more");
+  });
+
+  it("shouldShowCompletionToast shows on first completion, suppresses on follow-up without new files", () => {
+    const summary: TaskOutputSummary = {
+      created: ["out/file.html"],
+      primaryOutputPath: "out/file.html",
+      outputCount: 1,
+      folders: ["out"],
+    };
+    const notified = new Map<string, Set<string>>();
+
+    const first = shouldShowCompletionToast("t1", summary, notified);
+    expect(first.show).toBe(true);
+    expect(first.pathsToRecord.length).toBeGreaterThan(0);
+
+    recordCompletionToastShown("t1", first.pathsToRecord, notified, true);
+
+    const second = shouldShowCompletionToast("t1", summary, notified);
+    expect(second.show).toBe(false);
+  });
+
+  it("shouldShowCompletionToast shows again when follow-up creates new files", () => {
+    const summary1: TaskOutputSummary = {
+      created: ["out/a.html"],
+      primaryOutputPath: "out/a.html",
+      outputCount: 1,
+      folders: ["out"],
+    };
+    const summary2: TaskOutputSummary = {
+      created: ["out/a.html", "out/b.html"],
+      primaryOutputPath: "out/b.html",
+      outputCount: 2,
+      folders: ["out"],
+    };
+    const notified = new Map<string, Set<string>>();
+
+    const first = shouldShowCompletionToast("t1", summary1, notified);
+    expect(first.show).toBe(true);
+    recordCompletionToastShown("t1", first.pathsToRecord, notified, true);
+
+    const second = shouldShowCompletionToast("t1", summary2, notified);
+    expect(second.show).toBe(true);
+    expect(second.pathsToRecord).toContain("out/b.html");
+  });
+
+  it("getAllOutputPathsFromSummary returns created paths", () => {
+    const summary: TaskOutputSummary = {
+      created: ["a/b.html", "a/c.png"],
+      primaryOutputPath: "a/b.html",
+      outputCount: 2,
+      folders: ["a"],
+    };
+    expect(getAllOutputPathsFromSummary(summary)).toEqual(["a/b.html", "a/c.png"]);
   });
 
   it("tracks/clears unseen output ids and completion attention predicates", () => {
