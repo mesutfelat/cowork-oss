@@ -99,6 +99,7 @@ import {
   getToolSemantics as getToolSemanticsUtil,
   isArtifactGenerationToolName as isArtifactGenerationToolNameUtil,
 } from "../tool-semantics";
+import { writeKitFileWithSnapshot } from "../../context/kit-revisions";
 
 function sanitizeFilename(raw: string, maxLen = 120): string {
   const base = path.basename(String(raw || "").trim() || "artifact");
@@ -374,6 +375,9 @@ export class ToolRegistry {
   private denyAllTools = false;
   private shadowedToolsLogged = false;
   private semanticsInvariantLogged = false;
+  private cachedToolDefinitionsKey: string | null = null;
+  private cachedToolDefinitions: LLMTool[] | null = null;
+  private toolDescriptionsCache = new Map<string, string>();
 
   constructor(
     private workspace: Workspace,
@@ -436,6 +440,7 @@ export class ToolRegistry {
     this.deniedTools = new Set();
     this.deniedGroups = new Set();
     this.denyAllTools = false;
+    this.invalidateToolCaches();
     if (!restrictions || restrictions.length === 0) return;
 
     for (const raw of restrictions) {
@@ -456,6 +461,159 @@ export class ToolRegistry {
         this.deniedTools.add(value);
       }
     }
+  }
+
+  private invalidateToolCaches(): void {
+    this.cachedToolDefinitionsKey = null;
+    this.cachedToolDefinitions = null;
+    this.toolDescriptionsCache.clear();
+  }
+
+  private buildToolDefinitionsCacheKey(): string {
+    return JSON.stringify({
+      workspacePath: this.workspace.path,
+      workspaceId: this.workspace.id,
+      shellEnabled: this.workspace.permissions.shell,
+      gatewayContext: this.gatewayContext || null,
+      deniedTools: Array.from(this.deniedTools.values()).sort(),
+      deniedGroups: Array.from(this.deniedGroups.values()).sort(),
+      denyAllTools: this.denyAllTools,
+      headless: isHeadlessMode(),
+      deepWorkMode: this._deepWorkMode,
+    });
+  }
+
+  private buildToolDescriptionsCacheKey(
+    visibleTools?: string[],
+    options?: {
+      skillRoutingQuery?: string;
+      skillShortlistSize?: number;
+      skillLowConfidenceThreshold?: number;
+      skillTextBudgetChars?: number;
+    },
+  ): string {
+    const hash = createHash("sha1");
+    hash.update(this.buildToolDefinitionsCacheKey());
+    if (Array.isArray(visibleTools) && visibleTools.length > 0) {
+      hash.update(JSON.stringify([...visibleTools].map((tool) => tool.trim()).filter(Boolean).sort()));
+    } else {
+      hash.update("__all_tools__");
+    }
+    hash.update(
+      JSON.stringify({
+        skillShortlistSize: options?.skillShortlistSize ?? null,
+        skillLowConfidenceThreshold: options?.skillLowConfidenceThreshold ?? null,
+        skillTextBudgetChars: options?.skillTextBudgetChars ?? null,
+        skillRoutingQueryHash: options?.skillRoutingQuery
+          ? createHash("sha1").update(options.skillRoutingQuery).digest("hex")
+          : null,
+      }),
+    );
+    return hash.digest("hex");
+  }
+
+  private buildCompactToolDescriptions(
+    visibleTools: string[],
+    options?: {
+      skillRoutingQuery?: string;
+      skillShortlistSize?: number;
+      skillLowConfidenceThreshold?: number;
+      skillTextBudgetChars?: number;
+    },
+  ): string {
+    const visibleToolSet = new Set(visibleTools.map((tool) => tool.trim()).filter(Boolean));
+    const allTools = this.getTools();
+    const toolMap = new Map(allTools.map((tool) => [tool.name, tool] as const));
+    const compact = (text: unknown, maxChars = 180): string => {
+      const normalized = String(text || "")
+        .replace(/\s+/g, " ")
+        .trim();
+      if (!normalized) return "No description available.";
+      return normalized.length > maxChars ? `${normalized.slice(0, maxChars - 3)}...` : normalized;
+    };
+
+    const routingHints: string[] = [];
+    if (visibleToolSet.has("glob")) {
+      routingHints.push("Use glob first for file/path discovery.");
+    }
+    if (visibleToolSet.has("grep")) {
+      routingHints.push("Use grep first for content search.");
+    }
+    if (visibleToolSet.has("edit_file")) {
+      routingHints.push("Prefer edit_file over write_file for targeted file changes.");
+    }
+    if (visibleToolSet.has("web_search") && visibleToolSet.has("web_fetch")) {
+      routingHints.push("Use web_search to discover pages, then web_fetch to read specific URLs.");
+    }
+    if (visibleToolSet.has("browser_navigate")) {
+      routingHints.push("Use browser tools only for interactive/JS-heavy pages or screenshots.");
+    }
+    if (visibleToolSet.has("create_diagram")) {
+      routingHints.push("Use create_diagram for diagrams/flowcharts instead of HTML files.");
+    }
+    if (visibleToolSet.has("request_user_input")) {
+      routingHints.push("Use request_user_input only when a required user choice blocks the plan.");
+    }
+    if (visibleToolSet.has("run_command")) {
+      routingHints.push("Use run_command for shell/test/build tasks instead of browser or web tools.");
+    }
+    if (
+      visibleToolSet.has("box_action") ||
+      visibleToolSet.has("dropbox_action") ||
+      visibleToolSet.has("onedrive_action") ||
+      visibleToolSet.has("google_drive_action") ||
+      visibleToolSet.has("sharepoint_action") ||
+      visibleToolSet.has("notion_action")
+    ) {
+      routingHints.push("When cloud storage providers are mentioned, prefer connector tools over local filesystem tools.");
+    }
+
+    const orderedVisibleTools = visibleTools
+      .map((toolName) => toolMap.get(toolName))
+      .filter((tool): tool is LLMTool => Boolean(tool));
+
+    const lines = orderedVisibleTools.map(
+      (tool) => `- ${tool.name}: ${compact(tool.description)}`,
+    );
+
+    const sections: string[] = [];
+    if (routingHints.length > 0) {
+      sections.push(`Routing hints:\n- ${routingHints.join("\n- ")}`);
+    }
+    if (lines.length > 0) {
+      sections.push(`Available tools:\n${lines.join("\n")}`);
+    }
+
+    if (visibleToolSet.has("use_skill")) {
+      const skillLoader = getCustomSkillLoader();
+      const availableToolNames = new Set(orderedVisibleTools.map((tool) => tool.name));
+      const resolvedSkillShortlistSize =
+        typeof options?.skillShortlistSize === "number" && Number.isFinite(options.skillShortlistSize)
+          ? Math.min(Math.max(Math.round(options.skillShortlistSize), 1), 200)
+          : parseBoundedIntEnv("COWORK_SKILL_SHORTLIST_SIZE", 20, 1, 200);
+      const resolvedSkillLowConfidenceThreshold =
+        typeof options?.skillLowConfidenceThreshold === "number" &&
+        Number.isFinite(options.skillLowConfidenceThreshold)
+          ? Math.min(Math.max(options.skillLowConfidenceThreshold, 0), 1)
+          : 0.55;
+      const resolvedSkillTextBudgetChars =
+        typeof options?.skillTextBudgetChars === "number" &&
+        Number.isFinite(options.skillTextBudgetChars)
+          ? Math.max(Math.round(options.skillTextBudgetChars), 1500)
+          : parseBoundedIntEnv("COWORK_SKILL_TEXT_BUDGET_CHARS", 12000, 1500, 50000);
+      const skillDescriptions = skillLoader.getSkillDescriptionsForModel({
+        availableToolNames,
+        routingQuery: options?.skillRoutingQuery,
+        shortlistSize: resolvedSkillShortlistSize,
+        lowConfidenceThreshold: resolvedSkillLowConfidenceThreshold,
+        textBudgetChars: resolvedSkillTextBudgetChars,
+      });
+      if (skillDescriptions) {
+        sections.push(`Custom Skills:\n${skillDescriptions}`);
+      }
+    }
+
+    return sections.join("\n\n").trim();
   }
 
   private validateToolSemanticsInvariant(tools: LLMTool[]): void {
@@ -499,6 +657,7 @@ export class ToolRegistry {
   /** Enable deep work mode — extends spawn_agent max_turns cap to 250 */
   setDeepWorkMode(enabled: boolean): void {
     this._deepWorkMode = enabled;
+    this.invalidateToolCaches();
   }
 
   /**
@@ -564,6 +723,7 @@ export class ToolRegistry {
     this.scrapingTools.setWorkspace(workspace);
     this.memoryTools.setWorkspace(workspace);
     this.documentTools.setWorkspace(workspace);
+    this.invalidateToolCaches();
   }
 
   /**
@@ -585,6 +745,7 @@ export class ToolRegistry {
    */
   setGatewayContext(context: GatewayContextType | undefined): void {
     this.gatewayContext = context;
+    this.invalidateToolCaches();
   }
 
   /**
@@ -634,6 +795,11 @@ export class ToolRegistry {
    * Sorts tools by priority (high priority tools first)
    */
   getTools(): LLMTool[] {
+    const cacheKey = this.buildToolDefinitionsCacheKey();
+    if (this.cachedToolDefinitionsKey === cacheKey && this.cachedToolDefinitions) {
+      return this.cachedToolDefinitions.slice();
+    }
+
     const headless = isHeadlessMode();
     const allTools: LLMTool[] = [
       ...this.getFileToolDefinitions(),
@@ -870,7 +1036,7 @@ export class ToolRegistry {
     // Sort tools by priority (high first, then normal, then low)
     // This helps influence which tools the LLM is more likely to choose
     const priorityOrder = { high: 0, normal: 1, low: 2 };
-    filteredTools.sort((a, b) => {
+    const sortedTools = filteredTools.sort((a, b) => {
       // MCP tools always come after built-in tools at the same priority
       const aIsMcp = a.name.startsWith(prefix);
       const bIsMcp = b.name.startsWith(prefix);
@@ -887,6 +1053,10 @@ export class ToolRegistry {
 
       return 0;
     });
+
+    this.cachedToolDefinitionsKey = cacheKey;
+    this.cachedToolDefinitions = sortedTools.slice();
+    return sortedTools.slice();
 
     this.validateToolSemanticsInvariant(filteredTools);
 
@@ -1129,9 +1299,9 @@ export class ToolRegistry {
   }> {
     const currentTask = await this.daemon.getTaskById(this.taskId);
     const mode = currentTask?.agentConfig?.executionMode ?? "execute";
-    if (mode !== "propose") {
+    if (mode !== "plan") {
       throw new Error(
-        'Tool "request_user_input" is only available in propose mode. Switch mode to propose and retry.',
+        'Tool "request_user_input" is only available in plan mode. Switch mode to plan and retry.',
       );
     }
 
@@ -1276,6 +1446,12 @@ export class ToolRegistry {
       skillTextBudgetChars?: number;
     },
   ): string {
+    const cacheKey = this.buildToolDescriptionsCacheKey(visibleTools, options);
+    const cached = this.toolDescriptionsCache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     const visibleToolSet = visibleTools?.length
       ? new Set(visibleTools.map((tool) => tool.trim()).filter(Boolean))
       : null;
@@ -1283,6 +1459,12 @@ export class ToolRegistry {
       !visibleToolSet || visibleToolSet.has(toolName);
     const hasAnyVisibleTools = (...toolNames: string[]): boolean =>
       !visibleToolSet || toolNames.some((toolName) => isVisible(toolName));
+
+    if (visibleTools?.length) {
+      const compactDescriptions = this.buildCompactToolDescriptions(visibleTools, options);
+      this.toolDescriptionsCache.set(cacheKey, compactDescriptions);
+      return compactDescriptions;
+    }
 
     const googleWorkspaceEnabled =
       GmailTools.isEnabled() || GoogleCalendarTools.isEnabled() || GoogleDriveTools.isEnabled();
@@ -1546,7 +1728,7 @@ Channel Message Log (Local Gateway):
 
 		Plan Control:
 		- revise_plan: Modify remaining plan steps when obstacles are encountered or new information discovered
-		- request_user_input: Ask the user a structured multiple-choice question set (propose mode only) and wait for selection.
+		- request_user_input: Ask the user a structured multiple-choice question set (plan mode only) and wait for selection.
 		- task_history: Query recent task history/messages (use for "what did we talk about yesterday?")
 		- switch_workspace: Switch to a different workspace/working directory. Use when you need to work in a different folder.
 		- integration_setup: List/inspect/configure Tier-1 integrations from chat (resend/slack/gmail/google-calendar/google-drive/google-workspace/jira/linear/hubspot/salesforce/zendesk/servicenow/outreach/docusign), including plan_hash stale-plan safety and optional OAuth setup.
@@ -1591,7 +1773,9 @@ Custom Skills (invoke with use_skill tool):
 ${skillDescriptions}`;
     }
 
-    return descriptions.trim();
+    const finalDescriptions = descriptions.trim();
+    this.toolDescriptionsCache.set(cacheKey, finalDescriptions);
+    return finalDescriptions;
   }
 
   /**
@@ -2282,13 +2466,14 @@ ${skillDescriptions}`;
         );
       }
 
-      // Handle image content from MCP tools (e.g., take_screenshot)
+      // Handle image/video content from MCP tools and persist them as workspace artifacts.
       const savedImageFilenames: string[] = [];
+      const savedVideoFilenames: string[] = [];
       for (const content of result.content) {
-        if (content.type === "image" && content.data) {
-          // Save inline image to workspace
+        if ((content.type === "image" || content.type === "video") && content.data) {
           const mimeType: string | undefined = content.mimeType || undefined;
-          const ext = guessExtFromMime(mimeType) || ".png";
+          const defaultExt = content.type === "video" ? ".mp4" : ".png";
+          const ext = guessExtFromMime(mimeType) || defaultExt;
           const rawNameCandidate =
             typeof input?.filePath === "string" && input.filePath.trim()
               ? path.basename(input.filePath)
@@ -2312,23 +2497,31 @@ ${skillDescriptions}`;
           }
 
           try {
-            const imageBuffer = Buffer.from(content.data, "base64");
-            await fsPromises.writeFile(outputPath, imageBuffer);
+            const mediaBuffer = Buffer.from(content.data, "base64");
+            await fsPromises.writeFile(outputPath, mediaBuffer);
 
-            // Emit file_created event
             this.daemon.logEvent(this.taskId, "file_created", {
               path: filename,
-              type: "screenshot",
+              type: content.type === "video" ? "video" : "screenshot",
               source: "mcp",
+              mimeType,
             });
 
-            // Register as artifact
-            this.daemon.registerArtifact(this.taskId, outputPath, mimeType || "image/png");
-            savedImageFilenames.push(filename);
+            this.daemon.registerArtifact(
+              this.taskId,
+              outputPath,
+              mimeType || (content.type === "video" ? "video/mp4" : "image/png"),
+            );
 
-            console.log(`[ToolRegistry] Saved MCP image artifact: ${filename}`);
+            if (content.type === "video") {
+              savedVideoFilenames.push(filename);
+            } else {
+              savedImageFilenames.push(filename);
+            }
+
+            console.log(`[ToolRegistry] Saved MCP ${content.type} artifact: ${filename}`);
           } catch (error) {
-            console.error(`[ToolRegistry] Failed to save MCP image:`, error);
+            console.error(`[ToolRegistry] Failed to save MCP ${content.type}:`, error);
           }
         }
       }
@@ -2340,8 +2533,11 @@ ${skillDescriptions}`;
 
       if (textParts.length > 0) {
         const baseText = textParts.join("\n");
-        if (savedImageFilenames.length > 0) {
-          const suffix = savedImageFilenames.map((f) => `Saved image: ${f}`).join("\n");
+        if (savedImageFilenames.length > 0 || savedVideoFilenames.length > 0) {
+          const suffix = [
+            ...savedImageFilenames.map((f) => `Saved image: ${f}`),
+            ...savedVideoFilenames.map((f) => `Saved video: ${f}`),
+          ].join("\n");
           return `${baseText}\n${suffix}`;
         }
         return baseText;
@@ -6273,9 +6469,7 @@ ${skillDescriptions}`;
       }
     }
 
-    const tmpPath = vibesPath + ".tmp";
-    fs.writeFileSync(tmpPath, next, "utf8");
-    fs.renameSync(tmpPath, vibesPath);
+    writeKitFileWithSnapshot(vibesPath, next, "agent", "tool:set_vibes");
 
     console.log(`[ToolRegistry] Vibes updated: mode=${input.mode} energy=${energy}`);
 
@@ -6409,9 +6603,7 @@ ${skillDescriptions}`;
       }
     }
 
-    const tmpPath = lorePath + ".tmp";
-    fs.writeFileSync(tmpPath, current, "utf8");
-    fs.renameSync(tmpPath, lorePath);
+    writeKitFileWithSnapshot(lorePath, current, "agent", "tool:update_lore");
 
     console.log(`[ToolRegistry] Lore updated (${section}): ${sanitized.slice(0, 60)}`);
 
@@ -7575,7 +7767,7 @@ ${skillDescriptions}`;
         name: "request_user_input",
         description:
           "Ask the user a structured multiple-choice question set and block until they respond. " +
-          "Use only in propose mode when a decision materially changes the implementation plan.",
+          "Use only in plan mode when a decision materially changes the implementation plan.",
         input_schema: {
           type: "object",
           properties: {
