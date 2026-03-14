@@ -3788,9 +3788,10 @@ export const CUSTOM_LLM_PROVIDER_TYPES = [
   "venice",
   "synthetic",
   "kimi-code",
-  "kimi-coding",
-  "anthropic-compatible",
-] as const;
+   "kimi-coding",
+   "novita",
+   "anthropic-compatible",
+ ] as const;
 
 export const LLM_PROVIDER_TYPES = [
   ...BUILTIN_LLM_PROVIDER_TYPES,
@@ -3815,8 +3816,9 @@ export const MULTI_LLM_PROVIDER_DISPLAY: Record<
   xai: { name: "xAI", icon: "\u{1F4A0}", color: "#ef4444" },
   kimi: { name: "Kimi", icon: "\u{1F319}", color: "#a855f7" },
   pi: { name: "Pi", icon: "\u{1F7E3}", color: "#ec4899" },
-  "openai-compatible": { name: "OpenAI-Compatible", icon: "\u{1F517}", color: "#64748b" },
-};
+   "openai-compatible": { name: "OpenAI-Compatible", icon: "\u{1F517}", color: "#64748b" },
+   novita: { name: "Novita", icon: "\u{1F680}", color: "#3b82f6" },
+ };
 
 export interface CachedModelInfo {
   key: string;
