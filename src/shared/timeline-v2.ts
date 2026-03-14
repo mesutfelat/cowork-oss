@@ -315,6 +315,86 @@ function toEvidenceRefs(payload: Record<string, unknown>, timestamp: number): Ev
   return refs;
 }
 
+/**
+ * Returns a user-facing sub-stage label for events that map to BUILD, FIX, or other stages.
+ * Used to show more specific progress in the UI instead of generic stage labels.
+ */
+export function inferTimelineSubStageLabel(type: EventType): string | undefined {
+  switch (type) {
+    // BUILD: file operations
+    case "file_created":
+      return "Creating file";
+    case "file_modified":
+      return "Modifying file";
+    case "file_deleted":
+      return "Deleting file";
+    // Preflight / workspace setup (early in task)
+    case "workspace_path_alias_normalized":
+    case "task_path_root_pinned":
+    case "task_path_rewrite_applied":
+      return "Preparing workspace";
+    case "verification_preflight_policy_applied":
+    case "verification_text_checklist_evaluated":
+    case "verification_mode_selected":
+      return "Preparing verification";
+    // Recovery (something went wrong, retrying)
+    case "step_failed":
+    case "tool_error":
+    case "mutation_checkpoint_retry_applied":
+      return "Applying fixes";
+    case "retry_started":
+      return "Retrying";
+    case "workspace_path_alias_recovery_attempted":
+    case "workspace_path_alias_recovery_failed":
+    case "task_path_recovery_attempted":
+    case "task_path_recovery_failed":
+    case "workspace_boundary_recovery":
+      return "Restoring workspace";
+    // Context / continuation
+    case "continuation_decision":
+    case "auto_continuation_blocked":
+      return "Preparing next steps";
+    case "auto_continuation_started":
+      return "Continuing";
+    case "context_compaction_started":
+    case "context_compaction_completed":
+    case "context_compaction_failed":
+      return "Making room to continue";
+    // Plan / contract reconciliation
+    case "step_contract_escalated":
+    case "plan_contract_conflict":
+    case "step_contract_satisfied_by_prior_mutation":
+    case "mutation_duplicate_bypass_applied":
+    case "step_contract_reconciled_posthoc":
+      return "Adjusting approach";
+    case "execution_mode_auto_promoted":
+    case "required_tool_inference_decision":
+      return "Adapting to changes";
+    // Verification-related
+    case "verification_failed":
+    case "verification_checklist_evaluated":
+    case "verification_artifact_output_downgraded":
+    case "verification_missing_artifact_ignored":
+      return "Verifying results";
+    // Follow-up / turn / protocol
+    case "follow_up_tool_lock_forced_finalization":
+      return "Finalizing";
+    case "tool_protocol_violation":
+    case "tool_disable_suppressed_recoverable_path_drift":
+      return "Resolving protocol issue";
+    case "turn_window_soft_exhausted":
+    case "follow_up_turn_recovery_started":
+    case "follow_up_turn_recovery_completed":
+    case "follow_up_turn_recovery_blocked":
+    case "safety_stop_triggered":
+    case "turn_policy_selected":
+    case "no_progress_circuit_breaker":
+      return "Managing workflow";
+    default:
+      return undefined;
+  }
+}
+
 export function inferTimelineStageForLegacyType(type: EventType): TimelineStage | undefined {
   switch (type) {
     case "task_created":
