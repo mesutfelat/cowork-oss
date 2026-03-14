@@ -149,12 +149,12 @@ describe("role-persona", () => {
     );
 
     expect(prompt).toContain("ROLE PROFILE");
-    expect(prompt).toContain("Role Vibes");
+    expect(prompt).toContain("Current Operating Mode");
     expect(prompt).toContain(".cowork/agents/qa-analyst/VIBES.md");
     expect(prompt).toContain("Mode: crunch");
   });
 
-  it("loads VIBES.md before SOUL.md in role profile output", () => {
+  it("loads SOUL.md before VIBES.md in role profile output", () => {
     writeFile(
       path.join(tmpDir, ".cowork", "agents", "qa-analyst", "VIBES.md"),
       "# Vibes\n\n- Mode: deep-focus",
@@ -171,10 +171,10 @@ describe("role-persona", () => {
       tmpDir,
     );
 
-    const vibesIdx = prompt.indexOf("Role Vibes");
-    const soulIdx = prompt.indexOf("Role Persona");
-    expect(vibesIdx).toBeGreaterThan(-1);
+    const soulIdx = prompt.indexOf("Workspace Persona");
+    const vibesIdx = prompt.indexOf("Current Operating Mode");
     expect(soulIdx).toBeGreaterThan(-1);
-    expect(vibesIdx).toBeLessThan(soulIdx);
+    expect(vibesIdx).toBeGreaterThan(-1);
+    expect(soulIdx).toBeLessThan(vibesIdx);
   });
 });
