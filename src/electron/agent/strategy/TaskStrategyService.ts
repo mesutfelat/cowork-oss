@@ -250,7 +250,7 @@ export class TaskStrategyService {
 
     // Strict execute gate:
     // - Always execute for explicit execution/workflow/deep-work intents
-    // - For mixed intent, require hard execution cues; otherwise keep propose mode
+    // - For mixed intent, require hard execution cues; otherwise keep plan mode
     const inferredExecutionMode: ExecutionMode =
       route.intent === "execution" ||
       route.intent === "workflow" ||
@@ -261,13 +261,13 @@ export class TaskStrategyService {
         ? "execute"
         : route.intent === "chat"
           ? "analyze"
-          : "propose";
+          : "plan";
     const existingExecutionMode = existing?.executionMode;
     // Verified mode is always user-selected; preserve it and force planning.
     if (existingExecutionMode === "verified") {
       preflightRequired = true;
     }
-    // Keep explicit non-execute overrides (propose/analyze/verified), but do not let a
+    // Keep explicit non-execute overrides (plan/analyze/verified), but do not let a
     // stale default `execute` force non-execution intents into full task mode.
     const executionMode =
       existingExecutionMode && (existingExecutionMode !== "execute" || inferredExecutionMode === "execute")
@@ -502,8 +502,8 @@ export class TaskStrategyService {
     if (strategy.executionMode !== "execute") {
       lines.push(
         "mode_contract:",
-        strategy.executionMode === "propose"
-          ? "- You are in propose mode: provide plans/options and avoid mutating tool calls."
+        strategy.executionMode === "plan"
+          ? "- You are in plan mode: provide plans/options and avoid mutating tool calls."
           : "- You are in analyze mode: stay read-only and provide analysis from available evidence.",
       );
     }
