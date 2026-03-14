@@ -208,11 +208,26 @@ export const CUSTOM_PROVIDER_CATALOG: ProviderCatalogEntry[] = [
     compatibility: "anthropic",
     baseUrl: "http://localhost:4000",
     defaultModel: "claude-sonnet-4-6",
-    apiKeyLabel: "API Key",
-    apiKeyPlaceholder: "sk-...",
-    requiresBaseUrl: true,
-  },
-];
+     apiKeyLabel: "API Key",
+     apiKeyPlaceholder: "sk-...",
+     requiresBaseUrl: true,
+   },
+   {
+     id: "novita",
+     name: "Novita",
+     compatibility: "openai",
+     baseUrl: "https://api.novita.ai/openai",
+     defaultModel: "deepseek/deepseek-v3.2",
+     knownModels: [
+       "deepseek/deepseek-v3.2",
+       "zai-org/glm-5",
+       "minimax/minimax-m2.5",
+     ],
+     apiKeyLabel: "API Key",
+     apiKeyPlaceholder: "sk...",
+     apiKeyUrl: "https://novita.ai/settings/api-keys",
+   },
+ ];
 
 export const CUSTOM_PROVIDER_MAP = new Map(
   CUSTOM_PROVIDER_CATALOG.map((provider) => [provider.id, provider]),

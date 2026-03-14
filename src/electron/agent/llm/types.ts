@@ -46,10 +46,11 @@ export interface LLMProviderConfig {
   // Kimi-specific
   kimiApiKey?: string;
   kimiBaseUrl?: string;
-  // Pi-specific (uses pi-ai unified LLM API)
-  piProvider?: string; // pi-ai KnownProvider (e.g. 'anthropic', 'openai', 'google')
+   // Pi-specific (uses pi-ai unified LLM API)
+   piProvider?: string; // pi-ai KnownProvider (e.g. 'anthropic', 'openai', 'google')
   piApiKey?: string;
-  // OpenAI-compatible endpoint
+  novitaApiKey?: string;
+  novitaBaseUrl?: string;
   openaiCompatibleApiKey?: string;
   openaiCompatibleBaseUrl?: string;
   // Generic provider support
@@ -154,8 +155,9 @@ export const PROVIDER_IMAGE_CAPS: Record<string, LLMProviderImageCaps> = {
   },
   groq: { supportsImages: false, maxImageBytes: 0, supportedMimeTypes: [] },
   kimi: { supportsImages: false, maxImageBytes: 0, supportedMimeTypes: [] },
-  pi: { supportsImages: false, maxImageBytes: 0, supportedMimeTypes: [] },
-};
+   pi: { supportsImages: false, maxImageBytes: 0, supportedMimeTypes: [] },
+   novita: { supportsImages: false, maxImageBytes: 0, supportedMimeTypes: [] },
+ };
 
 export interface LLMToolResult {
   type: "tool_result";
@@ -521,3 +523,24 @@ export type OllamaModelKey = keyof typeof OLLAMA_MODELS;
 export type ModelKey = keyof typeof MODELS;
 
 export const DEFAULT_MODEL: ModelKey = "opus-4-5";
+
+
+export const NOVITA_MODELS = {
+  "deepseek-v3.2": {
+    id: "deepseek/deepseek-v3.2",
+    displayName: "DeepSeek V3.2",
+    description: "DeepSeek's latest model",
+  },
+  "glm-5": {
+    id: "zai-org/glm-5",
+    displayName: "GLM-5",
+    description: "Zhipu GLM-5 model",
+  },
+  "minimax-m2.5": {
+    id: "minimax/minimax-m2.5",
+    displayName: "MiniMax M2.5",
+    description: "MiniMax M2.5 model",
+  },
+} as const;
+
+export type NovitaModelKey = keyof typeof NOVITA_MODELS;

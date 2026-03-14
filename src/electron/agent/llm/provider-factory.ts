@@ -10,13 +10,14 @@ import {
   GEMINI_MODELS,
   OPENROUTER_MODELS,
   OLLAMA_MODELS,
-  GROQ_MODELS,
-  XAI_MODELS,
-  KIMI_MODELS,
-  ModelKey,
-  DEFAULT_MODEL,
-  DEFAULT_PI_MODEL,
-} from "./types";
+   GROQ_MODELS,
+   XAI_MODELS,
+   KIMI_MODELS,
+   NOVITA_MODELS,
+   ModelKey,
+   DEFAULT_MODEL,
+   DEFAULT_PI_MODEL,
+ } from "./types";
 import { AnthropicProvider } from "./anthropic-provider";
 import { BedrockProvider } from "./bedrock-provider";
 import { OllamaProvider } from "./ollama-provider";
@@ -26,9 +27,10 @@ import { OpenAIProvider } from "./openai-provider";
 import { AzureOpenAIProvider } from "./azure-openai-provider";
 import { GroqProvider } from "./groq-provider";
 import { XAIProvider } from "./xai-provider";
-import { KimiProvider } from "./kimi-provider";
-import { PiProvider } from "./pi-provider";
-import { AnthropicCompatibleProvider } from "./anthropic-compatible-provider";
+ import { KimiProvider } from "./kimi-provider";
+ import { PiProvider } from "./pi-provider";
+ import { NovitaProvider } from "./novita-provider";
+ import { AnthropicCompatibleProvider } from "./anthropic-compatible-provider";
 import { OpenAICompatibleProvider } from "./openai-compatible-provider";
 import { GitHubCopilotProvider } from "./github-copilot-provider";
 import { SecureSettingsRepository } from "../../database/SecureSettingsRepository";
@@ -592,9 +594,16 @@ function sanitizeSettings(settings: LLMSettings): LLMSettings {
       ...sanitized.pi,
       apiKey: decryptSecret(sanitized.pi.apiKey),
     };
-  }
+   }
 
-  if (sanitized.customProviders) {
+   if (sanitized.novita) {
+     sanitized.novita = {
+       ...sanitized.novita,
+       apiKey: decryptSecret(sanitized.novita.apiKey),
+     };
+   }
+
+   if (sanitized.customProviders) {
     const normalized: Record<string, CustomProviderConfig> = {};
     for (const [key, value] of Object.entries(sanitized.customProviders)) {
       normalized[key] = {
@@ -689,13 +698,18 @@ export interface LLMSettings {
     apiKey?: string;
     model?: string;
     baseUrl?: string;
-  } & ProviderRoutingSettings;
-  pi?: {
-    provider?: string; // pi-ai KnownProvider
-    apiKey?: string;
-    model?: string;
-  } & ProviderRoutingSettings;
-  openaiCompatible?: {
+   } & ProviderRoutingSettings;
+   pi?: {
+     provider?: string; // pi-ai KnownProvider
+     apiKey?: string;
+     model?: string;
+   } & ProviderRoutingSettings;
+   novita?: {
+     apiKey?: string;
+     model?: string;
+     baseUrl?: string;
+   } & ProviderRoutingSettings;
+   openaiCompatible?: {
     apiKey?: string;
     baseUrl?: string;
     model?: string;
@@ -708,9 +722,10 @@ export interface LLMSettings {
   cachedBedrockModels?: CachedModelInfo[];
   cachedOpenAIModels?: CachedModelInfo[];
   cachedGroqModels?: CachedModelInfo[];
-  cachedXaiModels?: CachedModelInfo[];
-  cachedKimiModels?: CachedModelInfo[];
-  cachedPiModels?: CachedModelInfo[];
+   cachedXaiModels?: CachedModelInfo[];
+   cachedKimiModels?: CachedModelInfo[];
+   cachedNovitaModels?: CachedModelInfo[];
+   cachedPiModels?: CachedModelInfo[];
   cachedOpenAICompatibleModels?: CachedModelInfo[];
 }
 
@@ -825,10 +840,13 @@ export class LLMProviderFactory {
       case "kimi":
         if (!settings.kimi && createIfMissing) settings.kimi = {};
         return settings.kimi;
-      case "pi":
-        if (!settings.pi && createIfMissing) settings.pi = {};
-        return settings.pi;
-      case "openai-compatible":
+       case "pi":
+         if (!settings.pi && createIfMissing) settings.pi = {};
+         return settings.pi;
+       case "novita":
+         if (!settings.novita && createIfMissing) settings.novita = {};
+         return settings.novita;
+       case "openai-compatible":
         if (!settings.openaiCompatible && createIfMissing) settings.openaiCompatible = {};
         return settings.openaiCompatible;
       default:
@@ -868,19 +886,20 @@ export class LLMProviderFactory {
       }
     };
 
-    applyDefaults(next.providerType, true);
-    if (next.anthropic) applyDefaults("anthropic");
-    if (next.bedrock) applyDefaults("bedrock");
-    if (next.ollama) applyDefaults("ollama");
-    if (next.gemini) applyDefaults("gemini");
-    if (next.openrouter) applyDefaults("openrouter");
-    if (next.openai) applyDefaults("openai");
-    if (next.azure) applyDefaults("azure");
-    if (next.groq) applyDefaults("groq");
-    if (next.xai) applyDefaults("xai");
-    if (next.kimi) applyDefaults("kimi");
-    if (next.pi) applyDefaults("pi");
-    if (next.openaiCompatible) applyDefaults("openai-compatible");
+     applyDefaults(next.providerType, true);
+     if (next.anthropic) applyDefaults("anthropic");
+     if (next.bedrock) applyDefaults("bedrock");
+     if (next.ollama) applyDefaults("ollama");
+     if (next.gemini) applyDefaults("gemini");
+     if (next.openrouter) applyDefaults("openrouter");
+     if (next.openai) applyDefaults("openai");
+     if (next.azure) applyDefaults("azure");
+     if (next.groq) applyDefaults("groq");
+     if (next.xai) applyDefaults("xai");
+     if (next.kimi) applyDefaults("kimi");
+     if (next.novita) applyDefaults("novita");
+     if (next.pi) applyDefaults("pi");
+     if (next.openaiCompatible) applyDefaults("openai-compatible");
 
     if (next.customProviders) {
       for (const customProviderType of Object.keys(next.customProviders)) {
@@ -1200,10 +1219,13 @@ export class LLMProviderFactory {
     if (settings.xai?.apiKey) {
       return "xai";
     }
-    if (settings.kimi?.apiKey) {
-      return "kimi";
-    }
-    if (settings.bedrock?.accessKeyId || settings.bedrock?.profile) {
+     if (settings.kimi?.apiKey) {
+       return "kimi";
+     }
+     if (settings.novita?.apiKey) {
+       return "novita";
+     }
+     if (settings.bedrock?.accessKeyId || settings.bedrock?.profile) {
       return "bedrock";
     }
     if (settings.ollama?.baseUrl || settings.ollama?.model) {
@@ -1280,13 +1302,14 @@ export class LLMProviderFactory {
           providerType,
           settings.ollama?.model,
           settings.gemini?.model,
-          settings.openrouter?.model,
-          settings.openai?.model,
-          azureDeployment,
-          settings.groq?.model,
-          settings.xai?.model,
-          settings.kimi?.model,
-          settings.customProviders,
+           settings.openrouter?.model,
+           settings.openai?.model,
+           azureDeployment,
+           settings.groq?.model,
+           settings.xai?.model,
+           settings.kimi?.model,
+           settings.novita?.model,
+           settings.customProviders,
           settings.bedrock?.model,
         ),
       // Anthropic config - from settings only
@@ -1329,11 +1352,12 @@ export class LLMProviderFactory {
       // Kimi config - from settings only
       kimiApiKey: normalizeSecret(overrideConfig?.kimiApiKey) || settings.kimi?.apiKey,
       kimiBaseUrl: overrideConfig?.kimiBaseUrl || settings.kimi?.baseUrl,
-      // Pi config - from settings only
-      piProvider: overrideConfig?.piProvider || settings.pi?.provider,
-      piApiKey: normalizeSecret(overrideConfig?.piApiKey) || settings.pi?.apiKey,
-      // OpenAI-compatible config - from settings only
-      openaiCompatibleApiKey:
+       // Pi config - from settings only
+       piProvider: overrideConfig?.piProvider || settings.pi?.provider,
+       piApiKey: normalizeSecret(overrideConfig?.piApiKey) || settings.pi?.apiKey,
+       novitaApiKey: normalizeSecret(overrideConfig?.novitaApiKey) || settings.novita?.apiKey,
+       novitaBaseUrl: overrideConfig?.novitaBaseUrl || settings.novita?.baseUrl,
+       openaiCompatibleApiKey:
         normalizeSecret(overrideConfig?.openaiCompatibleApiKey) ||
         settings.openaiCompatible?.apiKey,
       openaiCompatibleBaseUrl:
@@ -1390,10 +1414,13 @@ export class LLMProviderFactory {
       case "kimi":
         provider = new KimiProvider(config);
         break;
-      case "pi":
-        provider = new PiProvider(config);
-        break;
-      case "openai-compatible":
+       case "pi":
+         provider = new PiProvider(config);
+         break;
+       case "novita":
+         provider = new NovitaProvider(config);
+         break;
+       case "openai-compatible":
         provider = new OpenAICompatibleProvider({
           type: "openai-compatible",
           providerName: "OpenAI-Compatible",
@@ -1412,20 +1439,21 @@ export class LLMProviderFactory {
   /**
    * Get the model ID for a provider
    */
-  static getModelId(
-    modelKey: ModelKey | string,
-    providerType: LLMProviderType,
-    ollamaModel?: string,
-    geminiModel?: string,
-    openrouterModel?: string,
-    openaiModel?: string,
-    azureDeployment?: string,
-    groqModel?: string,
-    xaiModel?: string,
-    kimiModel?: string,
-    customProviders?: Record<string, CustomProviderConfig>,
-    bedrockModel?: string,
-  ): string {
+   static getModelId(
+     modelKey: ModelKey | string,
+     providerType: LLMProviderType,
+     ollamaModel?: string,
+     geminiModel?: string,
+     openrouterModel?: string,
+     openaiModel?: string,
+     azureDeployment?: string,
+     groqModel?: string,
+     xaiModel?: string,
+     kimiModel?: string,
+     novitaModel?: string,
+     customProviders?: Record<string, CustomProviderConfig>,
+     bedrockModel?: string,
+   ): string {
     const customEntry = getCustomProviderEntry(providerType);
     if (customEntry) {
       const customConfig = getCustomProviderConfig(customProviders, providerType);
@@ -1469,11 +1497,15 @@ export class LLMProviderFactory {
 
     // For Kimi, use the specific model if provided or default
     if (providerType === "kimi") {
-      return kimiModel || "kimi-k2.5";
-    }
+       return kimiModel || "kimi-k2.5";
+     }
 
-    // For Pi, use the specific model from settings
-    if (providerType === "pi") {
+     if (providerType === "novita") {
+       const settings = this.loadSettings();
+       return settings.novita?.model || "deepseek/deepseek-v3.2";
+     }
+
+     if (providerType === "pi") {
       const settings = this.loadSettings();
       return settings.pi?.model || DEFAULT_PI_MODEL;
     }
@@ -1508,13 +1540,40 @@ export class LLMProviderFactory {
       }
     }
 
-    // For other providers, look up in MODELS
-    const model = MODELS[modelKey as ModelKey];
-    if (!model) {
-      throw new Error(`Unknown model: ${modelKey}`);
-    }
-    return model[providerType as "anthropic" | "bedrock"];
-  }
+     }
+
+     // For other providers, look up in MODELS or use fallback
+     const model = MODELS[modelKey as ModelKey];
+     if (!model) {
+       throw new Error(`Unknown model: ${modelKey}`);
+      }
+     if (providerType === "bedrock") {
+       if (modelKey.startsWith("us.") || modelKey.startsWith("anthropic.")) {
+         return modelKey;
+       }
+       return this.getModelId(
+         modelKey,
+         providerType,
+         settings.ollama?.model,
+         settings.gemini?.model,
+         settings.openrouter?.model,
+         settings.openai?.model,
+         azureDeployment,
+         settings.groq?.model,
+         settings.xai?.model,
+         settings.kimi?.model,
+         settings.novita?.model,
+         settings.customProviders,
+         source === "provider_default" ? settings.bedrock?.model : undefined,
+       );
+     }
+
+     if (providerType === "novita") {
+       return settings.novita?.model || "deepseek/deepseek-v3.2";
+     }
+
+     return modelKey;
+   }
 
   /**
    * Get display name for a model
@@ -1713,9 +1772,10 @@ export class LLMProviderFactory {
           settings.openrouter?.model === storedModel ||
           settings.ollama?.model === storedModel ||
           settings.groq?.model === storedModel ||
-          settings.xai?.model === storedModel ||
-          settings.kimi?.model === storedModel ||
-          settings.openaiCompatible?.model === storedModel);
+           settings.xai?.model === storedModel ||
+           settings.kimi?.model === storedModel ||
+           settings.novita?.model === storedModel ||
+           settings.openaiCompatible?.model === storedModel);
       const currentModel =
         (!isFromAnotherProvider && storedModel) || customEntry.defaultModel || "";
       const cachedModels =
@@ -1924,25 +1984,41 @@ export class LLMProviderFactory {
         };
       }
 
-      case "pi": {
-        const currentModel = settings.pi?.model || DEFAULT_PI_MODEL;
-        const modelList =
-          settings.cachedPiModels && settings.cachedPiModels.length > 0
-            ? settings.cachedPiModels
-            : [
-                {
-                  key: currentModel,
-                  displayName: currentModel,
-                  description: "Selected Pi model",
-                },
-              ];
-        return {
-          currentModel,
-          models: ensureCurrentModel(modelList, currentModel, "Selected Pi model"),
-        };
-      }
+       case "pi": {
+         const currentModel = settings.pi?.model || DEFAULT_PI_MODEL;
+         const modelList =
+           settings.cachedPiModels && settings.cachedPiModels.length > 0
+             ? settings.cachedPiModels
+             : [
+                 {
+                   key: currentModel,
+                   displayName: currentModel,
+                   description: "Selected Pi model",
+                 },
+               ];
+         return {
+           currentModel,
+           models: ensureCurrentModel(modelList, currentModel, "Selected Pi model"),
+         };
+       }
 
-      case "openai-compatible": {
+       case "novita": {
+         const currentModel = settings.novita?.model || "deepseek/deepseek-v3.2";
+         const modelList =
+           settings.cachedNovitaModels && settings.cachedNovitaModels.length > 0
+             ? settings.cachedNovitaModels
+             : Object.entries(NOVITA_MODELS).map(([key, value]) => ({
+                 key,
+                 displayName: value.displayName,
+                 description: value.description,
+               }));
+         return {
+           currentModel,
+           models: ensureCurrentModel(modelList, currentModel),
+         };
+       }
+
+       case "openai-compatible": {
         const currentModel = settings.openaiCompatible?.model || "";
         const modelList =
           settings.cachedOpenAICompatibleModels && settings.cachedOpenAICompatibleModels.length > 0
