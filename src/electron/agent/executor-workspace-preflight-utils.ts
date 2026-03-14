@@ -51,20 +51,14 @@ export function preflightWorkspaceCheck<W extends WorkspaceLike>(opts: {
   const looksLikeProject = signals.hasProjectMarkers || signals.hasCodeFiles || signals.hasAppDirs;
   const isTemp = Boolean(opts.workspace.isTemp) || opts.isTempWorkspaceId(opts.workspace.id);
 
+  // When user is in temp workspace (no workspace selected), never auto-switch to another workspace.
+  // The user explicitly chose temp; silently switching to cowork/other would be surprising.
+  // For "ambiguous" prompts, stay in temp. For "needs_existing", pause and ask instead of auto-switching.
   if (isTemp && !looksLikeProject && workspaceNeed === "ambiguous") {
-    opts.tryAutoSwitchToPreferredWorkspaceForAmbiguousTask("ambiguous_temp_workspace");
     return false;
   }
 
   if (isTemp && !looksLikeProject && workspaceNeed === "needs_existing") {
-    if (
-      opts.tryAutoSwitchToPreferredWorkspaceForAmbiguousTask(
-        "required_existing_workspace_auto_switch",
-      )
-    ) {
-      return false;
-    }
-
     opts.pauseForUserInput(
       "I am in the temporary workspace, but this task looks like it targets an existing project. " +
         "Please select the project folder or provide its path so I can switch to it. " +
