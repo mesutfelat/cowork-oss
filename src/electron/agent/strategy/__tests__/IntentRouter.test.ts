@@ -102,4 +102,96 @@ bounded_research=true
     expect(routed.intent).not.toBe("thinking");
     expect(routed.intent).not.toBe("advice");
   });
+
+  describe("redirect intent", () => {
+    it("routes the canonical failure case — 'ignore X fixes, focus on new features'", () => {
+      const prompt =
+        "ignore the openclaw related fixes for its codebase and focus on new features or enhancements";
+      const routed = IntentRouter.route("", prompt);
+      expect(routed.intent).toBe("redirect");
+      expect(routed.conversationMode).toBe("task");
+      expect(routed.signals).toContain("redirect-ignore-pivot");
+    });
+
+    it("routes 'ignore X and do Y' pattern", () => {
+      const routed = IntentRouter.route("", "ignore the bug fixes and work on the dashboard instead");
+      expect(routed.intent).toBe("redirect");
+    });
+
+    it("routes explicit pivot language", () => {
+      const routed = IntentRouter.route("", "let's pivot to building the authentication flow");
+      expect(routed.intent).toBe("redirect");
+      expect(routed.signals).toContain("redirect-explicit-pivot");
+    });
+
+    it("routes change direction language", () => {
+      const routed = IntentRouter.route("", "change direction and focus on the payment module");
+      expect(routed.intent).toBe("redirect");
+    });
+
+    it("routes 'instead of X, focus on Y' contrast pattern", () => {
+      const routed = IntentRouter.route(
+        "",
+        "instead of refactoring the old code, focus on writing new tests",
+      );
+      expect(routed.intent).toBe("redirect");
+      expect(routed.signals).toContain("redirect-contrast");
+    });
+
+    it("routes 'rather than X, do Y' pattern", () => {
+      const routed = IntentRouter.route(
+        "",
+        "rather than fixing the existing bugs, build the new feature",
+      );
+      expect(routed.intent).toBe("redirect");
+    });
+
+    it("routes 'forget that, work on X instead' negate-and-pivot pattern", () => {
+      const routed = IntentRouter.route("", "forget that approach and instead focus on the API layer");
+      expect(routed.intent).toBe("redirect");
+      expect(routed.signals).toContain("redirect-negate-pivot");
+    });
+
+    it("routes 'don't do X, focus on Y' negate-and-pivot pattern", () => {
+      const routed = IntentRouter.route(
+        "",
+        "don't fix the styling issues, focus on the backend logic instead",
+      );
+      expect(routed.intent).toBe("redirect");
+    });
+
+    it("routes scope-narrowing 'focus only on Y' pattern", () => {
+      const routed = IntentRouter.route("", "focus only on the new features, not the old bugs");
+      expect(routed.intent).toBe("redirect");
+      expect(routed.signals).toContain("redirect-scope-narrow");
+    });
+
+    it("always maps redirect intent to task conversationMode", () => {
+      const prompts = [
+        "ignore X and focus on Y",
+        "pivot to building the new module",
+        "instead of X do Y",
+        "forget that and concentrate on new features",
+      ];
+      for (const prompt of prompts) {
+        const routed = IntentRouter.route("", prompt);
+        if (routed.intent === "redirect") {
+          expect(routed.conversationMode).toBe("task");
+        }
+      }
+    });
+
+    it("does not incorrectly route simple chat messages as redirect", () => {
+      const chatMessages = ["hello", "thanks for the help", "how are you?", "what did you find?"];
+      for (const msg of chatMessages) {
+        const routed = IntentRouter.route("", msg);
+        expect(routed.intent).not.toBe("redirect");
+      }
+    });
+
+    it("does not incorrectly route plain execution tasks as redirect", () => {
+      const routed = IntentRouter.route("", "build a REST API for user authentication");
+      expect(routed.intent).not.toBe("redirect");
+    });
+  });
 });
