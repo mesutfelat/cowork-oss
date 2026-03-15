@@ -61,10 +61,22 @@ export function shouldShowTimelineBranchStub(event: TaskEvent): boolean {
   return !groupId.toLowerCase().startsWith("stage:");
 }
 
-export function resolveTimelineIndicator(event: TaskEvent): TimelineIndicatorSpec {
+export interface ResolveTimelineIndicatorOptions {
+  /** When true, past progress events show as completed (no spinner) instead of in-progress */
+  isTaskCompleted?: boolean;
+}
+
+export function resolveTimelineIndicator(
+  event: TaskEvent,
+  options?: ResolveTimelineIndicatorOptions,
+): TimelineIndicatorSpec {
   const effectiveType = getEffectiveTaskEventType(event);
+  const isTaskCompleted = options?.isTaskCompleted ?? false;
 
   if (event.type === "timeline_group_started") {
+    if (isTaskCompleted) {
+      return { icon: Check, tone: "success", label: "Stage completed" };
+    }
     const stage = resolveStage(event.payload);
     const groupLabel = resolveGroupLabel(event.payload);
     const isSubStage = groupLabel && groupLabel.toUpperCase() !== stage;
@@ -140,10 +152,16 @@ export function resolveTimelineIndicator(event: TaskEvent): TimelineIndicatorSpe
     effectiveType === "progress_update" ||
     effectiveType === "executing"
   ) {
+    if (isTaskCompleted) {
+      return { icon: Check, tone: "success", label: "Completed" };
+    }
     return { icon: Loader2, tone: "active", spin: true, label: "In progress" };
   }
 
   if (event.type === "timeline_step_started" || effectiveType === "step_started") {
+    if (isTaskCompleted) {
+      return { icon: Check, tone: "success", label: "Step completed" };
+    }
     return { icon: Play, tone: "active", label: "Step started" };
   }
 
