@@ -1,4 +1,5 @@
 import { ipcMain, shell, BrowserWindow, app as _app, nativeTheme } from "electron";
+import { normalizeTaskEvents } from "../agent/timeline/timeline-normalizer";
 import * as path from "path";
 import * as fs from "fs/promises";
 import * as fsSync from "fs";
@@ -1974,6 +1975,14 @@ export async function setupIpcHandlers(
       }
     }
     return events.length > maxEvents ? events.slice(-maxEvents) : events;
+  });
+
+  // Semantic timeline projection — normalizer runs on the read path, no DB changes needed
+  ipcMain.handle(IPC_CHANNELS.TASK_SEMANTIC_TIMELINE, async (_, taskId: string) => {
+    const maxEvents = 1200;
+    const events = taskEventRepo.findRecentByTaskId(taskId, maxEvents);
+    const sorted = [...events].sort((a, b) => a.timestamp - b.timestamp);
+    return normalizeTaskEvents(sorted);
   });
 
   // Send follow-up message to a task
