@@ -21,6 +21,9 @@ const DEFAULT_SETTINGS: ImprovementLoopSettings = {
   maxQueuedImprovementCampaigns: 1,
   maxOpenCandidatesPerWorkspace: 25,
   requireWorktree: true,
+  requireRepoChecks: true,
+  enforcePatchScope: true,
+  maxPatchFiles: 8,
   reviewRequired: false,
   judgeRequired: false,
   promotionMode: "github_pr",
@@ -250,6 +253,7 @@ export function ImprovementSettingsPanel(props?: {
   );
   const eligibilityBlocked = !eligibility.eligible;
   const ownerEnrollmentStored = eligibility.checks.ownerEnrollment || eligibility.checks.ownerProofPresent;
+  const worktreeForcedByVariants = settings.variantsPerCampaign > 1;
 
   useEffect(() => {
     void loadAll();
@@ -317,6 +321,11 @@ export function ImprovementSettingsPanel(props?: {
       setBusy(true);
       const saved = await window.electronAPI.saveImprovementSettings(next);
       setSettings(saved);
+      if (saved.variantsPerCampaign > 1 && !next.requireWorktree && saved.requireWorktree) {
+        setActionMessage(
+          "Worktree isolation was enabled automatically because multi-variant campaigns require isolated worktrees.",
+        );
+      }
       if ((updates.enabled || updates.autoRun) && !eligibility.eligible) {
         setActionMessage(eligibility.reason);
       }
@@ -558,7 +567,7 @@ export function ImprovementSettingsPanel(props?: {
           Cowork watches failed tasks, verification failures, user feedback, and optional dev logs to build a backlog of recurring issues.
         </HintBlock>
         <HintBlock title="2. Campaign">
-          For the top candidate, Cowork creates one campaign, runs a scout stage to reproduce the problem, then runs one implementation stage with bounded budgets.
+          For the top candidate, Cowork creates one campaign, runs a scout stage to reproduce the problem, then runs bounded implementation lanes and judges the most promotable result.
         </HintBlock>
         <HintBlock title="3. Judge">
           Campaigns fail closed if reproduction, verification, or PR-readiness evidence is missing. Provider failures park the candidate with cooldown instead of retrying immediately.
@@ -586,10 +595,28 @@ export function ImprovementSettingsPanel(props?: {
         />
         <ToggleRow
           label="Require Worktree Isolation"
-          description="Use git worktrees when available; otherwise the winner applies directly in the workspace."
+          description={
+            worktreeForcedByVariants
+              ? "Automatically required while running multiple variants so each lane gets an isolated checkout."
+              : "Use git worktrees when available; otherwise the winner applies directly in the workspace."
+          }
           checked={settings.requireWorktree}
-          disabled={busy || !settings.enabled || eligibilityBlocked}
+          disabled={busy || !settings.enabled || eligibilityBlocked || worktreeForcedByVariants}
           onChange={(checked) => void saveSettings({ requireWorktree: checked })}
+        />
+        <ToggleRow
+          label="Require Repo Checks"
+          description="Keep preflight strict about git-backed execution and PR-first promotability expectations."
+          checked={settings.requireRepoChecks}
+          disabled={busy || !settings.enabled || eligibilityBlocked}
+          onChange={(checked) => void saveSettings({ requireRepoChecks: checked })}
+        />
+        <ToggleRow
+          label="Enforce Patch Scope"
+          description="Bias evaluation against oversized changes and keep fixes tightly bounded."
+          checked={settings.enforcePatchScope}
+          disabled={busy || !settings.enabled || eligibilityBlocked}
+          onChange={(checked) => void saveSettings({ enforcePatchScope: checked })}
         />
         <ToggleRow
           label="Include Dev Logs"
@@ -635,16 +662,29 @@ export function ImprovementSettingsPanel(props?: {
           value={settings.variantsPerCampaign}
           disabled={busy || !settings.enabled || eligibilityBlocked}
           min={1}
-          max={1}
+          max={3}
           onChange={(value) => void saveSettings({ variantsPerCampaign: value })}
         />
+        {worktreeForcedByVariants && (
+          <p className="settings-form-hint" style={{ marginTop: -4 }}>
+            Multi-variant campaigns automatically force worktree isolation to keep each implementation lane in a separate checkout.
+          </p>
+        )}
         <NumberRow
           label="Max Concurrent Campaigns"
           value={settings.maxConcurrentCampaigns}
           disabled={busy || !settings.enabled || eligibilityBlocked}
           min={1}
-          max={1}
+          max={3}
           onChange={(value) => void saveSettings({ maxConcurrentCampaigns: value })}
+        />
+        <NumberRow
+          label="Patch File Cap"
+          value={settings.maxPatchFiles}
+          disabled={busy || !settings.enabled || eligibilityBlocked}
+          min={1}
+          max={30}
+          onChange={(value) => void saveSettings({ maxPatchFiles: value })}
         />
         <NumberRow
           label="Campaign Timeout (minutes)"
@@ -908,6 +948,11 @@ export function ImprovementSettingsPanel(props?: {
                     <p className="settings-form-hint" style={{ margin: "6px 0 0 0" }}>
                       Source: <code>{candidate.source}</code> | Status: <code>{candidate.status}</code> | Priority:{" "}
                       <code>{candidate.priorityScore.toFixed(2)}</code> | Recurrence: <code>{candidate.recurrenceCount}</code>
+                      {candidate.readiness ? (
+                        <>
+                          {" "}| Readiness: <code>{candidate.readiness}</code>
+                        </>
+                      ) : null}
                       {selectedWorkspaceId === ALL_WORKSPACES_VALUE ? (
                         <>
                           {" "}
@@ -915,6 +960,11 @@ export function ImprovementSettingsPanel(props?: {
                         </>
                       ) : null}
                     </p>
+                    {candidate.readinessReason || candidate.lastSkipReason ? (
+                      <p className="settings-form-hint" style={{ margin: "6px 0 0 0" }}>
+                        {candidate.readinessReason || candidate.lastSkipReason}
+                      </p>
+                    ) : null}
                   </div>
                   {candidate.status !== "dismissed" ? (
                     <button className="settings-button settings-button-secondary" onClick={() => void dismissCandidate(candidate.id)} disabled={busy}>
@@ -1106,6 +1156,28 @@ function CampaignCard(props: {
                   <code>{key}</code>=<code>{String(value)}</code>{" "}
                 </span>
               ))}
+            </p>
+          ) : null}
+          {props.campaign.verificationCommands?.length ? (
+            <p className="settings-form-hint" style={{ margin: "6px 0 0 0" }}>
+              Verification commands:{" "}
+              {props.campaign.verificationCommands.map((command) => (
+                <span key={command}>
+                  <code>{command}</code>{" "}
+                </span>
+              ))}
+            </p>
+          ) : null}
+          {props.campaign.observability?.stageTransitions?.length ? (
+            <p className="settings-form-hint" style={{ margin: "6px 0 0 0" }}>
+              Latest stage note:{" "}
+              <code>
+                {
+                  props.campaign.observability.stageTransitions[
+                    props.campaign.observability.stageTransitions.length - 1
+                  ]?.detail || "n/a"
+                }
+              </code>
             </p>
           ) : null}
           {props.campaign.judgeVerdict ? (
