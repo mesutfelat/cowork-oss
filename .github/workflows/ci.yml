@@ -129,7 +129,7 @@ jobs:
 
       - name: Detect agent-path changes
         id: changes
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@v4
         with:
           filters: |
             agent:
